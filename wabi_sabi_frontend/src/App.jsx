@@ -1,6 +1,8 @@
-import React from 'react'
-import POSPage from './components/POSPage.jsx'
+import React from "react";
+import POSPage from "./components/POSPage";
 
-export default function App() {
-  return <POSPage />
+function App() {
+  return <POSPage />;
 }
+
+export default App;
