@@ -1,42 +1,85 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.pos-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+.header label{
+  margin: 5px 5px;
 }
 
 .logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+  font-size: 22px;
+  font-weight: bold;
+  color: #0072c6;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.logo .erp {
+  background: black;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.main-section {
+  flex: 1;
+  display: flex;
 }
 
-.card {
-  padding: 2em;
+.product-table {
+  flex: 3;
+  padding: 10px;
 }
 
-.read-the-docs {
-  color: #888;
+.product-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.product-table th, .product-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.sidebar {
+  flex: 1;
+  border-left: 1px solid #ddd;
+  padding: 10px;
+  background: #f9f9f9;
+}
+
+.sidebar button {
+  display: block;
+  width: 100%;
+  margin: 5px 0;
+  padding: 10px;
+}
+
+.customer-details {
+  margin-top: 20px;
+}
+
+.footer {
+  border-top: 1px solid #ddd;
+  padding: 10px;
+  background: white;
+}
+
+.actions {
+  margin-top: 10px;
+}
+
+.actions button {
+  margin: 5px;
+  padding: 10px;
 }

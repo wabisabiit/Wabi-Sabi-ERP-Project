@@ -1,51 +1,34 @@
 import React from "react";
+import "./POSPage.css";
 
-function POSPage() {
+export default function POS() {
   return (
-    <div className="container-fluid p-3">
+    <div className="pos-container">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="fw-bold">Vasy ERP</h4>
-        <div>
-          <label className="me-2">
-            <input type="radio" name="type" defaultChecked /> Walk In
-          </label>
-          <label className="me-2">
-            <input type="radio" name="type" /> Delivery
-          </label>
-          <select className="form-select d-inline-block w-auto">
+      <div className="header">
+        <h2 className="logo">vasy <span className="erp">ERP</span></h2>
+        <div className="options">
+          <label><input type="radio" name="mode" /> Walk In</label>
+          <label><input type="radio" name="mode" /> Delivery Salesman</label>
+          <select>
             <option>IT Account</option>
-            <option>Salesman 1</option>
           </select>
+          <button className="support">Support Desk</button>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="row mb-3">
-        <div className="col-md-4">
-          <input
-            type="text"
-            placeholder="Scan Barcode/Enter Product Name"
-            className="form-control"
-          />
-        </div>
-        <div className="col-md-4">
-          <select className="form-select">
-            <option>Walk In Customer</option>
-          </select>
-        </div>
-        <div className="col-md-4">
-          <input
-            type="text"
-            placeholder="Scan Sales Invoice"
-            className="form-control"
-          />
-        </div>
+      <div className="search-bar">
+        <input type="text" placeholder="Scan Barcode/Enter Product" />
+        <select>
+          <option>Walk In Customer</option>
+        </select>
+        <button>Scan Sales Invoice</button>
       </div>
 
       {/* Table */}
-      <table className="table table-bordered text-center">
-        <thead className="table-dark">
+      <table className="pos-table">
+        <thead>
           <tr>
             <th>#</th>
             <th>Itemcode</th>
@@ -60,47 +43,52 @@ function POSPage() {
         </thead>
         <tbody>
           <tr>
-            <td colSpan="9" className="text-muted">
-              No items added
-            </td>
+            <td colSpan="9" className="no-items">No items added</td>
           </tr>
         </tbody>
       </table>
 
       {/* Remarks */}
-      <input
-        type="text"
-        placeholder="Remarks"
-        className="form-control mb-3"
-      />
+      <input type="text" className="remarks" placeholder="Remarks" />
 
-      {/* Footer Section */}
-      <div className="row text-center">
-        <div className="col">Quantity: 0</div>
-        <div className="col">MRP: 0</div>
-        <div className="col">Tax: 0</div>
-        <div className="col">Discount: 0</div>
-        <div className="col">Flat Discount: 0%</div>
-        <div className="col">Amount: 0</div>
+      {/* Summary */}
+      <div className="summary">
+        <span>Quantity: 0</span>
+        <span>MRP: 0</span>
+        <span>Tax Amount: 0</span>
+        <span>Discount: 0</span>
+        <span>Flat Discount: 0%</span>
+        <span>Round OFF: 0</span>
+        <span>Amount: 0</span>
       </div>
 
-      {/* Payment Buttons */}
-      <div className="d-flex flex-wrap gap-2 mt-3">
-        <button className="btn btn-dark">Multiple Pay (F12)</button>
-        <button className="btn btn-dark">Redeem Credit</button>
-        <button className="btn btn-dark">Hold (F6)</button>
-        <button className="btn btn-dark">UPI (F5)</button>
-        <button className="btn btn-dark">Card (F3)</button>
-        <button className="btn btn-dark">Cash (F4)</button>
-        <button className="btn btn-dark">Apply Coupon</button>
-        <button className="btn btn-dark">Pay Later (F1)</button>
-        <button className="btn btn-dark">Hold & Print (F7)</button>
-        <button className="btn btn-dark">UPI & Print (F10)</button>
-        <button className="btn btn-dark">Card & Print (F9)</button>
-        <button className="btn btn-dark">Cash & Print (F8)</button>
+      {/* Buttons */}
+      <div className="buttons">
+        <button>Multiple Pay (F12)</button>
+        <button>Redeem Credit</button>
+        <button>Hold (F6)</button>
+        <button>UPI (F5)</button>
+        <button>Card (F3)</button>
+        <button>Cash (F4)</button>
+        <button>Apply Coupon</button>
+        <button>Pay Later (F1)</button>
+        <button>Hold & Print (F7)</button>
+        <button>UPI & Print (F10)</button>
+        <button>Card & Print (F9)</button>
+        <button>Cash & Print (F8)</button>
+      </div>
+
+      {/* Customer Details */}
+      <div className="customer">
+        <h3>Customer Details</h3>
+        <p>Last Visited: -</p>
+        <p>Last Bill Amount: ₹0</p>
+        <p>Most Purchased Item: 0</p>
+        <p>Payment Mode: -</p>
+        <p>Due Payment: 0</p>
+        <p>Total Purchase: 0</p>
+        <p>Loyalty Points: 0</p>
       </div>
     </div>
   );
 }
-
-export default POSPage;
