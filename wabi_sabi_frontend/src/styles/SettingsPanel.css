@@ -1,0 +1,64 @@
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 300px;
+  height: 100vh;
+  background: #f9f9f9;
+  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.2);
+  transition: right 0.3s ease-in-out;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.settings-panel.open {
+  right: 0;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* border-bottom: 1px solid #ddd; */
+  /* padding-bottom: 0.5rem; */
+  background-color:#111827;
+  color: white;
+}
+
+.close-btn {
+  cursor: pointer;
+}
+
+.settings-item {
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-select {
+  width: 100%;
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.toggle {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.toggle-btn {
+  width: 60px;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 20px;
+  background: #ddd;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+.toggle-btn.on {
+  background: #4caf50;
+  color: #fff;
+}

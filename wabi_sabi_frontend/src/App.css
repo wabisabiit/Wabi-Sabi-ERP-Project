@@ -1,85 +1,31 @@
+:root {
+  --bg: #f3f4f6; /* gray-100 */
+  --card: #ffffff;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+* { box-sizing: border-box; }
+html,body,#root { height: 100%; }
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: "Roboto", sans-serif;
+  background: var(--bg);
+  color: #111827;
 }
 
-.pos-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+/* container like tailwind container mx-auto px-4 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  background: white;
-  border-bottom: 1px solid #ddd;
-}
-.header label{
-  margin: 5px 5px;
-}
+/* layout */
+.app { display:flex; flex-direction:column; min-height:100vh; }
+.main { flex:1; display:flex; align-items:stretch; gap:0; }
+.left-section { width:75%; background: var(--card); padding:16px; display:flex; flex-direction:column; }
+.table-wrap { overflow-x:auto; }
+.remarks { margin-top: auto; border:1px solid #d1d5db; padding:8px; border-radius:6px; min-height:56px; font-size:14px; }
 
-.logo {
-  font-size: 22px;
-  font-weight: bold;
-  color: #0072c6;
-}
-.logo .erp {
-  background: black;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
-.main-section {
-  flex: 1;
-  display: flex;
-}
-
-.product-table {
-  flex: 3;
-  padding: 10px;
-}
-
-.product-table table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.product-table th, .product-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
-.sidebar {
-  flex: 1;
-  border-left: 1px solid #ddd;
-  padding: 10px;
-  background: #f9f9f9;
-}
-
-.sidebar button {
-  display: block;
-  width: 100%;
-  margin: 5px 0;
-  padding: 10px;
-}
-
-.customer-details {
-  margin-top: 20px;
-}
-
-.footer {
-  border-top: 1px solid #ddd;
-  padding: 10px;
-  background: white;
-}
-
-.actions {
-  margin-top: 10px;
-}
-
-.actions button {
-  margin: 5px;
-  padding: 10px;
-}
+/* material icons default size */
+.material-icons { font-size:20px; vertical-align:middle; }

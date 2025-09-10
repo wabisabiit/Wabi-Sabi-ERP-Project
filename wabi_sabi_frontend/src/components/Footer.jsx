@@ -1,31 +1,57 @@
 import React from "react";
+import "../styles/Footer.css";
 
 export default function Footer() {
+  const buttons = [
+    "Multiple Pay(F12)","Redeem Credit","Hold (F6)","UPI (F5)",
+    "Card (F3)","Cash (F4)","Apply Coupon","Pay Later (F11)",
+    "Hold & Print (F7)","UPI & Print (F10)","Card & Print (F9)","Cash & Print (F8)"
+  ];
+
   return (
-    <div className="footer">
-      <div className="summary">
-        <p>Quantity: 0</p>
-        <p>MRP: 0</p>
-        <p>Tax Amount: 0</p>
-        <p>Discount: 0</p>
-        <p>Flat Discount: 0%</p>
-        <p>Round Off: 0</p>
-        <p>Amount: 0</p>
+    <footer className="footer">
+      <div className="container summary">
+        <div className="stat">
+          <div className="label">Quantity</div>
+          <div className="value">0</div>
+        </div>
+
+        <div className="stat">
+          <div className="label">MRP</div>
+          <div className="value">0</div>
+        </div>
+
+        <div className="stat">
+          <div className="label">Tax Amount</div>
+          <div className="value">0</div>
+        </div>
+
+        <div className="stat">
+          <div className="label">
+            <button className="small-btn">Add Charges +</button>
+          </div>
+          <div className="value">0</div>
+        </div>
+
+        <div className="stat">
+          <div className="label">Discount</div>
+          <div className="value">0</div>
+        </div>
+
+        <div className="roundoff">
+          <input type="text" value="0.00" readOnly />
+          <button className="small-btn">Roundoff</button>
+        </div>
+
+        <div className="amount">
+          <div className="label">Amount</div>
+          <div className="value big">0</div>
+        </div>
       </div>
-      <div className="actions">
-        <button>Multiple Pay (F12)</button>
-        <button>Redeem Credit</button>
-        <button>Hold (F6)</button>
-        <button>UPI (F5)</button>
-        <button>Card (F3)</button>
-        <button>Cash (F4)</button>
-        <button>Apply Coupon</button>
-        <button>Pay Later (F1)</button>
-        <button>Hold & Print (F7)</button>
-        <button>UPI & Print (F10)</button>
-        <button>Card & Print (F9)</button>
-        <button>Cash & Print (F8)</button>
+
+      <div className="container payment-btns">
+        {buttons.map((b, i) => <button key={i} className="pay-btn">{b}</button>)}
       </div>
-    </div>
+    </footer>
   );
 }

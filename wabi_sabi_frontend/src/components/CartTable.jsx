@@ -1,9 +1,10 @@
 import React from "react";
+import "../styles/CartTable.css";
 
-export default function ProductTable() {
+export default function CartTable() {
   return (
-    <div className="product-table">
-      <table>
+    <div className="cart-container">
+      <table className="cart-table">
         <thead>
           <tr>
             <th>#</th>
@@ -18,10 +19,11 @@ export default function ProductTable() {
           </tr>
         </thead>
         <tbody>
-          {/* Empty rows initially */}
+          <tr>
+            <td colSpan="9" className="empty">No items in cart</td>
+          </tr>
         </tbody>
       </table>
-      <input className="remarks" placeholder="Remarks" />
     </div>
   );
 }

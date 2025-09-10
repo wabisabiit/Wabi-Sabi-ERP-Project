@@ -1,0 +1,173 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.3rem 1rem;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.menu-icon {
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.logo-vasy {
+  color: #2196f3;
+  font-weight: bold;
+  font-size: 30px;
+}
+
+.logo-erp {
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+  padding: 0 5px;
+  border-radius: 3px;
+}
+
+.customer-type {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  
+}
+
+.customer-type label {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.customer-type input[type="radio"] {
+  accent-color: #2196f3;
+  cursor: pointer;
+}
+
+.salesman {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Dropdown Styling */
+.dropdown {
+  position: relative;
+  width: 220px;
+}
+
+.dropdown-selected {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+}
+
+.arrow {
+  font-size: 18px;
+  color: #555;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  z-index: 999;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-search {
+  width: 100%;
+  padding: 5px;
+  border: none;
+  border-bottom: 1px solid #ddd;
+  outline: none;
+}
+
+.dropdown-options {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.dropdown-option {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.dropdown-option:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-option.active {
+  background: #e0f2fe;
+  font-weight: bold;
+}
+
+.dropdown-noresult {
+  padding: 6px 10px;
+  color: #999;
+  text-align: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.green {
+  color: #4caf50;
+  font-size: 18px;
+}
+
+/* Red Notification */
+.notify {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  background: #ef4444;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.count {
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Black Icons */
+.black {
+  background: #000;
+  color: #fff;
+  font-size: 16px;
+  padding: 3px;
+  border-radius: 3px;
+  cursor: pointer;
+}
