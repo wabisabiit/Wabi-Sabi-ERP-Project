@@ -13,10 +13,11 @@ export default function App() {
       <SearchBar />
       <main className="main">
         <div className="left-section">
+          
           <div className="table-wrap">
             <CartTable />
           </div>
-          <textarea className="remarks" placeholder="Remarks"></textarea>
+         
         </div>
 
         <RightPanel />

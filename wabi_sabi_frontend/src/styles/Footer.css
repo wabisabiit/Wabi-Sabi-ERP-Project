@@ -1,15 +1,188 @@
-.footer { background:white; border-top:1px solid #e5e7eb; padding:12px 0; }
-.summary { display:flex; gap:16px; align-items:center; padding:0 16px; }
-.stat { display:flex; flex-direction:column; align-items:center; min-width:72px; }
-.label { font-size:13px; color:#6b7280; }
-.value { font-weight:700; font-size:18px; color:#111827; }
-.amount { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; }
-.value.big { font-size:28px; color:#0ea5a4; }
+:root{
+  --fg-muted:#6b7280;
+  --fg-black:#111;           /* added: used below for labels */
+  --divider:#e5e7eb;
+  --black:#0b0b0b;
+  --btn-h:44px;
 
-.small-btn { background:#f3f4f6; border:1px solid #d1d5db; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px; }
+  /* added: control overall footer content width */
+  --footer-max: 1300px;      /* tweak 1040–1220px as you like */
+}
 
-.roundoff { display:flex; align-items:center; gap:8px; padding-left:8px; }
-.roundoff input { border:1px solid #d1d5db; padding:6px; width:70px; text-align:right; border-radius:6px; background:white; }
+.pos-footer{
+  background:#fff;
+  padding: 8px 12px 14px;
+  border-top:1px solid var(--divider);
 
-.payment-btns { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:12px 16px; }
-.pay-btn { background:#111827; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; }
+  /* added: make footer narrower and centered on large screens */
+  max-width: var(--footer-max);
+  margin: 0 auto;
+}
+
+/* ===== Top totals strip ===== */
+.totals{
+  display:grid;
+  grid-template-columns: repeat(6, 1fr) auto; /* 6 metrics + blue amount */
+  align-items:center;
+  gap:18px;
+  margin-bottom:10px;
+}
+
+.metric{
+  position:relative;
+  padding:0 12px;
+  min-height:52px;
+}
+.metric:not(:first-child){
+  border-left:1px solid var(--divider); /* vertical dividers like screenshot */
+}
+.metric .value{
+  font-size:22px;
+  font-weight:700;
+  color:#111;
+  line-height:1.2;
+}
+.metric .label{
+  margin-top:4px;
+  font-size:12px;
+  font-weight: bold;
+  color:var(--fg-black);      /* uses the new var */
+}
+
+/* Add.Charges badge */
+.metric.has-badge .badge{
+  position:absolute;
+  top:-8px;
+  right:10px;
+  padding:3px 6px;
+  font-size:12px;
+  border-radius:4px;
+  background:#111;
+  color:#fff;
+  line-height:1;
+  cursor:pointer;
+}
+
+/* compact metrics that contain inputs/buttons inline */
+.metric.compact{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  column-gap:8px;
+  align-items:center;
+}
+.metric.compact .label{
+  grid-column:1 / -1;
+}
+
+.percent{
+  width:36px;
+  height:32px;
+  border:none;
+  background:#111;
+  color:#fff;
+  border-radius:6px;
+  font-weight:800;
+  cursor:pointer;
+}
+.mini{
+  height:32px;
+  width:100%;
+  border:1px solid #d1d5db;
+  border-radius:6px;
+  padding:0 10px;
+  font-size:14px;
+  outline:none;
+}
+
+/* blue amount block on right */
+.amount{
+  text-align:right;
+  padding-left:12px;
+}
+.amount .amount-value{
+  color:#0ea5e9;                 /* bright blue 0 */
+  font-weight:800;
+  font-size:26px;
+  line-height:1.1;
+}
+.amount .label{
+  margin-top:4px;
+  font-size:13px;
+  color:#38bdf8;                 /* lighter blue label */
+  font-weight:600;
+}
+
+/* ===== Buttons grid (6 columns × 2 rows) ===== */
+.pay-grid{
+  margin-top:8px;
+  display:grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap:10px;
+}
+.kbtn{
+  height:var(--btn-h);
+  background:var(--black);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-weight:700;
+  cursor:pointer;
+}
+.kbtn .material-icons{
+  font-size:18px;
+}
+.kbtn:active{ transform: translateY(1px); }
+
+/* small screens: wrap to 3 columns */
+@media (max-width: 1100px){
+  .pay-grid{ grid-template-columns: repeat(3, 1fr); }
+  /* keep footer full width on small screens */
+  .pos-footer{ max-width: none; margin: 0; }
+}
+
+/* ===== Toast stack: MID–TOP (centered) ===== */
+.toast-stack{
+  position: fixed;
+  left: 50%;
+  top: 64px;                               /* just below header; tweak 48–80px if needed */
+  transform: translateX(-50%);
+  display: grid;
+  gap: 8px;
+  z-index: 1500;
+}
+
+/* Toast look */
+.toast-item{
+  min-width: 280px;
+  max-width: 420px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  animation: toast-in .18s ease-out;
+}
+.toast-error{ background:#dc2626; border-left:6px solid #7f1d1d; }
+.toast-item .icon{ font-size:16px; line-height:1; }
+
+/* Drop-in-from-top animation */
+@keyframes toast-in{
+  from{ transform: translate(-50%, -8px); opacity: 0; }
+  to{   transform: translate(-50%,  0);  opacity: 1; }
+}
+
+/* Safe-area + small screens */
+@supports (top: calc(16px + env(safe-area-inset-top))) {
+  .toast-stack{ top: calc(16px + env(safe-area-inset-top)); }
+}
+@media (max-width: 640px){
+  .toast-stack{ top: 72px; }
+  .toast-item{ min-width: 240px; }
+}

@@ -23,7 +23,7 @@
 
 .logo-wrap { display: flex; align-items: center; gap: 0.2rem; }
 .logo-vasy { color: #2196f3; font-weight: bold; font-size: 30px; }
-.logo-erp  { background: #333; color: #fff; font-size: 12px; padding: 0 5px; border-radius: 3px; }
+.logo-erp  { background: #333; color: #fff; font-size: 20px; padding: 0 5px; border-radius: 3px; }
 
 /* ===== Salesman (center) ===== */
 .salesman { display: flex; align-items: center; gap: 0.3rem; }

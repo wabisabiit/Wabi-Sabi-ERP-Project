@@ -3,6 +3,7 @@ import ProductPanel from "./ProductPanel";
 import "../styles/Header.css";
 import ConfirmModal from "./ConfirmModal";
 import SettingsPanel from "./SettingsPanel";
+import RegisterCloseModal from "./RegisterCloseModal";
 
 function Header() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -12,25 +13,49 @@ function Header() {
   const [openProducts, setOpenProducts] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(true);
 
+  // Register close modal state + header text
+  const [openRegisterModal, setOpenRegisterModal] = useState(false);
+  const [rangeLabel, setRangeLabel] = useState("");
+
+  // ---- Salesman options (RESTORED, required by your JSX) ----
   const options = [
     "IT Account",
     "WABI SABI SUSTAINABILITY LLP",
     "NISHANT",
     "KRISHNA PANDIT",
   ];
-
   const filtered = options.filter((opt) =>
     opt.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // ---- helpers ----
+  const formatTs = (ts) =>
+    new Date(ts).toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+  // ensure we have "registerOpenedAt" once
+  useEffect(() => {
+    const saved = localStorage.getItem("registerOpenedAt");
+    if (!saved) {
+      localStorage.setItem("registerOpenedAt", new Date().toISOString());
+    }
+  }, []);
+
+  // dropdown close on outside/esc
   const dropdownRef = useRef(null);
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
         setOpen(false);
-      }
     };
     const onEsc = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDocClick);
@@ -41,6 +66,7 @@ function Header() {
     };
   }, [open]);
 
+  // fullscreen sync
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handler);
@@ -48,23 +74,28 @@ function Header() {
   }, []);
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else if (document.exitFullscreen) {
-      document.exitFullscreen();
-    }
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else if (document.exitFullscreen) document.exitFullscreen();
   };
 
+  // discard sale modal
   const handleDeleteClick = () => setOpenConfirm(true);
-  const handleOk = () => {
-    setOpenConfirm(false);
-  };
+  const handleOk = () => setOpenConfirm(false);
   const handleCancel = () => setOpenConfirm(false);
 
+  // logout
   const handleLogout = () => {
-    // 👉 yahan apni logout logic lagaiye (API call, token clear, redirect etc.)
     console.log("Logging out...");
-    window.location.href = "/login"; // example redirect
+    window.location.href = "/login";
+  };
+
+  // cross icon -> open register modal with exact range text
+  const openRegisterDialog = () => {
+    const openedAt =
+      localStorage.getItem("registerOpenedAt") || new Date().toISOString();
+    const now = new Date().toISOString();
+    setRangeLabel(`${formatTs(openedAt)} - ${formatTs(now)}`);
+    setOpenRegisterModal(true);
   };
 
   return (
@@ -77,7 +108,7 @@ function Header() {
           </button>
 
           <div className="logo-wrap">
-            <span className="logo-vasy">Wabi Sabi</span>
+            <span className="logo-vasy">Wabi Sabi</span>&nbsp;
             <span className="logo-erp">ERP</span>
           </div>
         </div>
@@ -117,7 +148,9 @@ function Header() {
                           key={opt}
                           role="option"
                           aria-selected={selected === opt}
-                          className={`dropdown-option ${selected === opt ? "active" : ""}`}
+                          className={`dropdown-option ${
+                            selected === opt ? "active" : ""
+                          }`}
                           onClick={() => {
                             setSelected(opt);
                             setOpen(false);
@@ -139,13 +172,13 @@ function Header() {
 
         {/* Right */}
         <div className="header-right">
-          <span className="material-icons green" aria-hidden="true">wifi</span>
+          <span className="material-icons green" aria-hidden="true">
+            wifi
+          </span>
 
           <button type="button" className="icon-btn black" aria-label="Print">
             <span className="material-icons">print</span>
           </button>
-
-          
 
           <button
             type="button"
@@ -180,11 +213,24 @@ function Header() {
             className="icon-btn black"
             aria-label="Fullscreen"
             onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
-            <span className="material-icons">{isFullscreen ? "fullscreen_exit" : "fullscreen"}</span>
+            <span className="material-icons">
+              {isFullscreen ? "fullscreen_exit" : "fullscreen"}
+            </span>
           </button>
 
-          {/* 🔴 Logout button */}
+          {/* Cross → open centered Register Close modal with range label */}
+          <button
+            type="button"
+            className="icon-btn black"
+            aria-label={isRegisterOpen ? "Close Register" : "Open Cash Drawer"}
+            onClick={openRegisterDialog}
+            title="Open Cash Drawer / Close Register"
+          >
+            <span className="material-icons">close</span>
+          </button>
+
           <button
             type="button"
             className="icon-btn black"
@@ -200,8 +246,23 @@ function Header() {
       <SettingsPanel open={openSettings} onClose={() => setOpenSettings(false)} />
       <ProductPanel open={openProducts} onClose={() => setOpenProducts(false)} />
 
-      {/* Confirm Modal will render centered with backdrop */}
+      {/* Delete confirmation */}
       <ConfirmModal open={openConfirm} onOk={handleOk} onCancel={handleCancel} />
+
+      {/* Register Close Modal */}
+      <RegisterCloseModal
+        open={openRegisterModal}
+        onClose={() => setOpenRegisterModal(false)}
+        rangeLabel={rangeLabel}
+        openingCash={0}
+        onSubmit={(payload) => {
+          console.log("Register close payload:", payload);
+          setIsRegisterOpen(false);
+          // next shift ke liye (optional) new open time set
+          localStorage.setItem("registerOpenedAt", new Date().toISOString());
+          setOpenRegisterModal(false);
+        }}
+      />
     </>
   );
 }

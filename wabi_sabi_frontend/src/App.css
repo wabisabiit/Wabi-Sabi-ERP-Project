@@ -8,15 +8,15 @@
 html,body,#root { height: 100%; }
 body {
   margin: 0;
-  font-family: "Roboto", sans-serif;
+  font-family:Verdana, Geneva, Tahoma, sans-serif;
   background: var(--bg);
   color: #111827;
 }
 
 /* container like tailwind container mx-auto px-4 */
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 1500px;
+  margin: 20px auto;
   padding: 0 16px;
 }
 
@@ -25,7 +25,7 @@ body {
 .main { flex:1; display:flex; align-items:stretch; gap:0; }
 .left-section { width:75%; background: var(--card); padding:16px; display:flex; flex-direction:column; }
 .table-wrap { overflow-x:auto; }
-.remarks { margin-top: auto; border:1px solid #d1d5db; padding:8px; border-radius:6px; min-height:56px; font-size:14px; }
+/* .remarks { margin-top: auto; border:1px solid #d1d5db; padding:8px; border-radius:6px; min-height:56px; font-size:14px; } */
 
 /* material icons default size */
 .material-icons { font-size:20px; vertical-align:middle; }

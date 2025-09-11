@@ -1,44 +1,72 @@
-.right-panel {
-  width: 25%;
-  background: #f9fafb;
-  border-left: 1px solid #e5e7eb;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-sizing: border-box;
+:root{
+  --rpw: 320px;          /* right panel width */
+  --gap: 12px;
+
+  /* NEW: narrow tile controls */
+  --tile-w: 140px;       /* 128–150px range best */
+  --tile-gap: 10px;
 }
 
-.actions {
+.right-panel{
+  width: var(--rpw);
+}
+
+/* ==== Tiles grid (2 columns × 3 rows) ==== */
+.actions{
   display: grid;
-  grid-template-columns: 1fr 1fr; /* still 2 columns for 4 items */
-  gap: 12px;
-  margin-bottom: 8px;
+  grid-template-columns: repeat(2, var(--tile-w)); /* ⬅ fixed narrow width */
+  gap: var(--tile-gap);
+  margin-bottom: 12px;
+  justify-content: space-between;                  /* spread nicely */
+}
+.right-panel{
+  --tile-w: 140px;      /* पहले 140px था; aur chhota chahiye to 112px/108px kar sakte hain */
 }
 
-.actions button {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 10px;
+.actions .tile{
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+
+  width: var(--tile-w);      /* ⬅ tile width */
+  min-height: 40px;          /* आपकी value रखी है */
+  padding: 7px;          /* horizontal padding थोड़ा कम */
+  margin-left: 10px;
+  background: #f8faff;
+  border: 1px solid #e5e7eb;
+  border: none;
+  border-radius: 10px;
+  margin-top: 9px;
   cursor: pointer;
+
+  transition: transform .05s ease, box-shadow .15s ease, background .15s ease;
+}
+.actions .tile:hover{
+  background:#f8fafc;
+  box-shadow: 0 1px 0 rgba(0,0,0,.02);
+}
+.actions .tile:active{
+  transform: translateY(1px);
 }
 
-.actions button .material-icons {
-  font-size: 20px;
-  color: #374151;
+.actions .tile .material-icons{
+  font-size: 20px;         /* ⬇ icon a bit smaller for narrow tile */
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+.actions .tile .small{
+  font-size: 12px;         /* ⬇ label a bit smaller */
+  color: #111;
+  text-align: center;
+  line-height: 1.2;
+  display: block;
 }
 
-.actions button .small {
-  font-size: 12px;
-  color: #374151;
-}
-
-.actions button:hover {
-  background: #eaeef5;
+/* ===== Customer card (unchanged) ===== */
+.right-panel .customer-details{
+  border: 1px solid #e3e6ea;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
 }

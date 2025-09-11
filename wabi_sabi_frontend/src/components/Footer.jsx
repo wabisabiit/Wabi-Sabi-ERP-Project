@@ -1,57 +1,135 @@
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 
-export default function Footer() {
-  const buttons = [
+export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
+  // ---------- Toast state ----------
+  const [toasts, setToasts] = useState([]); // [{id, text}]
+  const timersRef = useRef({});
+  const idRef = useRef(0);
+
+  // ---------- Beep (unchanged logic) ----------
+  const beep = useCallback(() => {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = "sine";
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    g.gain.setValueAtTime(0.2, ctx.currentTime);
+    o.start(); o.stop(ctx.currentTime + 0.2);
+  }, []);
+
+  // ---------- Toast helpers ----------
+  const addToast = useCallback((text) => {
+    const id = ++idRef.current;
+    setToasts(prev => [{ id, text }, ...prev].slice(0, 3)); // keep max 3
+    timersRef.current[id] = setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+      delete timersRef.current[id];
+    }, 1800);
+  }, []);
+
+  const triggerEmptyCartWarning = useCallback(() => {
+    beep();
+    addToast("Add minimum 1 product.");
+  }, [beep, addToast]);
+
+  // clear all timers on unmount
+  useEffect(() => () => {
+    Object.values(timersRef.current).forEach(clearTimeout);
+  }, []);
+
+  // ---------- Actions ----------
+  const actions = useMemo(() => ([
     "Multiple Pay(F12)","Redeem Credit","Hold (F6)","UPI (F5)",
     "Card (F3)","Cash (F4)","Apply Coupon","Pay Later (F11)",
     "Hold & Print (F7)","UPI & Print (F10)","Card & Print (F9)","Cash & Print (F8)"
-  ];
+  ]), []);
+
+  const handleActionClick = useCallback((label) => {
+    if (totalQty <= 0) {            // validation same as your first code
+      triggerEmptyCartWarning();
+      return;
+    }
+    // hand over to parent if provided, else just log
+    if (typeof onAction === "function") onAction(label);
+    else console.log("Action:", label);
+  }, [totalQty, triggerEmptyCartWarning, onAction]);
 
   return (
-    <footer className="footer">
-      <div className="container summary">
-        <div className="stat">
+    <footer className="pos-footer">
+      {/* ===== Totals / inputs row ===== */}
+      <div className="totals">
+        <div className="metric">
+          <div className="value">{Number(totalQty).toFixed(3)}</div>
           <div className="label">Quantity</div>
-          <div className="value">0</div>
         </div>
 
-        <div className="stat">
+        <div className="metric">
+          <div className="value">0.00</div>
           <div className="label">MRP</div>
-          <div className="value">0</div>
         </div>
 
-        <div className="stat">
+        <div className="metric">
+          <div className="value">0.00</div>
           <div className="label">Tax Amount</div>
-          <div className="value">0</div>
         </div>
 
-        <div className="stat">
-          <div className="label">
-            <button className="small-btn">Add Charges +</button>
-          </div>
-          <div className="value">0</div>
-        </div>
-
-        <div className="stat">
+        <div className="metric has-badge">
+          <div className="value">0.00</div>
+          <button type="button" className="badge">Add.Charges+</button>
           <div className="label">Discount</div>
-          <div className="value">0</div>
         </div>
 
-        <div className="roundoff">
-          <input type="text" value="0.00" readOnly />
-          <button className="small-btn">Roundoff</button>
+        <div className="metric compact">
+          <button type="button" className="percent">%</button>
+          <input className="mini" placeholder="0.00" defaultValue="0.00" />
+          <div className="label">Flat Discount</div>
+        </div>
+
+        <div className="metric compact">
+          <input className="mini" placeholder="0.00" defaultValue="0.00" />
+          <div className="label">Round OFF</div>
         </div>
 
         <div className="amount">
+          <div className="amount-value">{Number(amount).toLocaleString()}</div>
           <div className="label">Amount</div>
-          <div className="value big">0</div>
         </div>
       </div>
 
-      <div className="container payment-btns">
-        {buttons.map((b, i) => <button key={i} className="pay-btn">{b}</button>)}
+      {/* ===== Buttons grid ===== */}
+      <div className="pay-grid">
+        {actions.map((text) => (
+          <button key={text} className="kbtn" onClick={() => handleActionClick(text)}>
+            {text.includes("Card") && <span className="material-icons">credit_card</span>}
+            {text.includes("Cash") && <span className="material-icons">currency_rupee</span>}
+            {text.includes("UPI") && <span className="material-icons">near_me</span>}
+            {text.includes("Hold") && !text.includes("Multiple") && <span className="material-icons">pause_presentation</span>}
+            {text.includes("Multiple") && <span className="material-icons">view_week</span>}
+            {text.includes("Coupon") && <span className="material-icons">local_offer</span>}
+            {text.includes("Pay Later") && <span className="material-icons">event</span>}
+            {!/Card|Cash|UPI|Hold|Multiple|Coupon|Pay Later/.test(text) && (
+              <span className="material-icons">smart_button</span>
+            )}
+            {text}
+          </button>
+        ))}
       </div>
+
+      {/* ===== Toast stack ===== */}
+      {toasts.length > 0 && (
+        <div className="toast-stack" role="region" aria-live="assertive">
+          {toasts.map(t => (
+            <div key={t.id} className="toast-item toast-error" role="alert">
+              <span className="icon" aria-hidden>❗</span>
+              {t.text}
+            </div>
+          ))}
+        </div>
+      )}
     </footer>
   );
 }

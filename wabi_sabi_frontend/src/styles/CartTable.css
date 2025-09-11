@@ -1,5 +1,86 @@
-.cart-container { width:100%; }
-.cart-table { width:100%; border-collapse:collapse; font-size:14px; color:#374151; min-width:900px; }
-.cart-table thead th { background:#111827; padding:12px; text-align:left; font-weight:600; border-bottom:1px solid #e5e7eb; color:white; font-size:12px; text-transform:uppercase; }
-.cart-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align:middle; color:#6b7280; }
-.cart-table .empty { text-align:center; color:#9ca3af; padding:40px 0; font-size:14px; }
+.cart-container {
+  padding: 0 12px 10px;
+  background: #fff;
+  /* chhote screens par zarurat pade to horizontal scroll allow */
+  overflow-x: auto;
+}
+
+/* ---------- Header: single solid black strip, no gaps ---------- */
+.cart-table {
+  width: 100%;
+  border-collapse: collapse;  /* remove inner gaps */
+  border-spacing: 0;          /* safety */
+  table-layout: fixed;        /* stable column widths, no wrap surprises */
+}
+
+.cart-table thead th {
+  background: #000;           /* solid black */
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border: 0;                  /* ❗ no separators at all */
+  white-space: nowrap;        /* ❗ keep in one row */
+  text-align: left;
+}
+
+/* numeric headers right aligned if needed */
+.cart-table thead th.num { text-align: right; }
+
+/* Body cells (kept clean white) */
+.cart-table tbody td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #111827;
+  background: #fff;
+}
+.cart-table .num { text-align: right; }
+.cart-table .prod {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Big white blank area when no items (no message) */
+
+.empty-spacer td {
+  height: 260px;
+  background: #fff;
+  /* ensure no line shows up */
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  padding: 0;               /* optional: clean white block */
+}
+
+/* ---------- Remarks: bright blue border ---------- */
+.remarks-wrap { margin-top: 165px; }
+.remarks-input {
+  width: 100%;
+  height: 35px;
+  padding: 8px 10px;
+  border: 2px solid #1e90ff;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+}
+.remarks-input:focus {
+  border-color: #1e90ff;
+  box-shadow: none;
+}
+
+/* Sticky header (no border so strip stays continuous) */
+@supports (position: sticky) {
+  .cart-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #000;
+    border: 0;
+  }
+}

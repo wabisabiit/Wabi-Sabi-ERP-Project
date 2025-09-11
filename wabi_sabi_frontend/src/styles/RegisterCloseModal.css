@@ -1,0 +1,71 @@
+/* Backdrop centers modal + disables background */
+.rcm-backdrop{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center;
+  padding:32px;                 /* ensures not glued to top */
+  z-index:1000;
+  backdrop-filter:saturate(120%) blur(1px);
+}
+
+/* Modal uses header | scrollable body | footer layout */
+.rcm-modal{
+  background:#fff;
+  width:min(1020px,95vw);
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  box-shadow:0 14px 38px rgba(0,0,0,.35);
+  display:grid;
+  grid-template-rows:auto 1fr auto;  /* header, body, footer */
+  max-height:calc(100vh - 64px);     /* keep header visible */
+  overflow:hidden;                    /* body will scroll */
+}
+
+/* Header (title + X) */
+.rcm-header{ position:relative; padding:12px 16px; border-bottom:1px solid #e5e7eb; }
+.rcm-title{ margin:0; font-size:16px; font-weight:700; color:#111827; }
+.rcm-x{
+  position:absolute; right:10px; top:8px;
+  width:34px; height:34px; border-radius:6px;
+  border:2px solid #cfd5df; background:#f6f8fb;
+  font-size:22px; color:#75839b; cursor:pointer;
+}
+
+/* Body: 3 columns + internal scroll if tall */
+.rcm-content{
+  display:grid;
+  grid-template-columns:1.1fr 1.2fr 1fr;
+  gap:16px; padding:16px;
+  overflow:auto;                  /* scroll only body */
+}
+
+/* Left grey summary */
+.rcm-col-left{ background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; padding:8px; }
+.rcm-row{ display:grid; grid-template-columns:1fr 90px; align-items:center; gap:8px; margin-bottom:6px; }
+.rcm-row .sub{ padding-left:14px; color:#4b5563; }
+
+/* Mid table */
+.rcm-table{ width:100%; border-collapse:collapse; font-size:14px; }
+.rcm-table th,.rcm-table td{ border:1px solid #e5e7eb; padding:6px 8px; }
+.rcm-table th{ background:#f3f4f6; text-align:left; }
+.rcm-table .r{ text-align:right; }
+.rcm-total td{ font-weight:700; }
+
+/* Right form */
+.rcm-lab{ display:block; font-size:13px; color:#374151; margin:8px 0 6px; }
+.rcm-input{
+  width:100%; height:34px; padding:0 10px;
+  border:1px solid #d1d7e0; border-radius:8px; outline:none; background:#fff; box-sizing:border-box;
+}
+.rcm-input.r{ text-align:right; }
+.rcm-textarea{ width:100%; border:1px solid #d1d7e0; border-radius:8px; padding:8px 10px; resize:vertical; box-sizing:border-box; }
+.req{ color:#e11d48; margin-left:4px; }
+
+/* Footer — center single button exactly like SS */
+.rcm-footer{ border-top:1px solid #e5e7eb; padding:12px 16px 16px; display:flex; justify-content:center; }
+.rcm-btn{ height:36px; padding:0 14px; border-radius:8px; border:1px solid #111; background:#111; color:#fff; font-weight:600; cursor:pointer; }
+.rcm-btn:hover{ filter:brightness(1.03); }
+
+@media (max-width: 980px){
+  .rcm-content{ grid-template-columns:1fr; }
+}

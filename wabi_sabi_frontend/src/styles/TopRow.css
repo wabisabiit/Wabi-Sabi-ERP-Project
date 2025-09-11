@@ -1,0 +1,15 @@
+:root {
+  --rpw: 320px;   /* right panel width */
+  --gap: 12px;
+}
+
+/* Search bar + Right panel same row */
+.top-row {
+  display: grid;
+  grid-template-columns: 1fr var(--rpw);
+  gap: var(--gap);
+  align-items: start;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
