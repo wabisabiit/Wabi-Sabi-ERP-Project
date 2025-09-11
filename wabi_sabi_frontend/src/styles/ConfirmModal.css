@@ -1,48 +1,73 @@
-.cm-overlay {
-border-radius: 8px;
-box-shadow: 0 14px 38px rgba(0,0,0,0.25);
-padding: 36px 28px 24px;
-text-align: center;
+/* Full-screen backdrop to disable background */
+.cm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* must be above header/toolbars */
+  backdrop-filter: saturate(120%) blur(1px);
 }
+
+/* Centered white card */
+.cm-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  width: min(520px, 90vw);
+  padding: 36px 28px 24px;
+  text-align: center;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.35);
+}
+
+/* (rest: your same look & feel) */
 .cm-close {
-position: absolute;
-top: 10px;
-right: 10px;
-width: 34px;
-height: 34px;
-border-radius: 6px;
-border: 2px solid #cfd5df;
-background: #f6f8fb;
-font-size: 22px;
-color: #75839b;
-cursor: pointer;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 2px solid #cfd5df;
+  background: #f6f8fb;
+  font-size: 22px;
+  color: #75839b;
+  cursor: pointer;
 }
+
 .cm-icon {
-margin: 6px auto 10px;
-width: 110px;
-height: 110px;
-border: 4px solid #a7d2f4;
-border-radius: 50%;
-color: #1990ff;
-display: grid;
-place-items: center;
-font-size: 64px;
-font-weight: 500;
-background: #ecf6ff;
+  margin: 6px auto 10px;
+  width: 110px;
+  height: 110px;
+  border: 4px solid #a7d2f4;
+  border-radius: 50%;
+  color: #1990ff;
+  display: grid;
+  place-items: center;
+  font-size: 64px;
+  font-weight: 500;
+  background: #ecf6ff;
 }
+
 .cm-title {
-margin: 10px 0 18px;
-font-weight: 600;
-color: #5c6470;
+  margin: 10px 0 18px;
+  font-weight: 600;
+  color: #5c6470;
 }
+
 .cm-actions { display: flex; gap: 14px; justify-content: center; }
+
 .cm-btn {
-border: none;
-border-radius: 6px;
-height: 44px;
-padding: 0 22px;
-cursor: pointer;
-font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  height: 44px;
+  padding: 0 22px;
+  cursor: pointer;
+  font-weight: 600;
 }
+
 .cm-btn.ok { background: #1b75ea; color: #fff; }
 .cm-btn.dislike { background: #e9edf3; color: #444; width: 52px; padding: 0; }
+
+/* IMPORTANT: delete any old .cm-overlay rules from your CSS */

@@ -11,7 +11,7 @@ function Header() {
   const [openSettings, setOpenSettings] = useState(false);
   const [openProducts, setOpenProducts] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
-  
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const options = [
     "IT Account",
@@ -41,10 +41,36 @@ function Header() {
     };
   }, [open]);
 
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  };
+
+  const handleDeleteClick = () => setOpenConfirm(true);
+  const handleOk = () => {
+    setOpenConfirm(false);
+  };
+  const handleCancel = () => setOpenConfirm(false);
+
+  const handleLogout = () => {
+    // 👉 yahan apni logout logic lagaiye (API call, token clear, redirect etc.)
+    console.log("Logging out...");
+    window.location.href = "/login"; // example redirect
+  };
+
   return (
     <>
-      <header className="header">
-        {/* Left Section */}
+      <header className="header" role="banner">
+        {/* Left */}
         <div className="header-left">
           <button type="button" className="menu-icon" aria-label="Open menu">
             <span className="material-icons">menu</span>
@@ -54,15 +80,12 @@ function Header() {
             <span className="logo-vasy">Wabi Sabi</span>
             <span className="logo-erp">ERP</span>
           </div>
+        </div>
 
-          {/* Customer Type, Salesman dropdown ... (unchanged) */}
-          <div className="customer-type" role="radiogroup" aria-label="Customer type">
-            <label><input type="radio" name="customer_type" defaultChecked /><span>Walk In</span></label>
-            <label><input type="radio" name="customer_type" /><span>Delivery</span></label>
-          </div>
-
+        {/* Center: Salesman */}
+        <div className="header-center">
           <div className="salesman">
-            <label style={{ marginRight: 4 }}>Salesman:</label>
+            <label style={{ marginRight: 6, fontWeight: 500 }}>Salesman:</label>
             <div className="dropdown" ref={dropdownRef}>
               <button
                 type="button"
@@ -114,21 +137,15 @@ function Header() {
           </div>
         </div>
 
-        {/* Right Section */}
+        {/* Right */}
         <div className="header-right">
           <span className="material-icons green" aria-hidden="true">wifi</span>
-
-          <div className="notify" aria-label="Notifications">
-            <span className="count">0</span>
-          </div>
 
           <button type="button" className="icon-btn black" aria-label="Print">
             <span className="material-icons">print</span>
           </button>
 
-          <button type="button" className="icon-btn black" aria-label="Refresh">
-            <span className="material-icons">refresh</span>
-          </button>
+          
 
           <button
             type="button"
@@ -139,42 +156,52 @@ function Header() {
             <span className="material-icons">settings</span>
           </button>
 
-           {/* ...other buttons... */}
-
           <button
             type="button"
             className="icon-btn black"
             aria-label="Products"
-            onClick={() => setOpenProducts(true)}   // ✅ open on click
+            onClick={() => setOpenProducts(true)}
           >
             <span className="material-icons">inventory_2</span>
           </button>
 
-           <button
-    type="button"
-    className="icon-btn black"
-    aria-label="Delete"
-    onClick={() => alert("Delete action triggered!")} // यहां अपनी logic लगाइए
-  >
-    <span className="material-icons">delete</span>
-  </button>
-
-         
-
-          <button type="button" className="icon-btn black" aria-label="Fullscreen">
-            <span className="material-icons">fullscreen</span>
+          <button
+            type="button"
+            className="icon-btn black"
+            aria-label="Delete"
+            onClick={handleDeleteClick}
+            title="Discard Sale"
+          >
+            <span className="material-icons">delete</span>
           </button>
 
-          <button type="button" className="icon-btn black" aria-label="Power">
-            <span className="material-icons">power_settings_new</span>
+          <button
+            type="button"
+            className="icon-btn black"
+            aria-label="Fullscreen"
+            onClick={toggleFullscreen}
+          >
+            <span className="material-icons">{isFullscreen ? "fullscreen_exit" : "fullscreen"}</span>
+          </button>
+
+          {/* 🔴 Logout button */}
+          <button
+            type="button"
+            className="icon-btn black"
+            aria-label="Logout"
+            onClick={handleLogout}
+            title="Logout"
+          >
+            <span className="material-icons">logout</span>
           </button>
         </div>
       </header>
 
       <SettingsPanel open={openSettings} onClose={() => setOpenSettings(false)} />
-
-      {/* Product Drawer */}
       <ProductPanel open={openProducts} onClose={() => setOpenProducts(false)} />
+
+      {/* Confirm Modal will render centered with backdrop */}
+      <ConfirmModal open={openConfirm} onOk={handleOk} onCancel={handleCancel} />
     </>
   );
 }
