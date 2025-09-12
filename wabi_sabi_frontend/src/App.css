@@ -16,14 +16,14 @@ body {
 /* container like tailwind container mx-auto px-4 */
 .container {
   max-width: 1500px;
-  margin: 20px auto;
-  padding: 0 16px;
+  margin: 10px auto;
+  padding: 0 25px;
 }
 
 /* layout */
 .app { display:flex; flex-direction:column; min-height:100vh; }
 .main { flex:1; display:flex; align-items:stretch; gap:0; }
-.left-section { width:75%; background: var(--card); padding:16px; display:flex; flex-direction:column; }
+.left-section { width:75%; background: var(--card); padding:10px; display:flex; flex-direction:column; }
 .table-wrap { overflow-x:auto; }
 /* .remarks { margin-top: auto; border:1px solid #d1d5db; padding:8px; border-radius:6px; min-height:56px; font-size:14px; } */
 
