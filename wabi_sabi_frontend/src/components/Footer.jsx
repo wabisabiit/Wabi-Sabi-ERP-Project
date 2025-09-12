@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
-import CardDetail from "./CardDetail"; // <-- a) add this
+import CardDetail from "./CardDetail";                 // kept as-is (unused here but not altered)
+import CashPayment from "./CashPayment";               // NEW
 
 export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   // ---------- Toast state ----------
   const [toasts, setToasts] = useState([]); // [{id, text}]
   const timersRef = useRef({});
   const idRef = useRef(0);
-  const [showCard, setShowCard] = useState(false); // <-- b) add this
+
+  // Modals
+  const [showCard, setShowCard] = useState(false);     // unchanged (left for compatibility if you switch back)
+  const [showCash, setShowCash] = useState(false);     // NEW
 
   // ---------- Beep (unchanged logic) ----------
   const beep = useCallback(() => {
@@ -51,22 +55,28 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   ]), []);
 
   const handleActionClick = useCallback((label) => {
-  // === UNCOMMENT TO ENABLE ITEM VALIDATION ===
-  // if (totalQty <= 0) {            
-  //   triggerEmptyCartWarning();
-  //   return;
-  // }
+    // === UNCOMMENT TO ENABLE ITEM VALIDATION ===
+    // if (totalQty <= 0) {
+    //   triggerEmptyCartWarning();
+    //   return;
+    // }
 
-  // open Card Details form on Card(F5) (and Card(F3) for compatibility)
-  if (label === "Card (F5)" || label === "Card (F3)") {
-    setShowCard(true);
-    return;
-  }
+    // OPEN CASH PAYMENT MODAL WHEN CARD BUTTON IS PRESSED (as requested)
+    if (label === "Card (F5)" || label === "Card (F3)") {
+      setShowCard(true);
+      return;
+    }
 
-  // hand over to parent if provided, else just log
-  if (typeof onAction === "function") onAction(label);
-  else console.log("Action:", label);
-}, [totalQty, triggerEmptyCartWarning, onAction]);
+    // If you also want Cash buttons to open the same modal, keep these lines:
+    if (label === "Cash (F4)") {
+      setShowCash(true);
+      return;
+    }
+
+    // hand over to parent if provided, else just log
+    if (typeof onAction === "function") onAction(label);
+    else console.log("Action:", label);
+  }, [totalQty, triggerEmptyCartWarning, onAction]);
 
   return (
     <>
@@ -143,14 +153,27 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
         )}
       </footer>
 
-      {/* d) Render the Card Detail modal */}
+      {/* Keeping CardDetail block (not used when card pressed now) */}
       {showCard && (
         <CardDetail
           amount={amount}
-          onClose={() => setShowCard(false)}           // X closes and returns
+          onClose={() => setShowCard(false)}
           onSubmit={(details) => {
             onAction?.("Card (F5)", { method: "card", details });
             setShowCard(false);
+          }}
+        />
+      )}
+
+      {/* NEW: Cash Payment modal */}
+      {showCash && (
+        <CashPayment
+          amount={amount}
+          onClose={() => setShowCash(false)}
+          onSubmit={(payload) => {
+            // Dispatch to parent the same way other actions bubble up
+            onAction?.("Cash (F4)", payload);
+            setShowCash(false);
           }}
         />
       )}

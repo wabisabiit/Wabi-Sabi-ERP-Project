@@ -1,0 +1,147 @@
+/* =========================
+   OVERLAY / CARD
+   ========================= */
+.cpay-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.46);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.cpay-modal{
+  width: 660px;                 /* visual width in the reference */
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.35);
+  padding: 16px 18px 18px;
+}
+
+/* =========================
+   HEADER FIELDS (3 COLUMNS)
+   ========================= */
+.cpay-head{
+  display: grid;
+  grid-template-columns: 210px 210px 180px; /* Due, Tendered, Change */
+  gap: 14px;
+  margin-bottom: 8px;    
+}
+
+.cpay-col{ display:flex; flex-direction:column; align-items:stretch; }
+
+.cpay-label{
+  color:#4a4a4a;
+  font-size:13px;
+  margin: 0 0 6px;
+  text-align:center;
+}
+
+.cpay-input{
+  height: 40px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  border:2px solid transparent;
+  outline: none;
+  line-height: 40px;
+}
+
+/* Green (Due + Tendered) */
+.cpay-green{
+  border-color:#62B983;
+  background:#E9FFE9;
+  color:#164d2e;
+}
+
+/* Purple (Change) */
+.cpay-purple{
+  border-color:#A37FE7;
+  background:#E9DBFF;
+  color:#5b35b6;
+}
+
+/* =========================
+   BODY: KEYPAD (LEFT) + ACTIONS (RIGHT)
+   ========================= */
+.cpay-body{
+  display: grid;
+  grid-template-columns: 320px 1fr;   /* keypad (left) + actions (right)  */
+  gap: 12px;                           /* a bit tighter than 18px         */
+  align-items: start;
+}
+
+/* KEYPAD GRID: 4 equal columns */
+.cpay-pad{
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);  /* << 5 columns */
+  gap: 8px;
+  width: 320px;                            /* fits inside 660px modal */
+}
+
+/* keep tiles clean and compact for 5-up layout */
+.cpay-key{
+  height: 44px;
+  padding: 0; 
+  white-space: nowrap;
+}
+
+.cpay-key:hover{ filter:brightness(.985); }
+.cpay-key:active{ transform: translateY(1px); }
+.cpay-key.cpay-empty{ visibility:hidden; }
+
+/* =========================
+   RIGHT COLUMN BUTTONS
+   ========================= */
+.cpay-actions{
+  display:grid;
+  grid-template-rows: 44px 44px;
+  gap: 12px;
+  align-self:start;
+  justify-self:start;           /* align to left edge of the column */
+  width: 295px;                 /* right column width in ref */
+
+  /* *** Align stack one row below the first keypad row *** */
+  margin-top: calc(44px + 8px); /* key height + pad gap = 52px */
+}
+
+.cpay-btn{
+  border:0;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor:pointer;
+  box-shadow: 0 1px 0 rgba(0,0,0,.05);
+  height: 44px; 
+  width: 100%;
+  margin: 0;                    /* span full column */
+}
+
+/* Submit (sky blue) */
+.cpay-submit{
+  background:#74C3F1;
+  color:#0a2647;
+}
+
+/* Cancel (soft coral) */
+.cpay-cancel{
+  background:#FF8E86;
+  color:#4a1111;
+}
+
+/* =========================
+   RESPONSIVE SAFETY
+   ========================= */
+@media (max-width: 700px){
+  .cpay-modal{ width: 96vw; }
+  .cpay-head{ grid-template-columns: 1fr; gap: 10px; }
+  .cpay-body{ grid-template-columns: 1fr; }
+  .cpay-pad{ width: 100%; }
+  .cpay-actions{
+    width: 100%;
+    grid-template-rows: 48px 48px;
+    margin-top: 8px;            /* remove offset on mobile */
+  }
+}
