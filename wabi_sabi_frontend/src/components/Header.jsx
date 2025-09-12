@@ -117,7 +117,7 @@ function Header() {
         <div className="header-center">
           <div className="salesman">
             <label style={{ marginRight: 6, fontWeight: 500 }}>Salesman:</label>
-            <div className="dropdown" ref={dropdownRef}>
+            {/* <div className="dropdown" ref={dropdownRef}>
               <button
                 type="button"
                 className="dropdown-selected"
@@ -166,7 +166,7 @@ function Header() {
                   </div>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
 

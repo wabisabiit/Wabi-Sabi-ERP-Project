@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../styles/Card-detail.css";
 
 export default function CardDetail({ amount = 0, onClose, onSubmit }) {
@@ -10,7 +10,28 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
     transactionNo: "",
   });
 
-  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  // 🔒 body scroll lock
+  useEffect(() => {
+    const scrollY =
+      window.scrollY ||
+      document.documentElement.scrollTop ||
+      document.body.scrollTop ||
+      0;
+
+    document.body.classList.add("modal-open");
+    document.body.style.top = `-${scrollY}px`;
+
+    return () => {
+      const top = document.body.style.top;
+      document.body.classList.remove("modal-open");
+      document.body.style.top = "";
+      const y = Math.abs(parseInt(top || "0", 10)) || 0;
+      window.scrollTo(0, y);
+    };
+  }, []);
+
+  const update = (key) => (e) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const finalize = (e) => {
     e.preventDefault();
@@ -25,21 +46,38 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
 
   const close = () => {
     if (onClose) onClose();
-    else window.history.back(); // fallback: go to previous page
+    else window.history.back(); // fallback
   };
 
   return (
-    <div className="cd-backdrop" data-backdrop onMouseDown={(e)=>{ if(e.target.dataset.backdrop) close(); }}>
-      <div className="cd-card" role="dialog" aria-modal="true" aria-labelledby="cd-title" onMouseDown={(e)=>e.stopPropagation()}>
+    <div
+      className="cd-backdrop"
+      data-backdrop
+      onMouseDown={(e) => {
+        if (e.target.dataset.backdrop) close();
+      }}
+    >
+      <div
+        className="cd-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cd-title"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="cd-header">
           <h3 id="cd-title">Card Details</h3>
-          <button className="cd-close" aria-label="Close" onClick={close}>×</button>
+          <button className="cd-close" aria-label="Close" onClick={close}>
+            ×
+          </button>
         </div>
 
         <form className="cd-body" onSubmit={finalize}>
           <label className="cd-field">
             <span>Payment Account</span>
-            <select value={form.paymentAccount} onChange={update("paymentAccount")}>
+            <select
+              value={form.paymentAccount}
+              onChange={update("paymentAccount")}
+            >
               <option>AXIS BANK UDYOG VIHAR</option>
               <option>HDFC POS MAIN</option>
               <option>ICICI MERCHANT</option>
@@ -88,7 +126,9 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
           </label>
 
           <div className="cd-actions">
-            <button type="submit" className="cd-primary">Finalize Payment</button>
+            <button type="submit" className="cd-primary">
+              Finalize Payment
+            </button>
           </div>
         </form>
       </div>

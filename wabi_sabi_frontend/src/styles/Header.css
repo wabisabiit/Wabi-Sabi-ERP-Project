@@ -9,10 +9,11 @@
   font-family: Arial, sans-serif;
   font-size: 14px;
   z-index: 500; /* modal sits above at 1000 */
+  overflow: visible; /* dropdown clip na ho */
 }
 
 .header-left  { display: flex; align-items: center; gap: 1rem; justify-content: flex-start; }
-.header-center{ display: flex; align-items: center; justify-content: center; }
+.header-center{ display: flex; align-items: center; justify-content: center; overflow: visible; }
 .header-right { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 
 /* ===== Left bits ===== */
@@ -29,7 +30,7 @@
 .salesman { display: flex; align-items: center; gap: 0.3rem; }
 
 /* Dropdown */
-.dropdown { position: relative; width: 220px; }
+.dropdown { position: relative; width: 220px; overflow: visible; }
 .dropdown-selected {
   border: 1px solid #ccc;
   padding: 4px 8px;
@@ -41,17 +42,20 @@
   background: #fff;
 }
 .arrow { font-size: 18px; color: #555; }
-.dropdown-menu {
+
+/* === OVERRIDE: Salesman dropdown ko RIGHT side me kholna === */
+.salesman .dropdown-menu {
   position: absolute;
-  top: 110%;
-  left: 0;
-  width: 100%;
+  top: 0;                         /* button ke top se align */
+  left: calc(100% + 8px);         /* button ke right me 8px gap */
+  width: 260px;                   /* fixed width */
   background: #fff;
   border: 1px solid #ccc;
-  border-radius: 3px;
-  z-index: 600; /* above header but below modal */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  z-index: 9999;                  /* sabke upar dikhane ke liye */
+  box-shadow: 0 8px 20px rgba(0,0,0,0.16);
 }
+
 .dropdown-search {
   width: 100%;
   padding: 5px;
@@ -99,4 +103,13 @@
 .icon-btn.black:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2563eb;
+}
+
+/* === Mobile fallback: chhoti screen par niche open ho === */
+@media (max-width: 900px) {
+  .salesman .dropdown-menu {
+    top: 110%;
+    left: 0;
+    width: 100%;
+  }
 }

@@ -8,65 +8,53 @@
 }
 
 .right-panel{
-  width: var(--rpw);
+  width:20%;
+
 }
 
 /* ==== Tiles grid (2 columns × 3 rows) ==== */
-.actions{
+.actions {
   display: grid;
-  grid-template-columns: repeat(2, var(--tile-w)); /* ⬅ fixed narrow width */
-  gap: var(--tile-gap);
-  margin-bottom: 12px;
-  justify-content: space-between;                  /* spread nicely */
-}
-.right-panel{
-  --tile-w: 140px;      /* पहले 140px था; aur chhota chahiye to 112px/108px kar sakte hain */
+  grid-template-columns: repeat(2, 1fr);   /* बराबर दो कॉलम */
+  gap: 6px;                                /* tiles के बीच छोटा gap */
+  margin-left: 40px;
+  padding: 10px;                           /* अंदर spacing */
+  width: 100%;
+  /* border: 1px solid #d1d5db;   */
+  border-radius: 8px;
+  background: #fff;                        /* पूरा background सफेद */
+  box-sizing: border-box;
 }
 
-.actions .tile{
+.actions .tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 
-  width: var(--tile-w);      /* ⬅ tile width */
-  min-height: 40px;          /* आपकी value रखी है */
-  padding: 7px;          /* horizontal padding थोड़ा कम */
-  margin-left: 10px;
-  background: #f8faff;
-  border: 1px solid #e5e7eb;
-  border: none;
-  border-radius: 10px;
-  margin-top: 9px;
+  background: #fff;                        /* tile का background सफेद */
+  border: 1px solid #e5e7eb;               /* हल्का border */
+  border-radius: 6px;
+  width: 105%;                             /* grid cell पूरी ले */
+  min-height: 60px;
   cursor: pointer;
+  transition: transform .1s ease, box-shadow .2s ease, background .2s ease;
+}
 
-  transition: transform .05s ease, box-shadow .15s ease, background .15s ease;
+.actions .tile:hover {
+  background: #f9fafb;                     /* hover effect */
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
 }
-.actions .tile:hover{
-  background:#f8fafc;
-  box-shadow: 0 1px 0 rgba(0,0,0,.02);
-}
-.actions .tile:active{
+
+.actions .tile:active {
   transform: translateY(1px);
 }
 
-.actions .tile .material-icons{
-  font-size: 20px;         /* ⬇ icon a bit smaller for narrow tile */
-  color: #6b7280;
-  margin-bottom: 4px;
-}
-.actions .tile .small{
-  font-size: 12px;         /* ⬇ label a bit smaller */
-  color: #111;
-  text-align: center;
-  line-height: 1.2;
-  display: block;
-}
 
 /* ===== Customer card (unchanged) ===== */
 .right-panel .customer-details{
   border: 1px solid #e3e6ea;
   border-radius: 10px;
-  padding: 12px;
+  padding-left: 8px;
   background: #fff;
 }
