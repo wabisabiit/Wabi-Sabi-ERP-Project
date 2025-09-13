@@ -1,0 +1,105 @@
+/* === Overlay (full screen background, click-block) === */
+.holdbill-overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* === Right Slide Panel === */
+.holdbill-panel {
+  width: 320px;
+  height: 100%;
+  background: #fff;
+  border-left: 1px solid #ddd;
+  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.25s ease-out;
+}
+
+/* === Header === */
+.holdbill-header {
+  background: #000;
+  color: #fff;
+  padding: 0px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  font-weight: bold;
+  height: 46px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #fff;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === Search Box === */
+.holdbill-search {
+  display: flex;
+  padding: 12px;
+  gap: 6px;
+  margin: 0;
+  /* border-bottom: 1px solid #ddd; */
+}
+
+.holdbill-search input {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+/* Dropdown button — black square with centered white arrow */
+.dropdown-btn {
+  background: #000;
+  color: #fff;
+  border: none;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.dropdown-btn .material-icons {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* === Body === */
+.holdbill-body {
+  flex: 1;
+  padding: 0;
+  font-size: 13px;
+  color: black;
+  text-align: center;
+  margin: 0;
+}
+
+.holdbill-body p {
+  margin-top: 12px;
+}
+
+/* === Slide animation === */
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0%); }
+}

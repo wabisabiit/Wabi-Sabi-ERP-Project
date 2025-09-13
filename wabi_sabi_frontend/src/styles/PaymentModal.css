@@ -1,0 +1,78 @@
+/* Backdrop */
+.payx-overlay{
+  position:fixed; inset:0; z-index:3000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.35);
+}
+
+/* Card */
+.payx-card{
+  width:820px; max-width:90vw;
+  background:#fff; border:1px solid #dcdcdc; border-radius:6px;
+  box-shadow:0 10px 28px rgba(0,0,0,.22);
+  overflow:hidden; font-family:inherit;
+}
+
+/* Header */
+.payx-header{
+  height:52px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; border-bottom:1px solid #ececec;
+}
+.payx-header h3{ margin:0; font-size:22px; font-weight:700; }
+.payx-close{ width:32px; height:32px; border:0; background:transparent; cursor:pointer; font-size:20px; }
+
+/* Body (no inner scroll) */
+.payx-body{ padding:18px 22px 22px; overflow:visible; }
+
+/* Titles & radios */
+.payx-title{ display:block; font-weight:700; margin:0 0 8px; font-size:16px; }
+.payx-radios{ display:flex; gap:32px; align-items:center; }
+.payx-radio{ display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:15px; }
+.payx-radio input{ width:16px; height:16px; accent-color:#0ea5e9; }
+
+/* Fields */
+.payx-field{ margin-bottom:14px; }
+.payx-field label{ display:block; font-weight:700; margin:0 0 6px; font-size:15px; }
+.payx-req{ color:#ef4444; }
+
+.payx-control{
+  width:100%; height:36px;
+  border:1px solid #cfcfcf; border-radius:4px;
+  padding:0 10px; font-size:14px; outline:none; background:#fff;
+}
+.payx-control:disabled{
+  background:#f4f5f6; border-color:#d6d6d6; color:#5a5a5a;
+  cursor:not-allowed;
+}
+
+/* Select + black caret (exact places only) */
+.payx-selectwrap{ display:flex; gap:8px; align-items:center; }
+.payx-selectwrap .payx-control{ flex:1; }
+.payx-caret{
+  width:36px; height:36px; border:0; border-radius:6px;
+  background:#000; color:#fff; display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; padding:0; line-height:1;
+}
+.payx-caret .material-icons{ font-size:22px; }
+
+/* Currency with ₹ */
+.payx-currency{ display:flex; align-items:center; gap:8px; }
+.payx-currency>span{
+  width:34px; height:36px; border:1px solid #cfcfcf; border-radius:4px;
+  background:#f7f7f7; display:inline-flex; align-items:center; justify-content:center; font-weight:700;
+}
+
+/* Grids */
+.payx-grid2{ display:grid; grid-template-columns:1fr 1fr; column-gap:18px; row-gap:14px; }
+.payx-grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; column-gap:18px; row-gap:14px; }
+
+/* Checkbox row (expense) */
+.payx-checkfield{ display:flex; align-items:flex-end; }
+.payx-check{ display:inline-flex; align-items:center; gap:8px; font-weight:700; }
+
+/* Footer */
+.payx-actions{ display:flex; justify-content:center; margin-top:6px; }
+.payx-btn{
+  background:#000; color:#fff; border:0; border-radius:6px;
+  min-width:70px; height:32px; font-weight:700; cursor:pointer;
+}
