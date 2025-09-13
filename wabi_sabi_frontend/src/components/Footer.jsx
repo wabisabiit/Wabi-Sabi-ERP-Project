@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";                 // kept as-is (unused here but not altered)
-import CashPayment from "./CashPayment";               // NEW
+import CashPayment from "./CashPayment";   
+import { useNavigate } from "react-router-dom";            // NEW
 
 export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   // ---------- Toast state ----------
+  const navigate = useNavigate();
   const [toasts, setToasts] = useState([]); // [{id, text}]
   const timersRef = useRef({});
   const idRef = useRef(0);
@@ -61,6 +63,11 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
     //   return;
     // }
 
+    if (label.includes("Multiple Pay")) {
+      navigate("/multiple-pay");
+      return;
+    }
+
     // OPEN CASH PAYMENT MODAL WHEN CARD BUTTON IS PRESSED (as requested)
     if (label === "Card (F5)" || label === "Card (F3)") {
       setShowCard(true);
@@ -76,7 +83,7 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
     // hand over to parent if provided, else just log
     if (typeof onAction === "function") onAction(label);
     else console.log("Action:", label);
-  }, [totalQty, triggerEmptyCartWarning, onAction]);
+  }, [navigate, totalQty, triggerEmptyCartWarning, onAction]);
 
   return (
     <>
