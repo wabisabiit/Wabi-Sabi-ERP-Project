@@ -1,0 +1,155 @@
+/* Lock background scroll when modal open */
+.ccm-no-scroll { overflow: hidden !important; }
+
+/* Overlay always fixed */
+.ccm-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overscroll-behavior: contain;
+}
+
+/* Modal box */
+.ccm-modal{
+  width: 840px;                         /* screenshot proportion */
+  max-width: calc(100vw - 64px);
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.24);
+  overflow: hidden;                     /* no internal scrollbars */
+}
+
+/* Header (title + close) */
+.ccm-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.ccm-title{ margin:0; font-size:22px; font-weight:600; color:#222; }
+.ccm-close{
+  background:transparent; border:none; cursor:pointer;
+  font-size:18px; color:#6b7280; line-height:1;
+}
+.ccm-close:hover{ color:#111827; }
+
+/* ---------- Radios row (exact like screenshot) ---------- */
+:root { --ccm-radio-dot-nudge: 1px; }   /* fine-tune alignment */
+
+.ccm-radio-row{
+  display:flex; align-items:center;
+  justify-content: space-between;       /* spread left/right */
+  padding: 15px 130px 12px;
+  gap: 0;                               
+}
+
+.ccm-radio{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;                            /* only dot↔text gap */
+  cursor:pointer;
+  color:#111827;
+  font-weight:500;
+  line-height: 1.30;
+}
+
+.ccm-radio input{ display:none; }
+
+.ccm-dot{
+  width: 17px;                          /* dot size like shot */
+  height: 17px;
+  border-radius: 999px;
+  border: 2px solid black;
+  position: relative;
+  box-sizing: border-box;
+  display: inline-block;
+  vertical-align: middle;
+  transform: translateY(var(--ccm-radio-dot-nudge));
+}
+.ccm-radio.is-active .ccm-dot{ border-color:#1d74f0; }
+.ccm-radio.is-active .ccm-dot::after{
+  content:""; position:absolute; inset:3px; background:#1d74f0; border-radius:999px;
+}
+
+/* Screen 1 (Opening Balance) */
+.ccm-opening{ padding: 8px 22px 22px; }
+.ccm-row{
+  display:flex; align-items:center;
+  gap:8px; 
+  font-size:14px;
+  margin: 12px 0 16px;                  /* vertical spacing tuned */
+  line-height: 1.4;
+}
+.ccm-label{ color:#111827; }
+.ccm-value{
+  display:inline-flex; align-items:center; gap:6px;
+  font-weight:600; color:#111827;
+}
+.ccm-pencil{ border:none; background:transparent; color:#1e5fe6; cursor:pointer; padding:0; }
+.ccm-pencil .material-icons{ font-size:18px; line-height:1; }
+
+/* Meta lines */
+.ccm-meta{ margin-top:10px; border-top:1px solid #e5e7eb; padding-top:12px; }
+.ccm-meta-line{ display:flex; gap:8px; font-size:13px; margin:6px 0; }
+.ccm-meta-label{ color:#374151; font-weight:500; }
+.ccm-k{ width:110px; color:#6b7280; }
+.ccm-v{ color:#111827; }
+
+/* Screen 2 (Add Money In) */
+.ccm-add{ padding: 8px 22px 18px; }
+.ccm-form{
+  display:grid; grid-template-columns: 1fr 1fr;
+  column-gap: 28px; row-gap: 14px; align-items:end;
+}
+.ccm-field label{ display:block; margin-bottom:6px; font-size:14px; color:#111827; }
+.ccm-req{ color:#e11d48; margin-left:2px; }
+.ccm-field input{
+  height: 38px; width:100%;
+  border:1px solid #cfd4dc; border-radius:4px; padding:0 10px; outline:none;
+  background:#fff;
+}
+.ccm-field input:focus{ border-color:#1d74f0; box-shadow: 0 0 0 3px rgba(29,116,240,.14); }
+
+.ccm-form-actions{ grid-column: 1 / -1; margin-top: 4px; }
+.ccm-save{
+  height: 36px; padding: 0 18px; border-radius:4px;
+  background:#111827; color:#fff; border:1px solid #111827; cursor:pointer;
+  font-weight:500;
+}
+.ccm-save:hover{ filter:brightness(.95); }
+
+/* Table section */
+.ccm-table-wrap{ margin-top: 18px; }
+.ccm-table-title{ font-size:14px; font-weight:600; color:#111827; margin-bottom:8px; }
+.ccm-table{
+  width:100%; border-collapse: collapse;
+  border:1px solid #e5e7eb;
+}
+.ccm-table thead th{
+  background:#f5f6f8; color:#111827; font-weight:600;
+  border-right:1px solid #e5e7eb; border-top: none;
+  padding: 10px 12px; font-size:13px; text-align:left;
+}
+.ccm-table td{
+  border-top:1px solid #e5e7eb; border-right:1px solid #e5e7eb;
+  padding: 10px 12px; font-size:13px;
+}
+.ccm-table th:last-child, .ccm-table td:last-child{ border-right:none; }
+
+/* Pager */
+.ccm-pager{ display:flex; align-items:center; justify-content:center; gap:8px; padding: 12px 0 2px; }
+.ccm-page-btn{
+  min-width: 34px; height: 32px; padding: 0 8px;
+  border:1px solid #cfd4dc; border-radius:4px; background:#fff; cursor:pointer;
+}
+.ccm-page-btn.is-current{ background:#111827; color:#fff; border-color:#111827; }
+.ccm-page-btn:disabled{ opacity:.55; cursor: default; }
+
+/* Optional: HiDPI rendering tweak for radio dot */
+@media (min-resolution: 120dpi) {
+  .ccm-dot { transform: translateY(2px); }
+}
