@@ -4,6 +4,7 @@ import CustomerDetails from "./CustomerDetails";
 import CashControlModal from "./CashControlModal";
 import HoldBillPanel from "./HoldBillPanel";
 import PaymentModal from "./PaymentModal";
+import CreditNoteModal from "./CreditNoteModal";
 import OrderListModal from "./OrderListModal";   // ⬅️ ADD
 
 export default function RightPanel() {
@@ -11,7 +12,7 @@ export default function RightPanel() {
   const [showHoldBill, setShowHoldBill] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showOrders, setShowOrders] = useState(false);      // ⬅️ ADD
-
+  const [showCreditNotes, setShowCreditNotes] = useState(false);
   return (
     <aside className="right-panel">
       <div className="actions">
@@ -30,7 +31,7 @@ export default function RightPanel() {
           <span className="small">Redeem Loyalty</span>
         </button>
 
-        <button className="tile" aria-label="Credit Notes">
+        <button className="tile" aria-label="Credit Notes" onClick={() => setShowCreditNotes(true)}>
           <span className="material-icons">receipt_long</span>
           <span className="small">Credit Notes</span>
         </button>
@@ -49,6 +50,7 @@ export default function RightPanel() {
       <CustomerDetails />
 
       {/* Modals */}
+      <CreditNoteModal open={showCreditNotes} onClose={() => setShowCreditNotes(false)} />
       <OrderListModal open={showOrders} onClose={() => setShowOrders(false)} />  {/* ⬅️ ADD */}
       <PaymentModal open={showPayment} onClose={() => setShowPayment(false)} />
       <CashControlModal open={showCashControl} onClose={() => setShowCashControl(false)} />
