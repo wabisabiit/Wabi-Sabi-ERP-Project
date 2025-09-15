@@ -1,17 +1,17 @@
 
 .customer-details h3 { margin:0 0 8px 0; font-size:16px; font-weight:700; }
-.customer-details .details p { margin:6px 0; color:#374151; }
-.customer-details hr { border:none; border-top:1px solid #e5e7eb; margin:12px 0; }
-.print-btn { display:flex; align-items:center; gap:8px; background:#111827; color:white; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; width:100%; justify-content:center; margin-top:8px; }
+.customer-details .details p { margin:3px 0; color:#374151; }
+.customer-details hr { border:none; border-top:1px solid #e5e7eb; margin:0px 0; }
+.print-btn { display:flex; align-items:center; gap:8px; background:#111827; color:white; border:none; padding:8px 13px; border-radius:5px; cursor:pointer; width:95%; justify-content:center; margin-top:5px; }
 .customer-details {
   background: #fff;
   /* border: 1px solid #e5e7eb; */
   border-radius: 8px;
-  padding:5px;      /* अंदर का space */
+  /* padding:0px;  */
   font-size: 11px;
   color: #374151;
 width: 95%;
   /* यहाँ margin control करें */
-  margin-left: 50px;   /* top, right, bottom, left */
+  margin-left: 0px;   /* top, right, bottom, left */
 }
 

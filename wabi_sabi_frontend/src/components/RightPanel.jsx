@@ -3,12 +3,14 @@ import "../styles/RightPanel.css";
 import CustomerDetails from "./CustomerDetails";
 import CashControlModal from "./CashControlModal";
 import HoldBillPanel from "./HoldBillPanel";
-import PaymentModal from "./PaymentModal";        // ⬅️ NEW
+import PaymentModal from "./PaymentModal";
+import OrderListModal from "./OrderListModal";   // ⬅️ ADD
 
 export default function RightPanel() {
   const [showCashControl, setShowCashControl] = useState(false);
   const [showHoldBill, setShowHoldBill] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);   // ⬅️ NEW
+  const [showPayment, setShowPayment] = useState(false);
+  const [showOrders, setShowOrders] = useState(false);      // ⬅️ ADD
 
   return (
     <aside className="right-panel">
@@ -33,7 +35,7 @@ export default function RightPanel() {
           <span className="small">Credit Notes</span>
         </button>
 
-        <button className="tile" aria-label="Orders">
+        <button className="tile" aria-label="Orders" onClick={() => setShowOrders(true)}>
           <span className="material-icons">list_alt</span>
           <span className="small">Orders</span>
         </button>
@@ -47,6 +49,7 @@ export default function RightPanel() {
       <CustomerDetails />
 
       {/* Modals */}
+      <OrderListModal open={showOrders} onClose={() => setShowOrders(false)} />  {/* ⬅️ ADD */}
       <PaymentModal open={showPayment} onClose={() => setShowPayment(false)} />
       <CashControlModal open={showCashControl} onClose={() => setShowCashControl(false)} />
       <HoldBillPanel open={showHoldBill} onClose={() => setShowHoldBill(false)} />
