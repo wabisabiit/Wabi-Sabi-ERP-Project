@@ -540,7 +540,6 @@ export default function PaymentModal({ open, onClose }) {
 
                   <div className="payx-actions">
                     <button className="payx-btn">Save</button>
-                    <button className="payx-btn" style={{ marginLeft: "12px" }}>Save &amp; Print</button>
                   </div>
                 </>
               )}
