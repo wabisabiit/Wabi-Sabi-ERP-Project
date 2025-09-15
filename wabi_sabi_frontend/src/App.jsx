@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import Header from "./components/Header";
 import SearchBar from "./components/SearchBar";
@@ -28,36 +28,48 @@ function POSLayout() {
   );
 }
 
+/* lightweight placeholders — chaho to baad me real pages se replace kar dena */
+const OrdersPage = () => <div style={{padding:16}}>Orders List</div>;
+const CreditNotePage = () => <div style={{padding:16}}>Credit Notes</div>;
+const SalesRegisterPage = () => <div style={{padding:16}}>Sales Register</div>;
+
 export default function App() {
   const navigate = useNavigate();
 
   return (
     <Routes>
-      {/* Your current POS screen */}
-      <Route path="/" element={<POSLayout />} />
+      {/* default: / -> /new */}
+      <Route path="/" element={<Navigate to="/new" replace />} />
+
+      {/* POS → New (your current POS screen) */}
+      <Route path="/new" element={<POSLayout />} />
+
+      {/* Other POS modules (optional) */}
+      <Route path="/order-list" element={<OrdersPage />} />
+      <Route path="/credit-note" element={<CreditNotePage />} />
+      <Route path="/sales-register" element={<SalesRegisterPage />} />
 
       {/* Multiple Pay screen */}
       <Route
         path="/multiple-pay"
         element={
           <MultiplePay
-            // TODO: swap this stub with your real cart data
             cart={{
               customerType: "Walk In Customer",
-              items: [
-                { id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }
-              ],
+              items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
               roundoff: 0
             }}
             onBack={() => navigate(-1)}
             onProceed={(payload) => {
               console.log("Proceed clicked:", payload);
-              // Call your API here, then:
-              navigate("/"); // go back to POS
+              navigate("/new"); // back to New POS after payment
             }}
           />
         }
       />
+
+      {/* fallback */}
+      <Route path="*" element={<Navigate to="/new" replace />} />
     </Routes>
   );
 }

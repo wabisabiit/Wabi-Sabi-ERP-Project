@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import "../styles/OrderListModal.css";
-import "../styles/SettingsPanel.css";
+
 
 export default function OrderListModal({ open, onClose }) {
   // Lock body scroll while modal is open

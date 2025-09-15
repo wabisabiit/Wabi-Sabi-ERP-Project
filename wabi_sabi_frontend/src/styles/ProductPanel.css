@@ -1,14 +1,15 @@
-/* Overlay */
-.prod-overlay {
+/* ===== Overlay: background disable + topmost ===== */
+.prod-overlay{
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
-  z-index: 999;
+  background: rgba(0,0,0,0.45);
+  z-index: 50000;                 /* very high so nothing overlaps */
   display: block;
+  pointer-events: auto;
 }
 
-/* Drawer */
-.prod-drawer {
+/* ===== Drawer (right panel) ===== */
+.prod-drawer{
   position: fixed;
   top: 0;
   right: 0;
@@ -20,11 +21,12 @@
   box-shadow: -6px 0 18px rgba(0,0,0,0.25);
   display: flex;
   flex-direction: column;
+  z-index: 50001;                 /* above overlay */
 }
-.prod-drawer.open { transform: translateX(0); }
+.prod-drawer.open{ transform: translateX(0); }
 
-/* Header bar */
-.prod-header {
+/* ===== Header bar ===== */
+.prod-header{
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -32,20 +34,49 @@
   color: #fff;
   padding: 12px 16px;
 }
-.prod-title { font-weight: 600; }
-.prod-close { background: transparent; border: 0; color: #fff; font-size: 22px; cursor: pointer; }
-
-/* Body */
-.prod-body { padding: 14px; overflow: auto; }
-.field { margin-bottom: 10px; }
-.select {
-  width: 100%;
-  height: 40px;
-  border: 1px solid #d6d6d6;
-  border-radius: 6px;
-  padding: 0 12px;
+.prod-title{ font-weight: 700; }
+.prod-close{
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
 }
-.nodata {
+
+/* ===== Body ===== */
+.prod-body{
+  padding: 14px;
+  overflow: auto;
+}
+
+/* 🔧 FIX: global UI libs often style .field – remove all borders/shadows */
+.prod-body .field,
+.prod-body .field::before,
+.prod-body .field::after,
+.prod-body .field .ui.input,
+.prod-body .field .ant-select,
+.prod-body .field .ant-select-selector,
+.prod-body .field .MuiOutlinedInput-root{
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* ✅ Keep only ONE clean border on your select */
+.prod-body .field .select{
+  width: 100%;
+  min-width: 530px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d6d6d6 !important;
+  border-radius: 6px;
+  background: #fff;
+  outline: none;
+}
+
+/* Empty state */
+.nodata{
   border: 1px solid #e6e6e6;
   border-radius: 6px;
   height: 52px;
@@ -54,4 +85,5 @@
   justify-content: center;
   font-weight: 600;
   color: #262626;
+  margin-top: 20px;
 }

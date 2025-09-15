@@ -4,6 +4,7 @@ import "../styles/Header.css";
 import ConfirmModal from "./ConfirmModal";
 import SettingsPanel from "./SettingsPanel";
 import RegisterCloseModal from "./RegisterCloseModal";
+import Sidebar from "./Sidebar"; // <-- NEW: import the slide-in sidebar
 
 function Header() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,6 +15,9 @@ function Header() {
   const [openConfirm, setOpenConfirm] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(true);
+
+  // NEW: sidebar open/close
+  const [openSidebar, setOpenSidebar] = useState(false);
 
   // Register close modal state + header text
   const [openRegisterModal, setOpenRegisterModal] = useState(false);
@@ -103,7 +107,14 @@ function Header() {
       <header className="header" role="banner">
         {/* Left */}
         <div className="header-left">
-          <button type="button" className="menu-icon" aria-label="Open menu">
+          <button
+            type="button"
+            className="menu-icon"
+            aria-label="Open menu"
+            aria-controls="sidebar-nav"
+            aria-expanded={openSidebar}
+            onClick={() => setOpenSidebar(true)}   // <-- OPEN SIDEBAR
+          >
             <span className="material-icons">menu</span>
           </button>
 
@@ -117,56 +128,8 @@ function Header() {
         <div className="header-center">
           <div className="salesman">
             <label style={{ marginRight: 6, fontWeight: 500 }}>Salesman:</label>
-            {/* <div className="dropdown" ref={dropdownRef}>
-              <button
-                type="button"
-                className="dropdown-selected"
-                aria-haspopup="listbox"
-                aria-expanded={open}
-                onClick={() => setOpen((v) => !v)}
-              >
-                {selected}
-                <span className="material-icons arrow">
-                  {open ? "expand_less" : "expand_more"}
-                </span>
-              </button>
-
-              {open && (
-                <div className="dropdown-menu">
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="dropdown-search"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    autoFocus
-                  />
-                  <div className="dropdown-options" role="listbox" tabIndex={-1}>
-                    {filtered.length > 0 ? (
-                      filtered.map((opt) => (
-                        <div
-                          key={opt}
-                          role="option"
-                          aria-selected={selected === opt}
-                          className={`dropdown-option ${
-                            selected === opt ? "active" : ""
-                          }`}
-                          onClick={() => {
-                            setSelected(opt);
-                            setOpen(false);
-                            setSearchTerm("");
-                          }}
-                        >
-                          {opt}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="dropdown-noresult">No result found</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div> */}
+            {/* Dropdown commented but styles exist; enable when needed */}
+            {/* <div className="dropdown" ref={dropdownRef}> ... </div> */}
           </div>
         </div>
 
@@ -242,6 +205,13 @@ function Header() {
           </button>
         </div>
       </header>
+
+      {/* Sidebar + overlay (mounted once, controlled by state) */}
+      <Sidebar
+        open={openSidebar}
+        onClose={() => setOpenSidebar(false)}
+        id="sidebar-nav"
+      />
 
       <SettingsPanel open={openSettings} onClose={() => setOpenSettings(false)} />
       <ProductPanel open={openProducts} onClose={() => setOpenProducts(false)} />
