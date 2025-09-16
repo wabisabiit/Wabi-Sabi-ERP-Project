@@ -1,0 +1,142 @@
+/* Page canvas */
+.cnp-page{
+  --blue:#0ea5e9;             /* toolbar blue */
+  --blue-dark:#0b8dca;
+  --bg:#eef2f8;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --text:#1f2937;
+  --border:#e7eaf0;
+  --head:#f2f5fa;
+
+  min-height:100%;
+  background: var(--bg);
+  padding: 18px 24px 24px;
+  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, -apple-system;
+  color: var(--text);
+}
+
+/* Page header */
+.cnp-head{
+  display:flex; align-items:center; gap:10px;
+  margin: 6px 0 14px;
+}
+.cnp-head h1{
+  font-size: 30px; font-weight: 800; letter-spacing:.2px;
+  margin:0;
+}
+.cnp-bc-home{ color:#94a3b8; font-size:22px; }
+
+/* Card */
+.cnp-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 12px 28px rgba(16,24,40,.10);
+  padding: 18px 18px 14px;
+}
+
+/* Toolbar (right aligned) */
+.cnp-toolbar{
+  display:flex; align-items:center; gap:14px;
+  justify-content:flex-end;
+  margin-bottom:14px;
+}
+.cnp-spacer{ flex:1; }
+
+/* Generic controls */
+.cnp-control{
+  height:40px; border:1px solid #cfd6e1; background:#fff;
+  border-radius:10px; padding:0 12px; font-size:14px; outline:none;
+}
+.cnp-control:focus{ border-color:#9db9ff; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+
+/* Buttons */
+.cnp-btn{
+  height:40px; border:none; border-radius:10px;
+  display:inline-flex; align-items:center; gap:10px;
+  padding:0 14px; font-weight:700; cursor:pointer;
+}
+.cnp-btn-blue{
+  background:var(--blue); color:#fff;
+}
+.cnp-btn-blue:hover{ background:var(--blue-dark); }
+
+/* Export */
+.cnp-btn-export{ padding:0 10px; }
+.cnp-export{ position:relative; }
+.cnp-caret{ font-size:16px; margin-left:4px; }
+.cnp-menu{
+  position:absolute; top:44px; left:0;
+  background:#fff; border:1px solid #dfe3ea; border-radius:10px;
+  box-shadow:0 12px 24px rgba(0,0,0,.12);
+  min-width:160px; padding:6px;
+  z-index:3;
+}
+.cnp-menu-item{
+  width:100%; text-align:left; border:0; background:transparent;
+  padding:10px 10px; border-radius:8px; cursor:pointer; font-size:14px;
+}
+.cnp-menu-item:hover{ background:#f3f6fb; }
+
+/* Display select with caret */
+.cnp-display{ position:relative; }
+.cnp-select{ width:86px; padding-right:30px; }
+.cnp-display .cnp-caret{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  color:#334155; pointer-events:none;
+}
+
+/* Filter */
+.cnp-btn-filter .material-icons{ font-size:20px; }
+
+/* Search */
+.cnp-search{ position:relative; width: 270px; }
+.cnp-search .cnp-control{ width:100%; padding-right:44px; }
+.cnp-search-btn{
+  position:absolute; right:4px; top:4px; bottom:4px;
+  width:36px; border:0; border-radius:8px; background:#eef2f8; color:#475569;
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.cnp-search-btn:hover{ background:#e6ebf5; }
+
+/* Table */
+.cnp-tablewrap{
+  border:1px solid var(--border);
+  border-radius:12px; overflow:hidden;
+}
+.cnp-table{ width:100%; border-collapse:separate; border-spacing:0; }
+.cnp-table thead th{
+  background: var(--head);
+  color:#0f172a; font-weight:800; font-size:15px;
+  padding:12px 14px; text-align:left; border-bottom:1px solid var(--border);
+}
+.cnp-table tbody td{
+  padding:14px; font-size:15px; color:var(--text);
+  border-bottom:1px solid #f0f2f5;
+}
+.cnp-table tbody tr:last-child td{ border-bottom:0; }
+.cnp-empty td{
+  color:#6b7280; text-align:center; padding:18px 14px;
+}
+
+/* Footer / pager */
+.cnp-footer{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 6px 6px;
+}
+.cnp-entries{ font-size:15px; }
+.cnp-pager{ display:flex; gap:10px; }
+
+/* was .cnp-page {...}  ← BAD: collided with top-level */
+.cnp-pgbtn{
+  width:44px; height:36px; border:0; border-radius:8px;
+  background:#eef1f6; color:#64748b;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.cnp-pgbtn:disabled{ opacity:.9; cursor:default; }
+
+
+/* Make sure the page and card use the full content width */
+.cnp-page { width:100%; box-sizing:border-box; }
+.cnp-card { width:100%; }

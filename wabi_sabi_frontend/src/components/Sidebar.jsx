@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom"; // ⬅️ add
 import "../styles/Sidebar.css";
 
-export default function Sidebar({ open, onClose }) {
+
+export default function Sidebar({ open, onClose, persistent = false }) {
   const panelRef = useRef(null);
   const [expandInventory, setExpandInventory] = useState(false);
   const [expandPOS, setExpandPOS] = useState(true); // POS open by default
@@ -48,7 +49,7 @@ export default function Sidebar({ open, onClose }) {
     <>
       {/* overlay */}
       <div
-        className={`sb-overlay ${open ? "show" : ""}`}
+      className={`sb-overlay ${open ? "show" : ""} ${persistent ? "persistent-hide" : ""}`}
         onClick={onClose}
         aria-hidden={!open}
       />
@@ -56,7 +57,7 @@ export default function Sidebar({ open, onClose }) {
       {/* panel */}
       <aside
         ref={panelRef}
-        className={`sb-panel ${open ? "open" : ""}`}
+        className={`sb-panel ${open ? "open" : ""} ${persistent ? "persistent" : ""}`}
         role="navigation"
         aria-label="Main menu"
       >

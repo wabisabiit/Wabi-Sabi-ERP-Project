@@ -6,8 +6,10 @@ import SearchBar from "./components/SearchBar";
 import CartTable from "./components/CartTable";
 import RightPanel from "./components/RightPanel";
 import Footer from "./components/Footer";
+import Sidebar from "./components/Sidebar";
 
 import MultiplePay from "./components/MultiplePay";
+import CreditNotePage from "./components/CreditNotePage";
 import "./App.css";
 
 function POSLayout() {
@@ -28,10 +30,20 @@ function POSLayout() {
   );
 }
 
-/* lightweight placeholders — chaho to baad me real pages se replace kar dena */
-const OrdersPage = () => <div style={{padding:16}}>Orders List</div>;
-const CreditNotePage = () => <div style={{padding:16}}>Credit Notes</div>;
-const SalesRegisterPage = () => <div style={{padding:16}}>Sales Register</div>;
+/** Persistent-sidebar layout used for POS pages like Credit Note */
+function SidebarLayout({ children }) {
+  return (
+    <>
+      {/* always visible, no overlay */}
+      <Sidebar open={true} persistent onClose={() => {}} />
+      <div className="with-sb">{children}</div>
+    </>
+  );
+}
+
+/* lightweight placeholders — replace later with real pages */
+const OrdersPage = () => <div style={{ padding: 16 }}>Orders List</div>;
+const SalesRegisterPage = () => <div style={{ padding: 16 }}>Sales Register</div>;
 
 export default function App() {
   const navigate = useNavigate();
@@ -41,12 +53,19 @@ export default function App() {
       {/* default: / -> /new */}
       <Route path="/" element={<Navigate to="/new" replace />} />
 
-      {/* POS → New (your current POS screen) */}
+      {/* POS → New (current POS screen) */}
       <Route path="/new" element={<POSLayout />} />
 
-      {/* Other POS modules (optional) */}
+      {/* Other POS modules */}
       <Route path="/order-list" element={<OrdersPage />} />
-      <Route path="/credit-note" element={<CreditNotePage />} />
+      <Route
+        path="/credit-note"
+        element={
+          <SidebarLayout>
+            <CreditNotePage />
+          </SidebarLayout>
+        }
+      />
       <Route path="/sales-register" element={<SalesRegisterPage />} />
 
       {/* Multiple Pay screen */}
@@ -57,12 +76,12 @@ export default function App() {
             cart={{
               customerType: "Walk In Customer",
               items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
-              roundoff: 0
+              roundoff: 0,
             }}
             onBack={() => navigate(-1)}
             onProceed={(payload) => {
               console.log("Proceed clicked:", payload);
-              navigate("/new"); // back to New POS after payment
+              navigate("/new");
             }}
           />
         }

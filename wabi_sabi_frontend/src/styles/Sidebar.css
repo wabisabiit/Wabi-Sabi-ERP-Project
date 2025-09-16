@@ -133,3 +133,31 @@
   color: var(--sb-text);
 }
 .sb-socials a:hover{ filter: brightness(1.15); }
+
+
+/* Active subitem (POS → Credit Note) color treatment */
+.sb-subitem.active{
+  background:#0ea5e9;           /* blue background */
+  color:#fff;                    /* white text */
+  border-radius:6px;
+}
+
+/* Keep the icon/text white when active (if you show icons) */
+.sb-subitem.active .material-icons{ color:#fff; }
+
+/* Persistent sidebar mode (used on Credit Note page) */
+.sb-panel.persistent { transform: none; }          /* stay visible */
+.sb-overlay.persistent-hide { display: none; }     /* no overlay */
+
+/* Push page content to the right when sidebar is persistent */
+.with-sb { margin-left: 260px; }
+@media (max-width: 1024px) {
+  .with-sb { margin-left: 0; }                     /* fall back on small screens */
+}
+
+/* You already added the active color; leaving here just to confirm */
+.sb-subitem.active{
+  background:#0ea5e9;
+  color:#fff;
+  border-radius:6px;
+}
