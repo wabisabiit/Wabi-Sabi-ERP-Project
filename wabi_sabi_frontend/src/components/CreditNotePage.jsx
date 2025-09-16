@@ -1,28 +1,41 @@
+// src/components/CreditNotePage.jsx
 import React, { useEffect, useRef, useState } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import "../styles/CreditNotePage.css";
 
 export default function CreditNotePage() {
+  // toolbar popovers
   const [exportOpen, setExportOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const exportRef = useRef(null);
-  const filterRef = useRef(null);
 
-  // close export dropdown on outside click
+  // date range (01/04/2025 - 31/03/2026)
+  const defaultStart = new Date(2025, 3, 1);  // months are 0-indexed
+  const defaultEnd = new Date(2026, 2, 31);
+  const [startDate, setStartDate] = useState(defaultStart);
+  const [endDate, setEndDate] = useState(defaultEnd);
+
+  // customer combobox
+  const [custOpen, setCustOpen] = useState(false);
+  const [custQuery, setCustQuery] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const custRef = useRef(null);
+
+  // close export or customer dropdowns on outside click + close popovers on ESC
   useEffect(() => {
     function onDocClick(e) {
       if (exportRef.current && !exportRef.current.contains(e.target)) {
         setExportOpen(false);
       }
-      if (filterRef.current && !filterRef.current.contains(e.target)) {
-        // only close if click is completely outside the filter area AND not the Filter button
-        const filterBtn = document.querySelector(".cnp-btn-filter");
-        if (!filterBtn || (filterBtn && !filterBtn.contains(e.target))) {
-          setFilterOpen(false);
-      }}
+      if (custRef.current && !custRef.current.contains(e.target)) {
+        setCustOpen(false);
+      }
     }
     function onEsc(e) {
       if (e.key === "Escape") {
         setExportOpen(false);
+        setCustOpen(false);
         setFilterOpen(false);
       }
     }
@@ -34,9 +47,50 @@ export default function CreditNotePage() {
     };
   }, []);
 
+  // dummy export (creates an empty file with the right name/type)
+  function handleExport(type) {
+    const filename = type === "excel" ? "credit-notes.xlsx" : "credit-notes.pdf";
+    const mime =
+      type === "excel"
+        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        : "application/pdf";
+
+    const blob = new Blob([""], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setExportOpen(false);
+  }
+
+  // (placeholder) filtered customers list
+  const customers = [
+    "John Doe",
+    "Jane Parker",
+    "Krishna Pandit",
+    "IT Account",
+    "Rajdeep",
+  ].filter((n) => n.toLowerCase().includes(custQuery.toLowerCase()));
+
+  // Filter actions
+  function onApply() {
+    // hook your API call here
+    setFilterOpen(false);
+  }
+  function onReset() {
+    setStartDate(defaultStart);
+    setEndDate(defaultEnd);
+    setSelectedCustomer("");
+    setCustQuery("");
+  }
+
   return (
     <div className="cnp-page">
-      {/* Page header */}
+      {/* Header */}
       <div className="cnp-head">
         <h1>POS Credit Note</h1>
         <span className="material-icons cnp-bc-home" aria-hidden>
@@ -46,28 +100,40 @@ export default function CreditNotePage() {
 
       {/* Card */}
       <section className="cnp-card">
-        {/* Toolbar (right aligned as per screenshot) */}
+        {/* Toolbar */}
         <div className="cnp-toolbar">
           <div className="cnp-spacer" />
 
-          {/* Export button + dropdown */}
+          {/* Export (single source of truth) */}
           <div className="cnp-export" ref={exportRef}>
             <button
+              type="button"
               className="cnp-btn cnp-btn-blue cnp-btn-export"
               onClick={() => setExportOpen((v) => !v)}
-              aria-expanded={exportOpen}
               aria-haspopup="menu"
+              aria-expanded={exportOpen}
             >
               <span className="material-icons">file_download</span>
               <span className="cnp-caret">▾</span>
             </button>
+
             {exportOpen && (
               <div role="menu" className="cnp-menu">
-                <button role="menuitem" className="cnp-menu-item">
-                  Export Excel
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="cnp-menu-item"
+                  onClick={() => handleExport("excel")}
+                >
+                  Excel
                 </button>
-                <button role="menuitem" className="cnp-menu-item">
-                  Export PDF
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="cnp-menu-item"
+                  onClick={() => handleExport("pdf")}
+                >
+                  PDF
                 </button>
               </div>
             )}
@@ -90,10 +156,14 @@ export default function CreditNotePage() {
 
           {/* Filter button */}
           <button
-            className="cnp-btn cnp-btn-blue cnp-btn-filter"
+            type="button"
+            className={
+              "cnp-btn cnp-btn-blue cnp-btn-filter" +
+              (filterOpen ? " is-active" : "")
+            }
             onClick={() => setFilterOpen((v) => !v)}
+            aria-controls="cnp-filters"
             aria-expanded={filterOpen}
-            aria-controls="cnp-filterbar"
           >
             <span className="material-icons">filter_alt</span>
             <span>Filter</span>
@@ -106,7 +176,7 @@ export default function CreditNotePage() {
               placeholder="Search List..."
               aria-label="Search list"
             />
-            <button className="cnp-search-btn" aria-label="Search">
+            <button type="button" className="cnp-search-btn" aria-label="Search">
               <span className="material-icons" aria-hidden>
                 search
               </span>
@@ -114,37 +184,98 @@ export default function CreditNotePage() {
           </div>
         </div>
 
-        {/* FILTER BAR (matches screenshot layout & colors) */}
+        {/* Filter strip */}
         {filterOpen && (
-          <div id="cnp-filterbar" className="cnp-filterbar" ref={filterRef}>
-            {/* Date Range */}
-            <div className="cnp-field">
+          <div className="cnp-filters" id="cnp-filters">
+            {/* Date range */}
+            <div className="cnp-field cnp-field-date">
               <label className="cnp-label">Date Range</label>
-              <div className="cnp-input-icon">
-                <input
-                  className="cnp-control"
-                  defaultValue="01/04/2025 - 31/03/2026"
-                  aria-label="Date range"
+              <div className="cnp-datewrap">
+                <DatePicker
+                  selectsRange
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(dates) => {
+                    const [start, end] = dates;
+                    setStartDate(start);
+                    setEndDate(end);
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  className="cnp-control cnp-input-date"
+                  placeholderText="Select date range"
                 />
-                <span className="material-icons">calendar_today</span>
+                <span className="material-icons cnp-datebtn">event</span>
               </div>
             </div>
 
             {/* Select Customer */}
-            <div className="cnp-field">
+            <div className="cnp-field cnp-field-cust" ref={custRef}>
               <label className="cnp-label">Select Customer</label>
-              <div className="cnp-selectwrap">
-                <select className="cnp-control cnp-select">
-                  <option value="">Search Customer</option>
-                </select>
-                <span className="cnp-caret">▾</span>
+              <div
+                className={
+                  "cnp-selectwrap cnp-custdd" + (custOpen ? " is-open" : "")
+                }
+              >
+                <input
+                  className="cnp-control cnp-input-cust"
+                  placeholder="Search Customer"
+                  value={selectedCustomer}
+                  onFocus={() => setCustOpen(true)}
+                  readOnly
+                />
+                <span className="material-icons cnp-dd-caret" aria-hidden>
+                  arrow_drop_down
+                </span>
+
+                {custOpen && (
+                  <div className="cnp-cust-panel" role="listbox">
+                    <div className="cnp-cust-search">
+                      <input
+                        autoFocus
+                        value={custQuery}
+                        onChange={(e) => setCustQuery(e.target.value)}
+                        className="cnp-cust-search-input"
+                        placeholder="Search Customer"
+                        aria-label="Search customer"
+                      />
+                    </div>
+
+                    {custQuery.length < 1 ? (
+                      <div className="cnp-cust-msg">
+                        Please enter 1 or more characters
+                      </div>
+                    ) : customers.length === 0 ? (
+                      <div className="cnp-cust-empty">No matches</div>
+                    ) : (
+                      <ul className="cnp-cust-results">
+                        {customers.map((name) => (
+                          <li
+                            key={name}
+                            className="cnp-cust-item"
+                            onClick={() => {
+                              setSelectedCustomer(name);
+                              setCustOpen(false);
+                              setCustQuery("");
+                            }}
+                          >
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Actions */}
-            <div className="cnp-field cnp-actions">
-              <button className="cnp-btn cnp-btn-green">Apply</button>
-              <button className="cnp-btn cnp-btn-orange">Reset</button>
+            <div className="cnp-filter-actions">
+              <button type="button" className="cnp-btn cnp-btn-apply" onClick={onApply}>
+                Apply
+              </button>
+              <button type="button" className="cnp-btn cnp-btn-reset" onClick={onReset}>
+                Reset
+              </button>
             </div>
           </div>
         )}
@@ -174,16 +305,16 @@ export default function CreditNotePage() {
           </table>
         </div>
 
-        {/* Footer/pager */}
+        {/* Footer */}
         <div className="cnp-footer">
           <div className="cnp-entries">Showing 0 to 0 of 0 entries</div>
           <div className="cnp-pager">
-            <button className="cnp-pgbtn" disabled title="Previous">
+            <button className="cnp-pgbtn" disabled title="Previous" type="button">
               <span className="material-icons" aria-hidden>
                 chevron_left
               </span>
             </button>
-            <button className="cnp-pgbtn" disabled title="Next">
+            <button className="cnp-pgbtn" disabled title="Next" type="button">
               <span className="material-icons" aria-hidden>
                 chevron_right
               </span>

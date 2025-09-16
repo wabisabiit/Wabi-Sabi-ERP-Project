@@ -11,7 +11,7 @@ import Sidebar from "./components/Sidebar";
 import MultiplePay from "./components/MultiplePay";
 import CreditNotePage from "./components/CreditNotePage";
 import SalesRegisterPage from "./components/SalesRegisterPage";
-// import OrderlistPage from "./components/OrderlistPage";
+import OrderList from "./components/OrderList";   
 import "./App.css";
 
 function POSLayout() {
@@ -62,6 +62,15 @@ export default function App() {
         element={
           <SidebarLayout>
             <CreditNotePage />
+          </SidebarLayout>
+        }
+      />
+      
+       <Route
+        path="/order-list"
+        element={
+          <SidebarLayout>
+            <OrderList />
           </SidebarLayout>
         }
       />
