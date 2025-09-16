@@ -1,0 +1,242 @@
+/* ---------- tokens ---------- */
+.sr-page{
+  --bg:#eef2f8;
+  --card:#ffffff;
+  --border:#e7eaf0;
+  --muted:#64748b;
+  --text:#111827;
+  --head:#f2f5fa;
+  --blue:#0ea5e9;
+  --blue-dark:#0b8dca;
+
+  background:var(--bg);
+  padding:20px 20px;
+  font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;
+  color:var(--text);
+}
+
+/* predictable sizing + menus can overflow the card */
+.sr-card,
+.sr-card *{ box-sizing:border-box; }
+.sr-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:0 12px 28px rgba(16,24,40,.10);
+  padding:13px;
+  overflow:visible;                 /* menus not clipped */
+}
+
+/* ---------- top row ---------- */
+.sr-top{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr auto;  /* Location | Date | Cashier | right controls */
+  gap:5px;
+  align-items:end;
+  margin-bottom:13px;
+}
+.sr-field{
+  min-width:0;
+  width: 220px;
+  position:relative;                /* anchor for pop menus */
+}
+.sr-label{
+  font-weight:700;
+  color:#0f172a;
+  font-size:14px;
+  margin-bottom:6px;
+}
+
+/* inputs that look like selects */
+.sr-input.like-select{
+  height:40px; width:100%;
+  border:1px solid #cfd6e1; border-radius:10px; background:#fff;
+  display:flex; align-items:center; gap:10px; padding:0 12px; cursor:pointer;
+}
+.sr-input.like-select.is-open{ outline:2px solid rgba(14,165,233,.25); }
+
+.sr-placeholder,.sr-value{ color:#111827; }
+.sr-chip{
+  margin-left:6px; background:var(--blue); color:#fff;
+  min-width:18px; height:18px; border-radius:9px; padding:0 6px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700;
+}
+.sr-clear{
+  margin-left:auto; width:24px; height:24px;
+  border:1px solid #cfd6e1; border-radius:50%;
+  background:#fff; color:#374151; line-height:22px; text-align:center;
+  cursor:pointer; user-select:none;
+}
+.sr-caret{ margin-left:8px; color:#334155; }
+
+/* date box */
+.sr-datebox{
+  height:40px; border:1px solid #cfd6e1; border-radius:10px;
+  background:#fff; padding:0 12px; display:flex; align-items:center; gap:8px;
+}
+.sr-datebox input{
+  flex:1; border:0; outline:0; font-size:14px; background:transparent;
+}
+.sr-datebox input::placeholder{ color:#9aa4b2; }
+.sr-cal-ic{ opacity:.85; }
+
+/* ---------- pop menus (shared) ---------- */
+.sr-menu{
+  position:absolute;
+  top:calc(100% + 8px);             /* sits just below the control */
+  left:0;
+  z-index:1000;                     /* above the card */
+  background:#fff;
+  border:1px solid #dfe3ea;
+  border-radius:10px;
+  box-shadow:0 12px 24px rgba(0,0,0,.12);
+}
+.sr-loc-menu{ width:320px; }        /* Location menu */
+.sr-date-menu{ width:320px; }       /* Date preset menu */
+.sr-cash-menu{ width:100%; }        /* Cashier full-width of field */
+
+/* right-side menus override */
+.sr-rows-menu{ right:0; left:auto; top:44px; }
+.sr-export-menu{ right:0; left:auto; top:44px; }
+
+.sr-list{ list-style:none; margin:0; padding:6px 0; max-height:280px; overflow:auto; }
+.sr-item{ padding:10px 12px; cursor:pointer; }
+.sr-item:hover{ background:#f3f6fb; }
+.sr-item.is-active{ background:var(--blue); color:#fff; }
+
+.sr-check{ display:flex; align-items:center; gap:8px; cursor:pointer; }
+.sr-check input{ pointer-events:none; }
+
+.sr-date-list{ list-style:none; margin:0; padding:6px 0; max-height:280px; overflow:auto; }
+.sr-date-item{ padding:10px 14px; cursor:pointer; }
+.sr-date-item:hover{ background:#f3f6fb; }
+.sr-date-item.is-active{ background:var(--blue); color:#fff; }
+
+.sr-custom{ padding:10px; border-top:1px solid #eef1f6; }
+.sr-date-actions{
+  display:flex; gap:10px; padding:10px; border-top:1px solid #eef1f6;
+}
+.sr-btn{ height:32px; border-radius:8px; padding:0 14px; font-weight:700; border:0; cursor:pointer; }
+.sr-btn-primary{ background:var(--blue); color:#fff; }
+.sr-btn-primary:hover{ background:var(--blue-dark); }
+.sr-btn-ghost{ background:#eef2f8; color:#374151; }
+
+/* cashier popup specifics */
+.sr-cash-search{ padding:10px 12px 6px; }
+.sr-cash-search input{
+  width:100%; height:38px; border:1px solid #cfd6e1; border-radius:8px;
+  padding:0 12px; outline:none;
+}
+.sr-cash-list{ list-style:none; margin:4px 0 8px; padding:0; max-height:260px; overflow:auto; }
+.sr-cash-item{ padding:10px 14px; cursor:pointer; }
+.sr-cash-item:hover{ background:#f3f6fb; }
+.sr-cash-item.is-active{ background:var(--blue); color:#fff; }
+
+/* right controls */
+.sr-right{ display:flex; align-items:end; justify-content:flex-end; gap:12px; }
+.sr-rows, .sr-export{ position:relative; }
+.sr-rows-btn{
+  height:40px; min-width:64px;
+  background:#fff; border:1px solid #cfd6e1; border-radius:10px; padding:0 10px;
+  display:flex; align-items:center; gap:3px; cursor:pointer;
+}
+.sr-export-btn{
+  height:40px; background:var(--blue); color:#fff; border:0; border-radius:10px; padding:0 10px;
+  display:flex; align-items:center; gap:6px; cursor:pointer;
+}
+.sr-menu-item{
+  width:100%; border:0; background:transparent; text-align:left;
+  padding:10px 12px; display:flex; align-items:center; gap:8px; cursor:pointer;
+}
+.sr-menu-item:hover{ background:#f3f6fb; }
+
+/* ---------- table ---------- */
+.sr-tablewrap{
+  border:1px solid var(--border); border-radius:12px; overflow:hidden;
+}
+.sr-table{ width:100%; border-collapse:separate; border-spacing:0; }
+.sr-table thead th{
+  background:var(--head); color:#0f172a; font-weight:bold; font-size:12px;
+  padding:10px 12px; text-align:left; border-bottom:1px solid var(--border);
+}
+.sr-table tbody td{
+  padding:10px 12px; border-bottom:1px solid #f0f2f5; font-size:14px; color:var(--text);
+}
+.sr-empty{ text-align:center; color:#6b7280; }
+.sr-total td{ background:#f7f9fc; font-weight:700; }
+
+/* ---------- footer/pager ---------- */
+.sr-footer{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 4px 6px;
+}
+.sr-pager{ display:flex; gap:10px; }
+.sr-pgbtn{
+  width:44px; height:36px; border:0; border-radius:8px; background:#eef1f6; color:#64748b;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ---------- react-datepicker inside custom ---------- */
+.sr-custom .react-datepicker{
+  border:1px solid #cfd6e1 !important; border-radius:12px !important; box-shadow:none;
+}
+.sr-custom .react-datepicker__header{
+  background:#fff !important; border-bottom:1px solid #e7eaf0 !important;
+}
+.sr-custom .react-datepicker__day--selected,
+.sr-custom .react-datepicker__day--in-range,
+.sr-custom .react-datepicker__day--keyboard-selected{
+  background:var(--blue) !important; color:#fff !important; border-radius:6px !important;
+}
+.sr-custom .react-datepicker__day:hover{
+  background:var(--blue-dark) !important; color:#fff !important;
+}
+
+/* ====== Compact dropdown size overrides (paste at END) ====== */
+
+/* overall: thoda chhota radius + font */
+.sr-menu{
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+/* width chhota */
+.sr-loc-menu,
+.sr-date-menu{               /* Location & Date preset dropdowns */
+  width: 260px;              /* was 320px */
+}
+
+/* Cashier dropdown ko bhi compact karna ho to ye use karein  */
+.sr-cash-menu{
+  width: 300px;              /* was 100% of field */
+}
+
+/* height (scrollable area) chhoti */
+.sr-list,
+.sr-date-list,
+.sr-cash-list{
+  max-height: 200px;         /* was 260–280px */
+}
+
+/* rows ki padding chhoti */
+.sr-item,
+.sr-date-item,
+.sr-cash-item{
+  padding: 8px 10px;         /* was ~10px 12–14px */
+}
+
+/* action area (Apply/Cancel) compact */
+.sr-date-actions{
+  padding: 8px 10px;         /* was 10px */
+}
+.sr-btn{
+  height: 30px;              /* was 32px */
+  padding: 0 12px;           /* was 0 14px */
+  font-size: 13px;
+}
+
+/* (optional) menu ki shadow thodi soft */
+.sr-menu{
+  box-shadow: 0 10px 18px rgba(0,0,0,.10);
+}

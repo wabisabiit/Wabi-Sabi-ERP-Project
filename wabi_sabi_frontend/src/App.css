@@ -12,6 +12,8 @@ body {
   background: var(--bg);   /* now white */
   color: #111827;
 }
+/* persistent sidebar ke saath content ko left se shift karo */
+
 
 /* container like tailwind container mx-auto px-4 */
 /* Make container full width up to a max so app uses screen space properly */

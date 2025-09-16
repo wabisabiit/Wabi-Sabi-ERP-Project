@@ -10,6 +10,8 @@ import Sidebar from "./components/Sidebar";
 
 import MultiplePay from "./components/MultiplePay";
 import CreditNotePage from "./components/CreditNotePage";
+import SalesRegisterPage from "./components/SalesRegisterPage";
+// import OrderlistPage from "./components/OrderlistPage";
 import "./App.css";
 
 function POSLayout() {
@@ -30,20 +32,16 @@ function POSLayout() {
   );
 }
 
-/** Persistent-sidebar layout used for POS pages like Credit Note */
 function SidebarLayout({ children }) {
   return (
     <>
-      {/* always visible, no overlay */}
       <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
 }
 
-/* lightweight placeholders — replace later with real pages */
-const OrdersPage = () => <div style={{ padding: 16 }}>Orders List</div>;
-const SalesRegisterPage = () => <div style={{ padding: 16 }}>Sales Register</div>;
+// const SalesRegisterPage = () => <div style={{ padding: 16 }}>Sales Register</div>;
 
 export default function App() {
   const navigate = useNavigate();
@@ -53,11 +51,12 @@ export default function App() {
       {/* default: / -> /new */}
       <Route path="/" element={<Navigate to="/new" replace />} />
 
-      {/* POS → New (current POS screen) */}
+      {/* POS → New */}
       <Route path="/new" element={<POSLayout />} />
 
-      {/* Other POS modules */}
-      <Route path="/order-list" element={<OrdersPage />} />
+      
+
+      {/* Credit note page */}
       <Route
         path="/credit-note"
         element={
@@ -66,7 +65,18 @@ export default function App() {
           </SidebarLayout>
         }
       />
-      <Route path="/sales-register" element={<SalesRegisterPage />} />
+
+       <Route
+        path="/sales-register"
+        element={
+          <SidebarLayout>
+            <SalesRegisterPage />
+          </SidebarLayout>
+        }
+      />
+
+      {/* Sales register page */}
+    
 
       {/* Multiple Pay screen */}
       <Route
