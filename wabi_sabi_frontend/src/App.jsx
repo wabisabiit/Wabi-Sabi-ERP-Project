@@ -11,7 +11,7 @@ import Sidebar from "./components/Sidebar";
 import MultiplePay from "./components/MultiplePay";
 import CreditNotePage from "./components/CreditNotePage";
 import SalesRegisterPage from "./components/SalesRegisterPage";
-import OrderList from "./components/OrderList";   
+import OrderList from "./components/OrderListPage";
 import "./App.css";
 
 function POSLayout() {
