@@ -483,3 +483,47 @@
   color: #fff !important;
 }
 
+/* anchor already exists; just add popover UI */
+.cust-pop{
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #fff;
+  border: 1px solid #dfe3ea;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(16,24,40,.12);
+  z-index: 60;
+  overflow: hidden;
+}
+
+.cust-search{
+  padding: 8px;
+  border-bottom: 1px solid #eef2f6;
+  background: #fafbfc;
+}
+.cust-search input{
+  width: 100%;
+  height: 38px;
+  border: 1px solid #cfd6e1;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 14px;
+  outline: none;
+}
+.cust-search input:focus{
+  border-color: #9db9ff;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+
+.cust-list{
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px;
+}
+.cust-hint{
+  padding: 10px 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
