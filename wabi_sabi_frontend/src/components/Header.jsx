@@ -1,10 +1,11 @@
+// ...imports वही रहने दें
 import React, { useState, useEffect, useRef } from "react";
 import ProductPanel from "./ProductPanel";
 import "../styles/Header.css";
 import ConfirmModal from "./ConfirmModal";
 import SettingsPanel from "./SettingsPanel";
 import RegisterCloseModal from "./RegisterCloseModal";
-import Sidebar from "./Sidebar"; // <-- NEW: import the slide-in sidebar
+import Sidebar from "./Sidebar";
 
 function Header() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -15,42 +16,26 @@ function Header() {
   const [openConfirm, setOpenConfirm] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(true);
-
-  // NEW: sidebar open/close
   const [openSidebar, setOpenSidebar] = useState(false);
-
-  // Register close modal state + header text
   const [openRegisterModal, setOpenRegisterModal] = useState(false);
   const [rangeLabel, setRangeLabel] = useState("");
 
-  // ---- Salesman options (RESTORED, required by your JSX) ----
+  // ---- Salesman options ----
   const options = [
     "IT Account",
     "WABI SABI SUSTAINABILITY LLP",
-    "NISHANT",
-    "KRISHNA PANDIT",
+    "Rajdeep",
+    "Nishant",
+    "Krishna Pandit",
   ];
   const filtered = options.filter((opt) =>
     opt.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // ---- helpers ----
-  const formatTs = (ts) =>
-    new Date(ts).toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-  // ensure we have "registerOpenedAt" once
+  // once
   useEffect(() => {
     const saved = localStorage.getItem("registerOpenedAt");
-    if (!saved) {
-      localStorage.setItem("registerOpenedAt", new Date().toISOString());
-    }
+    if (!saved) localStorage.setItem("registerOpenedAt", new Date().toISOString());
   }, []);
 
   // dropdown close on outside/esc
@@ -58,8 +43,9 @@ function Header() {
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setOpen(false);
+      }
     };
     const onEsc = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDocClick);
@@ -70,7 +56,6 @@ function Header() {
     };
   }, [open]);
 
-  // fullscreen sync
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handler);
@@ -79,21 +64,19 @@ function Header() {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-    else if (document.exitFullscreen) document.exitFullscreen();
+    else document.exitFullscreen?.();
   };
 
-  // discard sale modal
-  const handleDeleteClick = () => setOpenConfirm(true);
-  const handleOk = () => setOpenConfirm(false);
-  const handleCancel = () => setOpenConfirm(false);
+  const formatTs = (ts) =>
+    new Date(ts).toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
 
-  // logout
-  const handleLogout = () => {
-    console.log("Logging out...");
-    window.location.href = "/login";
-  };
-
-  // cross icon -> open register modal with exact range text
   const openRegisterDialog = () => {
     const openedAt =
       localStorage.getItem("registerOpenedAt") || new Date().toISOString();
@@ -113,7 +96,7 @@ function Header() {
             aria-label="Open menu"
             aria-controls="sidebar-nav"
             aria-expanded={openSidebar}
-            onClick={() => setOpenSidebar(true)}   // <-- OPEN SIDEBAR
+            onClick={() => setOpenSidebar(true)}
           >
             <span className="material-icons">menu</span>
           </button>
@@ -128,98 +111,91 @@ function Header() {
         <div className="header-center">
           <div className="salesman">
             <label style={{ marginRight: 6, fontWeight: 500 }}>Salesman:</label>
-            {/* Dropdown commented but styles exist; enable when needed */}
-            {/* <div className="dropdown" ref={dropdownRef}> ... </div> */}
+
+            {/* COLLISION-PROOF DROPDOWN */}
+            <div className="ws-dd" ref={dropdownRef}>
+              <button
+                type="button"
+                className="ws-dd-selected"
+                onClick={() => setOpen((v) => !v)}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+              >
+                <span>{selected}</span>
+                <span className="material-icons ws-dd-arrow">
+                  {open ? "arrow_drop_up" : "arrow_drop_down"}
+                </span>
+              </button>
+
+              {open && (
+                <div className="ws-dd-menu" role="listbox">
+                  <input
+                    type="text"
+                    className="ws-dd-search"
+                    placeholder="Search salesman..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="ws-dd-options">
+                    {filtered.length ? (
+                      filtered.map((opt) => (
+                        <div
+                          key={opt}
+                          className={
+                            "ws-dd-option" + (selected === opt ? " selected" : "")
+                          }
+                          onClick={() => {
+                            setSelected(opt);
+                            setSearchTerm("");
+                            setOpen(false);
+                          }}
+                        >
+                          {opt}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="ws-dd-noresult">No results</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* /dropdown */}
           </div>
         </div>
 
         {/* Right */}
         <div className="header-right">
-          <span className="material-icons green" aria-hidden="true">
-            wifi
-          </span>
-
+          <span className="material-icons green" aria-hidden="true">wifi</span>
           <button type="button" className="icon-btn black" aria-label="Print">
             <span className="material-icons">print</span>
           </button>
-
-          <button
-            type="button"
-            className="icon-btn black"
-            aria-label="Settings"
-            onClick={() => setOpenSettings(true)}
-          >
+          <button type="button" className="icon-btn black" aria-label="Settings" onClick={() => setOpenSettings(true)}>
             <span className="material-icons">settings</span>
           </button>
-
-          <button
-            type="button"
-            className="icon-btn black"
-            aria-label="Products"
-            onClick={() => setOpenProducts(true)}
-          >
+          <button type="button" className="icon-btn black" aria-label="Products" onClick={() => setOpenProducts(true)}>
             <span className="material-icons">inventory_2</span>
           </button>
-
-          <button
-            type="button"
-            className="icon-btn black"
-            aria-label="Delete"
-            onClick={handleDeleteClick}
-            title="Discard Sale"
-          >
+          <button type="button" className="icon-btn black" aria-label="Discard" onClick={() => setOpenConfirm(true)}>
             <span className="material-icons">delete</span>
           </button>
-
-          <button
-            type="button"
-            className="icon-btn black"
-            aria-label="Fullscreen"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-          >
-            <span className="material-icons">
-              {isFullscreen ? "fullscreen_exit" : "fullscreen"}
-            </span>
+          <button type="button" className="icon-btn black" aria-label="Fullscreen" onClick={toggleFullscreen}>
+            <span className="material-icons">{isFullscreen ? "fullscreen_exit" : "fullscreen"}</span>
           </button>
-
-          {/* Cross → open centered Register Close modal with range label */}
-          <button
-            type="button"
-            className="icon-btn black"
-            aria-label={isRegisterOpen ? "Close Register" : "Open Cash Drawer"}
-            onClick={openRegisterDialog}
-            title="Open Cash Drawer / Close Register"
-          >
+          <button type="button" className="icon-btn black" aria-label="Register" onClick={openRegisterDialog}>
             <span className="material-icons">close</span>
           </button>
-
-          <button
-            type="button"
-            className="icon-btn black"
-            aria-label="Logout"
-            onClick={handleLogout}
-            title="Logout"
-          >
+          <button type="button" className="icon-btn black" aria-label="Logout" onClick={() => (window.location.href = "/login")}>
             <span className="material-icons">logout</span>
           </button>
         </div>
       </header>
 
-      {/* Sidebar + overlay (mounted once, controlled by state) */}
-      <Sidebar
-        open={openSidebar}
-        onClose={() => setOpenSidebar(false)}
-        id="sidebar-nav"
-      />
-
+      <Sidebar open={openSidebar} onClose={() => setOpenSidebar(false)} id="sidebar-nav" />
       <SettingsPanel open={openSettings} onClose={() => setOpenSettings(false)} />
       <ProductPanel open={openProducts} onClose={() => setOpenProducts(false)} />
-
-      {/* Delete confirmation */}
-      <ConfirmModal open={openConfirm} onOk={handleOk} onCancel={handleCancel} />
-
-      {/* Register Close Modal */}
+      <ConfirmModal open={openConfirm} onOk={() => setOpenConfirm(false)} onCancel={() => setOpenConfirm(false)} />
       <RegisterCloseModal
         open={openRegisterModal}
         onClose={() => setOpenRegisterModal(false)}
@@ -228,7 +204,6 @@ function Header() {
         onSubmit={(payload) => {
           console.log("Register close payload:", payload);
           setIsRegisterOpen(false);
-          // next shift ke liye (optional) new open time set
           localStorage.setItem("registerOpenedAt", new Date().toISOString());
           setOpenRegisterModal(false);
         }}

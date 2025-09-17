@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 6px 0 14px;
+  margin: 20px 0 14px;
 }
 
 .cnp-head h1 {
@@ -34,7 +34,7 @@
 
 .cnp-bc-home {
   color: #94a3b8;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 /* Card */
@@ -51,7 +51,7 @@
 .cnp-toolbar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   justify-content: flex-end;
   margin-bottom: 14px;
 }
@@ -62,14 +62,14 @@
 
 /* Generic controls */
 .cnp-control {
-  height: 40px;
+  height: 30px;
   border: 1px solid #cfd6e1;
   background: #fff;
   border-radius: 10px;
   padding: 0 12px;
   font-size: 14px;
   outline: none;
-  width: 100px;
+  width: 80px;
 }
 
 .cnp-control:focus {
@@ -79,7 +79,7 @@
 
 /* Buttons */
 .cnp-btn {
-  height: 40px;
+  height: 30px;
   border: none;
   border-radius: 10px;
   display: inline-flex;
@@ -147,7 +147,7 @@
 }
 
 .cnp-select {
-  width: 86px;
+  width: 90px;
   padding-right: 30px;
 }
 
@@ -162,7 +162,7 @@
 
 /* Filter */
 .cnp-btn-filter .material-icons {
-  font-size: 20px;
+  font-size: 15px;
 }
 
 .cnp-btn-filter.is-active .material-icons {
@@ -172,7 +172,7 @@
 /* Search */
 .cnp-search {
   position: relative;
-  width: 270px;
+  width: 260px;
 }
 
 .cnp-search .cnp-control {

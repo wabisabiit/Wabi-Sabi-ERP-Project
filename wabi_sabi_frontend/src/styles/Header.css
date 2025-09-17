@@ -1,4 +1,4 @@
-/* ===== Header layout (grid: left | center | right) ===== */
+/* ===== Header layout ===== */
 .header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -8,108 +8,88 @@
   padding: 0.2rem 1rem;
   font-family: Arial, sans-serif;
   font-size: 14px;
-  z-index: 500; /* modal sits above at 1000 */
-  overflow: visible; /* dropdown clip na ho */
+  position: relative;      /* important: menu header से anchor होगा */
+  z-index: 500;
+  overflow: visible;
 }
 
 .header-left  { display: flex; align-items: center; gap: 1rem; justify-content: flex-start; }
 .header-center{ display: flex; align-items: center; justify-content: center; overflow: visible; }
 .header-right { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 
-/* ===== Left bits ===== */
-.menu-icon {
-  font-size: 22px;
-  cursor: pointer;
-}
-
-.logo-wrap { display: flex; align-items: center; gap: 0.2rem; }
+.menu-icon { font-size: 22px; cursor: pointer; background: none; border: none; padding: 0; }
+.logo-wrap { display: flex; align-items: center; gap: .2rem; }
 .logo-vasy { color: #2196f3; font-weight: bold; font-size: 30px; }
 .logo-erp  { background: #333; color: #fff; font-size: 20px; padding: 0 5px; border-radius: 3px; }
 
-/* ===== Salesman (center) ===== */
-.salesman { display: flex; align-items: center; gap: 0.3rem; }
+.salesman { display: flex; align-items: center; gap: .3rem; }
 
-/* Dropdown */
-.dropdown { position: relative; width: 220px; overflow: visible; }
-.dropdown-selected {
+/* ===== Collision-proof dropdown (ws-dd*) ===== */
+/* 1) Control ko compact कर दो */
+.ws-dd { 
+  position: relative; 
+  width: 180px;                 /* पहले 220px था */
+}
+
+.ws-dd-selected{
   border: 1px solid #ccc;
-  padding: 4px 8px;
+  background: #fff;
+  padding: 2px 8px;             /* height कम */
   border-radius: 3px;
   cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fff;
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 28px;             /* ~28px control height */
+  font-size: 13px;              /* छोटा font */
+  line-height: 1.2;
 }
-.arrow { font-size: 18px; color: #555; }
 
-/* === OVERRIDE: Salesman dropdown ko RIGHT side me kholna === */
-.salesman .dropdown-menu {
+/* 2) MENU: अब हमेशा नीचे खुले (left aligned), हल्का gap दें */
+.salesman .ws-dd-menu{
   position: absolute;
-  top: 0;                         /* button ke top se align */
-  left: calc(100% + 8px);         /* button ke right me 8px gap */
-  width: 260px;                   /* fixed width */
+  top: calc(100% + 4px);        /* trigger के नीचे 4px */
+  left: 0;                      /* trigger से left-align */
+  width: 180px;                 /* dropdown चौड़ाई */
   background: #fff;
   border: 1px solid #ccc;
   border-radius: 6px;
-  z-index: 9999;                  /* sabke upar dikhane ke liye */
+  z-index: 9999;
   box-shadow: 0 8px 20px rgba(0,0,0,0.16);
+  padding: 4px;
 }
 
-.dropdown-search {
+/* 3) Search input ko छोटा करें */
+.ws-dd-search{
   width: 100%;
-  padding: 5px;
+  padding: 4px 6px;             /* height कम */
+  font-size: 13px;              /* छोटा font */
   border: none;
   border-bottom: 1px solid #ddd;
   outline: none;
-}
-.dropdown-options { max-height: 150px; overflow-y: auto; }
-.dropdown-option    { padding: 6px 10px; cursor: pointer; }
-.dropdown-option:hover { background: #f3f4f6; }
-.dropdown-option.active { background: #e0f2fe; font-weight: bold; }
-.dropdown-noresult  { padding: 6px 10px; color: #999; text-align: center; }
-
-/* ===== Right icons ===== */
-.green { color: #4caf50; font-size: 18px; }
-
-.notify {
-  position: relative;
-  width: 22px;
-  height: 22px;
-  background: #ef4444;
-  border-radius: 4px;
-  display: grid;
-  place-items: center;
-}
-.count { color: #fff; font-size: 12px; font-weight: bold; }
-
-/* Exact black square icon buttons */
-.icon-btn.black {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  background: #000;
-  color: #fff;
-  border-radius: 6px;
-  cursor: pointer;
-  user-select: none;
-  padding: 0;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
-}
-.icon-btn.black .material-icons { font-size: 18px; line-height: 1; }
-.icon-btn.black:hover { filter: brightness(1.05); }
-.icon-btn.black:active { transform: translateY(1px); }
-.icon-btn.black:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2563eb;
+  box-sizing: border-box;
 }
 
-/* === Mobile fallback: chhoti screen par niche open ho === */
-@media (max-width: 900px) {
-  .salesman .dropdown-menu {
-    top: 110%;
-    left: 0;
-    width: 100%;
-  }
+.ws-dd-options{ max-height: 160px; overflow-y: auto; }
+.ws-dd-option{ padding: 6px 10px; font-size: 13px; }
+.ws-dd-option.selected{ background:#e0f2fe; font-weight:600; }
+
+/* 4) अब media-query की जरूरत नहीं, पर रखना चाहें तो: */
+/* @media (max-width: 900px){ .salesman .ws-dd-menu{ top: calc(100% + 4px); left:0; width: 100%; } } */
+
+.ws-dd-noresult{ padding: 8px 10px; color:#999; text-align:center; }
+
+/* Icons */
+.green { color:#4caf50; font-size:18px; }
+.icon-btn { background:none; border:none; padding:0; cursor:pointer; }
+.icon-btn.black{
+  display:inline-grid; place-items:center; width:32px; height:32px; background:#000; color:#fff;
+  border-radius:6px; user-select:none;
+}
+.icon-btn.black .material-icons{ font-size:18px; line-height:1; }
+.icon-btn.black:hover{ filter:brightness(1.2); }
+.icon-btn.black:active{ transform: translateY(1px); }
+
+/* Mobile: open below */
+@media (max-width: 900px){
+  .salesman .ws-dd-menu{ top:110%; left:0; width:100%; }
 }

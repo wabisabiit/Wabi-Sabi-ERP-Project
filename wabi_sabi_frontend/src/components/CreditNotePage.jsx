@@ -146,12 +146,13 @@ export default function CreditNotePage() {
               defaultValue="10"
               aria-label="Display rows"
             >
-              <option>10</option>
-              <option>25</option>
-              <option>50</option>
               <option>100</option>
+              <option>200</option>
+              <option>500</option>
+              <option>1000</option>
+              
             </select>
-            <span className="cnp-caret">▾</span>
+            
           </div>
 
           {/* Filter button */}
