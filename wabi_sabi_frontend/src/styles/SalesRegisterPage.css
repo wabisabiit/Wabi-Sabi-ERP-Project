@@ -41,7 +41,7 @@
   position:relative;                /* anchor for pop menus */
 }
 .sr-label{
-  font-weight:700;
+  font-weight:500;
   color:#0f172a;
   font-size:14px;
   margin-bottom:6px;
@@ -258,3 +258,32 @@
 .sr-item,
 .sr-date-item,
 .sr-cash-item { padding: 6px 10px; }      /* tighter rows */
+
+/* Ensure the clear button sits inside the select box (top-right) */
+.sr-field { position: relative; }
+
+/* Put the clear icon inside the trigger box */
+.sr-clear{
+  position: absolute;
+  top: 70%;
+  right: 8px;
+  transform: translateY(-50%);
+  z-index: 2;
+
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 1px solid #cfd6e1;
+  border-radius: 50%;
+  background: #fff;
+  color: #374151;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Give room for the clear icon so text/chip don't overlap */
+.sr-input.like-select{
+  padding-right: 36px; /* space for the clear icon */
+}

@@ -29,10 +29,10 @@ export default function OrderListModal({ open, onClose }) {
           <div className="orders-modal__filter-left">
             <label className="orders-modal__label">Display</label>
             <select className="orders-modal__select" defaultValue="10">
-              <option>10</option>
-              <option>25</option>
-              <option>50</option>
               <option>100</option>
+              <option>200</option>
+              <option>500</option>
+              <option>1000</option>
             </select>
           </div>
 

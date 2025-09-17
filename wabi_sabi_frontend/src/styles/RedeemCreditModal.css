@@ -1,0 +1,101 @@
+/* ===== Scope: only inside overlay ===== */
+.rc-overlay{
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0,0,0,.46) !important;
+  display: grid !important;
+  place-items: center !important;
+  z-index: 1000 !important;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif !important;
+  color: #000 !important;   /* 👈 default text black */
+}
+
+/* Reset/normalize inside modal */
+.rc-modal, .rc-modal * { 
+  box-sizing: border-box; 
+  color: #000 !important;   /* 👈 all children text black */
+}
+
+/* ===== Dialog ===== */
+.rc-overlay .rc-modal{
+  width: 320px !important;
+  height: 430px !important;
+  background: #fff !important;
+  border: 1px solid #d4d4d8 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 30px 80px rgba(0,0,0,.35) !important;
+  padding: 15px 14px 14px !important;
+  overflow: hidden !important;
+}
+
+/* Header */
+.rc-overlay .rc-head{
+  display: flex !important; align-items: center !important; justify-content: space-between !important;
+  margin-bottom: 13px !important;
+  border-bottom: 1px solid #e6e6e6 !important;
+}
+.rc-overlay .rc-title{ font-size: 25px !important; font-weight: 700 !important; }
+.rc-overlay .rc-x{ border: none !important; background: transparent !important; font-size: 24px !important; line-height: 1 !important; cursor: pointer !important; }
+
+/* Modes (radio) */
+.rc-overlay .rc-modes{ display: flex !important; align-items: center !important; gap: 20px !important; margin-bottom: 8px !important; }
+.rc-overlay .rc-radio{ display: inline-flex !important; align-items: center !important; gap: 6px !important; font-weight: 600 !important; cursor: pointer !important; user-select: none !important; }
+.rc-overlay .rc-radio input{ appearance: auto !important; -webkit-appearance: auto !important; accent-color: #28a5ff !important; width: 16px !important; height: 16px !important; margin: 0 !important; }
+
+/* Invoice balance pill */
+.rc-overlay .rc-balance{ margin: 22px 45px 15px !important; }
+.rc-overlay .rc-balance .pill{
+  display: inline-block !important;
+  background: #000 !important; color: #fff !important;
+  padding: 13px 25px !important; border-radius: 6px !important;
+  font-weight: 800 !important; font-size: 13px !important;
+}
+
+/* Inputs / rows */
+.rc-overlay .rc-row{ margin-bottom: 10px !important; }
+.rc-overlay .rc-label {
+  font-size: 15px !important;
+  margin-bottom: 14px !important;
+  font-weight: 700 !important;   /* 👈 bold label */
+}
+.rc-overlay .rc-input{
+  width: 100% !important; height: 34px !important;
+  border: 1px solid #d9d9d9 !important; border-radius: 4px !important;
+  padding: 0 10px !important; outline: none !important;
+  font-size: 15 px !important; background: #fff !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+}
+.rc-overlay .rc-input::placeholder{ color: #9CA3AF !important; }
+.rc-overlay .rc-input[disabled]{ background: #f3f4f6 !important; color: #000 !important; cursor: not-allowed !important; border-color: #d1d5db !important; }
+
+/* Key-value lines */
+.rc-overlay .rc-line{ display: flex !important; align-items: center !important; justify-content: space-between !important; margin: 6px 0 !important; }
+.rc-overlay .rc-k, .rc-overlay .rc-v{ font-weight: 700 !important; font-size: 13px !important; }
+
+/* Payable */
+.rc-overlay .rc-payable{ display: flex !important; align-items: baseline !important; justify-content: space-between !important; font-weight: 900 !important; margin: 10px 0 12px !important; border-top: 1px dashed #e5e7eb !important; padding-top: 8px !important; }
+.rc-overlay .rc-payable .rs, .rc-overlay .rc-payable .val{ font-weight: 900 !important; }
+
+/* CTA */
+.rc-overlay .rc-cta{
+  width: 100% !important; height: 36px !important;
+  border: none !important; border-radius: 5px !important;
+  background: #111 !important; color: #fff !important;
+  font-weight: 800 !important; cursor: pointer !important;
+}
+.rc-overlay .rc-amt {
+  width: 90px !important;        /* 👈 was 120px, adjust as needed */
+  height: 32px !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 4px !important;
+  padding: 0 8px !important;
+  text-align: right !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  background: #fff !important;
+  color: #111 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+}

@@ -5,7 +5,16 @@ import "../styles/SalesRegisterPage.css";
 
 export default function SalesRegisterPage() {
   // ------- location (multi-select) -------
-  const LOCATIONS = ["WABI SABI SUSTAINABILITY LLP"];
+  const LOCATIONS = [
+    "Brands4Less - Tilak Nagar",
+    "Brands4Less - M3M Urbana",
+    "Brands4Less-Rajori Garden inside (RJR)",
+    "Brands4Less-Rajori Garden outside (RJO)",
+    "Brands4Less-Iffco Chock",
+    "Brands4Less-Krishna Nagar",
+    "Brands4Less-UP-AP",
+    "Brands4Less-Udhyog Vihar",
+  ];
   const [locOpen, setLocOpen] = useState(false);
   const [selectedLocs, setSelectedLocs] = useState([]);
   const locRef = useRef(null);
@@ -124,7 +133,8 @@ export default function SalesRegisterPage() {
   );
 
   // ------- rows dropdown -------
-  const ROWS = ["10", "25", "50", "100", "200", "500", "All"];
+  // NOTE: yahan 10 bhi add kar diya, kyunki default rows "10" hai
+  const ROWS = ["10", "100", "200", "500", "1000"];
   const [rows, setRows] = useState("10");
   const [rowsOpen, setRowsOpen] = useState(false);
   const rowsRef = useRef(null);
@@ -177,19 +187,30 @@ export default function SalesRegisterPage() {
           {/* Location */}
           <div className="sr-field" ref={locRef}>
             <label className="sr-label">Location</label>
-            <button
-              type="button"
-              className={
-                "sr-input like-select" + (locOpen ? " is-open" : "")
-              }
+
+            {/* Trigger: nested button hata diya, clear ko sibling bana diya */}
+            <div
+              role="button"
+              tabIndex={0}
+              className={"sr-input like-select" + (locOpen ? " is-open" : "")}
               onClick={() => setLocOpen((v) => !v)}
+              onKeyDown={(e) =>
+                (e.key === "Enter" || e.key === " ") && setLocOpen((v) => !v)
+              }
+              aria-haspopup="listbox"
+              aria-expanded={locOpen}
             >
               <span className="sr-placeholder">
-                {selectedLocs.length ? "Select Location" : "Select Location"}
+                {selectedLocs.length
+                  ? `${selectedLocs.length} selected`
+                  : "Select Location"}
               </span>
               {selectedLocs.length > 0 && (
                 <span className="sr-chip">{selectedLocs.length}</span>
               )}
+            </div>
+
+            {selectedLocs.length > 0 && (
               <button
                 type="button"
                 className="sr-clear"
@@ -201,24 +222,20 @@ export default function SalesRegisterPage() {
               >
                 ×
               </button>
-            </button>
+            )}
 
             {locOpen && (
               <div className="sr-menu sr-loc-menu">
-                <ul className="sr-list">
+                <ul className="sr-list" role="listbox" aria-multiselectable="true">
                   {LOCATIONS.map((name) => {
                     const checked = selectedLocs.includes(name);
                     return (
-                      <li
-                        key={name}
-                        className="sr-item"
-                        onClick={() => toggleLoc(name)}
-                      >
+                      <li key={name} className="sr-item">
                         <label className="sr-check">
                           <input
                             type="checkbox"
                             checked={checked}
-                            readOnly
+                            onChange={() => toggleLoc(name)} // <-- readOnly hata diya
                           />
                           <span>{name}</span>
                         </label>
@@ -236,6 +253,13 @@ export default function SalesRegisterPage() {
             <div
               className={"sr-datebox" + (dateOpen ? " is-open" : "")}
               onClick={() => setDateOpen((v) => !v)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) =>
+                (e.key === "Enter" || e.key === " ") && setDateOpen((v) => !v)
+              }
+              aria-haspopup="dialog"
+              aria-expanded={dateOpen}
             >
               <input
                 value={dateText}
@@ -247,7 +271,7 @@ export default function SalesRegisterPage() {
             </div>
 
             {dateOpen && (
-              <div className="sr-menu sr-date-menu">
+              <div className="sr-menu sr-date-menu" role="dialog" aria-label="Select date range">
                 <ul className="sr-date-list">
                   {DATE_PRESETS.map((p) => (
                     <li
@@ -298,6 +322,8 @@ export default function SalesRegisterPage() {
               type="button"
               className={"sr-input like-select" + (cashOpen ? " is-open" : "")}
               onClick={() => setCashOpen((v) => !v)}
+              aria-haspopup="listbox"
+              aria-expanded={cashOpen}
             >
               <span className="sr-value">{cashier}</span>
               <span className="sr-caret">▾</span>
@@ -312,13 +338,11 @@ export default function SalesRegisterPage() {
                     onChange={(e) => setCashQuery(e.target.value)}
                   />
                 </div>
-                <ul className="sr-cash-list">
+                <ul className="sr-cash-list" role="listbox">
                   {filteredCashiers.map((c) => (
                     <li
                       key={c}
-                      className={
-                        "sr-cash-item" + (c === cashier ? " is-active" : "")
-                      }
+                      className={"sr-cash-item" + (c === cashier ? " is-active" : "")}
                       onClick={() => {
                         setCashier(c);
                         setCashOpen(false);
@@ -340,13 +364,15 @@ export default function SalesRegisterPage() {
               <button
                 className="sr-rows-btn"
                 onClick={() => setRowsOpen((v) => !v)}
+                aria-haspopup="listbox"
+                aria-expanded={rowsOpen}
               >
                 {rows}
                 <span className="sr-caret">▾</span>
               </button>
               {rowsOpen && (
                 <div className="sr-menu sr-rows-menu">
-                  <ul className="sr-list">
+                  <ul className="sr-list" role="listbox">
                     {ROWS.map((r) => (
                       <li
                         key={r}
@@ -369,12 +395,14 @@ export default function SalesRegisterPage() {
               <button
                 className="sr-export-btn"
                 onClick={() => setExpOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={expOpen}
               >
                 ⬇️
                 <span className="sr-caret">▾</span>
               </button>
               {expOpen && (
-                <div className="sr-menu sr-export-menu">
+                <div className="sr-menu sr-export-menu" role="menu">
                   <button
                     className="sr-menu-item"
                     onClick={() => downloadEmpty("excel")}

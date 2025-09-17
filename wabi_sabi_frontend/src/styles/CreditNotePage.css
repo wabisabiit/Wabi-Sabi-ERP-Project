@@ -216,7 +216,7 @@
 .cnp-table thead th {
   background: var(--head);
   color: #0f172a;
-  font-weight: 700;
+  font-weight: 500;
   font-size: 13px;
   padding: 12px 14px;
   text-align: left;

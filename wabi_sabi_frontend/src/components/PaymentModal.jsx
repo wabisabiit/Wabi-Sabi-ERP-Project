@@ -16,32 +16,26 @@ export default function PaymentModal({ open, onClose }) {
   const [walletSearch, setWalletSearch] = useState("");
   const [walletValue, setWalletValue] = useState("");
 
-  // Party searchable dropdown state (ADD THESE)
+  // Party searchable dropdown state
   const [partyOpen, setPartyOpen] = useState(false);
   const [partySearch, setPartySearch] = useState("");
   const partyOptions = useMemo(() => ["Cutomer 1"], []);
   const filteredParties = useMemo(() => {
     const q = partySearch.trim().toLowerCase();
-    if (!q) return []; // no default items; just the search bar
-    return partyOptions.filter(p => p.toLowerCase().includes(q));
+    if (!q) return []; // blank => show only hint
+    return partyOptions.filter((p) => p.toLowerCase().includes(q));
   }, [partyOptions, partySearch]);
-
 
   // SALES/BILL searchable dropdown (AGAINST)
   const [saleOpen, setSaleOpen] = useState(false);
   const [saleSearch, setSaleSearch] = useState("");
   const [saleValue, setSaleValue] = useState("");
-
-  // Example list (or plug your API results)
-  // "No default item" is enforced by filtering below.
   const saleOptions = useMemo(() => ["S-1001", "S-1002", "S-1003"], []);
-
   const filteredSales = useMemo(() => {
     const q = saleSearch.trim().toLowerCase();
-    if (!q) return [];                 // 👈 show nothing until user types
-    return saleOptions.filter(s => s.toLowerCase().includes(q));
+    if (!q) return []; // blank => show only hint
+    return saleOptions.filter((s) => s.toLowerCase().includes(q));
   }, [saleOptions, saleSearch]);
-
 
   // Dynamic label for the extra picker
   const pickerLabel = useMemo(() => {
@@ -53,17 +47,12 @@ export default function PaymentModal({ open, onClose }) {
     return "Select Option";
   }, [paymentMode]);
 
-
   const modes = ["Cash", "Cheque", "UPI", "Bank", "Card", "Wallet"];
-  const walletOptions = useMemo(
-    () => ["AXIS BANK UDYOG VIHAR"],
-    []
-  );
-
+  const walletOptions = useMemo(() => ["AXIS BANK UDYOG VIHAR"], []);
   const filteredWallets = useMemo(() => {
-    if (!walletSearch.trim()) return walletOptions;
-    const q = walletSearch.toLowerCase();
-    return walletOptions.filter(w => w.toLowerCase().includes(q));
+    const q = walletSearch.trim().toLowerCase();
+    if (!q) return []; // blank => show only hint
+    return walletOptions.filter((w) => w.toLowerCase().includes(q));
   }, [walletOptions, walletSearch]);
 
   const showWallet = useMemo(
@@ -76,7 +65,9 @@ export default function PaymentModal({ open, onClose }) {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   if (!open) return null;
@@ -86,7 +77,7 @@ export default function PaymentModal({ open, onClose }) {
   const renderAdvanceForm = () => (
     <>
       <div className="payx-grid2">
-        {/* Select Party (native select, same as screenshot) */}
+        {/* Select Party */}
         <div className="payx-field">
           <label>
             Select Party Name <span className="payx-req">*</span>
@@ -101,7 +92,7 @@ export default function PaymentModal({ open, onClose }) {
             <button
               type="button"
               className="payx-control payx-wallet-toggle"
-              onClick={() => setPartyOpen(v => !v)}
+              onClick={() => setPartyOpen((v) => !v)}
             >
               {party || "Search Party"}
               <span className="payx-wallet-caret">▾</span>
@@ -117,35 +108,39 @@ export default function PaymentModal({ open, onClose }) {
                     onChange={(e) => setPartySearch(e.target.value)}
                     autoFocus
                   />
-                  <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                  {partySearch.trim().length < 1 && (
+                    <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                  )}
                 </div>
 
-                <ul className="payx-dd-list">
-                  {filteredParties.map((opt) => (
-                    <li key={opt}>
-                      <button
-                        type="button"
-                        className={`payx-dd-item ${party === opt ? "active" : ""}`}
-                        onClick={() => {
-                          setParty(opt);
-                          setPartyOpen(false);
-                        }}
-                      >
-                        {opt}
-                      </button>
-                    </li>
-                  ))}
-                  {filteredParties.length === 0 && (
-                    <li className="payx-dd-empty">No matches</li>
-                  )}
-                </ul>
+                {partySearch.trim().length < 1 ? null : (
+                  <ul className="payx-dd-list">
+                    {filteredParties.length > 0 ? (
+                      filteredParties.map((opt) => (
+                        <li key={opt}>
+                          <button
+                            type="button"
+                            className={`payx-dd-item ${party === opt ? "active" : ""}`}
+                            onClick={() => {
+                              setParty(opt);
+                              setPartyOpen(false);
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="payx-dd-empty">No results found</li>
+                    )}
+                  </ul>
+                )}
               </div>
             )}
           </div>
         </div>
 
-
-        {/* Payment Mode (native select; no black caret) */}
+        {/* Payment Mode */}
         <div className="payx-field">
           <label>
             Payment Mode <span className="payx-req">*</span>
@@ -156,32 +151,33 @@ export default function PaymentModal({ open, onClose }) {
             onChange={(e) => {
               setPaymentMode(e.target.value);
               setWalletOpen(false);
-              setWalletValue("");   // clear wallet when mode changes
+              setWalletValue(""); // clear wallet when mode changes
               setWalletSearch("");
             }}
           >
-            {/* No placeholder with value="" */}
-            {["Cash", "Cheque", "UPI", "Bank", "Card", "Wallet"].map(m => (
-              <option key={m} value={m}>{m}</option>
+            {modes.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Select Wallet (appears when mode != Cash). Includes search field and option list like your screenshot */}
+      {/* Non-cash extra picker */}
       {showWallet && (
         <div className="payx-field">
           <label>{pickerLabel}</label>
           <div
             className={`payx-wallet ${walletOpen ? "open" : ""}`}
-            onBlur={(e) => { // close if focus leaves the wallet area
+            onBlur={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget)) setWalletOpen(false);
             }}
           >
             <button
               type="button"
               className="payx-control payx-wallet-toggle"
-              onClick={() => setWalletOpen(v => !v)}
+              onClick={() => setWalletOpen((v) => !v)}
             >
               {walletValue || pickerLabel}
               <span className="payx-wallet-caret">▾</span>
@@ -197,30 +193,36 @@ export default function PaymentModal({ open, onClose }) {
                     onChange={(e) => setWalletSearch(e.target.value)}
                     autoFocus
                   />
-                  <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                  {walletSearch.trim().length < 1 && (
+                    <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                  )}
                 </div>
 
-                <div className="payx-dd-section">Select Bank</div>
-
-                <ul className="payx-dd-list">
-                  {filteredWallets.map(opt => (
-                    <li key={opt}>
-                      <button
-                        type="button"
-                        className={`payx-dd-item ${walletValue === opt ? "active" : ""}`}
-                        onClick={() => {
-                          setWalletValue(opt);
-                          setWalletOpen(false);
-                        }}
-                      >
-                        {opt}
-                      </button>
-                    </li>
-                  ))}
-                  {filteredWallets.length === 0 && (
-                    <li className="payx-dd-empty">No matches</li>
-                  )}
-                </ul>
+                {walletSearch.trim().length < 1 ? null : (
+                  <>
+                    <div className="payx-dd-section">{pickerLabel}</div>
+                    <ul className="payx-dd-list">
+                      {filteredWallets.length > 0 ? (
+                        filteredWallets.map((opt) => (
+                          <li key={opt}>
+                            <button
+                              type="button"
+                              className={`payx-dd-item ${walletValue === opt ? "active" : ""}`}
+                              onClick={() => {
+                                setWalletValue(opt);
+                                setWalletOpen(false);
+                              }}
+                            >
+                              {opt}
+                            </button>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="payx-dd-empty">No results found</li>
+                      )}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -254,7 +256,9 @@ export default function PaymentModal({ open, onClose }) {
 
       <div className="payx-actions">
         <button className="payx-btn">Save</button>
-        <button className="payx-btn" style={{ marginLeft: "12px" }}>Save &amp; Print</button>
+        <button className="payx-btn" style={{ marginLeft: "12px" }}>
+          Save &amp; Print
+        </button>
       </div>
     </>
   );
@@ -265,7 +269,9 @@ export default function PaymentModal({ open, onClose }) {
         {/* Header */}
         <div className="payx-header">
           <h3>Payment</h3>
-          <button className="payx-close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="payx-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
         </div>
 
         {/* Body */}
@@ -275,15 +281,30 @@ export default function PaymentModal({ open, onClose }) {
             <span className="payx-title">Select Voucher Type</span>
             <div className="payx-radios">
               <label className="payx-radio">
-                <input type="radio" name="vtype" checked={voucherType === "sales"} onChange={() => setVoucherType("sales")} />
+                <input
+                  type="radio"
+                  name="vtype"
+                  checked={voucherType === "sales"}
+                  onChange={() => setVoucherType("sales")}
+                />
                 <span>Sales</span>
               </label>
               <label className="payx-radio">
-                <input type="radio" name="vtype" checked={voucherType === "purchase"} onChange={() => setVoucherType("purchase")} />
+                <input
+                  type="radio"
+                  name="vtype"
+                  checked={voucherType === "purchase"}
+                  onChange={() => setVoucherType("purchase")}
+                />
                 <span>Purchase</span>
               </label>
               <label className="payx-radio">
-                <input type="radio" name="vtype" checked={voucherType === "expense"} onChange={() => setVoucherType("expense")} />
+                <input
+                  type="radio"
+                  name="vtype"
+                  checked={voucherType === "expense"}
+                  onChange={() => setVoucherType("expense")}
+                />
                 <span>Expense</span>
               </label>
             </div>
@@ -296,35 +317,49 @@ export default function PaymentModal({ open, onClose }) {
                 <span className="payx-title">Select Payment Type</span>
                 <div className="payx-radios">
                   <label className="payx-radio">
-                    <input type="radio" name="ptype" checked={paymentType === "advance"} onChange={() => setPaymentType("advance")} />
+                    <input
+                      type="radio"
+                      name="ptype"
+                      checked={paymentType === "advance"}
+                      onChange={() => setPaymentType("advance")}
+                    />
                     <span>Advance Payment</span>
                   </label>
                   <label className="payx-radio">
-                    <input type="radio" name="ptype" checked={paymentType === "against"} onChange={() => setPaymentType("against")} />
+                    <input
+                      type="radio"
+                      name="ptype"
+                      checked={paymentType === "against"}
+                      onChange={() => setPaymentType("against")}
+                    />
                     <span>Against Bill</span>
                   </label>
                 </div>
               </div>
 
-              {/* ——— Advance Payment UI (your screenshots) ——— */}
+              {/* Advance */}
               {paymentType === "advance" && renderAdvanceForm()}
 
-              {/* ——— Against Bill: your original UI remains untouched ——— */}
+              {/* Against Bill */}
               {paymentType === "against" && (
                 <>
                   <div className="payx-grid2">
-                    {/* LEFT: Party — searchable like your Advance section */}
+                    {/* Party (searchable) */}
                     <div className="payx-field">
-                      <label>Select Party Name <span className="payx-req">*</span></label>
+                      <label>
+                        Select Party Name <span className="payx-req">*</span>
+                      </label>
 
                       <div
                         className={`payx-wallet ${partyOpen ? "open" : ""}`}
-                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setPartyOpen(false); }}
+                        onBlur={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) setPartyOpen(false);
+                        }}
                       >
                         <button
                           type="button"
                           className="payx-control payx-wallet-toggle"
-                          onClick={() => setPartyOpen(v => !v)}
+                          onClick={() => setPartyOpen((v) => !v)}
                         >
                           {party || "Search Party"}
                           <span className="payx-wallet-caret">▾</span>
@@ -340,42 +375,55 @@ export default function PaymentModal({ open, onClose }) {
                                 onChange={(e) => setPartySearch(e.target.value)}
                                 autoFocus
                               />
-                              <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                              {partySearch.trim().length < 1 && (
+                                <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                              )}
                             </div>
 
-                            <ul className="payx-dd-list">
-                              {filteredParties.map((opt) => (
-                                <li key={opt}>
-                                  <button
-                                    type="button"
-                                    className={`payx-dd-item ${party === opt ? "active" : ""}`}
-                                    onClick={() => { setParty(opt); setPartyOpen(false); }}
-                                  >
-                                    {opt}
-                                  </button>
-                                </li>
-                              ))}
-                              {filteredParties.length === 0 && (
-                                <li className="payx-dd-empty">No matches</li>
-                              )}
-                            </ul>
+                            {partySearch.trim().length < 1 ? null : (
+                              <ul className="payx-dd-list">
+                                {filteredParties.length > 0 ? (
+                                  filteredParties.map((opt) => (
+                                    <li key={opt}>
+                                      <button
+                                        type="button"
+                                        className={`payx-dd-item ${party === opt ? "active" : ""}`}
+                                        onClick={() => {
+                                          setParty(opt);
+                                          setPartyOpen(false);
+                                        }}
+                                      >
+                                        {opt}
+                                      </button>
+                                    </li>
+                                  ))
+                                ) : (
+                                  <li className="payx-dd-empty">No results found</li>
+                                )}
+                              </ul>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
 
-                    {/* RIGHT: Select Sales/Bill — searchable, NO default items */}
+                    {/* Sales/Bill (searchable) */}
                     <div className="payx-field">
-                      <label>{voucherType === "sales" ? "Select Sales" : "Select Bill"} <span className="payx-req">*</span></label>
+                      <label>
+                        {voucherType === "sales" ? "Select Sales" : "Select Bill"}{" "}
+                        <span className="payx-req">*</span>
+                      </label>
 
                       <div
                         className={`payx-wallet ${saleOpen ? "open" : ""}`}
-                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSaleOpen(false); }}
+                        onBlur={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) setSaleOpen(false);
+                        }}
                       >
                         <button
                           type="button"
                           className="payx-control payx-wallet-toggle"
-                          onClick={() => setSaleOpen(v => !v)}
+                          onClick={() => setSaleOpen((v) => !v)}
                         >
                           {saleValue || (voucherType === "sales" ? "Select Sales" : "Select Bill")}
                           <span className="payx-wallet-caret">▾</span>
@@ -391,34 +439,44 @@ export default function PaymentModal({ open, onClose }) {
                                 onChange={(e) => setSaleSearch(e.target.value)}
                                 autoFocus
                               />
-                              <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                              {saleSearch.trim().length < 1 && (
+                                <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                              )}
                             </div>
 
-                            <ul className="payx-dd-list">
-                              {filteredSales.map((opt) => (
-                                <li key={opt}>
-                                  <button
-                                    type="button"
-                                    className={`payx-dd-item ${saleValue === opt ? "active" : ""}`}
-                                    onClick={() => { setSaleValue(opt); setSaleOpen(false); }}
-                                  >
-                                    {opt}
-                                  </button>
-                                </li>
-                              ))}
-                              {filteredSales.length === 0 && (
-                                <li className="payx-dd-empty">No matches</li>
-                              )}
-                            </ul>
+                            {saleSearch.trim().length < 1 ? null : (
+                              <ul className="payx-dd-list">
+                                {filteredSales.length > 0 ? (
+                                  filteredSales.map((opt) => (
+                                    <li key={opt}>
+                                      <button
+                                        type="button"
+                                        className={`payx-dd-item ${saleValue === opt ? "active" : ""}`}
+                                        onClick={() => {
+                                          setSaleValue(opt);
+                                          setSaleOpen(false);
+                                        }}
+                                      >
+                                        {opt}
+                                      </button>
+                                    </li>
+                                  ))
+                                ) : (
+                                  <li className="payx-dd-empty">No results found</li>
+                                )}
+                              </ul>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Payment Mode (keep your style; wire to state) */}
+                  {/* Payment Mode */}
                   <div className="payx-field">
-                    <label>Payment Mode <span className="payx-req">*</span></label>
+                    <label>
+                      Payment Mode <span className="payx-req">*</span>
+                    </label>
                     <div className="payx-selectwrap">
                       <select
                         className="payx-control"
@@ -430,12 +488,11 @@ export default function PaymentModal({ open, onClose }) {
                           setWalletSearch("");
                         }}
                       >
-                        <option value="Cash">Cash</option>
-                        <option value="Cheque">Cheque</option>
-                        <option value="UPI">UPI</option>
-                        <option value="Bank">Bank</option>
-                        <option value="Card">Card</option>
-                        <option value="Wallet">Wallet</option>
+                        {modes.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
                       </select>
                       <button className="payx-caret" aria-label="More">
                         <span className="material-icons">arrow_drop_down</span>
@@ -443,18 +500,20 @@ export default function PaymentModal({ open, onClose }) {
                     </div>
                   </div>
 
-                  {/* Extra picker for non-Cash (uses your existing wallet* + pickerLabel) */}
+                  {/* Non-cash extra picker */}
                   {showWallet && (
                     <div className="payx-field">
                       <label>{pickerLabel}</label>
                       <div
                         className={`payx-wallet ${walletOpen ? "open" : ""}`}
-                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setWalletOpen(false); }}
+                        onBlur={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) setWalletOpen(false);
+                        }}
                       >
                         <button
                           type="button"
                           className="payx-control payx-wallet-toggle"
-                          onClick={() => setWalletOpen(v => !v)}
+                          onClick={() => setWalletOpen((v) => !v)}
                         >
                           {walletValue || pickerLabel}
                           <span className="payx-wallet-caret">▾</span>
@@ -470,34 +529,43 @@ export default function PaymentModal({ open, onClose }) {
                                 onChange={(e) => setWalletSearch(e.target.value)}
                                 autoFocus
                               />
-                              <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                              {walletSearch.trim().length < 1 && (
+                                <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                              )}
                             </div>
 
-                            <div className="payx-dd-section">{pickerLabel}</div>
-
-                            <ul className="payx-dd-list">
-                              {filteredWallets.map(opt => (
-                                <li key={opt}>
-                                  <button
-                                    type="button"
-                                    className={`payx-dd-item ${walletValue === opt ? "active" : ""}`}
-                                    onClick={() => { setWalletValue(opt); setWalletOpen(false); }}
-                                  >
-                                    {opt}
-                                  </button>
-                                </li>
-                              ))}
-                              {filteredWallets.length === 0 && (
-                                <li className="payx-dd-empty">No matches</li>
-                              )}
-                            </ul>
+                            {walletSearch.trim().length < 1 ? null : (
+                              <>
+                                <div className="payx-dd-section">{pickerLabel}</div>
+                                <ul className="payx-dd-list">
+                                  {filteredWallets.length > 0 ? (
+                                    filteredWallets.map((opt) => (
+                                      <li key={opt}>
+                                        <button
+                                          type="button"
+                                          className={`payx-dd-item ${walletValue === opt ? "active" : ""}`}
+                                          onClick={() => {
+                                            setWalletValue(opt);
+                                            setWalletOpen(false);
+                                          }}
+                                        >
+                                          {opt}
+                                        </button>
+                                      </li>
+                                    ))
+                                  ) : (
+                                    <li className="payx-dd-empty">No results found</li>
+                                  )}
+                                </ul>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {/* Totals (unchanged) */}
+                  {/* Totals */}
                   <div className="payx-grid3">
                     <div className="payx-field">
                       <label>Total Payment</label>
@@ -528,7 +596,9 @@ export default function PaymentModal({ open, onClose }) {
                       <input className="payx-control" type="text" defaultValue="0.00" />
                     </div>
                     <div className="payx-field">
-                      <label>Amount <span className="payx-req">*</span></label>
+                      <label>
+                        Amount <span className="payx-req">*</span>
+                      </label>
                       <input className="payx-control" type="text" defaultValue="0.00" />
                     </div>
                   </div>
@@ -543,7 +613,6 @@ export default function PaymentModal({ open, onClose }) {
                   </div>
                 </>
               )}
-
             </>
           )}
 
@@ -552,29 +621,45 @@ export default function PaymentModal({ open, onClose }) {
             <>
               <div className="payx-grid2">
                 <div className="payx-field">
-                  <label>Select Party Name <span className="payx-req">*</span></label>
+                  <label>
+                    Select Party Name <span className="payx-req">*</span>
+                  </label>
                   <div className="payx-selectwrap">
-                    <select className="payx-control"><option>Select Party</option></select>
-                    <button className="payx-caret" aria-label="More"><span className="material-icons">arrow_drop_down</span></button>
+                    <select className="payx-control">
+                      <option>Select Party</option>
+                    </select>
+                    <button className="payx-caret" aria-label="More">
+                      <span className="material-icons">arrow_drop_down</span>
+                    </button>
                   </div>
                 </div>
                 <div className="payx-field">
-                  <label>Account <span className="payx-req">*</span></label>
+                  <label>
+                    Account <span className="payx-req">*</span>
+                  </label>
                   <div className="payx-selectwrap">
-                    <select className="payx-control"><option>Search Account</option></select>
-                    <button className="payx-caret" aria-label="More"><span className="material-icons">arrow_drop_down</span></button>
+                    <select className="payx-control">
+                      <option>Search Account</option>
+                    </select>
+                    <button className="payx-caret" aria-label="More">
+                      <span className="material-icons">arrow_drop_down</span>
+                    </button>
                   </div>
                 </div>
               </div>
 
               <div className="payx-grid2">
                 <div className="payx-field">
-                  <label>Amount <span className="payx-req">*</span></label>
+                  <label>
+                    Amount <span className="payx-req">*</span>
+                  </label>
                   <input className="payx-control" type="text" placeholder="Enter Amount" />
                 </div>
                 <div className="payx-field payx-checkfield">
                   <label>&nbsp;</label>
-                  <label className="payx-check"><input type="checkbox" /> <span>Non-GST</span></label>
+                  <label className="payx-check">
+                    <input type="checkbox" /> <span>Non-GST</span>
+                  </label>
                 </div>
               </div>
 

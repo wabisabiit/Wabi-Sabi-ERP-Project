@@ -1,21 +1,24 @@
+// ...existing imports
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
-import CardDetail from "./CardDetail";                 // kept as-is (unused here but not altered)
-import CashPayment from "./CashPayment";   
-import { useNavigate } from "react-router-dom";            // NEW
+import CardDetail from "./CardDetail";
+import CashPayment from "./CashPayment";
+import { useNavigate } from "react-router-dom";
+import RedeemCreditModal from "./RedeemCreditModal";   // ✅ NEW
 
 export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   // ---------- Toast state ----------
   const navigate = useNavigate();
-  const [toasts, setToasts] = useState([]); // [{id, text}]
+  const [toasts, setToasts] = useState([]);
   const timersRef = useRef({});
   const idRef = useRef(0);
 
   // Modals
-  const [showCard, setShowCard] = useState(false);     // unchanged (left for compatibility if you switch back)
-  const [showCash, setShowCash] = useState(false);     // NEW
+  const [showCard, setShowCard] = useState(false);
+  const [showCash, setShowCash] = useState(false);
+  const [showRedeem, setShowRedeem] = useState(false);   // ✅ NEW
 
-  // ---------- Beep (unchanged logic) ----------
+  // ---------- Beep ----------
   const beep = useCallback(() => {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
@@ -32,7 +35,7 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   // ---------- Toast helpers ----------
   const addToast = useCallback((text) => {
     const id = ++idRef.current;
-    setToasts(prev => [{ id, text }, ...prev].slice(0, 3)); // keep max 3
+    setToasts(prev => [{ id, text }, ...prev].slice(0, 3));
     timersRef.current[id] = setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
       delete timersRef.current[id];
@@ -44,7 +47,7 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
     addToast("Add minimum 1 product.");
   }, [beep, addToast]);
 
-  // clear all timers on unmount
+  // clear timers on unmount
   useEffect(() => () => {
     Object.values(timersRef.current).forEach(clearTimeout);
   }, []);
@@ -57,38 +60,37 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   ]), []);
 
   const handleActionClick = useCallback((label) => {
-    // === UNCOMMENT TO ENABLE ITEM VALIDATION ===
-    // if (totalQty <= 0) {
-    //   triggerEmptyCartWarning();
-    //   return;
-    // }
+    // if (totalQty <= 0) { triggerEmptyCartWarning(); return; }
 
     if (label.includes("Multiple Pay")) {
       navigate("/multiple-pay");
       return;
     }
 
-    // OPEN CASH PAYMENT MODAL WHEN CARD BUTTON IS PRESSED (as requested)
     if (label === "Card (F5)" || label === "Card (F3)") {
       setShowCard(true);
       return;
     }
 
-    // If you also want Cash buttons to open the same modal, keep these lines:
     if (label === "Cash (F4)") {
       setShowCash(true);
       return;
     }
 
-    // hand over to parent if provided, else just log
+    if (label === "Redeem Credit") {     // ✅ NEW
+      setShowRedeem(true);
+      return;
+    }
+
     if (typeof onAction === "function") onAction(label);
     else console.log("Action:", label);
   }, [navigate, totalQty, triggerEmptyCartWarning, onAction]);
 
   return (
     <>
+      {/* ====== FOOTER (same as your original) ====== */}
       <footer className="pos-footer">
-        {/* ===== Totals / inputs row ===== */}
+        {/* Totals / inputs row */}
         <div className="totals">
           <div className="metric">
             <div className="value">{Number(totalQty).toFixed(3)}</div>
@@ -128,7 +130,7 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
           </div>
         </div>
 
-        {/* ===== Buttons grid ===== */}
+        {/* Buttons grid */}
         <div className="pay-grid">
           {actions.map((text) => (
             <button key={text} className="kbtn" onClick={() => handleActionClick(text)}>
@@ -147,7 +149,7 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
           ))}
         </div>
 
-        {/* ===== Toast stack ===== */}
+        {/* Toast stack */}
         {toasts.length > 0 && (
           <div className="toast-stack" role="region" aria-live="assertive">
             {toasts.map(t => (
@@ -160,7 +162,9 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
         )}
       </footer>
 
-      {/* Keeping CardDetail block (not used when card pressed now) */}
+      {/* ===== Modals ===== */}
+
+      {/* Card Detail */}
       {showCard && (
         <CardDetail
           amount={amount}
@@ -172,15 +176,26 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
         />
       )}
 
-      {/* NEW: Cash Payment modal */}
+      {/* Cash Payment */}
       {showCash && (
         <CashPayment
           amount={amount}
           onClose={() => setShowCash(false)}
           onSubmit={(payload) => {
-            // Dispatch to parent the same way other actions bubble up
             onAction?.("Cash (F4)", payload);
             setShowCash(false);
+          }}
+        />
+      )}
+
+      {/* ✅ Redeem Credit */}
+      {showRedeem && (
+        <RedeemCreditModal
+          invoiceBalance={amount || 100}
+          onClose={() => setShowRedeem(false)}
+          onApply={(payload) => {
+            onAction?.("Redeem Credit", payload);
+            setShowRedeem(false);
           }}
         />
       )}
