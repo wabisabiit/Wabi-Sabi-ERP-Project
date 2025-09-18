@@ -657,8 +657,9 @@
   .ol-filters{ grid-template-columns: repeat(3, minmax(170px, 1fr)); }
 }
 
-/* ---------- Payment Mode dropdown (matches screenshot) ---------- */
-.pmode-dd { position: relative; width: 168px; } /* adjust width to taste */
+/* ---------- Payment Mode dropdown ---------- */
+/* CHANGED: make trigger & dropdown match the field width */
+.pmode-dd { position: relative; width: 100%; }  /* was 168px */
 
 .pmode-btn {
   display: flex; align-items: center; justify-content: space-between;
@@ -676,7 +677,8 @@
 
 /* popup */
 .pmode-pop {
-  position: absolute; left: 0; right: 0; top: calc(100% + 6px);
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
   background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
   box-shadow: 0 10px 25px rgba(17,24,39,0.1);
   z-index: 40; overflow: hidden;
@@ -712,9 +714,9 @@
 /* make it blend with existing controls */
 .ol-control.pmode-btn { padding-right: 10px; }
 
-
-/* ---------- Generic searchable dropdown (same look as Payment Mode) ---------- */
-.sselect-dd { position: relative; width: 80%; }
+/* ---------- Generic searchable dropdown (Order Type / Store / Channel / Payment Status) ---------- */
+/* CHANGED: full width like field */
+.sselect-dd { position: relative; width: 100%; }
 
 .sselect-btn {
   display: flex; align-items: center; justify-content: space-between;
@@ -730,13 +732,14 @@
 
 /* popup */
 .sselect-pop {
-  position: absolute; left: 0; right: 0; top: calc(100% + 6px);
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
   background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
   box-shadow: 0 10px 25px rgba(17,24,39,0.1);
   z-index: 40; overflow: hidden;
 }
 
-/* search input (empty placeholder like screenshots) */
+/* search input */
 .sselect-search { padding: 8px; border-bottom: 1px solid #eef1f5; }
 .sselect-search input {
   width: 100%; height: 36px; padding: 0 12px;
@@ -744,7 +747,7 @@
 }
 .sselect-search input:focus { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.12); }
 
-/* list: show exactly 6 rows, then scroll */
+/* list */
 .sselect-list {
   --row-h: 44px;
   max-height: calc(var(--row-h) * 6);
@@ -758,13 +761,13 @@
 .sselect-item.is-selected { font-weight: 600; color: #1f4bb0; }
 .sselect-empty { padding: 16px 12px; color: #64748b; font-size: 14px; }
 
-
-/* ---------- Discount dropdown (same family as Payment/Searchable) ---------- */
-.dselect-dd { position: relative; width: 80%; }
+/* ---------- Discount dropdown ---------- */
+/* CHANGED: full width */
+.dselect-dd { position: relative; width: 100%; }
 
 .dselect-btn {
   display: flex; align-items: center; justify-content: space-between;
-  width: 80%; height: 40px;
+  width: 100%; height: 40px;
   border: 1px solid #d7dbe3; border-radius: 6px;
   background: #fff; padding: 0 12px;
   font-size: 14px; line-height: 1; text-align: left;
@@ -776,14 +779,14 @@
 
 /* popup */
 .dselect-pop {
-  position: absolute; left: 0; right: 0; top: calc(100% + 6px);
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
   background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
   box-shadow: 0 10px 25px rgba(17,24,39,0.1);
-  z-index: 2000;              /* sits above agg strip & table */
-  overflow: hidden;
+  z-index: 2000; overflow: hidden;
 }
 
-/* search input (empty placeholder like your screenshot) */
+/* search input */
 .dselect-search { padding: 8px; border-bottom: 1px solid #eef1f5; }
 .dselect-search input {
   width: 100%; height: 36px; padding: 0 12px;
@@ -791,7 +794,7 @@
 }
 .dselect-search input:focus { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.12); }
 
-/* list: exactly 6 rows then scroll */
+/* list */
 .dselect-list {
   --row-h: 44px;
   max-height: calc(var(--row-h) * 6);
@@ -805,17 +808,22 @@
 .dselect-item.is-selected { font-weight: 600; color: #1f4bb0; }
 .dselect-empty { padding: 14px 12px; color: #64748b; font-size: 14px; }
 
-
 /* --- Location dropdown --- */
-.loc-dd { position: relative; }
+.loc-dd { position: relative; width: 100%; }
 
-/* popup */
+/* popup — CHANGED: single consistent rule matching trigger width */
 .loc-pop{
-  position: absolute; left: 0; top: calc(100% + 6px);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
   background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
   box-shadow: 0 10px 25px rgba(17,24,39,0.1);
   z-index: 2000;
-  min-width: 280px;           /* enough to show the long name + scrollbar */
   overflow: hidden;
 }
 
@@ -841,7 +849,6 @@
   padding: 0 10px;
   cursor: pointer;
 }
-
 .loc-item:hover{ background: #f3f6fb; }
 
 .loc-item input[type="checkbox"]{
@@ -850,19 +857,14 @@
   cursor: pointer;
 }
 
-/* long text must horizontally scroll with a scrollbar */
+/* long text: keep tidy, no inner scrollbar */
 .loc-text{
-  display: block;
+  display: inline-block;
   max-width: 100%;
   white-space: nowrap;
-  overflow-x: auto;           /* horizontal scrollbar for long names */
-  overflow-y: hidden;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-/* thin custom horizontal scrollbar */
-.loc-text::-webkit-scrollbar{ height: 8px; }
-.loc-text::-webkit-scrollbar-track{ background:#e5e7eb; border-radius: 6px; }
-.loc-text::-webkit-scrollbar-thumb{ background:#9ca3af; border-radius: 6px; }
 
 /* empty */
 .loc-empty{ padding: 12px; color:#64748b; }
@@ -883,81 +885,6 @@
 
 /* make sure filter area allows popups to escape */
 .ol-filters{ overflow: visible; }
-
-.loc-pop {
-  position: absolute;
-  left: 0;
-  right: 0;                 /* stretch to parent width */
-  top: calc(100% + 6px);
-  background: #fff;
-  border: 1px solid #d7dbe3;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(17,24,39,0.1);
-  z-index: 2000;
-
-  max-width: 60%;          /* prevent overflow out of container */
-  overflow: hidden;
-}
-
-.loc-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  height: 40px;
-  cursor: pointer;
-}
-
-.loc-text {
-  display: inline-block;
-  max-width: 220px;        /* keep it tidy */
-  white-space: nowrap;
-  overflow-x: auto;        /* horizontal scroll for long names */
-  overflow-y: hidden;
-}
-
-.loc-text::-webkit-scrollbar {
-  height: 6px;             /* small horizontal scrollbar */
-}
-.loc-text::-webkit-scrollbar-thumb {
-  background: #c4c4c4;
-  border-radius: 3px;
-}
-
-
-.loc-dd { position: relative; width:100%; }   /* wrapper fills the column */
-
-.loc-pop{
-  position:absolute;
-  top:calc(100% + 6px);
-  left:0;
-  right:auto;            /* drop right */
-  width:100%;            /* exactly as wide as .loc-dd */
-  box-sizing:border-box;
-  /* …other styles… */
-}
-
-.loc-pop{
-  position:absolute;
-  top:calc(100% + 6px);
-  left:0; right:auto;
-  width:min(100%, 360px);   /* cap to 360px, never exceed wrapper */
-  box-sizing:border-box;
-}
-.loc-pop{
-  position:absolute;
-  top:calc(100% + 6px);
-  right:0; left:auto;       /* anchor right */
-  width:min(100%, 360px);
-  box-sizing:border-box;
-}
-.loc-text{
-  display:inline-block;
-  max-width:100%;
-  white-space:nowrap;
-  overflow-x:auto;  /* horizontal scrollbar for long labels */
-  overflow-y:hidden;
-}
 
 /* Export dropdown */
 .ol-export { position: relative; }
@@ -987,10 +914,11 @@
 /* Order Status dropdown — identical to the generic searchable style */
 .ostatus-dd { position: relative; width: 100%; }
 
+/* CHANGED: full width */
 .ostatus-btn,
-.sselect-btn { /* keep parity */
+.sselect-btn {
   display: flex; align-items: center; justify-content: space-between;
-  width: 80%; height: 40px;
+  width: 100%; height: 40px;
   border: 1px solid #d7dbe3; border-radius: 6px;
   background: #fff; padding: 0 12px;
   font-size: 14px; line-height: 1; text-align: left;
@@ -1001,7 +929,8 @@
 .ostatus-btn.is-open .ostatus-caret { transform: rotate(180deg); }
 
 .ostatus-pop {
-  position: absolute; left: 0; right: 0; top: calc(100% + 6px);
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
   background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
   box-shadow: 0 10px 25px rgba(17,24,39,0.1);
   z-index: 1200; overflow: hidden;

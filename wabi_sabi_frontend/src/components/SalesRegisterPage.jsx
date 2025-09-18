@@ -398,7 +398,7 @@ export default function SalesRegisterPage() {
                 aria-haspopup="menu"
                 aria-expanded={expOpen}
               >
-                ⬇️
+                <span className="material-icons">file_download</span>
                 <span className="sr-caret">▾</span>
               </button>
               {expOpen && (

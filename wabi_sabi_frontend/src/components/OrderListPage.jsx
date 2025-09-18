@@ -644,6 +644,18 @@ export default function OrderList() {
   const custRef = useRef(null);
   const custSearchRef = useRef(null);
 
+  /* === NOTE: no sample data. Wire your array here when available. === */
+  // Example integration point:
+  // const customersFromApi = props.customers || [];
+  const ALL_CUSTOMERS = useMemo(() => [], []); // keep empty; shows "No results found" when nothing matches
+
+  /* derived filtered list based on user query */
+  const filteredCustomers = useMemo(() => {
+    const q = custQuery.trim().toLowerCase();
+    if (!q) return [];
+    return ALL_CUSTOMERS.filter((c) => c.toLowerCase().includes(q));
+  }, [custQuery, ALL_CUSTOMERS]);
+
   /* close cols panel on ESC / outside click */
   useEffect(() => {
     if (!openCols) return;
@@ -719,7 +731,12 @@ export default function OrderList() {
     />
   ));
 
-
+  /* helper: set chosen customer and close pop */
+  const chooseCustomer = (name) => {
+    setCustomer(name);
+    setCustOpen(false);
+    setCustQuery("");
+  };
 
   return (
     <div className="ol-wrap">
@@ -742,7 +759,7 @@ export default function OrderList() {
             <span className="material-icons">arrow_drop_down</span>
           </button>
 
-          <div className="ol-right">
+        <div className="ol-right">
             <ExportMenu />
 
             <div className="ol-select">
@@ -827,11 +844,32 @@ export default function OrderList() {
                           value={custQuery}
                           onChange={(e) => setCustQuery(e.target.value)}
                           placeholder="Search customer..."
-                          onKeyDown={(e) => e.key === "Escape" && setCustOpen(false)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") setCustOpen(false);
+                            if (e.key === "Enter" && filteredCustomers.length > 0) {
+                              chooseCustomer(filteredCustomers[0]);
+                            }
+                          }}
                         />
                       </div>
                       <div className="cust-list">
-                        <div className="cust-hint">Please enter 1 or more characters</div>
+                        {custQuery.trim().length === 0 ? (
+                          <div className="cust-hint">Please enter 1 or more characters</div>
+                        ) : filteredCustomers.length === 0 ? (
+                          <div className="cust-empty">No results found</div>
+                        ) : (
+                          filteredCustomers.map((name) => (
+                            <button
+                              key={name}
+                              type="button"
+                              className="cust-item"
+                              onClick={() => chooseCustomer(name)}
+                              title={name}
+                            >
+                              {name}
+                            </button>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
@@ -864,17 +902,16 @@ export default function OrderList() {
                   options={[
                     "WABI SABI SUSTAINABILITY LLP",
                     "Brands4Less - Tilak Nagar",
-                     "Brands4Less - M3M Urbana",
-                     "Brands4Less-Rajori Garden inside (RJR)",
-                     "Rajori Garden outside (RJO)",
-                     "Brands4Less-Iffco Chock",
-                     "Brands4Less-Krishna Nagar",
-                     "Brands4Less-UP-AP",
-                     "Brands4Less-Udhyog Vihar",
+                    "Brands4Less - M3M Urbana",
+                    "Brands4Less-Rajori Garden inside (RJR)",
+                    "Rajori Garden outside (RJO)",
+                    "Brands4Less-Iffco Chock",
+                    "Brands4Less-Krishna Nagar",
+                    "Brands4Less-UP-AP",
+                    "Brands4Less-Udhyog Vihar",
                   ]}
                 />
               </div>
-
 
               <div className="ol-field">
                 <label className="ol-label">Discount</label>
@@ -882,10 +919,8 @@ export default function OrderList() {
                   value={discount}
                   onChange={setDiscount}
                   options={[]}
-                // later you can pass: ["All","10% Off","BOGO","FESTIVE50", ...]
                 />
               </div>
-
 
               {/* Row 2 */}
               <div className="ol-field">
@@ -897,7 +932,6 @@ export default function OrderList() {
                 />
               </div>
 
-
               <div className="ol-field">
                 <label className="ol-label">Store</label>
                 <SearchableSelect
@@ -906,7 +940,6 @@ export default function OrderList() {
                   options={["All", "In-Store", "Online"]}
                 />
               </div>
-
 
               <div className="ol-field">
                 <label className="ol-label">Channel</label>
@@ -925,12 +958,10 @@ export default function OrderList() {
                 />
               </div>
 
-
               <div className="ol-field">
                 <label className="ol-label">Order Status</label>
                 <OrderStatusSelect value={orderStatus} onChange={setOrderStatus} />
               </div>
-
 
               <div className="ol-field">
                 <label className="ol-label">Payment Status</label>
@@ -948,7 +979,6 @@ export default function OrderList() {
                 />
               </div>
 
-
               {/* Actions */}
               <div className="ol-filter-actions">
                 <button className="ol-btn-apply" type="button">
@@ -961,7 +991,7 @@ export default function OrderList() {
                     setDateRange("01/04/2025 - 31/03/2026");
                     setCustomer("");
                     setPayMode("All");
-                    setLocationCount([]);
+                    setSelectedLocations([]); // fixed
                     setDiscount("");
                     setOrderType("All");
                     setStore("All");
