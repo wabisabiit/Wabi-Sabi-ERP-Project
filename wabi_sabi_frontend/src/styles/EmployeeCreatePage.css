@@ -1,0 +1,235 @@
+/* ====== FIX: force 4-column grid + clean input look (scoped to create page) ====== */
+:root {
+  --create-max: 1100px;
+  --fld-h: 40px;
+  --gap-x: 20px;
+  --gap-y: 14px;
+}
+
+/* Page/container padding so card edges se chipka na rahe */
+.emp-wrap.emp-create {
+  padding: 18px 24px 24px;
+}
+
+/* Card: inner padding + max width */
+.emp-create .emp-card {
+  max-width: var(--create-max);
+  width: 100%;
+  margin: 0px 2px 18px;
+  padding: 16px 24px;
+  box-sizing: border-box;
+}
+
+/* ***** HARD OVERRIDES (in case any global CSS wins) ***** */
+.emp-create .emp-create-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(240px, 1fr)) !important;
+  gap: var(--gap-y) var(--gap-x) !important;
+  align-items: start;
+}
+
+.emp-create .emp-create-grid .f {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.emp-create .emp-create-grid .f.f-span2 {
+  grid-column: span 2;
+}
+
+/* Inputs: even if .inp class miss ho, look consistent */
+.emp-create .emp-card input,
+.emp-create .emp-card select,
+.emp-create .emp-card textarea {
+  height: var(--fld-h) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border: 1px solid #cfd6e1 !important;
+  border-radius: 5px !important;
+  background: #fff !important;
+  outline: none !important;
+  font-size: 14px !important;
+  padding: 0 12px !important;
+  color: #0f172a;
+}
+
+.emp-create .emp-card textarea {
+  min-height: var(--fld-h);
+  height: auto;
+  padding: 10px 12px !important;
+}
+
+.emp-create .emp-card select {
+  appearance: auto;
+  padding-right: 36px !important;
+}
+
+/* Labels */
+.emp-create .emp-create-grid .f label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+  letter-spacing: .2px;
+}
+
+.emp-create .req {
+  color: #ef4444;
+  margin-left: 4px;
+}
+
+/* Flags & actions spacing same width feel */
+.emp-create .emp-form-flags,
+.emp-create .emp-form-actions {
+  max-width: var(--create-max);
+}
+
+.emp-create .emp-form-flags {
+  margin-bottom: 10px;
+}
+
+.emp-create .emp-form-actions {
+  padding-top: 12px;
+}
+
+/* Buttons */
+.emp-create .btn.ghost {
+  background: #eef1f6;
+  color: #111827;
+  border: 0;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+}
+
+.emp-create .btn.primary {
+  background: #0ea5e9;
+  color: #fff;
+  border: 0;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.emp-create .btn.primary:hover {
+  background: #0b8dca;
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .emp-create .emp-create-grid {
+    grid-template-columns: repeat(3, minmax(240px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 992px) {
+  :root {
+    --create-max: 720px;
+  }
+  .emp-create .emp-create-grid {
+    grid-template-columns: repeat(2, minmax(240px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --create-max: 100%;
+  }
+  .emp-create .emp-card {
+    margin: 8px 12px 16px;
+    padding: 14px;
+  }
+  .emp-create .emp-create-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px 14px !important;
+  }
+}
+
+/* ===== Buttons right aligned ===== */
+.emp-create .emp-form-actions {
+  display: flex;
+  justify-content: flex-end; /* -> right side */
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  max-width: var(--create-max);
+}
+
+/* optional: buttons ka consistent look (same as before) */
+.emp-create .btn.ghost {
+  background: #eef1f6;
+  color: #111827;
+  border: 0;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+}
+
+.emp-create .btn.primary {
+  background: #0ea5e9;
+  color: #fff;
+  border: 0;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.emp-create .btn.primary:hover {
+  background: #0ea5e9;
+}
+
+/* ===== “Add Authentication Details” link – blue, normal text, no box ===== */
+.emp-create .link-auth {
+  display: inline-block;
+  margin: 8px 0 0; /* thoda spacing */
+  padding: 0; /* no box */
+  border: 0;
+  background: transparent;
+  color: #0ea5e9; /* blue */
+  font-weight: 600;
+  text-decoration: none; /* normal text */
+  line-height: 1.4;
+  max-width: 100%; /* text container ke andar rahe */
+  white-space: normal; /* wrap allowed */
+  cursor: pointer;
+  margin-left: 1px;
+}
+
+/* card popup/overlay ko clip na kare */
+.emp-create .emp-card {
+  overflow: visible; /* <-- important */
+}
+
+/* grid cell shrink + full width controls */
+.emp-create .emp-card .f,
+.emp-create .emp-card .f > * {
+  min-width: 0;
+}
+
+.emp-create .emp-card .f .inp {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* select ko input ke exactly barabar banaye */
+.emp-create .emp-card select.inp {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding-right: 36px !important; /* arrow space */
+  line-height: normal;
+  height: var(--fld-h) !important;
+  border: 1px solid #cfd6e1 !important;
+  border-radius: 5px !important;
+  background: #fff !important;
+  color: #0f172a;
+  appearance: auto;
+  -webkit-appearance: auto;
+  -moz-appearance: auto;
+}

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/EmployeePage.css";
 
 const DATA = [
@@ -8,9 +9,9 @@ const DATA = [
   { id: 4, name: "Krishna Pandit", phone: "+91-9718068241", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
 ];
 
-/* ====== Controls used by EmployeePage only ====== */
+/* ========= Filter controls ========= */
 
-// Multi-select Location (pill + popup)
+// Location multi-select (pill + popup)
 function EmpLocationSelect({ value = [], onChange, options = [] }) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
@@ -19,15 +20,19 @@ function EmpLocationSelect({ value = [], onChange, options = [] }) {
   const filtered = React.useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return options;
-    return options.filter(o => o.toLowerCase().includes(s));
+    return options.filter((o) => o.toLowerCase().includes(s));
   }, [q, options]);
 
   React.useEffect(() => {
-    const onDoc = (e) => wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
+    const onDoc = (e) =>
+      wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const toggle = (opt) => {
@@ -38,26 +43,38 @@ function EmpLocationSelect({ value = [], onChange, options = [] }) {
 
   return (
     <div className="emp-loc" ref={wrapRef}>
-      <button type="button" className="emp-loc-pill" onClick={() => setOpen(v => !v)}>
+      <button
+        type="button"
+        className="emp-loc-pill"
+        onClick={() => setOpen((v) => !v)}
+      >
         <span className="emp-loc-text">Select Location</span>
         <span className="emp-loc-badge">{value.length}</span>
-        <span className="material-icons emp-loc-close">close</span>
+        <span className="material-icons emp-loc-close">expand_more</span>
       </button>
 
       {open && (
         <div className="emp-loc-pop">
           <div className="emp-loc-search">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder=""
+            />
           </div>
           <div className="emp-loc-list">
             {filtered.length === 0 ? (
               <div className="emp-loc-empty">No results</div>
             ) : (
-              filtered.map(opt => {
+              filtered.map((opt) => {
                 const checked = value.includes(opt);
                 return (
                   <label key={opt} className="emp-loc-item" title={opt}>
-                    <input type="checkbox" checked={checked} onChange={() => toggle(opt)} />
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(opt)}
+                    />
                     <span className="emp-loc-txt">{opt}</span>
                   </label>
                 );
@@ -70,8 +87,13 @@ function EmpLocationSelect({ value = [], onChange, options = [] }) {
   );
 }
 
-// Single-select Name (search + “No results”)
-function EmpNameSelect({ value, onChange, options = [], placeholder = "Select Name" }) {
+// Name single-select (search + "No results")
+function EmpNameSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select Name",
+}) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
   const wrapRef = React.useRef(null);
@@ -79,22 +101,30 @@ function EmpNameSelect({ value, onChange, options = [], placeholder = "Select Na
   const filtered = React.useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return options;
-    return options.filter(o => o.toLowerCase().includes(s));
+    return options.filter((o) => o.toLowerCase().includes(s));
   }, [q, options]);
 
   React.useEffect(() => {
-    const onDoc = (e) => wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
+    const onDoc = (e) =>
+      wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const label = value || placeholder;
 
   return (
     <div className="emp-nselect" ref={wrapRef}>
-      <button className={`emp-ns-btn ${open ? "is-open" : ""}`} type="button" onClick={() => setOpen(v => !v)}>
+      <button
+        className={`emp-ns-btn ${open ? "is-open" : ""}`}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+      >
         <span className="emp-ns-value">{label}</span>
         <span className="material-icons emp-ns-caret">expand_more</span>
       </button>
@@ -102,18 +132,26 @@ function EmpNameSelect({ value, onChange, options = [], placeholder = "Select Na
       {open && (
         <div className="emp-ns-pop" role="listbox">
           <div className="emp-ns-search">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search..." />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search..."
+            />
           </div>
           <div className="emp-ns-list">
             {filtered.length === 0 ? (
               <div className="emp-ns-empty">No results</div>
             ) : (
-              filtered.map(opt => (
+              filtered.map((opt) => (
                 <button
                   key={opt}
                   type="button"
                   className={`emp-ns-item ${value === opt ? "is-selected" : ""}`}
-                  onClick={() => { onChange(opt); setOpen(false); setQ(""); }}
+                  onClick={() => {
+                    onChange(opt);
+                    setOpen(false);
+                    setQ("");
+                  }}
                 >
                   {opt}
                 </button>
@@ -126,59 +164,93 @@ function EmpNameSelect({ value, onChange, options = [], placeholder = "Select Na
   );
 }
 
+/* ========= Page ========= */
+
 export default function EmployeePage() {
   const [pageSize, setPageSize] = useState(15);
   const [query, setQuery] = useState("");
+
+  // filter states
+  const [openFilter, setOpenFilter] = useState(false);
   const [empLocations, setEmpLocations] = useState([]);
   const [empName, setEmpName] = useState("");
-  const [openFilter, setOpenFilter] = useState(false);
+
+  // export menu state
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = React.useRef(null);
 
-  const NAME_OPTIONS = useMemo(() => DATA.map(d => d.name), []);
+  const navigate = useNavigate();
 
-  // derive filtered FIRST (fixes white-screen bug)
+  const NAME_OPTIONS = useMemo(() => DATA.map((d) => d.name), []);
+
+  // search + name + location combined filter
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    // (Optional) you can also filter by empLocations/empName if desired
-    const base = DATA;
-    const qMatch = (r) =>
-      [r.name, r.phone, r.email, r.branch].some((v) =>
-        String(v || "").toLowerCase().includes(q)
-      );
-    return q ? base.filter(qMatch) : base;
-  }, [query]);
-
-  // export dropdown: close on outside click
-  React.useEffect(() => {
-    const onDoc = (e) => exportRef.current && !exportRef.current.contains(e.target) && setExportOpen(false);
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+    return DATA.filter((r) => {
+      const matchesSearch =
+        !q ||
+        [r.name, r.phone, r.email, r.branch].some((v) =>
+          String(v || "").toLowerCase().includes(q)
+        );
+      const matchesName = !empName || r.name === empName;
+      const matchesLoc =
+        empLocations.length === 0 || empLocations.includes(r.branch);
+      return matchesSearch && matchesName && matchesLoc;
+    });
+  }, [query, empName, empLocations]);
 
   const showingFrom = filtered.length ? 1 : 0;
   const showingTo = Math.min(filtered.length, pageSize);
 
-  // ---- export helpers ----
+  // ======= Export helpers =======
+  React.useEffect(() => {
+    const onDoc = (e) =>
+      exportRef.current && !exportRef.current.contains(e.target) && setExportOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
   const headers = ["#", "Name", "Mobile No.", "Email", "Assign Branch", "Status"];
   const getRows = () =>
-    filtered.slice(0, pageSize).map(r => [
-      r.id, r.name, r.phone, r.email || "", r.branch, r.status,
+    filtered.slice(0, pageSize).map((r) => [
+      r.id,
+      r.name,
+      r.phone,
+      r.email || "",
+      r.branch,
+      r.status,
     ]);
 
   const download = (blob, filename) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = filename; a.click();
+    a.href = url;
+    a.download = filename;
+    a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportExcel = () => {
     const rows = getRows();
-    const th = headers.map(h => `<th style="font-weight:600;border:1px solid #d9dee6;text-align:left;padding:4px 6px;">${h}</th>`).join("");
-    const tr = rows.map(r => `<tr>${r.map(c =>
-      `<td style="border:1px solid #d9dee6;padding:4px 6px;">${String(c ?? "")}</td>`
-    ).join("")}</tr>`).join("");
+    const th = headers
+      .map(
+        (h) =>
+          `<th style="font-weight:600;border:1px solid #d9dee6;text-align:left;padding:4px 6px;">${h}</th>`
+      )
+      .join("");
+    const tr = rows
+      .map(
+        (r) =>
+          `<tr>${r
+            .map(
+              (c) =>
+                `<td style="border:1px solid #d9dee6;padding:4px 6px;">${String(
+                  c ?? ""
+                )}</td>`
+            )
+            .join("")}</tr>`
+      )
+      .join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
     <body><table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></body></html>`;
@@ -187,34 +259,47 @@ export default function EmployeePage() {
     setExportOpen(false);
   };
 
-  const pdfEscape = (s = "") => String(s).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  const pdfEscape = (s = "") =>
+    String(s).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+
   const exportPDF = () => {
     const rows = getRows();
-    const lines = [
-      headers.join("  |  "),
-      ...rows.map(r => r.join("  |  ")),
-    ];
+    const lines = [headers.join("  |  "), ...rows.map((r) => r.join("  |  "))];
 
     let pdf = `%PDF-1.4\n`;
     const parts = [];
-    const add = (s) => { const off = pdf.length; pdf += s; parts.push(off); };
+    const add = (s) => {
+      const off = pdf.length;
+      pdf += s;
+      parts.push(off);
+    };
 
     let stream = "BT /F1 10 Tf 36 806 Td 14 TL\n";
     stream += `(Employees Export) Tj T* \n`;
     stream += `0 -8 Td 0 g 0.5 w 543 0 m S 0 0 Td 0 g 1 w\n`;
-    lines.forEach(line => { stream += `(${pdfEscape(line)}) Tj T* \n`; });
+    lines.forEach((line) => {
+      stream += `(${pdfEscape(line)}) Tj T* \n`;
+    });
     stream += "ET\n";
 
     add(`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`);
-    add(`2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n`);
-    add(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n`);
-    add(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`);
+    add(
+      `2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n`
+    );
+    add(
+      `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n`
+    );
+    add(
+      `4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`
+    );
     add(`5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n`);
 
     const xrefStart = pdf.length;
     const pad = (n) => String(n).padStart(10, "0");
     pdf += `xref\n0 6\n0000000000 65535 f \n`;
-    parts.forEach(off => { pdf += `${pad(off)} 00000 n \n`; });
+    parts.forEach((off) => {
+      pdf += `${pad(off)} 00000 n \n`;
+    });
     pdf += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
 
     download(new Blob([pdf], { type: "application/pdf" }), "employees.pdf");
@@ -231,19 +316,27 @@ export default function EmployeePage() {
 
       {/* Card */}
       <div className="emp-card">
-        {/* Toolbar (right-aligned) */}
+        {/* Toolbar */}
         <div className="emp-toolbar">
           <div className="flex-spacer" />
 
           {/* Export dropdown */}
           <div className="emp-export" ref={exportRef}>
-            <button className="btn-icon" title="Export" onClick={() => setExportOpen(v => !v)}>
+            <button
+              className="btn-icon"
+              title="Export"
+              onClick={() => setExportOpen((v) => !v)}
+            >
               <span className="material-icons">file_download</span>
             </button>
             {exportOpen && (
               <div className="emp-export-pop" role="menu">
-                <button className="emp-export-item" onClick={exportExcel}>Excel</button>
-                <button className="emp-export-item" onClick={exportPDF}>PDF</button>
+                <button className="emp-export-item" onClick={exportExcel}>
+                  Excel
+                </button>
+                <button className="emp-export-item" onClick={exportPDF}>
+                  PDF
+                </button>
               </div>
             )}
           </div>
@@ -255,13 +348,15 @@ export default function EmployeePage() {
             title="Rows per page"
           >
             {[10, 15, 25, 50, 100].map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
 
           <button
             className={`btn filter ${openFilter ? "is-active" : ""}`}
-            onClick={() => setOpenFilter(v => !v)}
+            onClick={() => setOpenFilter((v) => !v)}
             type="button"
           >
             <span className="material-icons">filter_alt</span>
@@ -277,10 +372,16 @@ export default function EmployeePage() {
             />
           </div>
 
-          <button className="btn primary">Create New</button>
+          {/* navigate to Create page (with sidebar) */}
+          <button
+            className="btn primary"
+            onClick={() => navigate("/admin/employee/new")}
+          >
+            Create New
+          </button>
         </div>
 
-        {/* Filter strip (Select Location + Select Name) */}
+        {/* Filter strip */}
         {openFilter && (
           <div className="emp-filterstrip">
             <div className="emp-field">
@@ -332,7 +433,11 @@ export default function EmployeePage() {
               {filtered.slice(0, pageSize).map((r) => (
                 <tr key={r.id}>
                   <td className="col-sr">{r.id}</td>
-                  <td><a className="emp-link" href="#!">{r.name}</a></td>
+                  <td>
+                    <a className="emp-link" href="#!">
+                      {r.name}
+                    </a>
+                  </td>
                   <td>{r.phone}</td>
                   <td>{r.email || ""}</td>
                   <td>{r.branch}</td>
@@ -358,7 +463,9 @@ export default function EmployeePage() {
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="empty-row">No employees found.</td>
+                  <td colSpan={7} className="empty-row">
+                    No employees found.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -374,7 +481,9 @@ export default function EmployeePage() {
             <button className="page arrow" type="button">
               <span className="material-icons">chevron_left</span>
             </button>
-            <button className="page current" type="button">1</button>
+            <button className="page current" type="button">
+              1
+            </button>
             <button className="page arrow" type="button">
               <span className="material-icons">chevron_right</span>
             </button>

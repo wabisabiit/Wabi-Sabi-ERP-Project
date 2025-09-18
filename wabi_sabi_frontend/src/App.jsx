@@ -13,6 +13,7 @@ import CreditNotePage from "./components/CreditNotePage";
 import SalesRegisterPage from "./components/SalesRegisterPage";
 import OrderList from "./components/OrderListPage";
 import EmployeePage from "./components/EmployeePage";
+import EmployeeCreatePage from "./components/EmployeeCreatePage"; // ✅ NEW
 import "./App.css";
 
 function POSLayout() {
@@ -36,13 +37,11 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
 }
-
-// const SalesRegisterPage = () => <div style={{ padding: 16 }}>Sales Register</div>;
 
 export default function App() {
   const navigate = useNavigate();
@@ -55,8 +54,6 @@ export default function App() {
       {/* POS → New */}
       <Route path="/new" element={<POSLayout />} />
 
-
-
       {/* Credit note page */}
       <Route
         path="/credit-note"
@@ -67,6 +64,7 @@ export default function App() {
         }
       />
 
+      {/* Order List */}
       <Route
         path="/order-list"
         element={
@@ -76,8 +74,7 @@ export default function App() {
         }
       />
 
-      {/* Employee Page */}
-
+      {/* Employee List */}
       <Route
         path="/admin/employee"
         element={
@@ -87,6 +84,17 @@ export default function App() {
         }
       />
 
+      {/* ✅ Employee Create (exact-design page) */}
+      <Route
+        path="/admin/employee/new"
+        element={
+          <SidebarLayout>
+            <EmployeeCreatePage />
+          </SidebarLayout>
+        }
+      />
+
+      {/* Sales Register */}
       <Route
         path="/sales-register"
         element={
@@ -95,9 +103,6 @@ export default function App() {
           </SidebarLayout>
         }
       />
-
-      {/* Sales register page */}
-
 
       {/* Multiple Pay screen */}
       <Route
