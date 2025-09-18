@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom"; // ⬅️ add
+import { NavLink, useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
-
 
 export default function Sidebar({ open, onClose, persistent = false }) {
   const panelRef = useRef(null);
   const [expandInventory, setExpandInventory] = useState(false);
-  const [expandPOS, setExpandPOS] = useState(true); // POS open by default
+  const [expandPOS, setExpandPOS] = useState(true);     // POS open by default
+  const [expandAdmin, setExpandAdmin] = useState(true); // Admin open by default
   const navigate = useNavigate();
 
   // close on ESC
@@ -26,10 +26,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
     focusable && focusable.focus();
   }, [open]);
 
-  // optional: close sidebar when the route changes via browser nav
+  // subscribe to nav changes (no-op but keeps hook parity)
   useEffect(() => {
     const unlisten = navigate((_, { preventScrollReset }) => {
-      // no-op, but ensures hook subscription; using NavLink onClick already closes.
       preventScrollReset = true;
     });
     return () => {
@@ -37,19 +36,14 @@ export default function Sidebar({ open, onClose, persistent = false }) {
     };
   }, [navigate]);
 
-  const linkClass = ({ isActive }) =>
-    `sb-subitem${isActive ? " active" : ""}`;
-
-  const handleNav = (to) => () => {
-    onClose?.();
-    // NavLink will handle navigation; this is only for keyboard support if needed
-  };
+  const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
+  const handleNav = () => onClose?.();
 
   return (
     <>
       {/* overlay */}
       <div
-      className={`sb-overlay ${open ? "show" : ""} ${persistent ? "persistent-hide" : ""}`}
+        className={`sb-overlay ${open ? "show" : ""} ${persistent ? "persistent-hide" : ""}`}
         onClick={onClose}
         aria-hidden={!open}
       />
@@ -61,7 +55,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
         role="navigation"
         aria-label="Main menu"
       >
-        {/* header row with collapse icon */}
+        {/* header */}
         <div className="sb-top">
           <button className="sb-burger" onClick={onClose} aria-label="Close">
             <span className="material-icons">menu</span>
@@ -71,13 +65,35 @@ export default function Sidebar({ open, onClose, persistent = false }) {
 
         {/* items */}
         <nav className="sb-items">
-          {/* Dashboard (optional route) */}
+          {/* Dashboard */}
           <NavLink to="/new" className="sb-item" onClick={onClose}>
             <span className="material-icons sb-ic">dashboard</span>
             <span className="sb-text">Dashboard</span>
           </NavLink>
 
-          {/* Inventory (collapsible) */}
+          {/* Admin (NEW) */}
+          <div className="sb-group">
+            <button
+              className="sb-item"
+              onClick={() => setExpandAdmin((v) => !v)}
+              aria-expanded={expandAdmin}
+              aria-controls="sb-admin-sub"
+            >
+              <span className="material-icons sb-ic">admin_panel_settings</span>
+              <span className="sb-text">Admin</span>
+              <span className="material-icons sb-caret">
+                {expandAdmin ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+
+            <div id="sb-admin-sub" className={`sb-sub ${expandAdmin ? "show" : ""}`}>
+              <NavLink to="/admin/employee" className={linkClass} onClick={handleNav}>
+                Employee
+              </NavLink>
+            </div>
+          </div>
+
+          {/* Inventory */}
           <div className="sb-group">
             <button
               className="sb-item"
@@ -91,18 +107,14 @@ export default function Sidebar({ open, onClose, persistent = false }) {
                 {expandInventory ? "expand_less" : "expand_more"}
               </span>
             </button>
-            <div
-              id="sb-inventory-sub"
-              className={`sb-sub ${expandInventory ? "show" : ""}`}
-            >
-              {/* placeholders — hook these to real routes when ready */}
+            <div id="sb-inventory-sub" className={`sb-sub ${expandInventory ? "show" : ""}`}>
               <a className="sb-subitem" href="#stock">Stock</a>
               <a className="sb-subitem" href="#transfers">Transfers</a>
               <a className="sb-subitem" href="#adjustments">Adjustments</a>
             </div>
           </div>
 
-          {/* POS (collapsible) */}
+          {/* POS */}
           <div className="sb-group">
             <button
               className="sb-item"
@@ -118,40 +130,23 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
 
             <div id="sb-pos-sub" className={`sb-sub ${expandPOS ? "show" : ""}`}>
-              {/* ✅ use NavLink so URL -> /new, /order-list, ... and active class works */}
-              <NavLink to="/new" className={linkClass} onClick={onClose}>
-                New
-              </NavLink>
-              <NavLink to="/order-list" className={linkClass} onClick={onClose}>
-                Order List
-              </NavLink>
-              <NavLink to="/credit-note" className={linkClass} onClick={onClose}>
-                Credit Note
-              </NavLink>
-              <NavLink to="/sales-register" className={linkClass} onClick={onClose}>
-                Sales Register
-              </NavLink>
+              <NavLink to="/new" className={linkClass} onClick={onClose}>New</NavLink>
+              <NavLink to="/order-list" className={linkClass} onClick={onClose}>Order List</NavLink>
+              <NavLink to="/credit-note" className={linkClass} onClick={onClose}>Credit Note</NavLink>
+              <NavLink to="/sales-register" className={linkClass} onClick={onClose}>Sales Register</NavLink>
             </div>
           </div>
         </nav>
 
-        {/* footer helper / socials */}
+        {/* footer */}
         <div className="sb-foot">
           <div className="sb-tip-title">Want insider tips &amp; updates?</div>
           <div className="sb-tip-sub">Follow us:</div>
           <div className="sb-socials">
-            <a href="#ig" aria-label="Instagram">
-              <span className="material-icons">photo_camera</span>
-            </a>
-            <a href="#fb" aria-label="Facebook">
-              <span className="material-icons">thumb_up</span>
-            </a>
-            <a href="#li" aria-label="LinkedIn">
-              <span className="material-icons">work</span>
-            </a>
-            <a href="#yt" aria-label="YouTube">
-              <span className="material-icons">play_circle_filled</span>
-            </a>
+            <a href="#ig" aria-label="Instagram"><span className="material-icons">photo_camera</span></a>
+            <a href="#fb" aria-label="Facebook"><span className="material-icons">thumb_up</span></a>
+            <a href="#li" aria-label="LinkedIn"><span className="material-icons">work</span></a>
+            <a href="#yt" aria-label="YouTube"><span className="material-icons">play_circle_filled</span></a>
           </div>
         </div>
       </aside>

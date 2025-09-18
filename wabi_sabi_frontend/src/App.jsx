@@ -12,6 +12,7 @@ import MultiplePay from "./components/MultiplePay";
 import CreditNotePage from "./components/CreditNotePage";
 import SalesRegisterPage from "./components/SalesRegisterPage";
 import OrderList from "./components/OrderListPage";
+import EmployeePage from "./components/EmployeePage";
 import "./App.css";
 
 function POSLayout() {
@@ -35,7 +36,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -54,7 +55,7 @@ export default function App() {
       {/* POS → New */}
       <Route path="/new" element={<POSLayout />} />
 
-      
+
 
       {/* Credit note page */}
       <Route
@@ -65,8 +66,8 @@ export default function App() {
           </SidebarLayout>
         }
       />
-      
-       <Route
+
+      <Route
         path="/order-list"
         element={
           <SidebarLayout>
@@ -75,7 +76,18 @@ export default function App() {
         }
       />
 
-       <Route
+      {/* Employee Page */}
+
+      <Route
+        path="/admin/employee"
+        element={
+          <SidebarLayout>
+            <EmployeePage />
+          </SidebarLayout>
+        }
+      />
+
+      <Route
         path="/sales-register"
         element={
           <SidebarLayout>
@@ -85,7 +97,7 @@ export default function App() {
       />
 
       {/* Sales register page */}
-    
+
 
       {/* Multiple Pay screen */}
       <Route
