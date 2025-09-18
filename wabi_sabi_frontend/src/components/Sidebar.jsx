@@ -90,6 +90,10 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/admin/employee" className={linkClass} onClick={handleNav}>
                 Employee
               </NavLink>
+
+              <NavLink to="/admin/outlet" className={linkClass} onClick={handleNav}>
+                Outlet
+              </NavLink>
             </div>
           </div>
 
