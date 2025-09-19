@@ -73,12 +73,21 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             <span className="sb-text">Dashboard</span>
           </NavLink>
 
-          {/* Contact */}
 
-          <NavLink to="/contact" className={linkClass} onClick={onClose}>
+          <div className="sb-group">
+            {/* Contact */}
+
+          <NavLink
+            to="/contact"
+            className={({ isActive }) => `sb-item${isActive ? " active" : ""}`}
+            onClick={onClose}
+          >
             <span className="material-icons sb-ic">contacts</span>
             <span className="sb-text">Contact</span>
           </NavLink>
+          
+          </div>
+
 
           {/* Admin (NEW) */}
           <div className="sb-group">

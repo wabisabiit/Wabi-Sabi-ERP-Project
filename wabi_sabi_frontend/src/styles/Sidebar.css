@@ -80,7 +80,7 @@
 }
 .sb-item:hover{ background: var(--sb-bg-2); }
 .sb-ic{ font-size: 20px; opacity: .95; }
-.sb-text{ text-align: left; }
+.sb-text{ text-align: left; font-size: 13px;}
 .sb-caret{ margin-left: auto; opacity: .8; }
 
 .sb-group{ margin-top: 2px; }
@@ -160,4 +160,35 @@
   background:#0ea5e9;
   color:#fff;
   border-radius:6px;
+}
+
+/* top-level items (Dashboard, Contact, etc.) */
+.sb-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px 1fr 24px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px;
+  background: transparent;
+  border: 0;
+  color: var(--sb-text);
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;            /* ← remove underline */
+}
+.sb-item:hover {
+  background: var(--sb-bg-2);
+  text-decoration: none;            /* ← keep it off on hover */
+}
+/* active state for top-level items */
+.sb-item.active {
+  background: #0ea5e9;  /* blue */
+  color: #fff;          /* white text */
+}
+
+/* ensure icon/text inside also flip to white */
+.sb-item.active .material-icons,
+.sb-item.active .sb-text {
+  color: #fff;
 }
