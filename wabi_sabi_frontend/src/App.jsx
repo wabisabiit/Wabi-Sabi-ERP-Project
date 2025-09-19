@@ -13,9 +13,11 @@ import CreditNotePage from "./components/CreditNotePage";
 import SalesRegisterPage from "./components/SalesRegisterPage";
 import OrderList from "./components/OrderListPage";
 import EmployeePage from "./components/EmployeePage";
-import EmployeeCreatePage from "./components/EmployeeCreatePage"; // ✅ NEW
+import EmployeeCreatePage from "./components/EmployeeCreatePage";
 import OutletPage from "./components/OutletPage";
-import Contact from "./components/ContactPage";
+import OutletCreatePage from "./components/OutletCreatePage";
+import BarcodeUtilityPage from "./components/BarcodeUtilityPage"; // ✅ Utilities > Barcode
+import ContactPage from "./components/ContactPage";
 import "./App.css";
 
 function POSLayout() {
@@ -39,6 +41,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
+      {/* Sidebar forced open + persistent so page hamesha sidebar ke saath dikhe */}
       <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
@@ -50,105 +53,46 @@ export default function App() {
 
   return (
     <Routes>
-      {/* default: / -> /new */}
-      <Route path="/" element={<Navigate to="/new" replace />} />
+  <Route path="/" element={<Navigate to="/new" replace />} />
+  <Route path="/new" element={<POSLayout />} />
 
-      {/* POS → New */}
-      <Route path="/new" element={<POSLayout />} />
+  {/* NEW: Contact with sidebar */}
+  <Route path="/contact" element={<SidebarLayout><ContactPage /></SidebarLayout>} />
 
-      {/* Credit note page */}
-      <Route
-        path="/credit-note"
-        element={
-          <SidebarLayout>
-            <CreditNotePage />
-          </SidebarLayout>
-        }
+  <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
+  <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
+
+  {/* Employees */}
+  <Route path="/admin/employee" element={<SidebarLayout><EmployeePage /></SidebarLayout>} />
+  <Route path="/admin/employee/new" element={<SidebarLayout><EmployeeCreatePage /></SidebarLayout>} />
+
+  {/* Outlets */}
+  <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
+  <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
+
+  <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
+
+  {/* Utilities > Barcode */}
+  <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
+  <Route path="/Utilities/Barcode Utility" element={<Navigate to="/utilities/barcode" replace />} />
+
+  <Route
+    path="/multiple-pay"
+    element={
+      <MultiplePay
+        cart={{
+          customerType: "Walk In Customer",
+          items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
+          roundoff: 0,
+        }}
+        onBack={() => navigate(-1)}
+        onProceed={() => navigate("/new")}
       />
+    }
+  />
 
-      {/* Order List */}
-      <Route
-        path="/order-list"
-        element={
-          <SidebarLayout>
-            <OrderList />
-          </SidebarLayout>
-        }
-      />
+  <Route path="*" element={<Navigate to="/new" replace />} />
+</Routes>
 
-      {/* Employee List */}
-      <Route
-        path="/admin/employee"
-        element={
-          <SidebarLayout>
-            <EmployeePage />
-          </SidebarLayout>
-        }
-      />
-      <Route
-        path="/admin/outlet"
-        element={
-          <SidebarLayout>
-            <OutletPage />
-          </SidebarLayout>
-        }
-      />
-
-      {/* Outlet
-
-      <Route path="/admin/outlet" element={<OutletPage />} /> */}
-       
-       {/* Contact */}
-      <Route
-        path="/contact"
-        element={
-          <SidebarLayout>
-            <Contact />
-          </SidebarLayout>
-        }
-      />
-
-      {/* ✅ Employee Create (exact-design page) */}
-      <Route
-        path="/admin/employee/new"
-        element={
-          <SidebarLayout>
-            <EmployeeCreatePage />
-          </SidebarLayout>
-        }
-      />
-
-      {/* Sales Register */}
-      <Route
-        path="/sales-register"
-        element={
-          <SidebarLayout>
-            <SalesRegisterPage />
-          </SidebarLayout>
-        }
-      />
-
-      {/* Multiple Pay screen */}
-      <Route
-        path="/multiple-pay"
-        element={
-          <MultiplePay
-            cart={{
-              customerType: "Walk In Customer",
-              items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
-              roundoff: 0,
-            }}
-            onBack={() => navigate(-1)}
-            onProceed={(payload) => {
-              console.log("Proceed clicked:", payload);
-              navigate("/new");
-            }}
-          />
-        }
-      />
-
-      {/* fallback */}
-      <Route path="*" element={<Navigate to="/new" replace />} />
-    </Routes>
   );
 }

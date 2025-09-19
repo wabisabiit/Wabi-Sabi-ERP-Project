@@ -1,0 +1,102 @@
+/* ===== Outlet Create – COMPACT but comfy (no-scroll feel) ===== */
+
+/* tweak yahan se: thoda sa taller + tight gaps */
+:root{
+  --oc-h: 34px;        /* input height (↑ from 30) */
+  --oc-gap-y: 8px;     /* row gap (↑ from 6) */
+  --oc-gap-x: 12px;    /* col gap */
+  --oc-pad: 14px;      /* card padding (↑ a bit) */
+  --oc-lbl: 12.5px;    /* label font size */
+  --oc-fs: 13px;       /* input font size (↑ hair) */
+  --oc-btn-h: 34px;    /* button height */
+}
+
+/* outer spacing: small so page scroll na aaye */
+.out-create-wrap{ padding:14px 18px 16px; }
+.out-create-bar{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+.out-create-bar h1{ font-size:18px; font-weight:700; margin:0; }
+.home-ico{ color:#64748b; }
+
+/* card width & padding */
+.out-create-card{
+  background:#fff; border:1px solid #e6e9ef; border-radius:10px;
+  padding:var(--oc-pad) calc(var(--oc-pad) + 6px);
+  box-shadow:0 1px 2px rgba(16,24,40,.04);
+  overflow:visible;              /* dropdowns clip na hon */
+}
+
+/* grid: exact 4 columns; compact gaps; perfect alignment */
+.oc-grid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(230px,1fr));
+  gap:var(--oc-gap-y) var(--oc-gap-x);
+  align-items:start;
+}
+.f{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.f label{ font-size:var(--oc-lbl); color:#0f172a; font-weight:600; line-height:1.2; }
+.req{ color:#ef4444; margin-left:3px; }
+.f.f-span2{ grid-column:span 2; }
+.f.f-empty{ visibility:hidden; }
+
+/* unified controls (select/input/textarea exactly same width & baseline) */
+.inp,
+select.inp,
+textarea.inp{
+  height:var(--oc-h);
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #cfd6e1;
+  border-radius:6px;
+  background:#fff;
+  outline:none;
+  font-size:var(--oc-fs);
+  line-height:calc(var(--oc-h) - 2px);
+  padding:0 10px;              /* a little more padding */
+}
+.inp::placeholder{ color:#9aa3b2; }
+.inp:focus{ border-color:#9db9ff; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+
+/* selects: arrow space + native look */
+select.inp{
+  appearance:auto;
+  -webkit-appearance:auto;
+  -moz-appearance:auto;
+  padding-right:30px;
+  line-height:normal;
+}
+
+/* textarea: slightly taller but compact */
+.ta{
+  min-height:calc(var(--oc-h) + 16px);   /* ~50px */
+  height:auto;
+  padding:8px 10px;
+  resize:vertical;
+}
+
+/* actions (right aligned) */
+.out-form-actions{
+  margin-top:12px;
+  display:flex; justify-content:flex-end; gap:10px;
+}
+.btn{
+  height:var(--oc-btn-h);
+  padding:0 14px;
+  border-radius:8px;
+  border:1px solid #dfe3ea;
+  background:#f9fafb;
+  font-weight:700; font-size:12.5px;
+}
+.btn.ghost{ background:#eef1f6; color:#111827; border:0; }
+.btn.primary{ background:#0ea5e9; color:#fff; border:0; }
+.btn.primary:hover{ background:#0b8dca; }
+
+/* responsive: same pattern, compact */
+@media (max-width: 1200px){
+  .oc-grid{ grid-template-columns:repeat(3, minmax(220px,1fr)); }
+}
+@media (max-width: 900px){
+  .oc-grid{ grid-template-columns:repeat(2, minmax(220px,1fr)); }
+}
+@media (max-width: 640px){
+  .oc-grid{ grid-template-columns:1fr; }
+}

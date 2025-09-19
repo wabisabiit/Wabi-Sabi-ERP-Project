@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "../styles/Contact.css";
+import "../styles/ContactPage.css";
 
 const ROWS = [
   { sr: 1, name: "Brands 4 less – Ansal Plaza – – Brands 4 less – Ansal Plaza", contact: "+91–8868964450", whatsapp: "+91–8868964450", gstin: "07AADFW9945P1Z6", createdBy: "mail@harmeet.com", mobileStatus: "Un-verified", status: "ACTIVE", loyalty: "0.00" },

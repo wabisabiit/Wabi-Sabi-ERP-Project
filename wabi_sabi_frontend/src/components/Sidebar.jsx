@@ -7,6 +7,10 @@ export default function Sidebar({ open, onClose, persistent = false }) {
   const [expandInventory, setExpandInventory] = useState(false);
   const [expandPOS, setExpandPOS] = useState(true);     // POS open by default
   const [expandAdmin, setExpandAdmin] = useState(true); // Admin open by default
+
+  // NEW: Utilities section state (closed by default)
+  const [expandUtilities, setExpandUtilities] = useState(false);
+
   const navigate = useNavigate();
 
   // close on ESC
@@ -38,8 +42,6 @@ export default function Sidebar({ open, onClose, persistent = false }) {
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
   const handleNav = () => onClose?.();
-
-
 
   return (
     <>
@@ -73,23 +75,19 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             <span className="sb-text">Dashboard</span>
           </NavLink>
 
-
           <div className="sb-group">
             {/* Contact */}
-
-          <NavLink
-            to="/contact"
-            className={({ isActive }) => `sb-item${isActive ? " active" : ""}`}
-            onClick={onClose}
-          >
-            <span className="material-icons sb-ic">contacts</span>
-            <span className="sb-text">Contact</span>
-          </NavLink>
-          
+            <NavLink
+              to="/contact"
+              className={({ isActive }) => `sb-item${isActive ? " active" : ""}`}
+              onClick={onClose}
+            >
+              <span className="material-icons sb-ic">contacts</span>
+              <span className="sb-text">Contact</span>
+            </NavLink>
           </div>
 
-
-          {/* Admin (NEW) */}
+          {/* Admin */}
           <div className="sb-group">
             <button
               className="sb-item"
@@ -108,7 +106,6 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/admin/employee" className={linkClass} onClick={handleNav}>
                 Employee
               </NavLink>
-
               <NavLink to="/admin/outlet" className={linkClass} onClick={handleNav}>
                 Outlet
               </NavLink>
@@ -156,6 +153,32 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/order-list" className={linkClass} onClick={onClose}>Order List</NavLink>
               <NavLink to="/credit-note" className={linkClass} onClick={onClose}>Credit Note</NavLink>
               <NavLink to="/sales-register" className={linkClass} onClick={onClose}>Sales Register</NavLink>
+            </div>
+          </div>
+
+          {/* NEW: Utilities */}
+          <div className="sb-group">
+            <button
+              className="sb-item"
+              onClick={() => setExpandUtilities((v) => !v)}
+              aria-expanded={expandUtilities}
+              aria-controls="sb-utils-sub"
+            >
+              <span className="material-icons sb-ic">build</span>
+              <span className="sb-text">Utilities</span>
+              <span className="material-icons sb-caret">
+                {expandUtilities ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+
+            <div id="sb-utils-sub" className={`sb-sub ${expandUtilities ? "show" : ""}`}>
+              <NavLink
+                to="/utilities/barcode"
+                className={linkClass}
+                onClick={handleNav}
+              >
+                Barcode Utility
+              </NavLink>
             </div>
           </div>
         </nav>

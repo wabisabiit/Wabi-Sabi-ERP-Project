@@ -1,0 +1,178 @@
+/* ===== safety ===== */
+html, body { overflow-x: hidden; }
+* { box-sizing: border-box; }
+
+/* ===== theme (screenshot tuned) ===== */
+:root{
+  --surface:#eef3fb;
+  --card:#ffffff;
+  --border:#e7ebf3;
+  --shadow:0 6px 16px rgba(17,24,39,.06);
+  --text:#1f2937;
+  --muted:#6b7280;
+  --primary:#2f8af5;
+  --primary-800:#1f6fe0;
+  --danger:#ef5b69;
+  --footer:#20242c;
+
+  /* 👉 exact-ish page metrics per your ref */
+  --container-w: 1168px;      /* screenshot canvas width */
+  --gap: 16px;
+  --preview-col: 300px;        /* right preview card width */
+}
+
+/* page bg + space for fixed bottom bar */
+.bu-wrap{
+  background:var(--surface);
+  min-height:100vh;
+  padding:10px 0 96px;
+}
+
+/* centered content */
+.bu-container{
+  width:100%;
+  max-width:var(--container-w);
+  margin:0 auto;
+  padding:0 12px 16px;
+}
+
+/* ===== title ===== */
+.bu-title-row{
+  display:flex; align-items:center; gap:8px; margin:6px 0 10px;
+}
+.bu-title-row h2{ margin:0; font:700 20px/1.2 system-ui,-apple-system,Segoe UI,Roboto; color:var(--text); }
+.bu-home{opacity:.55}
+
+/* ===== top card (left form + right preview) ===== */
+.bu-card{
+  display:grid;
+  grid-template-columns: minmax(0,1fr) var(--preview-col);  /* left | right */
+  gap:var(--gap);
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  padding:14px;
+  overflow:hidden;
+}
+
+/* left form */
+.bu-left{ display:flex; flex-direction:column; gap:12px; min-width:0; }
+
+/* ✅ FIXED Row-1: From | Category | Brand | Print Type */
+.bu-left .bu-row:nth-child(1){
+  display:grid;
+  /* Use fractional units for 4 flexible, equal-width columns */
+  grid-template-columns: repeat(4, 1fr);
+  gap:var(--gap);
+}
+
+/* ✅ FIXED Row-2: Clear | Search (wide) | Focus | Date | Size */
+.bu-left .bu-row:nth-child(2){
+  display:grid;
+  /* Use proportional widths for a balanced layout */
+  grid-template-columns: auto 2.5fr 1fr 1fr 1fr;
+  gap:var(--gap);
+  /* Align all items in the row to the bottom for consistency */
+  align-items:end;
+}
+
+.bu-field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.bu-field.bu-inline{ justify-content:flex-end; }
+.bu-field label{ font-weight:700; font-size:13px; color:var(--text); }
+.bu-muted{ font-weight:600; color:var(--muted); }
+.bu-req{ color:var(--primary-800); margin-left:2px; }
+
+select, input[type="text"]{
+  height:36px; border:1px solid var(--border); border-radius:8px; padding:0 10px;
+  background:#fff; outline:none; font-size:14px; min-width:0; width:100%;
+}
+select:focus, input[type="text"]:focus{
+  border-color:#9cc6ff; box-shadow:0 0 0 3px rgba(156,198,255,.35);
+}
+
+/* Brand + Apply button */
+.bu-brand-row{ display:flex; gap:8px; min-width:0; }
+.bu-apply{
+  height:36px; padding:0 16px; background:var(--primary); color:#fff;
+  border:none; border-radius:8px; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+.bu-apply:hover{ background:var(--primary-800); }
+
+/* ✅ FIXED Checkbox alignment */
+.bu-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0; /* Removed margin-top: 22px to allow vertical alignment */
+  padding-bottom: 6px; /* Added padding to visually align with input fields */
+}
+.bu-df-label{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.bu-empty-select{ background:#fff; }
+.bu-no-results{ font-size:12px; color:#6b7280; margin-top:4px; }
+
+/* ===== right preview (EXACT card size) ===== */
+.bu-right{ display:flex; flex-direction:column; gap:10px; width:var(--preview-col); }
+.bu-preview{
+  width:100%; background:#fff; border:1px solid var(--border);
+  border-radius:10px; padding:12px; overflow:hidden;
+}
+.bu-preview-header{ text-align:right; font-size:12px; color:#6b7280; margin-bottom:4px; }
+.bu-preview-title{ text-align:center; font-size:22px; font-weight:800; margin:6px 0; }
+.bu-preview-mrp{ text-align:center; font-size:14px; font-weight:800; margin-bottom:8px; }
+
+/* barcode small + never crop (screenshot scale) */
+.bu-preview-barcode{ display:flex; justify-content:center; padding:6px 0; }
+.bu-preview-barcode svg{
+  width:260px; height:56px; display:block; max-width:100%; overflow:visible;
+}
+
+.bu-preview-code{ text-align:center; font-size:16px; letter-spacing:1px; margin-top:4px; }
+
+/* Generate under preview (same size) */
+.bu-generate{
+  width: 150px; height:34px;
+  border:none; border-radius:8px; cursor:pointer;
+  background:var(--primary); color:#fff; font-weight:700;
+  margin-left:80px;              /* right aligned like screenshot */
+}
+.bu-generate:hover{ background:var(--primary-800); }
+
+/* ===== table header ===== */
+.bu-table{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  margin-top:14px;
+  overflow:hidden;
+}
+.bu-thead{
+  display:grid;
+  grid-template-columns:48px 1fr 2fr 90px 120px 140px 120px 140px;
+  padding:12px 14px; align-items:center;
+}
+.bu-th{ font-weight:700; color:#374151; }
+.bu-check{ display:flex; align-items:center; justify-content:center; }
+
+/* ===== bottom action bar (full width fixed) ===== */
+.bu-bottom{
+  position:fixed; left:0; right:0; bottom:0;
+  background:var(--footer); padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  border-top:1px solid rgba(255,255,255,.06); z-index:100;
+}
+.bu-actions{ display:flex; gap:12px; flex-wrap:wrap; }
+.bu-btn{ background:#e6eefc; color:#0b61cf; border:1px solid #c9dafc; border-radius:6px; padding:10px 16px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.bu-btn:hover{ filter:brightness(1.04); }
+.bu-btn.bu-primary{ background:var(--primary); color:#fff; border-color:var(--primary); }
+.bu-btn.bu-danger{ background:var(--danger); color:#fff; border-color:var(--danger); }
+
+/* ===== responsive (only when screen < 1200) ===== */
+@media (max-width:1200px){
+  .bu-card{ grid-template-columns: 1fr; }
+  .bu-right{ width:100%; }
+  .bu-left .bu-row:nth-child(1){ grid-template-columns: repeat(2, minmax(220px,1fr)); }
+  .bu-left .bu-row:nth-child(2){ grid-template-columns: 120px 1fr 1fr; }
+}
+
