@@ -39,6 +39,8 @@ export default function Sidebar({ open, onClose, persistent = false }) {
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
   const handleNav = () => onClose?.();
 
+
+
   return (
     <>
       {/* overlay */}
@@ -69,6 +71,13 @@ export default function Sidebar({ open, onClose, persistent = false }) {
           <NavLink to="/new" className="sb-item" onClick={onClose}>
             <span className="material-icons sb-ic">dashboard</span>
             <span className="sb-text">Dashboard</span>
+          </NavLink>
+
+          {/* Contact */}
+
+          <NavLink to="/contact" className={linkClass} onClick={onClose}>
+            <span className="material-icons sb-ic">contacts</span>
+            <span className="sb-text">Contact</span>
           </NavLink>
 
           {/* Admin (NEW) */}

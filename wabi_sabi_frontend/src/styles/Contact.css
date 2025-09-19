@@ -1,0 +1,93 @@
+/* Base */
+.con-wrap{ background:#f4f7fc; min-height:100vh; padding:14px 20px 28px; font-family:"Segoe UI", Roboto, Arial, sans-serif; color:#111827; }
+
+/* ---------- TOP ROW (no borders) ---------- */
+.con-topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:8px;
+}
+.con-topbar .tabs{ display:flex; gap:0px; }
+.con-topbar .actions-right{ display:flex; align-items:center; gap:10px; }
+
+/* Tabs */
+.con-tab{
+  display:inline-flex; align-items:center; gap:8px;
+  height:36px; padding:0 14px; font-size:13px; font-weight:600;
+  border:1px solid #d9dee6; border-radius:18px; background:#fff; color:#111827; cursor:pointer;
+}
+.con-tab .dot{ width:12px; height:12px; border-radius:50%; box-shadow: inset 0 0 0 3px #0ea5e9; background:#fff; }
+/* .con-tab.active{ outline:2px solid #0ea5e9; outline-offset:0; }*/
+.con-tab.active .dot{ background:#0ea5e9; box-shadow:none; }
+
+/* Right side buttons */
+.con-btn-icon{ width:40px; height:40px; display:grid; place-items:center; background:#0ea5e9; border:1px solid #0ea5e9; border-radius:6px; color:#fff; }
+.con-btn-icon .material-icons{ font-size:18px; color:#fff; }
+
+.con-select{
+  height:40px; min-width:70px; padding:0 8px; font-size:13px;
+  border:1px solid #d9dee6; border-radius:6px; background:#fff;
+  appearance:none;
+  background-image: linear-gradient(45deg, transparent 50%, #9aa3af 50%), linear-gradient(135deg, #9aa3af 50%, transparent 50%);
+  background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
+  background-size:5px 5px, 5px 5px; background-repeat:no-repeat;
+}
+
+.con-btn.filter{ height:40px; display:inline-flex; align-items:center; gap:6px; padding:0 12px; font-size:13px; font-weight:500; border-radius:6px; cursor:pointer; background:#0ea5e9; border:1px solid #0ea5e9; color:#fff; }
+.con-btn.filter .material-icons{ font-size:18px; color:#fff; }
+
+.con-search{ display:flex; align-items:center; gap:6px; height:40px; width:50%; padding:0 10px; border:1px solid #d9dee6; border-radius:6px; background:#fff; }
+.con-search .material-icons{ font-size:18px; color:#a0aec0; }
+.con-search input{ border:0; outline:0; background:transparent; width:100%; font-size:13px; color:#111827; }
+
+/* ---------- SECOND ROW (Columns button only) ---------- */
+.con-row-columns{ margin-bottom:8px; }
+.con-btn{ display:inline-flex; align-items:center; gap:6px; height:40px; padding:0 14px; font-size:13px; font-weight:500; border-radius:6px; border:1px solid #d9dee6; background:#fff; color:#111827; }
+.con-btn .material-icons{ font-size:18px; }
+.con-btn.primary{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+.con-btn.primary .material-icons{ color:#fff; }
+.con-btn.primary .caret{ margin-left:2px; }
+
+/* ---------- TABLE CARD ---------- */
+.con-card{ background:#fff; border:1px solid #e1e7ef; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.05); overflow:hidden; }
+
+/* table head */
+.con-table{ width:100%; border-collapse:separate; border-spacing:0; }
+.con-table thead th{
+  background:#eef3f8; color:#23324a; font-weight:700; text-align:left;
+  padding:14px 16px; border-bottom:1px solid #e1e7ef;
+}
+.con-table thead th:first-child{ border-top-left-radius:8px; }
+.con-table thead th:last-child{ border-top-right-radius:8px; }
+
+/* rows — tall like the reference */
+.con-table tbody td{
+  padding:18px 16px;
+  border-bottom:1px solid #e1e7ef;
+  vertical-align:top;
+  font-size:13px; color:#111827; line-height:1.35;
+}
+
+/* widths & alignment */
+.col-check{ width:44px; }
+.col-sr{ width:48px; }
+.col-actions{ width:96px; }
+.right{ text-align:right; }
+.muted{ color:#6b7280; }
+
+/* name link + status */
+.con-link{ color:#0080dc; font-weight:600; text-decoration:none; }
+.con-link:hover{ text-decoration:underline; }
+.con-status{ display:inline-block; min-width:72px; padding:5px 10px; border-radius:4px; font-size:12px; font-weight:700; text-align:center; color:#fff; background:#22c55e; }
+
+/* row action icons */
+.con-ico{ width:32px; height:32px; display:inline-grid; place-items:center; background:#fff; border:1px solid #d9dee6; border-radius:6px; }
+.con-ico .material-icons{ font-size:18px; color:#4b5563; }
+
+/* checkbox accent */
+input[type="checkbox"]{ width:16px; height:16px; accent-color:#0ea5e9; }
+
+/* footer */
+.con-foot{ display:flex; justify-content:space-between; align-items:center; padding:8px 12px; font-size:12px; color:#6b7280; }
+.page{ min-width:26px; height:26px; border:1px solid #d9dee6; border-radius:4px; background:#fff; cursor:pointer; }
+.page.current{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+.page.arrow .material-icons{ font-size:18px; }

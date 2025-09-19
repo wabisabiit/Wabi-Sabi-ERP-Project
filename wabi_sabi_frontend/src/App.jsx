@@ -15,6 +15,7 @@ import OrderList from "./components/OrderListPage";
 import EmployeePage from "./components/EmployeePage";
 import EmployeeCreatePage from "./components/EmployeeCreatePage"; // ✅ NEW
 import OutletPage from "./components/OutletPage";
+import Contact from "./components/ContactPage";
 import "./App.css";
 
 function POSLayout() {
@@ -93,9 +94,19 @@ export default function App() {
         }
       />
 
-      {/* Outlet */}
+      {/* Outlet
 
-      <Route path="/admin/outlet" element={<OutletPage />} />
+      <Route path="/admin/outlet" element={<OutletPage />} /> */}
+       
+       {/* Contact */}
+      <Route
+        path="/contact"
+        element={
+          <SidebarLayout>
+            <Contact />
+          </SidebarLayout>
+        }
+      />
 
       {/* ✅ Employee Create (exact-design page) */}
       <Route
