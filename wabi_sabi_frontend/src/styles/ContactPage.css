@@ -27,9 +27,23 @@
   height:40px; min-width:70px; padding:0 8px; font-size:13px;
   border:1px solid #d9dee6; border-radius:6px; background:#fff;
   appearance:none;
-  background-image: linear-gradient(45deg, transparent 50%, #9aa3af 50%), linear-gradient(135deg, #9aa3af 50%, transparent 50%);
+  background-image: linear-gradient(45deg, transparent 50%, #9aa3af 50%),
+                    linear-gradient(135deg, #9aa3af 50%, transparent 50%);
   background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
   background-size:5px 5px, 5px 5px; background-repeat:no-repeat;
+  color:#111827;
+}
+
+/* Force options to use your theme (works in most browsers) */
+.con-select option {
+  background:#f0f9ff;    /* light blue background like your app */
+  color:#111827;
+}
+
+/* Highlighted option (when selecting) */
+.con-select option:checked {
+  background:#bae6fd;    /* soft sky blue */
+  color:#111827;
 }
 
 .con-btn.filter{ height:40px; display:inline-flex; align-items:center; gap:6px; padding:0 12px; font-size:13px; font-weight:500; border-radius:6px; cursor:pointer; background:#0ea5e9; border:1px solid #0ea5e9; color:#fff; }
@@ -53,19 +67,22 @@
 /* table head */
 .con-table{ width:100%; border-collapse:separate; border-spacing:0; }
 .con-table thead th{
-  background:#eef3f8; color:#23324a; font-weight:700; text-align:left;
-  padding:14px 16px; border-bottom:1px solid #e1e7ef;
+  background:#eef3f8; color:#23324a; font-weight:500; text-align:left;
+  padding:5px 10px; border-bottom:1px solid #e1e7ef;
 }
 .con-table thead th:first-child{ border-top-left-radius:8px; }
 .con-table thead th:last-child{ border-top-right-radius:8px; }
 
 /* rows — tall like the reference */
+/* rows — COMPACT */
 .con-table tbody td{
-  padding:18px 16px;
+  padding:10px 12px;          /* was 18px 16px */
   border-bottom:1px solid #e1e7ef;
-  vertical-align:top;
-  font-size:13px; color:#111827; line-height:1.35;
+  vertical-align:middle;       /* was top */
+  font-size:12px;              /* was 13px */
+  line-height:1.2;             /* was 1.35 */
 }
+
 
 /* widths & alignment */
 .col-check{ width:44px; }
@@ -163,3 +180,119 @@ input[type="checkbox"]{ width:16px; height:16px; accent-color:#0ea5e9; }
   overflow-wrap: anywhere;
   white-space: normal;
 }
+
+.two-line{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+/* --- Download dropdown --- */
+.con-download{ position:relative; }
+.con-btn-icon .caret{ font-size:18px; margin-left:2px; color:#fff; opacity:.9; }
+.con-btn-icon.on{ filter:brightness(0.95); }
+
+.dl-menu{
+  position:absolute; top:100%; left:0;
+  margin-top:8px; padding:8px 0;
+  background:#fff; border:1px solid #e1e7ef; border-radius:10px;
+  box-shadow:0 16px 32px rgba(16,24,40,.12); min-width:180px; z-index:50;
+}
+.dl-item{
+  width:100%; display:flex; align-items:center; gap:10px;
+  padding:10px 14px; background:#fff; border:0; cursor:pointer; font-size:14px;
+}
+.dl-item:hover{ background:#f3f6fb; }
+.dl-item .material-icons{ font-size:18px; color:#4b5563; }
+
+/* empty state */
+.con-empty{ text-align:center; color:#6b7280; padding:24px 12px; font-weight:500; }
+
+/* --- Filter strip --- */
+.con-filterstrip {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 10px 2px;
+  margin-bottom: 6px;
+  gap: 20px;
+}
+.con-field { min-width: 260px; }
+.con-field-label {
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 6px 0;
+  font-size: 14px;
+}
+
+/* --- Location multi-select pill --- */
+.con-loc { position: relative; }
+.con-loc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #f3f5f9;
+  border: 1px solid #d9dee6;
+  cursor: pointer;
+}
+.con-loc-text { color: #374151; font-weight: 600; }
+.con-loc-badge {
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.con-loc-caret { font-size: 18px; color: #6b7280; }
+
+/* popup */
+.con-loc-pop {
+  position: absolute;
+  z-index: 10;
+  top: 44px;
+  left: 0;
+  width: 200px;
+  background: #fff;
+  border: 1px solid #e1e7ef;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(16,24,40,.12);
+}
+.con-loc-search { padding: 10px; border-bottom: 1px solid #e1e7ef; }
+.con-loc-search input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid #d9dee6;
+  border-radius: 6px;
+  padding: 0 10px;
+  outline: 0;
+}
+.con-loc-list { max-height: 220px; overflow: auto; }
+.con-loc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.con-loc-item:hover { background: #f7fafc; }
+.con-loc-item input { accent-color: #0ea5e9; }
+.con-loc-txt {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+.con-loc-empty { padding: 14px 12px; color: #6b7280; }
+
+/* Active filter state */
+.con-btn.filter.is-active .material-icons {
+  color: #111 !important;
+}
+
