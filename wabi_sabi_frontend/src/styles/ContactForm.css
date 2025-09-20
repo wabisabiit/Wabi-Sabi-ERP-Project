@@ -1,0 +1,161 @@
+/* =============== Overlay & Canvas =============== */
+.cc-veil{
+  position: fixed; inset: 0;
+  background: #ffffff;           /* solid white cover page */
+  z-index: 1000;
+}
+
+.cc-canvas{
+  position: absolute; inset: 0;
+  background: #fff;
+  display: grid; place-items: center;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  color: #111827;
+  border: 0; border-radius: 0; box-shadow: none;
+  overflow: hidden;               /* no page scrollbars from canvas */
+}
+
+/* Stage fills viewport; no scaling; container for content */
+.cc-stage{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;               /* prevent horizontal scrollbars */
+}
+
+/* =============== Header =============== */
+.cc-header{
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e1e7ef;
+  background: #f4f7fc;
+}
+.cc-back{
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 10px;
+  border: 1px solid #d9dee6; border-radius: 6px; background: #fff;
+  cursor: pointer; font-weight: 600; font-size: 13px; color: #111827;
+}
+.cc-back .material-icons{ font-size: 18px; color: #4b5563; }
+.cc-title{ font-size: 15px; font-weight: 700; color: #23324a; }
+
+/* =============== Tabs & Actions (Top Row) =============== */
+.cc-top-tabs{
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: #fff; border-bottom: 1px solid #e1e7ef;
+}
+.cc-top-tab{
+  display: inline-flex; align-items: center; height: 28px; padding: 0 10px;
+  border: 1px solid #d9dee6; border-radius: 14px; margin-right: 8px;
+  font-size: 12px; font-weight: 600; background: #fff; color: #111827;
+}
+.cc-top-tab.on{ box-shadow: inset 0 0 0 3px #0ea5e9; }
+.cc-top-right{ display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.cc-btn{
+  height: 32px; padding: 0 12px; border-radius: 6px;
+  border: 1px solid #d9dee6; background: #fff;
+  font-size: 13px; font-weight: 600; color: #111827;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.cc-btn .material-icons{ font-size: 18px; color: #4b5563; }
+.cc-btn.yellow{ background: #facc15; border-color: #facc15; }
+.cc-btn.green{ background: #22c55e; border-color: #22c55e; color: #fff; }
+.cc-btn.blue{  background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+
+/* =============== Body & Cards =============== */
+/* Body scrolls vertically; header+tabs take ~106px total */
+.cc-body{
+  padding: 12px;
+  height: calc(100% - 106px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.cc-card{
+  border: 1px solid #e1e7ef; border-radius: 10px;
+  margin-bottom: 10px; background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
+  padding: 12px;
+}
+.cc-section-title{
+  font-weight: 700; color: #23324a; background: #eef3f8;
+  padding: 6px 10px; border-radius: 6px; margin-bottom: 10px; display: inline-block;
+}
+
+/* Grid */
+.cc-grid{ display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px 12px; }
+.cc-field{ display: flex; flex-direction: column; gap: 6px; }
+.cc-field.two{ grid-column: span 2 / span 2; }
+.cc-two{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.cc-field label{ font-size: 12px; font-weight: 600; color: #374151; }
+.req{ color: #ef4444; margin-left: 3px; }
+
+.cc-field input, .cc-field select{
+  height: 36px; padding: 0 10px; border: 1px solid #d9dee6; border-radius: 6px;
+  font-size: 13px; outline: 0; background: #fff; color: #111827;
+}
+
+/* Phone + Opening Balance */
+.cc-phone{ display: flex; }
+.cc-cc{
+  display: inline-grid; place-items: center; min-width: 44px; padding: 0 8px;
+  border: 1px solid #d9dee6; border-right: 0; border-radius: 6px 0 0 6px;
+  background: #f3f5f9; color: #374151; font-weight: 700;
+}
+.cc-phone input{ border-radius: 0 6px 6px 0; flex: 1; }
+
+.cc-open{ display: flex; gap: 8px; }
+.cc-open input{ width: 120px; }
+.cc-crdr{ display: inline-flex; border: 1px solid #d9dee6; border-radius: 6px; overflow: hidden; }
+.cc-crdr button{
+  height: 36px; padding: 0 10px; background: #fff; border: 0;
+  font-weight: 600; font-size: 12px; cursor: pointer;
+}
+.cc-crdr button.on{ background: #0ea5e9; color: #fff; }
+
+/* Radios */
+.cc-radio-row{ display: flex; gap: 16px; align-items: center; }
+.cc-radio-row input{ accent-color: #0ea5e9; }
+
+/* Address extra */
+.cc-addmore{
+  border: 0; background: transparent; color: #0ea5e9; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.cc-addmore .material-icons{ font-size: 18px; color: #0ea5e9; }
+
+/* =============== Bottom Bar (NOT fixed) =============== */
+.cc-bottombar{
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #111827;      /* black stripe look */
+  border-top: 1px solid #e1e7ef;
+  margin-top: 12px;         /* space above */
+}
+
+/* Buttons inside bottom bar */
+.cc-bottombar{
+  display: flex;
+  justify-content: space-between;   /* left group on left, others on right */
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #111827;
+  border-top: 1px solid #e1e7ef;
+  margin-top: 12px;
+}
+
+.cc-bottom-left,
+.cc-bottom-right{
+  display: flex;
+  gap: 8px;
+}
+
+.cc-bottombar .cc-btn.grey   { background: #ef4444; }           /* Cancel */
+.cc-bottombar .cc-btn.yellow { background: #facc15; color:#111; }/* Clear  */
+.cc-bottombar .cc-btn.green  { background: #22c55e; }           /* Save & Print */
+.cc-bottombar .cc-btn.blue   { background: #0ea5e9; }           /* Save variants */

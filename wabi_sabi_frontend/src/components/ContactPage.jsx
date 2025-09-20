@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/ContactPage.css";
+import ContactForm from "../components/ContactForm"; // ⟵ ADD
 
 /* ----- Demo rows ----- */
 const ROWS = [
@@ -143,6 +144,10 @@ export default function ContactPage() {
   const [pageSize, setPageSize] = useState(15);
   const [query, setQuery] = useState("");
 
+  // ⟵ ADD: overlay state
+  const [formOpen, setFormOpen] = useState(false);
+  const [formType, setFormType] = useState("customer");
+
   // Visible columns
   const [visible, setVisible] = useState(() => new Set(CUSTOMER_VISIBLE));
 
@@ -237,6 +242,12 @@ export default function ContactPage() {
   const showingTo = Math.min(filtered.length, pageSize);
   const shownCols = useMemo(() => COLS.filter((c) => visible.has(c.id)), [visible]);
 
+  // ⟵ ADD: handler to open the form matching current tab
+  const openCreate = () => {
+    setFormType(tab === "vendor" ? "vendor" : "customer");
+    setFormOpen(true);
+  };
+
   return (
     <div className="con-wrap">
       {/* TOP ROW */}
@@ -308,6 +319,12 @@ export default function ContactPage() {
               placeholder="Search List..."
             />
           </div>
+
+          {/* ⟵ ADD: Create New button (right of search) */}
+          <button className="con-btn primary create-new" onClick={openCreate}>
+            <span className="material-icons">add</span>
+            <span>Create New</span>
+          </button>
         </div>
       </div>
 
@@ -409,6 +426,13 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
+
+      {/* ⟵ ADD: Render the overlay form */}
+      <ContactForm
+        type={formType}             // "customer" or "vendor" based on current tab
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+      />
     </div>
   );
 }
