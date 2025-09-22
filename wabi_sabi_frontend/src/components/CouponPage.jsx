@@ -1,11 +1,157 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/CouponPage.css";
 
-/* ----- Location Multi-Select ----- */
+/* ----------------------- tiny helpers ----------------------- */
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
+/* ----------------------- Combobox: Select Coupon ----------------------- */
+function ComboSelect({
+  placeholder = "Select Coupon",
+  options = [],
+  value = "",
+  onChange,
+  width = 210,
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const wrap = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrap.current && !wrap.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!q.trim()) return options;
+    const s = q.toLowerCase();
+    return options.filter((o) => o.toLowerCase().includes(s));
+  }, [q, options]);
+
+  return (
+    <div
+      className={`dd ${open ? "open" : ""}`}
+      ref={wrap}
+      style={{ width }}
+      role="combobox"
+      aria-expanded={open}
+    >
+      <button type="button" className="dd-btn" onClick={() => setOpen((v) => !v)}>
+        <span className={`dd-placeholder ${value ? "has" : ""}`}>
+          {value || placeholder}
+        </span>
+        <span className="material-icons dd-caret">expand_more</span>
+      </button>
+
+      {open && (
+        <div className="dd-pop dd-pop--search">
+          <div className="dd-search">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder=""
+              aria-label="Search"
+            />
+          </div>
+
+          <div className="dd-list">
+            {filtered.length === 0 ? (
+              <div className="dd-empty">No results found</div>
+            ) : (
+              filtered.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className="dd-opt"
+                  onClick={() => {
+                    onChange(opt);
+                    setOpen(false);
+                  }}
+                  title={opt}
+                >
+                  {opt}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------- Dropdown: Assign Type ----------------------- */
+function AssignType({ value, onChange, width = 210 }) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef(null);
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrap.current && !wrap.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+  const opts = ["Assigned", "UnAssigned"];
+  return (
+    <div className={`dd ${open ? "open" : ""}`} ref={wrap} style={{ width }}>
+      <button type="button" className="dd-btn" onClick={() => setOpen((v) => !v)}>
+        <span className={`dd-placeholder ${value ? "has" : ""}`}>
+          {value || "Asign Type"}
+        </span>
+        <span className="material-icons dd-caret">expand_more</span>
+      </button>
+
+      {open && (
+        <div className="dd-pop">
+          <div className="dd-list">
+            <div className="dd-ghost" />
+            {opts.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                className={`dd-opt ${value === opt ? "active" : ""}`}
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------- Location selector (Coupons tab) ----------------------- */
 function LocationSelect({ value = [], onChange, options = [] }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const wrapRef = useRef(null);
+  const wrap = useRef(null);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -15,7 +161,7 @@ function LocationSelect({ value = [], onChange, options = [] }) {
 
   useEffect(() => {
     const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      if (wrap.current && !wrap.current.contains(e.target)) setOpen(false);
     };
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDoc);
@@ -39,7 +185,7 @@ function LocationSelect({ value = [], onChange, options = [] }) {
   };
 
   return (
-    <div className="loc-wrap" ref={wrapRef}>
+    <div className="loc-wrap" ref={wrap}>
       <button
         type="button"
         className={`loc-pill ${open ? "is-open" : ""}`}
@@ -57,11 +203,7 @@ function LocationSelect({ value = [], onChange, options = [] }) {
       {open && (
         <div className="loc-pop" role="dialog" aria-label="Select Location">
           <div className="loc-search">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder=""
-            />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="" />
           </div>
 
           <div className="loc-list">
@@ -72,11 +214,7 @@ function LocationSelect({ value = [], onChange, options = [] }) {
                 const checked = value.includes(opt);
                 return (
                   <label key={opt} className="loc-item" title={opt}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggle(opt)}
-                    />
+                    <input type="checkbox" checked={checked} onChange={() => toggle(opt)} />
                     <span className="loc-txt">{opt}</span>
                   </label>
                 );
@@ -89,7 +227,128 @@ function LocationSelect({ value = [], onChange, options = [] }) {
   );
 }
 
-/* ----- Page ----- */
+/* ----------------------- Generate Coupon POPUP ----------------------- */
+function GenerateCouponModal({ open, onClose, onGenerate }) {
+  const [coupon, setCoupon] = useState("");
+  const [qty, setQty] = useState("");
+
+  // empty list so default is "No results found" (like screenshot)
+  const COUPON_OPTIONS = [];
+
+  useEffect(() => {
+    if (!open) {
+      setCoupon("");
+      setQty("");
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div className="gc-backdrop" onClick={onClose} />
+      <div className="gc-modal" role="dialog" aria-modal="true">
+        <div className="gc-header">
+          <div className="gc-title">Generate Coupon</div>
+          <button className="gc-x" aria-label="Close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="gc-body">
+          <div className="gc-field">
+            <label className="gc-label">Coupon<span className="gc-req">*</span></label>
+            <ComboSelect
+              placeholder="Select Coupon"
+              options={COUPON_OPTIONS}
+              value={coupon}
+              onChange={setCoupon}
+              width={520}
+            />
+          </div>
+
+          <div className="gc-field">
+            <label className="gc-label">Qty<span className="gc-req">*</span></label>
+            <input
+              className="gc-input"
+              placeholder="Enter No. of Qty"
+              inputMode="numeric"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="gc-footer">
+          <button type="button" className="gc-btn gc-btn-muted" onClick={onClose}>
+            Close
+          </button>
+          <button
+            type="button"
+            className="gc-btn gc-btn-primary"
+            onClick={() => onGenerate?.({ coupon, qty })}
+          >
+            Generate
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* -------------------------------------------------------------
+   Column configs (SEPARATE per tab)
+--------------------------------------------------------------*/
+
+/* Columns for the COUPONS tab (matches your first table) */
+const COUPONS_COLUMNS = [
+  { key: "sr", label: "#" },
+  { key: "name", label: "Coupon Name" },
+  { key: "price", label: "Coupon Price" },
+  { key: "redeemValue", label: "Redeem Value" },
+  { key: "redeemType", label: "Redeem Type" },
+  { key: "monthlyBasis", label: "Monthly Basis" },
+  { key: "numMonths", label: "Number Of Month" },
+  { key: "singleUse", label: "Single Use In Month" },
+  { key: "toIssue", label: "To Issue Coupon" },
+  { key: "toRedeem", label: "To Redeem Coupon" },
+  { key: "entireBill", label: "Entire Bill" },
+  { key: "createdOn", label: "Created On" },
+  { key: "endDate", label: "End Date" },
+  { key: "expiryDays", label: "Expiry Days" },
+];
+
+const DEFAULT_VISIBLE_COUPONS = COUPONS_COLUMNS.map((c) => c.key);
+
+/* Columns for the GENERATED COUPONS tab (your long table) */
+const GENERATED_COLUMNS = [
+  { key: "sr", label: "Sr No." },
+  { key: "serial", label: "Serial No." },
+  { key: "barcode", label: "Barcode" },
+  { key: "name", label: "Coupon Name" },
+  { key: "price", label: "Coupon Price" },
+  { key: "totalRedeem", label: "Total Redeem Value" },
+  { key: "redeemMonthly", label: "Redeem on Monthly Basis?" },
+  { key: "monthDivAmt", label: "No. of Month Divided Redeem Amt" },
+  { key: "singleUse", label: "Single Use in Month?" },
+  { key: "minPurchase", label: "Minimum Purchase limit" },
+  { key: "applyEntire", label: "Apply on Entire Bill" },
+  { key: "assignedTo", label: "Assigned to (Customer)" },
+  { key: "custNo", label: "Customer No" },
+  { key: "issuedBy", label: "Issued By" },
+  { key: "usedValue", label: "Used Value" },
+  { key: "availRedeem", label: "Available Redeem Value" },
+  { key: "createdDate", label: "Created Date" },
+  { key: "endDate", label: "End Date" },
+  { key: "redemptionDate", label: "Redemption Date" },
+  { key: "expiryDays", label: "Expiry Days (Expiry Date)" },
+  { key: "status", label: "Status (Available/Redeemed)" },
+  { key: "toIssued", label: "To Issued on bill" },
+  { key: "toRedeemed", label: "To Redeemed on bill" },
+  { key: "actions", label: "Actions" },
+];
+
+const DEFAULT_VISIBLE_GENERATED = GENERATED_COLUMNS.map((c) => c.key);
+
+/* ----------------------- Page ----------------------- */
 const LOCATION_OPTIONS = [
   "WABI SABI SUSTAINABILITY LLP",
   "Brands4Less - Tilak Nagar",
@@ -106,8 +365,78 @@ export default function CouponPage() {
   const [activeTab, setActiveTab] = useState("coupons");
   const [pageSize, setPageSize] = useState("15");
 
-  // default selected location
+  /* Coupons tab state */
   const [locations, setLocations] = useState(["WABI SABI SUSTAINABILITY LLP"]);
+
+  /* Generated Coupons filters */
+  const [selectedCoupon, setSelectedCoupon] = useState("");
+  const [assignType, setAssignType] = useState("");
+
+  const navigate = useNavigate();
+
+  /* Export dropdown (only used on Generated tab) */
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportWrap = useRef(null);
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (exportWrap.current && !exportWrap.current.contains(e.target)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  /* Columns modal & per-tab visibility */
+  const [colOpen, setColOpen] = useState(false);
+  const [visibleCoupons, setVisibleCoupons] = useState(DEFAULT_VISIBLE_COUPONS);
+  const [visibleGenerated, setVisibleGenerated] = useState(DEFAULT_VISIBLE_GENERATED);
+
+  const currentColumns = activeTab === "coupons" ? COUPONS_COLUMNS : GENERATED_COLUMNS;
+  const visibleKeys = activeTab === "coupons" ? visibleCoupons : visibleGenerated;
+  const columnsToRender = currentColumns.filter((c) => visibleKeys.includes(c.key));
+
+  const toggleCol = (key) => {
+    if (activeTab === "coupons") {
+      setVisibleCoupons((prev) =>
+        prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      );
+    } else {
+      setVisibleGenerated((prev) =>
+        prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      );
+    }
+  };
+
+  const restoreCols = () => {
+    if (activeTab === "coupons") setVisibleCoupons(DEFAULT_VISIBLE_COUPONS);
+    else setVisibleGenerated(DEFAULT_VISIBLE_GENERATED);
+  };
+
+  /* Dummy coupon list for select (empty to match screenshot) */
+  const COUPON_OPTIONS = [];
+
+  /* Export handlers — headers from the Generated tab columns */
+  const handleExport = (type) => {
+    const header = GENERATED_COLUMNS.map((c) => `"${c.label}"`).join(",") + "\n";
+    if (type === "excel") {
+      const blob = new Blob([header], { type: "text/csv;charset=utf-8" });
+      downloadBlob(blob, "generated_coupons.csv");
+    } else {
+      const blob = new Blob([new Uint8Array()], { type: "application/pdf" });
+      downloadBlob(blob, "generated_coupons.pdf");
+    }
+    setExportOpen(false);
+  };
+
+  /* Which header keys get the little ↕ marker */
+  const sortKeys =
+    activeTab === "coupons"
+      ? new Set(["price", "redeemValue", "singleUse", "toRedeem"])
+      : new Set(["redeemMonthly", "singleUse", "applyEntire"]);
+
+  /* ===== Generate Coupon popup control ===== */
+  const [genOpen, setGenOpen] = useState(false);
 
   return (
     <div className="cp-wrap">
@@ -117,6 +446,7 @@ export default function CouponPage() {
       </div>
 
       <div className="cp-card">
+        {/* Tabs + right tools */}
         <div className="cp-tabs">
           <button
             className={`tab ${activeTab === "coupons" ? "active" : ""}`}
@@ -147,50 +477,102 @@ export default function CouponPage() {
               ))}
             </select>
 
-            <button className="btn primary" type="button">New Coupon</button>
-            <button className="btn primary" type="button">Generate Coupon</button>
+            <button
+              className="btn primary"
+              type="button"
+              onClick={() => navigate("/crm/coupon/new")}
+            >
+              New Coupon
+            </button>
+            <button
+              className="btn primary"
+              type="button"
+              onClick={() => setGenOpen(true)}   /* ← open popup here */
+            >
+              Generate Coupon
+            </button>
+
+            <button
+              className="btn cols"
+              type="button"
+              onClick={() => setColOpen(true)}
+              aria-haspopup="dialog"
+            >
+              Columns <span className="material-icons">arrow_drop_down</span>
+            </button>
           </div>
         </div>
 
-        <div className="cp-filter">
-          <label className="cp-label">Location</label>
-          <div className="cp-filter-row">
-            <LocationSelect
-              value={locations}
-              onChange={setLocations}
-              options={LOCATION_OPTIONS}
-            />
+        {/* Filters */}
+        {activeTab === "coupons" ? (
+          <div className="cp-filter">
+            <label className="cp-label">Location</label>
+            <div className="cp-filter-row">
+              <LocationSelect
+                value={locations}
+                onChange={setLocations}
+                options={LOCATION_OPTIONS}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="cp-filter cp-filter--row">
+            <div className="gc-left">
+              <ComboSelect
+                placeholder="Select Coupon"
+                options={COUPON_OPTIONS}
+                value={selectedCoupon}
+                onChange={setSelectedCoupon}
+                width={220}
+              />
+              <AssignType value={assignType} onChange={setAssignType} width={220} />
 
+              <div className="export-wrap" ref={exportWrap}>
+                <button
+                  type="button"
+                  className="btn export"
+                  onClick={() => setExportOpen((v) => !v)}
+                >
+                  <span className="material-icons">file_download</span>
+                  Export
+                </button>
+                {exportOpen && (
+                  <div className="export-pop">
+                    <button type="button" onClick={() => handleExport("excel")}>
+                      <span className="material-icons">description</span> Excel
+                    </button>
+                    <button type="button" onClick={() => handleExport("pdf")}>
+                      <span className="material-icons">picture_as_pdf</span> PDF
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Table */}
         <div className="cp-table-wrap">
-          <table className="cp-table">
+          <table className="cp-table cp-table--wide">
             <thead>
               <tr>
-                <th className="col-sr">#</th>
-                <th>Coupon Name</th>
-                <th className="sortable">Coupon Price</th>
-                <th className="sortable">Redeem Value</th>
-                <th>Redeem Type</th>
-                <th>Monthly Basis</th>
-                <th>Number Of Month</th>
-                <th>Single Use In Month</th>
-                <th>To Issue Coupon</th>
-                <th>To Redeem Coupon</th>
-                <th>Entire Bill</th>
-                <th>Created On</th>
-                <th>End Date</th>
-                <th>Expiry Days</th>
+                {columnsToRender.map((c, i) => (
+                  <th key={c.key} className={i === 0 ? "col-sr" : ""}>
+                    {c.label}
+                    {sortKeys.has(c.key) ? <span className="sort-arrow">↕</span> : null}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               <tr className="empty-row">
-                <td colSpan={14}>No data available in table</td>
+                <td colSpan={columnsToRender.length}>No data available in table</td>
               </tr>
             </tbody>
           </table>
         </div>
 
+        {/* Footer / pager */}
         <div className="cp-foot">
           <div className="foot-left">Showing 0 to 0 of 0 entries</div>
           <div className="foot-right">
@@ -203,6 +585,50 @@ export default function CouponPage() {
           </div>
         </div>
       </div>
+
+      {/* Columns modal */}
+      {colOpen && (
+        <>
+          <div className="cols-backdrop" onClick={() => setColOpen(false)} />
+          <div className="cols-modal" role="dialog" aria-label="Columns">
+            <div className="cols-grid">
+              {currentColumns.map((c) => {
+                const on = visibleKeys.includes(c.key);
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    className={`cols-chip ${on ? "on" : "off"}`}
+                    onClick={() => toggleCol(c.key)}
+                    title={c.label}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="cols-actions">
+              <button type="button" className="restore" onClick={restoreCols}>
+                Restore visibility
+              </button>
+              <button type="button" className="btn primary" onClick={() => setColOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Generate Coupon modal */}
+      <GenerateCouponModal
+        open={genOpen}
+        onClose={() => setGenOpen(false)}
+        onGenerate={(payload) => {
+          console.log("GENERATE →", payload);
+          setGenOpen(false);
+        }}
+      />
     </div>
   );
 }

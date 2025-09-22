@@ -25,6 +25,7 @@ import PointSetupPage from "./components/PointSetupPage";
 import LoyaltyPage from "./components/LoyaltyPage";
 import DiscountPage from "./components/DiscountPage"; // <-- make sure this file exists
 import CouponPage from "./components/CouponPage";
+import NewCoupounPage from "./components/NewCoupounPage";
 
 import "./App.css";
 
@@ -51,7 +52,7 @@ function SidebarLayout({ children }) {
   return (
     <>
       {/* Sidebar forced open + persistent so page always shows with sidebar */}
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -96,6 +97,7 @@ export default function App() {
       {/* ✅ CRM > Discount (with sidebar) */}
       <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
       <Route path="/CRM/Discount" element={<Navigate to="/crm/discount" replace />} />
+      <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
 
       <Route
         path="/multiple-pay"
