@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import "../styles/Sidebar.css";
 
 export default function Sidebar({ open, onClose, persistent = false }) {
@@ -7,6 +7,8 @@ export default function Sidebar({ open, onClose, persistent = false }) {
   const [expandInventory, setExpandInventory] = useState(false);
   const [expandPOS, setExpandPOS] = useState(true);     // POS open by default
   const [expandAdmin, setExpandAdmin] = useState(true); // Admin open by default
+  const location = useLocation();
+  const isPath = (prefix) => location.pathname.startsWith(prefix);
 
   // NEW: Utilities section state (closed by default)
   const [expandUtilities, setExpandUtilities] = useState(false);
@@ -160,9 +162,10 @@ export default function Sidebar({ open, onClose, persistent = false }) {
           </div>
 
           {/* NEW: CRM */}
+          {/* CRM */}
           <div className="sb-group">
             <button
-              className="sb-item"
+              className={`sb-item ${expandCRM || isPath("/crm") ? "active" : ""}`}
               onClick={() => setExpandCRM((v) => !v)}
               aria-expanded={expandCRM}
               aria-controls="sb-crm-sub"
@@ -175,6 +178,16 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
 
             <div id="sb-crm-sub" className={`sb-sub ${expandCRM ? "show" : ""}`}>
+              {/* NEW: Coupon */}
+              <NavLink
+                to="/crm/coupon"
+                className={linkClass}
+                onClick={handleNav}
+              >
+                Coupon
+              </NavLink>
+
+              {/* Existing: Loyalty */}
               <NavLink
                 to="/crm/loyalty"
                 className={linkClass}
@@ -184,6 +197,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               </NavLink>
             </div>
           </div>
+
 
           {/* NEW: Utilities */}
           <div className="sb-group">
