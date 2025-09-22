@@ -1,0 +1,148 @@
+/* Base page */
+.crm-wrap{
+  padding:16px 20px 28px;
+  background:#eef2f7;
+  min-height:calc(100vh - 56px);
+}
+
+/* Small header card above tabs (only Campaign) */
+.crm-head-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.08);
+  padding:10px 14px;
+  margin-bottom:12px;
+}
+.crm-head-left{display:flex;align-items:center;gap:10px}
+.home-ic{color:#6e8fb6}
+.head-title{font-weight:700;color:#2c3e50}
+
+/* Main card */
+.crm-card{
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.08);
+  overflow:hidden;
+}
+
+/* Tabs bar */
+.crm-tabs{
+  display:flex; gap:24px;
+  padding:14px 18px 0;
+  border-bottom:1px solid #e7edf5;
+}
+.crm-tab{
+  background:transparent;border:none;cursor:pointer;
+  padding:12px 6px;margin-bottom:-1px;
+  color:#6b7a90;font-weight:700;position:relative;
+}
+.crm-tab.active{color:#1a73e8}
+.crm-tab.active::after{
+  content:""; position:absolute; left:0; bottom:0;
+  width:100%; height:3px; background:#1a73e8; border-radius:2px 2px 0 0;
+}
+
+/* Toolbar inside card */
+.crm-toolbar{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:12px; padding:10px 18px 12px;
+}
+
+/* -------- Selects (TOP & BOTTOM) -------- */
+.crm-native-select{
+  padding:8px 28px 8px 10px;
+  border:1px solid #d7e2f0;
+  border-radius:8px; background:#fff; outline:none;
+  font-weight:600; color:#000;      /* <- darker text for visibility */
+  line-height:1.2;
+  appearance:auto;
+}
+.crm-native-select.small{
+  width:80px;                       /* <- more room so numbers don’t clip */
+  text-align-last:center;           /* center the value (Chrome/Edge) */
+  -moz-text-align-last:center;      /* center (Firefox) */
+}
+.crm-native-select option{
+  color:#000;                       /* options text also black */
+}
+
+/* Right controls */
+.crm-right{display:flex; align-items:center; gap:12px}
+.crm-search{position:relative}
+.crm-search input{
+  width:260px; padding:10px 36px 10px 12px;
+  border:1px solid #d7e2f0; border-radius:8px; outline:none;
+  background:#fff; color:#2d3a4a;
+}
+.crm-search input::placeholder{ color:#8fa2bb; }
+.crm-search .material-icons{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  color:#8fa2bb;
+}
+.crm-add{
+  height:36px; width:36px; border-radius:50%; border:none;
+  background:#1a73e8; color:#fff; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 10px rgba(26,115,232,.3);
+}
+
+/* Table */
+.crm-table-wrap{ padding:0 18px 0 }
+.crm-table{ width:100%; border-collapse:collapse }
+
+/* HEADERS: black + smaller font */
+.crm-table thead th{
+  background:#f5f8fc; 
+  color:#000;                 /* <- black text */
+  font-weight:600;
+  font-size:13px;             /* <- smaller */
+  padding:10px 12px;          /* a bit tighter height */
+  text-align:left; user-select:none;
+  border-bottom:2px solid #e9eef6;
+}
+.crm-table thead th[role="button"]{ cursor:pointer }
+
+/* ROWS: slightly smaller to match header */
+.crm-table tbody td{
+  padding:12px 12px;
+  color:#000;
+  font-size:13px;             /* <- smaller */
+  border-bottom:1px solid #eef2f7;
+}
+.crm-empty{ text-align:center; color:#7e90a8; padding:24px 12px }
+.text-right{text-align:right}
+
+/* grey line under table like screenshot */
+.crm-ghostbar{
+  height:6px; margin:10px 12px 0;
+  background:linear-gradient(90deg,#e1e7f0 0%, #dfe5ee 50%, #e1e7f0 100%);
+  border-radius:3px;
+}
+
+/* Sort chevrons (Material Icons) */
+.crm-sort{
+  font-family:"Material Icons"; font-size:18px; line-height:1;
+  color:#9db0c6; margin-left:6px;
+}
+.crm-sort.active{ color:#5b86c5 }
+.th-flex{ display:inline-flex; align-items:center; gap:4px }
+
+/* Bottom bar */
+.crm-bottom{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:12px; padding:12px 18px 16px; border-top:1px solid #eef2f7;
+}
+.crm-info{ color:#6b7a90; font-size:.92rem }
+.crm-bottom-right{ display:flex; align-items:center; gap:18px }
+.crm-rows{ display:flex; align-items:center; gap:8px; color:#6b7a90 }
+.crm-pager .icon-btn{
+  height:34px; width:34px; border-radius:8px;
+  border:1px solid #d7e2f0; background:#fff; color:#42546d;
+  display:inline-flex; align-items:center; justify-content:center;
+  margin-left:6px;
+}
+.crm-pager .icon-btn:disabled{ opacity:.45; cursor:not-allowed }

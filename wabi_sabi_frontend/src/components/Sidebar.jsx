@@ -11,6 +11,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
   // NEW: Utilities section state (closed by default)
   const [expandUtilities, setExpandUtilities] = useState(false);
 
+  // NEW: CRM section state (closed by default)
+  const [expandCRM, setExpandCRM] = useState(false);
+
   const navigate = useNavigate();
 
   // close on ESC
@@ -153,6 +156,32 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/order-list" className={linkClass} onClick={onClose}>Order List</NavLink>
               <NavLink to="/credit-note" className={linkClass} onClick={onClose}>Credit Note</NavLink>
               <NavLink to="/sales-register" className={linkClass} onClick={onClose}>Sales Register</NavLink>
+            </div>
+          </div>
+
+          {/* NEW: CRM */}
+          <div className="sb-group">
+            <button
+              className="sb-item"
+              onClick={() => setExpandCRM((v) => !v)}
+              aria-expanded={expandCRM}
+              aria-controls="sb-crm-sub"
+            >
+              <span className="material-icons sb-ic">diversity_3</span>
+              <span className="sb-text">CRM</span>
+              <span className="material-icons sb-caret">
+                {expandCRM ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+
+            <div id="sb-crm-sub" className={`sb-sub ${expandCRM ? "show" : ""}`}>
+              <NavLink
+                to="/crm/loyalty"
+                className={linkClass}
+                onClick={handleNav}
+              >
+                Loyalty
+              </NavLink>
             </div>
           </div>
 

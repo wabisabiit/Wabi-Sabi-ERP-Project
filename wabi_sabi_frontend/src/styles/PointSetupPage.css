@@ -1,0 +1,91 @@
+/* Page background & spacing (matches Loyalty look) */
+.ps-wrap{
+  padding:16px 20px 28px;
+  background:#eef2f7;
+  min-height:calc(100vh - 56px);
+}
+
+/* Header card */
+.ps-head-card{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; background:#fff; border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.08);
+  padding:10px 14px; margin-bottom:12px;
+}
+.ps-head-left{ display:flex; align-items:center; gap:10px; }
+.home-ic{ color:#6e8fb6; }
+.head-title{ font-weight:700; color:#2c3e50; }
+
+/* Main card */
+.ps-card{
+  background:#fff; border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.08);
+  padding:0 0 18px 0; overflow:hidden;
+}
+
+/* Tabs */
+.ps-tabs{
+  display:flex; gap:24px;
+  padding:14px 18px 0; border-bottom:1px solid #e7edf5;
+}
+.ps-tab{
+  background:transparent; border:none; cursor:pointer;
+  padding:12px 6px; margin-bottom:-1px;
+  color:#6b7a90; font-weight:700; position:relative;
+}
+.ps-tab.active{ color:#1a73e8; }
+.ps-tab.active::after{
+  content:""; position:absolute; left:0; bottom:0; width:100%; height:3px;
+  background:#1a73e8; border-radius:2px 2px 0 0;
+}
+
+.ps-divider{
+  border:none; border-top:1px solid #eef2f7;
+  margin:0 18px; height:1px;
+}
+
+/* ...existing styles remain... */
+
+/* Form */
+.ps-form{ padding:16px 18px 0; }
+.ps-section-title{
+  font-weight:700; color:#2c3e50; margin-bottom:18px;
+}
+
+/* ⬇️  Fixed widths like the screenshot */
+.ps-grid{
+  display:grid; align-items:center;
+  grid-template-columns: 260px 32px 260px;  /* Amount | = | Point */
+  column-gap:28px; row-gap:0;               /* tighter like screenshot */
+  max-width:none;                           /* let fixed columns control width */
+}
+
+.ps-field{ display:flex; flex-direction:column; gap:6px; width:260px; }
+.ps-input{
+  height:36px; border:1px solid #d7e2f0; border-radius:8px;
+  padding:8px 10px; background:#fff; outline:none;
+  width:260px;                               /* exact input width */
+}
+.ps-equals{
+  width:32px; text-align:center;            /* center the '=' */
+  color:#6b7a90; font-weight:700;
+  margin-top: 15px;
+}
+
+/* Submit button spacing matches screenshot */
+.ps-btn{
+  margin-top:22px;
+  background:#1a73e8; color:#fff; border:none; border-radius:6px;
+  height:36px; padding:0 16px; cursor:pointer;
+  box-shadow:0 4px 10px rgba(26,115,232,.25);
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 720px){
+  .ps-grid{
+    grid-template-columns: 1fr;
+    row-gap:12px; column-gap:0;
+  }
+  .ps-field, .ps-input{ width:100%; }
+  .ps-equals{ display:none; }
+}
