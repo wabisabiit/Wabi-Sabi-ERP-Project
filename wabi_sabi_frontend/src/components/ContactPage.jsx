@@ -183,11 +183,14 @@ export default function ContactPage() {
   const [openFilter, setOpenFilter] = useState(false);
   const [locations, setLocations] = useState([]);
   const LOCATION_OPTIONS = [
-    "Ansal Plaza",
-    "Udyog Vihar",
-    "IFFCO Chowk",
-    "WABI SABI SUSTAINABILITY LLP",
-    "Krishna Nagar",
+    "Brands4Less-Tilak Nagar",
+    "Brands4Less-M3M Urbana",
+    "Brands4Less-Rajori Garden inside(RJR)",
+    "Brands4Less-Rajori Garden outside(RJO)",
+    "Brands4Less-Iffco Chock",
+    "Brands4Less-Krishna Nagar",
+    "Brands4Less-UP-AP",
+    "Brands4Less-Udhyog Vihar"
   ];
 
   // --- Download menu ---
