@@ -121,7 +121,7 @@
 /* .btn-icon:hover{ background:#eef2f7; } */
 
 .emp-select{
-  height:36px; min-width:62px; border:1px solid #e2e8f0; border-radius:8px;
+  height:36px; width:62px; border:1px solid #e2e8f0; border-radius:8px;
   padding:0 8px; background:#fff; color:#1f2937; font-size:13px;
 }
 
@@ -621,3 +621,64 @@
 /* and make the export popup sit on top of everything nearby */
 .emp-export { position: relative; }
 .emp-export-pop { z-index: 9999; }  /* was missing */
+
+/* Make sure nothing in the page clips the portal popups */
+.emp-wrap, .emp-card, .emp-toolbar, .table-wrap { overflow: visible; }
+
+/* Highest z for non-portal popups (still fine) */
+.emp-export-pop { z-index: 9999; }
+.emp-loc-pop, .emp-ns-pop { z-index: 9998; }
+
+/* Pager: compact size & spacing */
+.emp-table-foot { padding: 6px 10px; }
+.emp-table-foot .foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;              /* tighter gap */
+}
+.page {
+  min-width: 22px;       /* was 26px */
+  height: 22px;          /* was 26px */
+  padding: 0 6px;        /* narrower */
+  font-size: 12px;       /* smaller text */
+  line-height: 22px;
+}
+.page.current {
+  background: #0ea5e9; border-color: #0ea5e9; color: #fff;
+}
+
+/* Optional: keep the action column from forcing extra width */
+.col-actions { width: 116px; }   /* was 132–140px in places */
+
+/* Location popup: show full names, no horizontal scroll */
+.emp-loc-pop{
+  /* was width: 179px; */
+  min-width: 360px;
+  max-width: 520px;          /* plenty of room for long names */
+}
+
+.emp-loc-list{
+  max-height: 320px;
+  overflow-y: auto;           /* vertical only */
+  overflow-x: hidden;         /* ⬅ no horizontal scroll */
+  padding-right: 4px;         /* avoid overlaying scrollbar on text */
+}
+
+.emp-loc-item{
+  /* let the label wrap onto multiple lines next to the checkbox */
+  display: grid;
+  grid-template-columns: 16px 1fr;  /* checkbox | text */
+  align-items: start;
+  gap: 8px;
+}
+
+.emp-loc-item input{ margin-top: 2px; }
+
+/* REMOVE the old nowrap/ellipsis rule. Replace with this: */
+.emp-loc-txt{
+  white-space: normal;        /* allow wrapping */
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  word-break: break-word;     /* just in case of very long tokens */
+}

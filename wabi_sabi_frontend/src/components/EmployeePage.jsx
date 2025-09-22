@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import ReactDOM from "react-dom";
 import "../styles/EmployeePage.css";
 
 const DATA = [
-  { id: 1, name: "Rajdeep",        phone: "+91-7827635203", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
-  { id: 2, name: "IT Account",     phone: "+91-7859456588", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
-  { id: 3, name: "Nishant",        phone: "+91-9658745122", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
+  { id: 1, name: "Rajdeep", phone: "+91-7827635203", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
+  { id: 2, name: "IT Account", phone: "+91-7859456588", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
+  { id: 3, name: "Nishant", phone: "+91-9658745122", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
   { id: 4, name: "Krishna Pandit", phone: "+91-9718068241", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
 ];
 
@@ -321,25 +322,54 @@ export default function EmployeePage() {
           <div className="flex-spacer" />
 
           {/* Export dropdown */}
+
           <div className="emp-export" ref={exportRef}>
             <button
               className="btn-icon"
               title="Export"
-              onClick={() => setExportOpen((v) => !v)}
+              onClick={(e) => {
+                setExportOpen((v) => !v);
+                // store anchor rect for positioning
+                const r = e.currentTarget.getBoundingClientRect();
+                // stash on the element for later read (simple local state alternative)
+                e.currentTarget.dataset.rect = JSON.stringify({
+                  top: r.bottom + 6, // a little spacing under the button
+                  left: r.right - 160, // popup width ~160px, aligns right edge
+                });
+              }}
             >
               <span className="material-icons">file_download</span>
             </button>
-            {exportOpen && (
-              <div className="emp-export-pop" role="menu">
-                <button className="emp-export-item" onClick={exportExcel}>
-                  Excel
-                </button>
-                <button className="emp-export-item" onClick={exportPDF}>
-                  PDF
-                </button>
-              </div>
-            )}
+
+            {exportOpen &&
+              ReactDOM.createPortal(
+                (() => {
+                  // read the last rect saved on the anchor button
+                  const btn = exportRef.current?.querySelector(".btn-icon");
+                  let pos = { top: 0, left: 0 };
+                  try {
+                    pos = JSON.parse(btn?.dataset.rect || "{}");
+                  } catch { }
+                  return (
+                    <div
+                      className="emp-export-pop portal"
+                      role="menu"
+                      style={{ position: "fixed", top: pos.top, left: pos.left, width: 160 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button className="emp-export-item" onClick={exportExcel}>
+                        Excel
+                      </button>
+                      <button className="emp-export-item" onClick={exportPDF}>
+                        PDF
+                      </button>
+                    </div>
+                  );
+                })(),
+                document.body
+              )}
           </div>
+
 
           <select
             className="emp-select"
@@ -347,7 +377,7 @@ export default function EmployeePage() {
             onChange={(e) => setPageSize(Number(e.target.value))}
             title="Rows per page"
           >
-            {[10, 15, 25, 50, 100].map((n) => (
+            {[10, 50, 100, 200, 500].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
