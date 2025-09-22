@@ -45,6 +45,11 @@ export default function Sidebar({ open, onClose, persistent = false }) {
     };
   }, [navigate]);
 
+  // ✅ Auto-expand CRM when on any /crm route
+  useEffect(() => {
+    if (isPath("/crm")) setExpandCRM(true);
+  }, [location]);
+
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
   const handleNav = () => onClose?.();
 
@@ -161,7 +166,6 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </div>
           </div>
 
-          {/* NEW: CRM */}
           {/* CRM */}
           <div className="sb-group">
             <button
@@ -178,7 +182,16 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
 
             <div id="sb-crm-sub" className={`sb-sub ${expandCRM ? "show" : ""}`}>
-              {/* NEW: Coupon */}
+              {/* NEW: Discount */}
+              <NavLink
+                to="/crm/discount"
+                className={linkClass}
+                onClick={handleNav}
+              >
+                Discount
+              </NavLink>
+
+              {/* Coupon */}
               <NavLink
                 to="/crm/coupon"
                 className={linkClass}
@@ -187,7 +200,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
                 Coupon
               </NavLink>
 
-              {/* Existing: Loyalty */}
+              {/* Loyalty */}
               <NavLink
                 to="/crm/loyalty"
                 className={linkClass}
@@ -198,8 +211,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </div>
           </div>
 
-
-          {/* NEW: Utilities */}
+          {/* Utilities */}
           <div className="sb-group">
             <button
               className="sb-item"

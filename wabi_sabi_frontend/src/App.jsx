@@ -20,11 +20,13 @@ import BarcodeUtilityPage from "./components/BarcodeUtilityPage";
 import ContactPage from "./components/ContactPage";
 import PointSetupPage from "./components/PointSetupPage";
 
-// NEW: CRM > Loyalty page import
+// CRM pages
 import LoyaltyPage from "./components/LoyaltyPage";
+import DiscountPage from "./components/DiscountPage"; // <-- make sure this file exists
 
 import "./App.css";
 
+/* ---------- Layouts ---------- */
 function POSLayout() {
   return (
     <div className="app">
@@ -46,13 +48,14 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      {/* Sidebar forced open + persistent so page hamesha sidebar ke saath dikhe */}
-      <Sidebar open={true} persistent onClose={() => { }} />
+      {/* Sidebar forced open + persistent so page always shows with sidebar */}
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
 }
 
+/* ---------- App ---------- */
 export default function App() {
   const navigate = useNavigate();
 
@@ -80,18 +83,16 @@ export default function App() {
       {/* Utilities > Barcode */}
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
       <Route path="/Utilities/Barcode Utility" element={<Navigate to="/utilities/barcode" replace />} />
-      <Route
-        path="/crm/loyalty/point-setup"
-        element={<SidebarLayout><PointSetupPage /></SidebarLayout>}
-      />
-      <Route
-        path="/crm/loyalty/campaign/new"
-        element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>}
-      />
-      {/* NEW: CRM > Loyalty */}
+
+      {/* CRM > Loyalty */}
+      <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
+      <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
       <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
-      {/* (optional alias) */}
       <Route path="/CRM/Loyalty" element={<Navigate to="/crm/loyalty" replace />} />
+
+      {/* ✅ CRM > Discount (with sidebar) */}
+      <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
+      <Route path="/CRM/Discount" element={<Navigate to="/crm/discount" replace />} />
 
       <Route
         path="/multiple-pay"
