@@ -20,9 +20,11 @@ import BarcodeUtilityPage from "./components/BarcodeUtilityPage";
 import ContactPage from "./components/ContactPage";
 import PointSetupPage from "./components/PointSetupPage";
 
+
 // CRM pages
 import LoyaltyPage from "./components/LoyaltyPage";
 import DiscountPage from "./components/DiscountPage"; // <-- make sure this file exists
+import CouponPage from "./components/CouponPage";
 
 import "./App.css";
 
@@ -88,6 +90,7 @@ export default function App() {
       <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
       <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
       <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
+      <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
       <Route path="/CRM/Loyalty" element={<Navigate to="/crm/loyalty" replace />} />
 
       {/* ✅ CRM > Discount (with sidebar) */}

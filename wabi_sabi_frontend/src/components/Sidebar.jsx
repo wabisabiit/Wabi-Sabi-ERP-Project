@@ -1,64 +1,53 @@
+// src/components/Sidebar.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import "../styles/Sidebar.css";
 
 export default function Sidebar({ open, onClose, persistent = false }) {
   const panelRef = useRef(null);
+
   const [expandInventory, setExpandInventory] = useState(false);
   const [expandPOS, setExpandPOS] = useState(true);     // POS open by default
   const [expandAdmin, setExpandAdmin] = useState(true); // Admin open by default
+  const [expandUtilities, setExpandUtilities] = useState(false);
+  const [expandCRM, setExpandCRM] = useState(false);
+
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
 
-  // NEW: Utilities section state (closed by default)
-  const [expandUtilities, setExpandUtilities] = useState(false);
-
-  // NEW: CRM section state (closed by default)
-  const [expandCRM, setExpandCRM] = useState(false);
-
-  const navigate = useNavigate();
-
-  // close on ESC
+  // Close on ESC (when not persistent)
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => e.key === "Escape" && onClose();
+    if (!open || persistent) return;
+    const onKey = (e) => e.key === "Escape" && onClose?.();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, persistent, onClose]);
 
-  // focus first focusable when opened
+  // Focus first focusable when opened
   useEffect(() => {
     if (!open || !panelRef.current) return;
-    const focusable = panelRef.current.querySelector(
+    const el = panelRef.current.querySelector(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
-    focusable && focusable.focus();
+    el && el.focus();
   }, [open]);
 
-  // subscribe to nav changes (no-op but keeps hook parity)
-  useEffect(() => {
-    const unlisten = navigate((_, { preventScrollReset }) => {
-      preventScrollReset = true;
-    });
-    return () => {
-      typeof unlisten === "function" && unlisten();
-    };
-  }, [navigate]);
-
-  // ✅ Auto-expand CRM when on any /crm route
+  // Auto-expand CRM when on any /crm route
   useEffect(() => {
     if (isPath("/crm")) setExpandCRM(true);
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
-  const handleNav = () => onClose?.();
+  const handleNav = () => {
+    if (!persistent) onClose?.();
+  };
 
   return (
     <>
       {/* overlay */}
       <div
         className={`sb-overlay ${open ? "show" : ""} ${persistent ? "persistent-hide" : ""}`}
-        onClick={onClose}
+        onClick={() => !persistent && onClose?.()}
         aria-hidden={!open}
       />
 
@@ -71,7 +60,11 @@ export default function Sidebar({ open, onClose, persistent = false }) {
       >
         {/* header */}
         <div className="sb-top">
-          <button className="sb-burger" onClick={onClose} aria-label="Close">
+          <button
+            className="sb-burger"
+            onClick={() => !persistent && onClose?.()}
+            aria-label="Close"
+          >
             <span className="material-icons">menu</span>
           </button>
           <div className="sb-brand">Wabi&nbsp;Sabi</div>
@@ -80,17 +73,17 @@ export default function Sidebar({ open, onClose, persistent = false }) {
         {/* items */}
         <nav className="sb-items">
           {/* Dashboard */}
-          <NavLink to="/new" className="sb-item" onClick={onClose}>
+          <NavLink to="/new" className="sb-item" onClick={handleNav}>
             <span className="material-icons sb-ic">dashboard</span>
             <span className="sb-text">Dashboard</span>
           </NavLink>
 
+          {/* Contact */}
           <div className="sb-group">
-            {/* Contact */}
             <NavLink
               to="/contact"
               className={({ isActive }) => `sb-item${isActive ? " active" : ""}`}
-              onClick={onClose}
+              onClick={handleNav}
             >
               <span className="material-icons sb-ic">contacts</span>
               <span className="sb-text">Contact</span>
@@ -104,6 +97,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               onClick={() => setExpandAdmin((v) => !v)}
               aria-expanded={expandAdmin}
               aria-controls="sb-admin-sub"
+              type="button"
             >
               <span className="material-icons sb-ic">admin_panel_settings</span>
               <span className="sb-text">Admin</span>
@@ -129,6 +123,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               onClick={() => setExpandInventory((v) => !v)}
               aria-expanded={expandInventory}
               aria-controls="sb-inventory-sub"
+              type="button"
             >
               <span className="material-icons sb-ic">inventory_2</span>
               <span className="sb-text">Inventory</span>
@@ -150,6 +145,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               onClick={() => setExpandPOS((v) => !v)}
               aria-expanded={expandPOS}
               aria-controls="sb-pos-sub"
+              type="button"
             >
               <span className="material-icons sb-ic">point_of_sale</span>
               <span className="sb-text">POS</span>
@@ -159,10 +155,10 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
 
             <div id="sb-pos-sub" className={`sb-sub ${expandPOS ? "show" : ""}`}>
-              <NavLink to="/new" className={linkClass} onClick={onClose}>New</NavLink>
-              <NavLink to="/order-list" className={linkClass} onClick={onClose}>Order List</NavLink>
-              <NavLink to="/credit-note" className={linkClass} onClick={onClose}>Credit Note</NavLink>
-              <NavLink to="/sales-register" className={linkClass} onClick={onClose}>Sales Register</NavLink>
+              <NavLink to="/new" className={linkClass} onClick={handleNav}>New</NavLink>
+              <NavLink to="/order-list" className={linkClass} onClick={handleNav}>Order List</NavLink>
+              <NavLink to="/credit-note" className={linkClass} onClick={handleNav}>Credit Note</NavLink>
+              <NavLink to="/sales-register" className={linkClass} onClick={handleNav}>Sales Register</NavLink>
             </div>
           </div>
 
@@ -173,6 +169,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               onClick={() => setExpandCRM((v) => !v)}
               aria-expanded={expandCRM}
               aria-controls="sb-crm-sub"
+              type="button"
             >
               <span className="material-icons sb-ic">diversity_3</span>
               <span className="sb-text">CRM</span>
@@ -182,30 +179,13 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
 
             <div id="sb-crm-sub" className={`sb-sub ${expandCRM ? "show" : ""}`}>
-              {/* NEW: Discount */}
-              <NavLink
-                to="/crm/discount"
-                className={linkClass}
-                onClick={handleNav}
-              >
-                Discount
-              </NavLink>
-
-              {/* Coupon */}
-              <NavLink
-                to="/crm/coupon"
-                className={linkClass}
-                onClick={handleNav}
-              >
+              <NavLink to="/crm/coupon" className={linkClass} onClick={handleNav}>
                 Coupon
               </NavLink>
-
-              {/* Loyalty */}
-              <NavLink
-                to="/crm/loyalty"
-                className={linkClass}
-                onClick={handleNav}
-              >
+              <NavLink to="/crm/discount" className={linkClass} onClick={handleNav}>
+                Discount
+              </NavLink>
+              <NavLink to="/crm/loyalty" className={linkClass} onClick={handleNav}>
                 Loyalty
               </NavLink>
             </div>
@@ -218,6 +198,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               onClick={() => setExpandUtilities((v) => !v)}
               aria-expanded={expandUtilities}
               aria-controls="sb-utils-sub"
+              type="button"
             >
               <span className="material-icons sb-ic">build</span>
               <span className="sb-text">Utilities</span>
@@ -227,11 +208,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
 
             <div id="sb-utils-sub" className={`sb-sub ${expandUtilities ? "show" : ""}`}>
-              <NavLink
-                to="/utilities/barcode"
-                className={linkClass}
-                onClick={handleNav}
-              >
+              <NavLink to="/utilities/barcode" className={linkClass} onClick={handleNav}>
                 Barcode Utility
               </NavLink>
             </div>

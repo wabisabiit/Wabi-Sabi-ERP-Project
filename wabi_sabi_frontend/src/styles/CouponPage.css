@@ -1,0 +1,202 @@
+/* Page background + type to match your app */
+.cp-wrap{
+  background:#f4f7fc;
+  min-height:100vh;
+  padding:14px 20px 28px;
+  font-family:"Segoe UI", Roboto, Arial, sans-serif;
+  color:#111827;
+}
+
+/* Title bar */
+.cp-pagebar{
+  display:flex; align-items:center; gap:8px;
+  margin:0 0 10px;
+}
+.cp-pagebar h1{
+  margin:0; font-size:15px; font-weight:600; color:#2d3748;
+}
+.home-ico{ color:#9aa3b7; font-size:18px; }
+
+/* Card */
+.cp-card{
+  background:#fff;
+  border:1px solid #e1e7ef;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,.05);
+  overflow:visible;
+}
+
+/* Tabs row */
+.cp-tabs{
+  display:flex; align-items:flex-end; gap:10px;
+  padding:10px 12px 0;
+  border-bottom:1px solid #e7eaf0;
+}
+.tab{
+  background:#fff;
+  border:0;
+  padding:10px 14px;
+  font-size:14px; font-weight:600; color:#2d3748;
+  border-bottom:2px solid transparent;
+  border-radius:6px 6px 0 0;
+  cursor:pointer;
+}
+.tab.active{
+  color:#0ea5e9;
+  border-bottom-color:#0ea5e9;
+}
+
+/* Right tools */
+.cp-tools{
+  margin-left:auto;
+  display:flex; align-items:center; gap:10px;
+}
+.cp-select{
+  height:34px; min-width:62px; padding:0 8px;
+  border:1px solid #d9dee6; border-radius:4px; background:#fff;
+  font-size:13px; color:#111827;
+}
+.btn{
+  height:34px; padding:0 12px; border-radius:6px;
+  border:1px solid #0ea5e9; background:#0ea5e9; color:#fff;
+  font-size:13px; font-weight:600; cursor:pointer;
+  box-shadow:0 6px 18px rgba(14,165,233,.18);
+}
+.btn:hover{ filter:brightness(1.05); }
+
+/* Filter area */
+.cp-filter{ padding:12px; }
+.cp-label{
+  display:block; font-size:14px; font-weight:600; color:#374151; margin-bottom:6px;
+}
+.cp-filter-row{ display:flex; align-items:center; gap:8px; }
+
+/* Select Location pill (focus glow like screenshot) */
+.loc-wrap{ position:relative; display:inline-block; }
+
+.loc-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  height:40px; padding:0 12px;
+  background:#f3f6fb;
+  border:1px solid #cfd6e1;
+  border-radius:8px;
+  cursor:pointer;
+  box-shadow: 0 0 0 0 rgba(14,165,233,0);
+}
+.loc-pill.is-open,
+.loc-pill:focus-visible{
+  outline:0;
+  border-color:#58aef5;
+  box-shadow:0 0 0 2px rgba(88,174,245,.25);
+}
+.loc-text{ color:#374151; font-weight:600; }
+.loc-badge{
+  min-width:20px; height:20px; line-height:20px; text-align:center;
+  background:#111827; color:#fff; font-size:12px;
+  border-radius:4px; font-weight:700;
+}
+.loc-x{
+  display:inline-grid; place-items:center;
+  width:20px; height:20px; border-radius:50%;
+  border:1px solid #cfd6e1;
+  color:#111827; font-size:14px; font-weight:700;
+}
+.loc-x:hover{ background:#e9eef6; }
+
+/* Popup */
+.loc-pop{
+  position:absolute; z-index:9999;
+  top:44px; left:0;
+  width:260px;
+  background:#fff;
+  border:1px solid #d9dee6;
+  border-radius:10px;
+  box-shadow:0 16px 36px rgba(16,24,40,.15);
+}
+
+/* Search box inside */
+.loc-search{ padding:10px; border-bottom:1px solid #e7eaf0; }
+.loc-search input{
+  width:100%; height:34px;
+  border:1px solid #d9dee6; border-radius:8px;
+  padding:0 10px; outline:0; background:#fff;
+}
+
+/* Options list — horizontal + vertical scroll enabled */
+.loc-list{
+  max-height:220px;
+  overflow-y:auto;
+  overflow-x:auto;           /* horizontal scroll for long names */
+  padding:6px 10px;
+}
+
+/* Each row expands to content width so list can pan horizontally */
+.loc-item{
+  display:grid; grid-template-columns:16px 1fr;
+  align-items:start; gap:8px;
+  padding:8px 4px; cursor:pointer; border-radius:6px;
+
+  width:max-content;         /* grow to actual text width */
+  min-width:100%;            /* but not smaller than popup width */
+}
+.loc-item:hover{ background:#f7fafc; }
+.loc-item input{ margin-top:2px; accent-color:#0ea5e9; }
+
+/* Keep text on one line so it can overflow horizontally */
+.loc-txt{
+  white-space:nowrap;
+  word-break:keep-all;
+}
+
+/* Empty state inside popup */
+.loc-empty{ padding:12px 6px; color:#6b7280; font-size:13px; }
+
+/* Table container: shows horizontal scrollbar like screenshot */
+.cp-table-wrap{
+  overflow:auto;
+  margin:6px 12px 0;
+  border:1px solid #e7eaf0;
+  border-radius:10px;
+}
+.cp-table{
+  width:100%;
+  min-width:938px;                 /* adjust as needed */
+  border-collapse:separate; border-spacing:0;
+}
+.cp-table thead th{
+  background:#f3f6fb;
+  color:#4a5568; font-weight:700; font-size:13px;
+  text-align:left; padding:10px 12px;
+  border-bottom:1px solid #e7eaf0;
+}
+.cp-table thead th:first-child{ border-top-left-radius:10px; }
+.cp-table thead th:last-child { border-top-right-radius:10px; }
+
+.cp-table tbody td{
+  font-size:13px; color:#1f2937;
+  padding:12px; border-bottom:1px solid #eef2f6;
+}
+.cp-table tbody .empty-row td{
+  text-align:center; color:#6b7280; padding:16px;
+}
+
+/* little sort marker on selected headings */
+.sortable::after{
+  content:"↕";
+  margin-left:6px; font-size:12px; color:#9aa3b7;
+}
+
+/* first column width */
+.col-sr{ width:46px; }
+
+/* Footer / pager */
+.cp-foot{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 12px 12px;
+  font-size:12px; color:#6b7280;
+}
+.page{
+  min-width:26px; height:26px; display:inline-grid; place-items:center;
+  border:1px solid #d9dee6; border-radius:4px; background:#fff; cursor:pointer;
+}
+.page .material-icons{ font-size:18px; color:#4b5563; }
