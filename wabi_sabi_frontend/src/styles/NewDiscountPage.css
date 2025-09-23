@@ -1,0 +1,226 @@
+/* ================== New Discount page (nd-*) ================== */
+
+/* header */
+.nd-top{margin:1px 10px 12px;padding-top:10px}
+.nd-bc{display:flex;align-items:center;gap:10px}
+.nd-title{font-size:18px;font-weight:500;color:#1f2937}
+.nd-home{font-size:18px;color:#9aa3af}
+.nd-dash{color:#9aa3af}
+.nd-bc-dim{color:#6b7280}
+
+/* card shell */
+.nd-card{background:#fff;border:1px solid #e6e9f0;border-radius:12px;overflow:hidden;margin:10px 10px 20px}
+.nd-head{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#f9fafb;border-bottom:1px solid #eef2f7;color:#0ea5e9;font-weight:500;font-size:14px}
+.nd-gear{font-size:18px;color:#94a3b8}
+
+/* grid: left form + right branches */
+.nd-grid{
+  --ctrl-h:36px;
+  padding:16px 18px;
+  display:grid;
+  grid-template-columns:minmax(620px,1fr) 360px;
+  gap:22px;
+}
+.nd-main{min-width:0}
+.nd-side{min-width:0;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+
+/* rows */
+.nd-row{margin-bottom:14px}
+.nd-row:last-child{margin-bottom:0}
+
+/* top row: Auto | Exclude | Applicable */
+.nd-row.threecol{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:end}
+
+/* two cols */
+.nd-row.twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+/* three cols (Buy X Get Y) */
+.nd-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+
+/* Discount radios (left) + Code (right) */
+.nd-row.discountline{
+  display:grid;
+  grid-template-columns:1fr 420px;
+  gap:18px; align-items:end;
+}
+
+/* labels + small typography */
+.nd-label{display:block;margin-bottom:6px;font-size:12.5px;font-weight:600;color:#1f2937}
+.nd-small-label{font-size:12px;color:#4b5563;margin-bottom:6px}
+
+/* inputs */
+.nd-input{width:100%;height:35px;border:1px solid #d0d5dd;border-radius:8px;padding:0 10px;outline:0;background:#fff;font-size:13px}
+
+/* toggle NO/YES */
+.nd-toggle{display:inline-flex;border:1px solid #d0d5dd;border-radius:8px;overflow:hidden}
+.nd-tg-btn{min-width:92px;height:var(--ctrl-h);padding:0 12px;border:0;background:#f2f4f7;color:#111;cursor:pointer;font-weight:700}
+.nd-tg-btn.on{background:#0ea5e9;color:#fff}
+
+/* radios/checkboxes */
+.nd-radio-inline{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:13px;color:#111}
+.nd-radio-inline.nowrap{flex-wrap:nowrap}
+.nd-radio input{margin-right:8px}
+.nd-check{display:flex;align-items:center;gap:8px;color:#1f2937;font-size:13px}
+.nd-help{font-size:16px;color:#9aa3af;margin-left:6px}
+.mt6{margin-top:6px}.mt8{margin-top:8px}
+
+/* value pill + input */
+.nd-val{display:flex;align-items:center;gap:8px}
+.nd-val-unit{width:34px;height:var(--ctrl-h);border:1px solid #d0d5dd;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;background:#fff;font-size:13px}
+.nd-val-input{width:240px;height:var(--ctrl-h);border:1px solid #d0d5dd;border-radius:8px;padding:0 10px;outline:0;background:#fff;font-size:13px}
+
+/* select-like search */
+.nd-search-select{position:relative;display:flex;align-items:center;border:1px solid #d0d5dd;border-radius:8px;height:var(--ctrl-h);background:#fff;padding:0 10px;max-width:360px}
+.nd-search-select input{border:0;outline:0;width:100%;height:100%;font-size:13px}
+.nd-search-select .material-icons{font-size:18px;color:#667085}
+
+/* category dropdown width */
+.nd-cat{width:280px}
+
+/* generic select */
+.dp-select{position:relative;display:inline-flex;align-items:center;min-width:220px}
+.dp-select select{
+  width:100%;height:var(--ctrl-h);
+  border:1px solid #d0d5dd;border-radius:8px;
+  padding:0 34px 0 10px;background:#fff;font-size:13px;
+  -webkit-appearance:none;-moz-appearance:none;appearance:none;outline:0;
+}
+.dp-select .material-icons{
+  position:absolute;right:10px;font-size:18px;color:#667085;pointer-events:none;
+}
+
+/* right panel (Import + Branches) */
+.nd-import{height:34px;padding:0 14px;background:#0ea5e9;border:1px solid #0ea5e9;color:#fff;border-radius:8px;font-weight:600;cursor:pointer}
+.nd-side-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;margin-bottom:2px}
+.nd-badge{background:#111;color:#fff;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+
+.nd-branches{
+  border:1px solid #e6e9f0;border-radius:10px;background:#fff;
+  padding:8px 10px;max-height:460px;overflow:auto;width:100%;
+  font-size:13px;color:#575962;
+}
+.nd-branch{display:flex;align-items:flex-start;gap:10px;padding:6px 0;line-height:1.25}
+.nd-branch input{margin-top:2px}
+
+/* date/time 2-col */
+.nd-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+/* footer */
+.nd-foot{display:flex;align-items:center;justify-content:flex-start;gap:10px;padding:12px 16px;border-top:1px solid #eef2f7;background:#282733}
+.nd-btn{height:var(--ctrl-h);padding:0 16px;border-radius:8px;border:1px solid #facc15;background:#fff;font-weight:700;cursor:pointer;color: #facc15;}
+.nd-btn.cancel{color:white;height:35px;background-color: #e11d48;border: none;}
+.nd-btn.clear{background:#facc15;border-color:#eab308;color:#111;height: 35px;}
+.nd-btn.save{background:#0ea5e9;border-color:#0ea5e9;color:#fff;height: 35px;margin-left: 800px;}
+.nd-btn.primary{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
+.nd-btn.warn{background:#fde68a;color:#111;border-color:#f59e0b}
+
+/* required */
+.req{color:#e11d48}
+
+/* ---------- Search dropdown ---------- */
+.nd-has-dd{position:relative}
+.nd-dd{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;
+  background:#fff;border:1px solid #e6e9f0;border-radius:8px;
+  box-shadow:0 8px 24px rgba(17,24,39,.12);
+  max-height:220px;overflow:auto;z-index:20;
+}
+.nd-dd-item{padding:10px 12px;cursor:pointer;font-size:13px}
+.nd-dd-item:hover{background:#f3f4f6}
+.nd-dd-empty{padding:10px 12px;font-size:12.5px;color:#6b7280}
+
+/* Usage Limits */
+.nd-limit-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nd-limit-input{width:140px}
+
+/* responsive */
+@media (max-width:1200px){
+  .nd-row.threecol{grid-template-columns:1fr}
+  .nd-row.discountline{grid-template-columns:1fr}
+  .nd-grid-3{grid-template-columns:1fr}
+}
+@media (max-width:1100px){
+  .nd-grid{grid-template-columns:1fr}
+  .nd-side{order:2}
+}
+
+/* page bg */
+.with-sb{background:#eef2f7;min-height:100vh}
+
+/* inline little amount inputs */
+.nd-inline{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.nd-mini{width:200px}
+
+/* ---------- Multi-select token list (Given To) ---------- */
+.nd-tokenlist{
+  margin-top:8px;border:1px solid #e6e9f0;border-radius:10px;overflow:auto;max-height:180px;background:#fff
+}
+.nd-token{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;border-bottom:1px solid #eef2f7;font-size:13px;background:#f9fafb
+}
+.nd-token:last-child{border-bottom:0}
+.nd-token-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd-token-x{background:transparent;border:0;font-size:18px;line-height:1;color:#6b7280;cursor:pointer}
+
+/* spacer when 'Free' selected */
+.nd-ghost{min-height:36px}
+
+/* ================== Import Modals (FINAL) ================== */
+/* overlay */
+.nd-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(17,24,39,.55); /* dim like screenshot */
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:saturate(120%) blur(1px);
+}
+/* second modal: top-center */
+.nd-overlay.top{align-items:flex-start;padding-top:8vh}
+
+/* modal card */
+.nd-modal{
+  width:540px;max-width:92vw;background:#fff;
+  border:1px solid #e6e9f0;
+  box-shadow:0 16px 40px rgba(2,6,23,.18);
+  overflow:hidden;
+}
+.nd-modal.wide{width:620px} /* Upload Product Sheet wider like screenshot */
+
+/* header bar (light grey) */
+.nd-modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  height:48px;padding:12px 16px;
+  background:#efeff3;               /* top header color */
+  border-bottom:1px solid #eef2f7;
+}
+.nd-modal-title{font-weight:600;color:#4e5053;font-size:14px}
+.nd-x{border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:#6b7280}
+
+/* content & footer */
+.nd-modal-body{padding:10px 16px;font-size: 13px;}
+.nd-modal-foot{
+  padding:12px 16px;display:flex;gap:10px;justify-content:flex-end;
+  border-top:1px solid #eef2f7;background:#fff
+}
+
+/* radio rows inside modal */
+.nd-modal .nd-block{display:flex;align-items:center;gap:10px;margin:8px 0}
+.nd-modal .nd-block label{font-weight:500;color:#1f2937;}
+
+/* file row in “Upload Product Sheet” */
+.nd-file-row{display:flex;align-items:center;gap:8px}
+.nd-file-row .nd-input{flex:1}
+.nd-file-icons{display:flex;gap:6px}
+.nd-iconbtn{
+  height:36px;width:36px;border:1px solid #d0d5dd;border-radius:8px;
+  background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer
+}
+.nd-iconbtn .material-icons{font-size:18px;color:#667085}
+
+/* verify chip */
+.nd-verify{margin-top:8px;font-size:12.5px;padding:6px 10px;border-radius:8px;display:inline-block}
+.nd-verify.ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+.nd-verify.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+
+/* “Demo” link */
+.nd-link{border:0;background:transparent;color:#0ea5e9;cursor:pointer;font-weight:600;text-decoration:none;}

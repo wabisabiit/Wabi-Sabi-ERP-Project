@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/OutletCreatePage.css";
 
-const YEAR_INTERVALS = ["2024–2025", "2025–2026", "2026–2027"];
+// Removed YEAR_INTERVALS; using a date picker for Date of Joining
 const GST_TYPES = ["Registered", "Unregistered", "Composition"];
 const TIMEZONES = ["Chennai, Kolkata, Mumbai, New Delhi (UTC+05:30)"];
 const COUNTRIES = ["India"];
@@ -14,7 +14,7 @@ export default function OutletCreatePage() {
 
   // top meta
   const [outletType, setOutletType] = useState("Branch"); // Brand | Franchise | Branch
-  const [name, setName] = useState("");                   // ✅ ADDED field actually used in UI now
+  const [name, setName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [contactName, setContactName] = useState("");
 
@@ -26,7 +26,8 @@ export default function OutletCreatePage() {
   const [pwd, setPwd] = useState("");
 
   // govt / tax
-  const [year, setYear] = useState("2025–2026");
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const [joiningDate, setJoiningDate] = useState(today);
   const [gstType, setGstType] = useState("Registered");
   const [gstin, setGstin] = useState("");
   const [tan, setTan] = useState("");
@@ -53,7 +54,9 @@ export default function OutletCreatePage() {
 
   const onSubmit = (e) => {
     e.preventDefault();
-    // TODO: API call
+    // TODO: API call – include joiningDate in payload
+    // Example payload structure:
+    // const payload = { outletType, name, displayName, contactName, mobile, telephone, email, userName, pwd, joiningDate, gstType, gstin, tan, fssai, pan, website, address, timezone, country, state, city, zip, bank: { bankName, branchName, accountNo, ifsc, swift, accountHolder }, outletSize };
     nav("/admin/outlet");
   };
 
@@ -107,7 +110,7 @@ export default function OutletCreatePage() {
             <input className="inp" placeholder="User Name" value={userName} onChange={e=>setUserName(e.target.value)} />
           </div>
 
-          {/* Row 3: Change Password | PAN | Year | GST Type */}
+          {/* Row 3: Change Password | PAN | Date of Joining | GST Type */}
           <div className="f">
             <label>Change Password</label>
             <input type="password" className="inp" placeholder="Password" value={pwd} onChange={e=>setPwd(e.target.value)} />
@@ -117,10 +120,13 @@ export default function OutletCreatePage() {
             <input className="inp" placeholder="PAN No." value={pan} onChange={e=>setPan(e.target.value)} />
           </div>
           <div className="f">
-            <label>Year Interval</label>
-            <select className="inp" value={year} onChange={e=>setYear(e.target.value)}>
-              {YEAR_INTERVALS.map(y => <option key={y}>{y}</option>)}
-            </select>
+            <label>Date of Opening<span className="req">*</span></label>
+            <input
+              type="date"
+              className="inp"
+              value={joiningDate}
+              onChange={e=>setJoiningDate(e.target.value)}
+            />
           </div>
           <div className="f">
             <label>GST Type</label>
@@ -220,7 +226,9 @@ export default function OutletCreatePage() {
 
         {/* actions */}
         <div className="out-form-actions">
-          <button type="button" className="btn ghost" onClick={() => nav("/admin/outlet")}>Cancel</button>
+          <button type="button" className="btn ghost" onClick={() => nav("/admin/outlet")}>
+            Cancel
+          </button>
           <button type="submit" className="btn primary">Submit</button>
         </div>
       </form>

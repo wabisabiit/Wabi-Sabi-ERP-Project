@@ -33,7 +33,6 @@ export default function EmployeeCreatePage() {
   // business
   const [branch, setBranch] = useState("WABI SABI SUSTAINABILITY LLP");
   const [salary, setSalary] = useState("");
-  const [target, setTarget] = useState("");
 
   // auth
   const [showAuth, setShowAuth] = useState(false);
@@ -131,17 +130,12 @@ export default function EmployeeCreatePage() {
             />
           </div>
 
-          {/* Row 4 — Salary, Target, Branch */}
+          {/* Row 4 — Salary, Branch */}
           <div className="f">
             <label>Salary</label>
             <input className="inp" placeholder="Salary" value={salary} onChange={(e) => setSalary(e.target.value)} />
           </div>
-          <div className="f">
-            <label>Target</label>
-            <input className="inp" placeholder="Target" value={target} onChange={(e) => setTarget(e.target.value)} />
-          </div>
 
-          {/* ✅ Native Select Branch (rest code same) */}
           <div className="f">
             <label>Select Branch</label>
             <select className="inp" value={branch} onChange={(e) => setBranch(e.target.value)}>

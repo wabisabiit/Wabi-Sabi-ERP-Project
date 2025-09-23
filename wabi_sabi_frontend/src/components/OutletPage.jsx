@@ -2,16 +2,16 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/OutletPage.css";
 
-/* ----- demo data ----- */
+/* ----- demo data (updated) ----- */
 const OUTLETS = [
-  { id: 1, type: "Branch", name: "Brands 4 Less – Ansal Plaza", contactName: "Brands 4 Less – Ansal Plaza", contactNo: "+91-8688944560", year: "2025–2026", month: "April - March" },
-  { id: 2, type: "Branch", name: "Brands 4 Less – M3M Urbana", contactName: "Brands 4 Less – M3M Urbana", contactNo: "+91-7333024520", year: "2025–2026", month: "April - March" },
-  { id: 3, type: "Branch", name: "Brands 4 Less – Tilak Nagar", contactName: "Brands4Less – Tilak Nagar", contactNo: "+91-9998883461", year: "2025–2026", month: "April - March" },
-  { id: 4, type: "Branch", name: "Brands 4 Less – Rajouri Garden Outside", contactName: "Brands4Less – Rajouri Garden Outside", contactNo: "+91-7017402732", year: "2025–2026", month: "April - March" },
-  { id: 5, type: "Branch", name: "Brands Loot – Udyog Vihar", contactName: "Brands Loot – Udyog Vihar", contactNo: "+91-7303467670", year: "2025–2026", month: "April - March" },
-  { id: 6, type: "Branch", name: "Brands 4 Less – IFFCO Chowk", contactName: "Brands4Less – IFFCO Chowk", contactNo: "+91-9998886067", year: "2025–2026", month: "April - March" },
-  { id: 7, type: "Branch", name: "Brands4Less – Krishna Nagar", contactName: "Brands4Less – Krishna Nagar", contactNo: "+91-7303479020", year: "2025–2026", month: "April - March" },
-  { id: 8, type: "Branch", name: "Brands 4 Less – Rajouri Garden Inside", contactName: "Brands4Less – Rajouri Garden Inside", contactNo: "+91-7307387070", year: "2025–2026", month: "April - March" },
+  { id: 1, type: "Branch", name: "Brands 4 Less – Ansal Plaza", displayName: "Brands 4 Less – Ansal Plaza", contactNo: "+91-8688944560", openingDate: "2025-04-15", month: "April - March" },
+  { id: 2, type: "Branch", name: "Brands 4 Less – M3M Urbana", displayName: "Brands 4 Less – M3M Urbana", contactNo: "+91-7333024520", openingDate: "2025-05-10", month: "April - March" },
+  { id: 3, type: "Branch", name: "Brands 4 Less – Tilak Nagar", displayName: "Brands 4 Less – Tilak Nagar", contactNo: "+91-9998883461", openingDate: "2025-06-01", month: "April - March" },
+  { id: 4, type: "Branch", name: "Brands 4 Less – Rajouri Garden Outside", displayName: "Brands 4 Less – Rajouri Garden Outside", contactNo: "+91-7017402732", openingDate: "2025-06-20", month: "April - March" },
+  { id: 5, type: "Branch", name: "Brands Loot – Udyog Vihar", displayName: "Brands Loot – Udyog Vihar", contactNo: "+91-7303467670", openingDate: "2025-07-05", month: "April - March" },
+  { id: 6, type: "Branch", name: "Brands 4 Less – IFFCO Chowk", displayName: "Brands 4 Less – IFFCO Chowk", contactNo: "+91-9998886067", openingDate: "2025-07-18", month: "April - March" },
+  { id: 7, type: "Branch", name: "Brands 4 Less – Krishna Nagar", displayName: "Brands 4 Less – Krishna Nagar", contactNo: "+91-7303479020", openingDate: "2025-08-03", month: "April - March" },
+  { id: 8, type: "Branch", name: "Brands 4 Less – Rajouri Garden Inside", displayName: "Brands 4 Less – Rajouri Garden Inside", contactNo: "+91-7307387070", openingDate: "2025-08-25", month: "April - March" },
 ];
 
 export default function OutletPage() {
@@ -25,7 +25,7 @@ export default function OutletPage() {
     const q = query.trim().toLowerCase();
     if (!q) return OUTLETS;
     return OUTLETS.filter((r) =>
-      [r.type, r.name, r.contactName, r.contactNo, r.year, r.month]
+      [r.type, r.name, r.displayName, r.contactNo, r.openingDate, r.month]
         .some(v => String(v || "").toLowerCase().includes(q))
     );
   }, [query]);
@@ -39,10 +39,11 @@ export default function OutletPage() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const headers = ["#", "Outlet Type", "Name", "Contact Name", "Contact No", "Year Interval", "Month Interval"];
+  // Updated headers to reflect requested label changes
+  const headers = ["#", "Outlet Type", "Name", "Display Name", "Contact No", "Date of Opening", "Month Interval"];
   const getRows = () =>
     filtered.slice(0, pageSize).map(r => [
-      r.id, r.type, `${r.name} %`, r.contactName, r.contactNo, r.year, r.month
+      r.id, r.type, `${r.name} %`, r.displayName, r.contactNo, r.openingDate, r.month
     ]);
 
   const download = (blob, filename) => {
@@ -55,8 +56,8 @@ export default function OutletPage() {
   const exportExcel = () => {
     const rows = getRows();
     const th = headers.map(h => `<th style="font-weight:600;border:1px solid #d9dee6;text-align:left;padding:6px 8px;background:#f5f7fb;">${h}</th>`).join("");
-    const tr = rows.map(r => `<tr>${r.map(c => `<td style="border:1px solid #d9dee6;padding:6px 8px;">${String(c ?? "")}</td>`).join("")}</tr>`).join("");
-    const html = `<!doctype html><html><head><meta charset="utf-8"></head>
+    const tr = rows.map(r => `<tr>${r.map(c => `<td style=\"border:1px solid #d9dee6;padding:6px 8px;\">${String(c ?? "")}</td>`).join("")}</tr>`).join("");
+    const html = `<!doctype html><html><head><meta charset=\"utf-8\"></head>
       <body><table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></body></html>`;
     download(new Blob([html], { type: "application/vnd.ms-excel" }), "outlets.xls");
     setExportOpen(false);
@@ -132,9 +133,9 @@ export default function OutletPage() {
                 <th className="col-sr"><span>#</span></th>
                 <th className="col-type th-sort"><span>Outlet Type</span></th>
                 <th className="col-name th-sort"><span>Name</span></th>
-                <th className="col-cname th-sort"><span>Contact Name</span></th>
+                <th className="col-cname th-sort"><span>Display Name</span></th>
                 <th className="col-cno th-sort"><span>Contact No</span></th>
-                <th className="col-year th-sort"><span>Year Interval</span></th>
+                <th className="col-year th-sort"><span>Date of Opening</span></th>
                 <th className="col-month th-sort"><span>Month Interval</span></th>
                 <th className="col-actions th-sort"><span>Actions</span></th>
               </tr>
@@ -147,14 +148,13 @@ export default function OutletPage() {
                   <td className="col-name">
                     <span className="name-with-perc">
                       <a href="#!" className="out-link">{r.name}</a>
-                      {/* <span className="name-perc">%</span> */}
                     </span>
                   </td>
                   <td className="col-cname">
-                    <a href="#!" className="out-link">{r.contactName}</a>
+                    <a href="#!" className="out-link">{r.displayName}</a>
                   </td>
                   <td className="col-cno">{r.contactNo}</td>
-                  <td className="col-year">{r.year}</td>
+                  <td className="col-year">{r.openingDate}</td>
                   <td className="col-month">{r.month}</td>
                   <td className="col-actions">
                     <button className="ico ico-round" title="Open" aria-label="Open">

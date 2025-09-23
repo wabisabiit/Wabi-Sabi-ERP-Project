@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-
+import NewDiscountPage from "./components/NewDiscountPage";
 import Header from "./components/Header";
 import SearchBar from "./components/SearchBar";
 import CartTable from "./components/CartTable";
@@ -96,7 +96,8 @@ export default function App() {
       {/* ✅ CRM > Discount (with sidebar) */}
       <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
       <Route path="/CRM/Discount" element={<Navigate to="/crm/discount" replace />} />
-
+<Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
+<Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
       <Route
         path="/multiple-pay"
         element={

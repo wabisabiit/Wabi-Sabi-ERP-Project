@@ -1,19 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";          // ⬅️ add
 import "../styles/DiscountPage.css";
 
-/** ======= Demo data (start empty to match screenshots) ======= */
-const ROWS = []; // keep [] for now; plug real data later
+/** ======= Demo data (empty like screenshot) ======= */
+const ROWS = [];
 
-/** Status options */
+/** Filters */
 const STATUS_OPTIONS = ["All", "ARCHIVE", "ACTIVE", "DEACTIVE"];
-
-/** Page-size options */
 const PAGE_SIZE_OPTIONS = [15, 25, 50, 100, 200, 500, "All"];
-
-/** Date range options (top-right) */
 const RANGE_OPTIONS = ["Current Year", "Last Month", "This Month", "Last Week", "This Week", "Today"];
 
-/** Location options (as you provided) */
+/** Locations */
 const LOCATION_OPTIONS = [
   "Brands4Less - Tilak Nagar",
   "Brands4Less - M3M Urbana",
@@ -25,15 +22,11 @@ const LOCATION_OPTIONS = [
   "Brands4Less-Udhyog Vihar",
 ];
 
-/* ========== Reusable: Simple Select ========== */
+/* ---------- Basic Select ---------- */
 function Select({ value, onChange, options = [], className = "", width, ariaLabel }) {
   return (
     <div className={`dp-select ${className}`} style={width ? { width } : undefined}>
-      <select
-        value={String(value)}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={ariaLabel || "Select"}
-      >
+      <select value={String(value)} onChange={(e) => onChange(e.target.value)} aria-label={ariaLabel || "Select"}>
         {options.map((opt) => (
           <option key={String(opt)} value={String(opt)}>
             {String(opt)}
@@ -45,7 +38,7 @@ function Select({ value, onChange, options = [], className = "", width, ariaLabe
   );
 }
 
-/* ========== Reusable: Location Multi-Select (with search + count badge + clear) ========== */
+/* ---------- Location Multi-Select (search + badge + clear) ---------- */
 function LocationMultiSelect({ value = [], onChange, options = [] }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -125,43 +118,32 @@ function LocationMultiSelect({ value = [], onChange, options = [] }) {
   );
 }
 
-/* ============================================================
-   Discount Page (exact like your screenshots)
-   ============================================================ */
+/* ---------- Page ---------- */
 export default function DiscountPage() {
-  /* top-right date range */
   const [range, setRange] = useState("Current Year");
-
-  /* toolbar controls */
   const [status, setStatus] = useState("All");
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(15);
   const [locations, setLocations] = useState([]);
 
-  /* derived rows */
+  const navigate = useNavigate();                         // ⬅️ add
+
   const filtered = useMemo(() => {
     let rows = ROWS;
-
-    // status
     if (status !== "All") rows = rows.filter((r) => (r.status || "").toUpperCase() === status);
-
-    // search (Title, CreatedBy, Type etc.)
-    const q = query.trim().toLowerCase();
-    if (q) {
+    const s = query.trim().toLowerCase();
+    if (s) {
       rows = rows.filter((r) =>
         [r.title, r.createdOn, r.validity, r.discountType, r.createdBy, r.status].some((v) =>
-          String(v || "").toLowerCase().includes(q)
+          String(v || "").toLowerCase().includes(s)
         )
       );
     }
-
-    // location contains any of selected
     if (locations.length > 0) {
       rows = rows.filter((r) =>
         locations.some((loc) => String(r.title || "").toLowerCase().includes(loc.toLowerCase()))
       );
     }
-
     return rows;
   }, [status, query, locations]);
 
@@ -171,19 +153,18 @@ export default function DiscountPage() {
 
   return (
     <div className="dp-wrap">
-      {/* Header row: title + date range */}
+      {/* title + breadcrumb + range */}
       <div className="dp-top">
-        <div className="dp-title">Discount</div>
-        <Select
-          value={range}
-          onChange={setRange}
-          options={RANGE_OPTIONS}
-          width={160}
-          ariaLabel="Date Range"
-        />
+        <div className="dp-left">
+          <div className="dp-title">Discount</div>
+          <span className="material-icons dp-home" title="Home">
+            home
+          </span>
+        </div>
+        <Select value={range} onChange={setRange} options={RANGE_OPTIONS} width={160} ariaLabel="Date Range" />
       </div>
 
-      {/* Summary cards */}
+      {/* summary cards */}
       <div className="dp-cards">
         {[
           { n: 0, t: "Total Coupons" },
@@ -200,28 +181,19 @@ export default function DiscountPage() {
         ))}
       </div>
 
-      {/* Main card */}
+      {/* main card */}
       <div className="dp-card box">
-        {/* toolbar */}
+        {/* toolbar (exact order like screenshot) */}
         <div className="dp-toolbar">
-          <Select
-            value={status}
-            onChange={setStatus}
-            options={STATUS_OPTIONS}
-            width={120}
-            ariaLabel="Status"
-          />
+          <Select value={status} onChange={setStatus} options={STATUS_OPTIONS} width={110} ariaLabel="Status" />
 
           <div className="dp-search">
             <span className="material-icons">search</span>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search List..."
-            />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search List..." />
           </div>
 
           <Select
+            className="pagesize"
             value={pageSize}
             onChange={(v) => setPageSize(v === "All" ? "All" : Number(v))}
             options={PAGE_SIZE_OPTIONS}
@@ -231,7 +203,8 @@ export default function DiscountPage() {
 
           <LocationMultiSelect value={locations} onChange={setLocations} options={LOCATION_OPTIONS} />
 
-          <button className="dp-btn primary">
+          <button className="dp-btn primary" onClick={() => navigate("/crm/discount/new")}>
+            {/* ⬆️ navigate to New Discount */}
             <span className="material-icons">add</span>
             <span>New Discount</span>
           </button>
@@ -273,15 +246,20 @@ export default function DiscountPage() {
                   </td>
                   <td>{r.createdBy ?? "-"}</td>
                   <td className="col-actions">
-                    <button className="ico" title="Edit"><span className="material-icons">edit</span></button>
-                    <button className="ico" title="More"><span className="material-icons">more_vert</span></button>
+                    <button className="ico" title="Edit">
+                      <span className="material-icons">edit</span>
+                    </button>
+                    <button className="ico" title="More">
+                      <span className="material-icons">more_vert</span>
+                    </button>
                   </td>
                 </tr>
               ))}
-
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="dp-empty">No data available in table</td>
+                  <td colSpan={11} className="dp-empty">
+                    No data available in table
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -290,9 +268,7 @@ export default function DiscountPage() {
 
         {/* footer */}
         <div className="dp-foot">
-          <div className="left">
-            {`Showing ${showingFrom} to ${showingTo} of ${filtered.length} entries`}
-          </div>
+          <div className="left">{`Showing ${showingFrom} to ${showingTo} of ${filtered.length} entries`}</div>
           <div className="right">
             <button className="pg arrow" title="Previous" disabled>
               <span className="material-icons">chevron_left</span>

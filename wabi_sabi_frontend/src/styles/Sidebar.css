@@ -28,7 +28,7 @@
   left: 0;
   height: 100vh;
   width: 260px;
-  background: var(--sb-bg);
+  background: #282733;
   color: var(--sb-text);
   transform: translateX(-100%);
   transition: transform .22s ease-out;

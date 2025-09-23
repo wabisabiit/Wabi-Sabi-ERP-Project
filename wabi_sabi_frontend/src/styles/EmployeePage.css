@@ -1,397 +1,6 @@
-@import "./Sidebar.css"; /* get the CSS vars like --sb-bg, etc. */
+@import "./Sidebar.css";
 
-.emp-wrap{
-  padding: 16px 18px 24px;
-  color: var(--sb-text);
-  min-height: 100vh;
-  background: #0f1420; /* subtle contrast to sidebar */
-}
-
-.emp-header{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 4px 2px 14px;
-}
-
-.emp-header h2{
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: .2px;
-  margin: 0;
-  color: var(--sb-text);
-}
-
-.emp-btn{
-  padding: 8px 12px;
-  background: var(--sb-accent);
-  color: #fff;
-  border: 0;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(14,165,233,.25);
-}
-.emp-btn:hover{ filter: brightness(1.06); }
-
-/* Card shell that matches sidebar tones */
-.emp-card{
-  background: var(--sb-bg);
-  border: 1px solid var(--sb-border);
-  border-radius: 12px;
-  padding: 18px;
-}
-
-.emp-empty{
-  text-align: center;
-  color: var(--sb-text-dim);
-  padding: 24px 8px;
-}
-.emp-empty .material-icons{
-  font-size: 44px;
-  display: block;
-  margin: 0 auto 8px;
-  color: var(--sb-accent);
-  opacity: .9;
-}
-
-/* If you later add a table/list, reuse these */
-.emp-table{
-  width: 100%;
-  border-collapse: collapse;
-  color: var(--sb-text);
-}
-.emp-table th,
-.emp-table td{
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--sb-border);
-}
-.emp-table th{
-  text-align: left;
-  color: var(--sb-text-dim);
-  font-weight: 500;
-}
-
-/* Focus parity with sidebar */
-.emp-btn:focus-visible{
-  outline: 2px solid var(--sb-accent);
-  outline-offset: 2px;
-  border-radius: 10px;
-}
-
-/* Light, data-table style like the screenshot. Sidebar stays visible via your SidebarLayout. */
-
-.emp-wrap{
-  background:#eef2f8;
-  min-height:100vh;
-  padding:18px 22px 28px;
-  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, -apple-system;
-  color:#1f2937;
-}
-
-/* Top title row */
-.emp-pagebar{
-  display:flex; align-items:center; gap:10px;
-  margin:6px 2px 12px;
-}
-.emp-pagebar h1{
-  font-size:18px; font-weight:600; margin:0; color:#1f2937;
-}
-
-/* Card shell */
-.emp-card{
-  background:#ffffff;
-  border:1px solid #e7eaf0;
-  border-radius:10px;
-  box-shadow: 0 12px 28px rgba(16,24,40,.08);
-  padding:12px 12px 10px;
-}
-
-/* Toolbar */
-.emp-toolbar{
-  display:flex; align-items:center; gap:10px;
-  justify-content:flex-end;
-  padding:4px 4px 10px;
-}
-.btn-icon{
-  width:36px; height:36px; display:grid; place-items:center;
-  border:1px solid #e2e8f0; background:#f8fafc; border-radius:8px; cursor:pointer;
-}
-.btn-icon .material-icons{ font-size:20px; color:#334155; }
-/* .btn-icon:hover{ background:#eef2f7; } */
-
-.emp-select{
-  height:36px; width:62px; border:1px solid #e2e8f0; border-radius:8px;
-  padding:0 8px; background:#fff; color:#1f2937; font-size:13px;
-}
-
-/* Buttons */
-.btn{
-  height:36px; display:inline-flex; align-items:center; gap:8px;
-  border:1px solid #e2e8f0; background:#f8fafc; color:#111827;
-  padding:0 12px; border-radius:8px; cursor:pointer; font-weight:500;
-}
-.btn:hover{ background:#eef2f7; }
-.btn .material-icons{ font-size:18px; color:#374151; }
-.btn.primary{
-  background:#0ea5e9; color:#fff; border-color:#0ea5e9; font-weight:600;
-  box-shadow:0 6px 18px rgba(14,165,233,.25);
-}
-.btn.primary:hover{ filter:brightness(1.07); }
-
-.flex-spacer{ flex:1; }
-
-/* Search */
-.emp-search{
-  position:relative; display:flex; align-items:center; gap:6px;
-  border:1px solid #e2e8f0; border-radius:8px; background:#fff; height:36px;
-  padding:0 10px;
-}
-.emp-search .material-icons{ font-size:18px; color:#64748b; }
-.emp-search input{
-  border:0; outline:0; background:transparent; width:240px; font-size:13px; color:#111827;
-}
-
-/* Table */
-.table-wrap{ overflow:auto; border-radius:8px; }
-.emp-table{
-  width:100%; border-collapse:separate; border-spacing:0;
-  border:1px solid #e7eaf0; border-radius:8px;
-}
-.emp-table thead th{
-  font-size:13px; font-weight:600; color:#4b5563; text-align:left;
-  background:#ffffff; padding:10px 12px; border-bottom:1px solid #e7eaf0;
-}
-.emp-table tbody td{
-  font-size:13px; color:#1f2937; padding:10px 12px; border-bottom:1px solid #eef2f6;
-}
-.emp-table tbody tr:hover{ background:#f9fbfe; }
-
-/* Column sizing */
-.col-sr{ width:48px; }
-.col-status{ width:140px; }
-.col-actions{ width:132px; }
-
-/* Name link */
-.emp-link{
-  color:#0ea5e9; text-decoration:none; font-weight:600;
-}
-.emp-link:hover{ text-decoration:underline; }
-
-/* Status pill */
-.status-pill{
-  display:inline-block; min-width:92px; text-align:center;
-  font-size:12px; font-weight:700; letter-spacing:.4px;
-  padding:6px 10px; border-radius:6px; border:1px solid #c3e7cf;
-  color:#065f46; background:linear-gradient(0deg,#d1fae5,#bbf7d0);
-}
-.status-pill.active{}
-
-/* Row action icons */
-.col-actions{ white-space:nowrap; }
-.ico{
-  width:30px; height:30px; display:inline-grid; place-items:center;
-  border:1px solid #e5e7eb; background:#f8fafc; border-radius:6px; cursor:pointer;
-  margin-right:6px;
-}
-.ico:last-child{ margin-right:0; }
-.ico .material-icons{ font-size:18px; color:#475569; }
-.ico:hover{ background:#eef2f7; }
-
-/* Table footer */
-.emp-table-foot{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 6px 2px; color:#6b7280; font-size:12px;
-}
-.page{
-  min-width:28px; height:28px; padding:0 8px; border-radius:6px;
-  border:1px solid #e2e8f0; background:#fff; color:#111827; cursor:pointer;
-}
-.page.current{
-  background:#0ea5e9; color:#fff; border-color:#0ea5e9;
-}
-
-/* Focus states */
-.btn:focus-visible, .btn-icon:focus-visible, .ico:focus-visible, .page:focus-visible,
-.emp-select:focus-visible, .emp-search input:focus-visible{
-  outline:2px solid #0ea5e9; outline-offset:2px; border-radius:8px;
-}
-
-/* Small screens */
-@media (max-width: 720px){
-  .emp-search input{ width:160px; }
-  .col-branch{ min-width:220px; }
-}
-
-/* ===== Employee Page – match screenshot exactly ===== */
-
-.emp-wrap {
-  background: #f4f7fc;                 /* light bluish background */
-  min-height: 100vh;
-  padding: 14px 20px 28px;
-  font-family: "Segoe UI", Roboto, Arial, sans-serif;
-  color: #111827;
-}
-
-/* Page header */
-.emp-pagebar {
-  display: flex; align-items: center; gap: 8px;
-  margin: 0 0 10px;
-}
-.emp-pagebar h1 {
-  font-size: 15px;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0;
-}
-
-/* Card */
-.emp-card {
-  background: #fff;
-  border: 1px solid #e1e7ef;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.05);
-  padding: 0;
-}
-
-/* Toolbar row */
-.emp-toolbar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid #e1e7ef;
-}
-
-/* Folder icon button */
-.btn-icon {
-  width: 34px; height: 34px;
-  display: grid; place-items: center;
-  background: #fff;
-  border: 1px solid #d9dee6;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.btn-icon .material-icons { font-size: 18px; color: #4a5568; }
-
-/* Select (rows per page) */
-.emp-select {
-  height: 34px;
-  padding: 0 6px;
-  border: 1px solid #d9dee6;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 13px;
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 34px; padding: 0 12px;
-  font-size: 13px; font-weight: 500;
-  border-radius: 4px; cursor: pointer;
-  border: 1px solid #d9dee6;
-}
-.btn .material-icons { font-size: 18px; }
-
-.btn.filter {
-  background: #0ea5e9;   /* blue */
-  border-color: #0ea5e9;
-  color: #fff;
-}
-.btn.primary {
-  background: #0284c7;   /* darker blue */
-  border-color: #0284c7;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* Spacer pushes search + Create New right */
-.flex-spacer { flex: 1; }
-
-/* Search box */
-.emp-search {
-  display: flex; align-items: center; gap: 6px;
-  height: 34px; padding: 0 8px;
-  border: 1px solid #d9dee6;
-  border-radius: 4px;
-  background: #fff;
-}
-.emp-search .material-icons { font-size: 18px; color: #a0aec0; }
-.emp-search input {
-  border: none; outline: none;
-  font-size: 13px; background: transparent;
-  width: 180px;
-}
-
-/* Table */
-.table-wrap { overflow: auto; }
-.emp-table {
-  width: 100%; border-collapse: collapse;
-}
-.emp-table th, .emp-table td {
-  font-size: 13px; padding: 10px 12px;
-  border-bottom: 1px solid #e1e7ef;
-}
-.emp-table thead th {
-  background: #f9fafb;
-  font-weight: 600;
-  color: #4a5568;
-  text-align: left;
-}
-
-/* Name links */
-.emp-link {
-  color: #0073e6;
-  font-weight: 600;
-  text-decoration: none;
-}
-.emp-link:hover { text-decoration: underline; }
-
-/* Status pill */
-.status-pill {
-  display: inline-block;
-  min-width: 72px; padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px; font-weight: 700;
-  text-align: center;
-  background: #22c55e;
-  color: #fff;
-}
-
-/* Actions */
-.col-actions { white-space: nowrap; }
-.ico {
-  width: 28px; height: 28px;
-  display: inline-grid; place-items: center;
-  background: #fff;
-  border: 1px solid #d9dee6;
-  border-radius: 4px;
-  margin-right: 6px;
-  cursor: pointer;
-}
-.ico .material-icons { font-size: 16px; color: #4b5563; }
-.ico:last-child { margin-right: 0; }
-
-/* Footer */
-.emp-table-foot {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 12px;
-  font-size: 12px; color: #6b7280;
-}
-.page {
-  min-width: 26px; height: 26px;
-  border: 1px solid #d9dee6;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-}
-.page.current {
-  background: #0ea5e9; border-color: #0ea5e9; color: #fff;
-}
-
-
-/* ===== Employee – exact match to screenshot, cleaned ===== */
-
-/* Page */
+/* ===== Page shell ===== */
 .emp-wrap{
   background:#f4f7fc;
   min-height:100vh;
@@ -400,11 +9,16 @@
   color:#111827;
 }
 
-/* Title */
-.emp-pagebar{ display:flex; align-items:center; gap:8px; margin:0 0 10px; }
-.emp-pagebar h1{ margin:0; font-size:15px; font-weight:600; color:#2d3748; }
+/* ===== Page header ===== */
+.emp-pagebar{
+  display:flex; align-items:center; gap:8px;
+  margin:0 0 10px;
+}
+.emp-pagebar h1{
+  margin:0; font-size:15px; font-weight:600; color:#2d3748;
+}
 
-/* Card */
+/* ===== Card ===== */
 .emp-card{
   background:#fff;
   border:1px solid #e1e7ef;
@@ -413,40 +27,42 @@
   padding:0;
 }
 
-/* Toolbar (right aligned via spacer) */
+/* ===== Toolbar ===== */
 .emp-toolbar{
   display:flex; align-items:center; gap:8px;
   padding:8px 10px;
   border-bottom:1px solid #e1e7ef;
+  position:relative; z-index:5;
 }
-.flex-spacer{ flex:1; } /* 👈 pushes the rest to the right */
+.flex-spacer{ flex:1; }
 
-/* Folder icon */
 .btn-icon{
   width:34px; height:34px; display:grid; place-items:center;
-  background:#fff; border:1px solid #d9dee6; border-radius:4px; cursor:pointer;
+  background:#0ea5e9; border:1px solid #0ea5e9;
+  border-radius:4px; cursor:pointer; color:#fff;
 }
-.btn-icon .material-icons{ font-size:18px; color:#4a5568; }
+.emp-toolbar .btn-icon .material-icons{ font-size:18px; color:#fff !important; }
 
-/* Rows select */
+/* ===== Rows-per-page select (NARROW) ===== */
 .emp-select{
-  height:34px; min-width:60px; padding:0 6px;
+  height:34px;
+  width:56px;           /* ⬅️ narrower */
+  min-width:56px;       /* keep fixed width */
+  padding:0 6px;
   border:1px solid #d9dee6; border-radius:4px; background:#fff; font-size:13px;
 }
 
-/* Buttons */
 .btn{
   display:inline-flex; align-items:center; gap:6px;
   height:34px; padding:0 12px; font-size:13px; font-weight:500;
   border:1px solid #d9dee6; border-radius:4px; cursor:pointer; background:#fff;
 }
 .btn .material-icons{ font-size:18px; }
-
-/* Filter (sky-blue) and Create New (blue) */
 .btn.filter{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+.btn.filter .material-icons{ color:#fff !important; }
 .btn.primary{ background:#0284c7; border-color:#0284c7; color:#fff; font-weight:600; }
 
-/* Search */
+/* ===== Search ===== */
 .emp-search{
   display:flex; align-items:center; gap:6px;
   height:34px; padding:0 8px; background:#fff;
@@ -457,77 +73,19 @@
   border:0; outline:0; background:transparent; width:180px; font-size:13px; color:#111827;
 }
 
-/* Table */
-.table-wrap{ overflow:auto; }
-.emp-table{ width:100%; border-collapse:collapse; }
-.emp-table th, .emp-table td{
-  font-size:13px; padding:10px 12px; border-bottom:1px solid #e1e7ef;
-}
-.emp-table thead th{
-  background:#ffffff; color:#4a5568; font-weight:600; text-align:left;
-}
-
-/* Links */
-.emp-link{ color:#0073e6; font-weight:600; text-decoration:none; }
-.emp-link:hover{ text-decoration:underline; }
-
-/* Status pill (flat green) */
-.status-pill{
-  display:inline-block; min-width:72px; padding:4px 8px; border-radius:4px;
-  font-size:12px; font-weight:700; text-align:center; color:#fff; background:#22c55e;
-}
-
-/* Row actions */
-.col-actions{ white-space:nowrap; }
-.ico{
-  width:28px; height:28px; display:inline-grid; place-items:center;
-  background:#fff; border:1px solid #d9dee6; border-radius:4px; margin-right:6px; cursor:pointer;
-}
-.ico:last-child{ margin-right:0; }
-.ico .material-icons{ font-size:16px; color:#4b5563; }
-
-/* Column sizing */
-.col-sr{ width:46px; }
-.col-status{ width:132px; }
-.col-actions{ width:140px; }
-
-/* Footer */
-.emp-table-foot{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:8px 12px; font-size:12px; color:#6b7280;
-}
-.page{
-  min-width:26px; height:26px; border:1px solid #d9dee6; border-radius:4px; background:#fff; cursor:pointer;
-}
-.page.current{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
-
-
-.btn-icon{
-    background:#0ea5e9;
-    color:#fff;
-}
-
-/* === Make the download & filter icons white (keep backgrounds) === */
-.emp-toolbar .btn-icon .material-icons { 
-  color: #fff !important;      /* download icon */
-}
-
-.emp-toolbar .btn.filter .material-icons {
-  color: #fff !important;      /* funnel icon in Filter button */
-}
-
-/* --- Filter strip container --- */
+/* ===== Filter strip ===== */
 .emp-filterstrip{
-  display:flex;align-items:flex-start;
-  padding:10px 10px 2px;
-  margin-bottom: 5px;
+  display:flex; align-items:flex-start; flex-wrap:wrap;
+  gap:24px;
+  padding:10px 10px 2px; margin-bottom:6px;
+  position:relative; z-index:1;
 }
-.emp-field{ min-width:260px; }
+.emp-field{ width:260px; }
 .emp-field-label{
   font-weight:600; color:#374151; margin:0 0 6px 0; font-size:15px;
 }
 
-/* --- Location multi-select pill --- */
+/* --- Location multi-select (pill + popup) --- */
 .emp-loc{ position:relative; }
 .emp-loc-pill{
   display:inline-flex; align-items:center; gap:8px;
@@ -541,9 +99,9 @@
 }
 .emp-loc-close{ font-size:18px; color:#6b7280; }
 
-/* popup */
 .emp-loc-pop{
-  position:absolute; z-index:10; top:44px; left:0; width:179px;
+  position:absolute; z-index:9998; top:44px; left:0;
+  min-width:360px; max-width:520px;
   background:#fff; border:1px solid #e1e7ef; border-radius:8px;
   box-shadow:0 12px 28px rgba(16,24,40,.12);
 }
@@ -551,16 +109,19 @@
 .emp-loc-search input{
   width:100%; height:34px; border:1px solid #d9dee6; border-radius:6px; padding:0 10px; outline:0;
 }
-.emp-loc-list{ max-height:260px; overflow:auto; }
+.emp-loc-list{
+  max-height:320px; overflow-y:auto; overflow-x:hidden; padding-right:4px;
+}
 .emp-loc-item{
-  display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer;
+  display:grid; grid-template-columns:16px 1fr; align-items:start; gap:8px;
+  padding:10px 12px; cursor:pointer;
 }
 .emp-loc-item:hover{ background:#f7fafc; }
-.emp-loc-item input{ accent-color:#0ea5e9; }
-.emp-loc-txt{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
+.emp-loc-item input{ accent-color:#0ea5e9; margin-top:2px; }
+.emp-loc-txt{ white-space:normal; overflow:visible; text-overflow:clip; max-width:none; word-break:break-word; }
 .emp-loc-empty{ padding:16px 12px; color:#6b7280; }
 
-/* --- Name select --- */
+/* --- Name select (search + list) --- */
 .emp-nselect{ position:relative; width:260px; }
 .emp-ns-btn{
   height:36px; width:100%; display:flex; align-items:center; justify-content:space-between;
@@ -570,7 +131,7 @@
 .emp-ns-caret{ font-size:18px; color:#6b7280; }
 
 .emp-ns-pop{
-  position:absolute; z-index:10; top:44px; left:0; width:100%;
+  position:absolute; z-index:9998; top:44px; left:0; width:100%;
   background:#fff; border:1px solid #e1e7ef; border-radius:8px;
   box-shadow:0 12px 28px rgba(16,24,40,.12);
 }
@@ -586,99 +147,89 @@
 .emp-ns-item.is-selected{ background:#e8f4ff; color:#0d8aff; font-weight:700; }
 .emp-ns-empty{ padding:14px 12px; color:#6b7280; }
 
-/* Filter active state: only icon becomes black */
-.btn.filter.is-active .material-icons {
-  color: #111 !important;
+/* --- Status select (checkbox inside dropdown) --- */
+.emp-status{ width:260px; }
+.emp-status .emp-ns-btn{ width:100%; }
+.emp-status-pop .emp-ns-list{ max-height:220px; overflow:auto; padding:4px 0; }
+.emp-status-item{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px; cursor:pointer;
 }
+.emp-status-item:hover{ background:#f7fafc; }
+.emp-status-item input{ accent-color:#0ea5e9; }
 
-.emp-export { position: relative; }
+/* ===== Export dropdown ===== */
+.emp-export{ position:relative; }
 .emp-export-pop{
-  position: absolute; top: 38px; right: 0;
-  width: 140px; background: #fff; border: 1px solid #d9dee6;
-  border-radius: 6px; box-shadow: 0 12px 28px rgba(16,24,40,.12);
-  padding: 4px;
+  position:absolute; top:38px; right:0; z-index:9999;
+  width:140px; background:#fff; border:1px solid #d9dee6;
+  border-radius:6px; box-shadow:0 12px 28px rgba(16,24,40,.12);
+  padding:4px;
 }
 .emp-export-item{
-  width: 100%; height: 32px; display: flex; align-items: center;
-  padding: 0 10px; border: 0; background: #fff; cursor: pointer;
-  border-radius: 4px; font-size: 13px; color: #1f2937; text-align: left;
+  width:100%; height:32px; display:flex; align-items:center;
+  padding:0 10px; border:0; background:#fff; cursor:pointer;
+  border-radius:4px; font-size:13px; color:#1f2937; text-align:left;
 }
-.emp-export-item:hover{ background: #f5f7fb; }
+.emp-export-item:hover{ background:#f5f7fb; }
 
-
-/* ensure toolbar sits above the filter strip */
-.emp-toolbar { 
-  position: relative;
-  z-index: 5;
-}
-
-/* keep the filter strip below the toolbar */
-.emp-filterstrip {
-  position: relative;
-  z-index: 1;
-}
-
-/* and make the export popup sit on top of everything nearby */
-.emp-export { position: relative; }
-.emp-export-pop { z-index: 9999; }  /* was missing */
-
-/* Make sure nothing in the page clips the portal popups */
+/* Popups never clipped */
 .emp-wrap, .emp-card, .emp-toolbar, .table-wrap { overflow: visible; }
 
-/* Highest z for non-portal popups (still fine) */
-.emp-export-pop { z-index: 9999; }
-.emp-loc-pop, .emp-ns-pop { z-index: 9998; }
-
-/* Pager: compact size & spacing */
-.emp-table-foot { padding: 6px 10px; }
-.emp-table-foot .foot-right {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;              /* tighter gap */
+/* ===== Table ===== */
+.table-wrap{ overflow:auto; }
+.emp-table{ width:100%; border-collapse:collapse; }
+.emp-table th, .emp-table td{
+  font-size:13px; padding:10px 12px; border-bottom:1px solid #e1e7ef;
 }
-.page {
-  min-width: 22px;       /* was 26px */
-  height: 22px;          /* was 26px */
-  padding: 0 6px;        /* narrower */
-  font-size: 12px;       /* smaller text */
-  line-height: 22px;
-}
-.page.current {
-  background: #0ea5e9; border-color: #0ea5e9; color: #fff;
+.emp-table thead th{
+  background:#ffffff; color:#4a5568; font-weight:600; text-align:left;
 }
 
-/* Optional: keep the action column from forcing extra width */
-.col-actions { width: 116px; }   /* was 132–140px in places */
+/* Links */
+.emp-link{ color:#0073e6; font-weight:600; text-decoration:none; }
+.emp-link:hover{ text-decoration:underline; }
 
-/* Location popup: show full names, no horizontal scroll */
-.emp-loc-pop{
-  /* was width: 179px; */
-  min-width: 360px;
-  max-width: 520px;          /* plenty of room for long names */
+/* Status pill */
+.status-pill{
+  display:inline-block; min-width:72px; padding:4px 8px; border-radius:4px;
+  font-size:12px; font-weight:700; text-align:center; color:#fff; background:#22c55e;
 }
 
-.emp-loc-list{
-  max-height: 320px;
-  overflow-y: auto;           /* vertical only */
-  overflow-x: hidden;         /* ⬅ no horizontal scroll */
-  padding-right: 4px;         /* avoid overlaying scrollbar on text */
+/* Actions */
+.col-sr{ width:46px; }
+.col-status{ width:132px; }
+.col-actions{ width:116px; white-space:nowrap; }
+.ico{
+  width:28px; height:28px; display:inline-grid; place-items:center;
+  background:#fff; border:1px solid #d9dee6; border-radius:4px; margin-right:6px; cursor:pointer;
+}
+.ico:last-child{ margin-right:0; }
+.ico .material-icons{ font-size:16px; color:#4b5563; }
+
+/* ===== Footer / Pager ===== */
+.emp-table-foot{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 10px; font-size:12px; color:#6b7280;
+}
+.emp-table-foot .foot-right{ display:inline-flex; align-items:center; gap:6px; }
+.page{
+  min-width:22px; height:22px; padding:0 6px; line-height:22px;
+  border:1px solid #d9dee6; border-radius:4px; background:#fff; cursor:pointer; font-size:12px;
+}
+.page.current{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+
+/* ===== Small screens ===== */
+@media (max-width: 720px){
+  .emp-search input{ width:160px; }
+  .col-branch{ min-width:220px; }
+}
+/* toggle icon image inside action button */
+.ico-img{
+  width:14px;
+  height:14px;
+  display:block;
 }
 
-.emp-loc-item{
-  /* let the label wrap onto multiple lines next to the checkbox */
-  display: grid;
-  grid-template-columns: 16px 1fr;  /* checkbox | text */
-  align-items: start;
-  gap: 8px;
-}
-
-.emp-loc-item input{ margin-top: 2px; }
-
-/* REMOVE the old nowrap/ellipsis rule. Replace with this: */
-.emp-loc-txt{
-  white-space: normal;        /* allow wrapping */
-  overflow: visible;
-  text-overflow: clip;
-  max-width: none;
-  word-break: break-word;     /* just in case of very long tokens */
-}
+/* Actions column thoda चौड़ा क्योंकि नया आइकन जोड़ दिया है */
+.col-actions{ width:140px; }
