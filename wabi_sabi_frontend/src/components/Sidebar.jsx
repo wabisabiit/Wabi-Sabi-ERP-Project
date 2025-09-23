@@ -188,6 +188,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/crm/loyalty" className={linkClass} onClick={handleNav}>
                 Loyalty
               </NavLink>
+              <NavLink to="/crm/feedback" className={linkClass} onClick={handleNav}>
+                Feedback
+              </NavLink>
             </div>
           </div>
 
