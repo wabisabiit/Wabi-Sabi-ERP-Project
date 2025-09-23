@@ -26,6 +26,7 @@ import LoyaltyPage from "./components/LoyaltyPage";
 import DiscountPage from "./components/DiscountPage"; // <-- make sure this file exists
 import CouponPage from "./components/CouponPage";
 import NewCoupounPage from "./components/NewCoupounPage";
+import FeedbackPage from "./components/FeedbackPage";
 
 import "./App.css";
 
@@ -98,6 +99,9 @@ export default function App() {
       <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
       <Route path="/CRM/Discount" element={<Navigate to="/crm/discount" replace />} />
       <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
+      {/* CRM > Feedback */}
+      <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
+
 
       <Route
         path="/multiple-pay"
