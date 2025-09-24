@@ -1,0 +1,147 @@
+:root{
+  --card-bg:#fff;
+  --card-border:#e5e7eb;
+  --muted:#6b7280;
+  --primary:#0ea5e9;
+  --primary-600:#098ac4;
+  --table-head:#eef2f7;
+}
+
+.bank-wrap{
+  padding:12px;
+  background:#eff3f9;
+  min-height:calc(100vh - 56px);
+}
+.bank-header{
+  display:flex; align-items:center; gap:8px; padding:8px 8px 6px;
+}
+.bank-title{ margin:0; font-size:16px; font-weight:600; color:#111827; }
+.bank-home-ic{ font-size:18px; opacity:.75; }
+
+.bank-card{
+  position:relative; /* anchor popover */
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:10px;
+  padding:14px;
+  box-shadow:0 2px 10px rgba(0,0,0,.04);
+}
+
+/* toolbar */
+.bank-toolbar.right{
+  display:flex; justify-content:flex-end; align-items:center; gap:12px;
+  margin-bottom:10px;
+}
+.bank-pagesize{
+  height:36px; border:1px solid var(--card-border); border-radius:8px; padding:0 10px;
+  background:#fff; width:64px;
+}
+
+.bank-filter-btn{
+  display:flex; align-items:center; gap:6px; height:36px;
+  border-radius:8px; border:1px solid var(--card-border);
+  background:#0ea5e9; color:#fff; padding:0 12px; font-weight:700;
+}
+.bank-filter-btn .material-icons{ font-size:20px; color:#fff; }
+.bank-filter-btn.active{ background:#0ea5e9; color:#fff; }    /* keep blue */
+.bank-filter-btn.active .material-icons{ color:#000; }        /* only icon black */
+
+.bank-search{ display:flex; align-items:center; gap:6px; }
+.bank-search input{
+  height:36px; border:1px solid var(--card-border); border-radius:8px; padding:0 10px; width:220px;
+  background:#fff;
+}
+.bank-search button{
+  height:36px; width:36px; border-radius:8px; border:1px solid var(--card-border);
+  background:#fff; display:grid; place-items:center;
+}
+.bank-search button .material-icons{ font-size:20px; }
+
+.bank-create{
+  height:36px; background:#0ea5e9; color:#fff; border:0; border-radius:8px; padding:0 14px; font-weight:700;
+}
+.bank-create:hover{ background:var(--primary-600); }
+
+/* === FILTER POPOVER (exact look like image 2) === */
+.bank-filter-pop{
+  width:260px;
+  background:#fff;
+  border:1px solid var(--card-border);
+  border-radius:10px;
+  box-shadow:0 10px 24px rgba(0,0,0,.12);
+  padding:12px;
+  margin-left:10px;      /* left aligned */
+  margin-bottom:10px;    /* space above table */
+}
+.pop-title{
+  font-size:13px; font-weight:500; color:#111827; margin:0 0 10px 0;
+}
+.pop-chip-row{ margin-bottom:10px; }
+.pop-chip{
+  display:inline-flex; align-items:center; gap:8px; height:36px;
+  background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:0 10px; font-weight:700;
+}
+.pop-chip-badge{
+  display:inline-grid; place-items:center;
+  background:#111827; color:#fff; font-size:12px; width:22px; height:22px; border-radius:4px;
+}
+.pop-chip-close{ cursor:pointer; font-size:18px; line-height:1; }
+
+.pop-mini-input{
+  width:100%; height:40px; border:1px solid #cbd5e1; border-radius:8px; padding:0 8px; background:#fff;
+  margin-bottom:10px;
+}
+
+/* locations list – like a narrow dropdown; text ellipsis */
+.pop-loc-list{
+  max-height:120px;
+  overflow:auto;
+  border:1px solid #e5e7eb;
+  border-radius:8px;
+  background:#fff;
+  padding:6px;
+}
+.pop-loc-item{
+  display:flex; align-items:center; gap:8px;
+  padding:6px 8px; border-radius:6px;
+}
+.pop-loc-item input{ width:16px; height:16px; }
+.pop-loc-text{
+  max-width:185px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-weight:700; color:#111827;
+}
+
+/* table */
+.bank-table-wrap{ width:100%; overflow:auto; }
+.bank-table{ width:100%; border-collapse:collapse; }
+.bank-table thead th{
+  background:var(--table-head); color:#111827; text-align:left;
+  padding:6px 8px; font-weight:700; border-bottom:1px solid #e5e7eb; font-size:14px;
+}
+.bank-table tbody td{
+  padding:10px; border-bottom:1px solid #eef2f7; color:#111827; font-size:13px;
+}
+.bank-table tbody tr:hover td{ background:#fafbfe; }
+.linkish{ color:#0ea5e9; font-weight:800; cursor:pointer; }
+
+.not-found{ text-align:center; color:#6b7280; font-style:italic; padding:18px 0; }
+
+/* footer */
+.bank-foot{
+  display:flex; align-items:center; justify-content:space-between; margin-top:12px;
+}
+.bank-count{ color:#374151; font-size:13px; }
+.bank-pager{ display:flex; align-items:center; gap:8px; }
+.nav-btn{
+  width:36px; height:36px; display:grid; place-items:center;
+  border:1px solid #e5e7eb; border-radius:6px; background:#fff;
+}
+.nav-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.page-badge{
+  min-width:36px; height:36px; display:grid; place-items:center;
+  background:#0ea5e9; color:#fff; border-radius:6px; font-weight:800;
+}
+
+/* footer brand (optional) */
+.bank-footerbrand{ color:#6b7280; margin-top:12px; font-size:14px; }
+.bank-footerbrand a{ color:#0ea5e9; text-decoration:none; }

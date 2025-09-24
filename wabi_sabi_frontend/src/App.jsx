@@ -37,6 +37,7 @@ import BankTransactionPage from "./components/BankTransactionPage";
 import PaymentPage from "./components/PaymentPage";
 import ReceiptPage from "./components/ReceiptPage";
 import ExpensePage from "./components/ExpensePage";
+import NewBankPage from "./components/NewBankPage";
 
 import "./App.css";
 
@@ -96,6 +97,7 @@ export default function App() {
       <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
       <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
       <Route path="/bank/expense" element={<SidebarLayout><ExpensePage /></SidebarLayout>} />
+      <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
 
       {/* Sales */}
       <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
