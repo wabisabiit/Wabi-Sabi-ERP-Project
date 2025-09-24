@@ -1,0 +1,144 @@
+/* ====== Page wrapper & breadcrumb ====== */
+.ne-wrap{
+  background:#eef2f7; min-height:100vh; padding:18px 18px 28px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color:#1f2937; font-size:13px;
+}
+.ne-bc{display:flex; align-items:center; gap:8px; margin:6px 0 12px;}
+.ne-title{font-weight:700; font-size:16px;}
+.ne-sep{color:#9aa3af;}
+.ne-crumb{color:#6b7280}
+
+/* ====== Card ====== */
+.ne-card{
+  background:#fff; border:1px solid #e3e8f0; border-radius:10px;
+  box-shadow:0 1px 2px rgba(16,24,40,.03); padding:12px;
+  /* IMPORTANT: fixed height hatao */
+  /* height:750px; */
+}
+
+/* ====== Top grid (inputs narrower) ====== */
+.ne-grid{
+  display:grid; grid-template-columns: 220px 220px 220px 220px;
+  gap:12px 14px; align-items:end;
+}
+.ne-field label{display:block; margin-bottom:6px; color:#6b7280; font-weight:700; font-size:12px;}
+.req{color:#ef4444; margin-left:2px;}
+
+.input{
+  height:32px; width:100%; max-width:220px;
+  border:1px solid #cfd7e6; border-radius:8px; padding:0 8px; background:#fff; outline:none;
+}
+.input:focus{border-color:#7bb6ff; box-shadow:0 0 0 2px #e6f1ff;}
+
+.date-wrap{position:relative;}
+.cal-ico{position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#94a3b8;}
+.pair{display:grid; grid-template-columns: 1fr 96px; gap:8px;}
+
+.select-wrap{position:relative;}
+.select-wrap select{
+  appearance:none; -webkit-appearance:none;
+  height:32px; width:100%; max-width:220px;
+  border:1px solid #cfd7e6; border-radius:8px; padding:0 24px 0 8px; background:#fff; outline:none;
+}
+.select-wrap.is-error select{border-color:#ef4444;}
+.dd-caret{position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#9aa3af; pointer-events:none;}
+
+.info{
+  display:inline-flex; width:16px; height:16px; border-radius:50%;
+  border:1px solid #cfd7e6; align-items:center; justify-content:center;
+  font-size:11px; margin-left:4px; color:#6b7280;
+}
+.chk{display:flex; align-items:center; gap:8px; font-weight:600; color:#374151;}
+.ne-field--inline{display:flex; align-items:flex-end;}
+
+/* ====== Note ====== */
+.ne-note{grid-column:1 / -1;}
+.ta{min-height:36px; height:36px; width:100%; max-width:900px; border:1px solid #cfd7e6; border-radius:8px; padding:8px 8px; resize:vertical;}
+.note-count{color:#9aa3af; font-size:12px; margin-top:4px}
+
+/* ====== Table ====== */
+.table-wrap{margin-top:12px; border:1px solid #e7ecf3; border-radius:10px; overflow:hidden;}
+.ne-table{width:100%; border-collapse:separate; border-spacing:0;}
+.ne-table thead th{background:#f3f6fb; color:#6e7c91; font-weight:700; padding:8px 10px; border-bottom:1px solid #e7ecf3; text-align:left;}
+.ne-table thead th.idx{width:28px}
+.ne-table thead th.act{width:36px}
+.ne-td{padding:6px 10px; border-bottom:1px solid #f1f3f7; vertical-align:top;}
+.ne-row:hover{background:#fafbff}
+.idx{text-align:center; color:#6b7280;}
+
+.acc-cell{display:flex; flex-direction:column; gap:6px;}
+.acc-input-wrap{position:relative;}
+.acc-input{height:32px; width:100%; max-width:220px; border:1px solid #cfd7e6; border-radius:8px; padding:0 24px 0 8px; outline:none;}
+.acc-input-wrap.is-error .acc-input{border-color:#ef4444;}
+.hsn-link{border:0; background:none; color:#3b82f6; font-weight:600; font-size:12px; padding:0; width:max-content; margin-top:-2px; cursor:pointer;}
+.tiny-err{color:#ef4444; font-size:11.5px; font-weight:600;}
+.tiny-err--alone{margin-top:6px}
+.tiny-sub{color:#6b7280; font-weight:600}
+
+.select-wrap select:focus,
+.acc-input:focus, .desc-input:focus, .num-input:focus{border-color:#7bb6ff; box-shadow:0 0 0 2px #e6f1ff;}
+
+.desc-input{height:32px; width:100%; max-width:220px; border:1px solid #cfd7e6; border-radius:8px; padding:0 8px;}
+.num{text-align:right}
+.num-input{height:32px; width:100%; max-width:120px; border:1px solid #cfd7e6; border-radius:8px; padding:0 8px; text-align:right;}
+.num-input.is-error{border-color:#ef4444;}
+.money{display:flex; align-items:center; gap:6px;}
+.money .rupee{color:#6b7280}
+
+.taxval{color:#111827; font-weight:600}
+.total{color:#111827; font-weight:700}
+
+.act{text-align:center}
+.del-btn{width:24px; height:24px; border-radius:6px; border:1px solid #e6e9ef; background:#fff; cursor:pointer; color:#ef4444; font-weight:700}
+.del-btn:hover{background:#fff5f5}
+
+.add-new{display:inline-flex; align-items:center; gap:6px; margin:8px 12px; color:#0ea5e9; background:none; border:0; font-weight:700; cursor:pointer;}
+.add-new .plus{font-size:16px}
+
+.table-total{
+  display:flex; justify-content:flex-end; gap:12px; padding:8px 12px; color:#6b7280; font-weight:700;
+  border-top:1px solid #EEF2F7; background:#FFFFFF;
+}
+.table-total .num{min-width:76px; text-align:right}
+
+/* ====== BOTTOM ====== */
+/* 2 columns: left free area + right tools (summary + buttons) */
+.bottom-row{
+  display:grid; grid-template-columns: 1fr 360px; gap:14px; align-items:start; margin-top:14px;
+}
+/* Right column wrapper: sticky stack (summary then buttons) */
+.right-col{
+  display:flex; flex-direction:column; align-items:stretch;
+  position: sticky; top: 88px;        /* header clearance */
+  align-self: start;                   /* sticky works inside grid */
+}
+
+/* Right grey summary box */
+.summary-card{
+  background:#EEF2F7; border:1px solid #E1E7F0; border-radius:10px;
+  padding:10px 30px; box-shadow:0 1px 2px rgba(16,24,40,.03);
+}
+.sum-row{display:flex; align-items:center; justify-content:space-between; padding:4px 0; gap:12px;}
+.sum-row span{ color:#6B7280; font-weight:700; }
+.sum-inp{height:26px; width:96px; text-align:right; border:1px solid #e1e7f0; border-radius:6px; padding:0 6px; background:#fff;}
+.sum-row.linkish span{ color:#3B82F6; }
+.net-row{margin-top:4px; padding-top:8px; border-top:1px solid #E1E7F0; display:flex; align-items:center; justify-content:space-between; font-weight:800;}
+.net-row .net{ font-size:16px; }
+
+/* Footer buttons directly UNDER the grey box, right aligned */
+.btns{
+  margin-top:10px; display:flex; justify-content:flex-end; gap:8px;
+  flex-wrap:wrap;   /* narrow width par wrap ho jayenge, kabhi out nahi jayenge */
+}
+.btn{
+  height:30px; padding:0 12px; border-radius:6px; font-weight:700; font-size:12px;
+  border:0; cursor:pointer; box-shadow:0 1px 0 rgba(0,0,0,.02);
+}
+.btn.ghost{ background:#FFFFFF; border:1px solid #E1E7F0; color:#374151; }
+.btn.primary{ background:#0EA5E9; color:#FFFFFF; min-width:72px; }
+.btn.sky{ background:#22A6F2; color:#FFFFFF; min-width:128px; }
+.btn.primary:hover, .btn.sky:hover{ filter:brightness(.96); }
+
+/* brand line */
+.footer-line{ color:#7D8AA2; font-size:12px; margin-top:16px }

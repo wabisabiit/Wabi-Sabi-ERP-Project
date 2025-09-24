@@ -1,0 +1,227 @@
+/* ===================== GLOBAL / PAGE ===================== */
+.ex2-wrap{
+  background:#EEF2F7;
+  min-height:100vh;
+  padding:16px 22px 28px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px;
+  color:#1F2937;
+}
+
+/* ===================== BREADCRUMB / TITLE ===================== */
+.ex2-bc{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.ex2-title{ margin:0; font-size:18px; font-weight:700; color:#293241; }
+.ex2-home{ color:#9AA3AF; }
+
+/* ===================== KPI CARDS ===================== */
+.ex2-cards{
+  display:grid;
+  grid-template-columns:repeat(3,160px);
+  gap:20px;
+  margin:10px 0 14px;
+  margin-left:270px;                 /* aapke screenshot jaisa alignment */
+}
+.kpi-badge{
+  width:95px; height:55px; border-radius:10px;
+  background:#d9e4ec;
+  color:#2A7DCF;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:20px; margin-bottom:6px; margin-left:33px;
+}
+.kpi-lb{ color:#000; font-weight:600; font-size:12px; text-align:center; }
+
+/* ===================== MAIN WHITE CARD ===================== */
+.ex2-card{
+  background:#FFFFFF;
+  border:1px solid #E1E7F0;
+  border-radius:12px;
+  box-shadow:0 1px 2px rgba(16,24,40,.03), 0 0 0 3px #E6F1FF inset;
+  overflow:hidden;
+}
+
+/* ===================== TOOLBAR ===================== */
+.ex2-toolbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px; border-bottom:1px solid #EEF2F7;
+}
+.ex2-tools-left{ display:flex; align-items:center; gap:8px; }
+.ex2-tools-right{ display:flex; align-items:center; gap:10px; }
+
+.icon-btn{
+  min-width:34px; height:34px; padding:0 10px;
+  background:#F9FAFB; border:1px solid #DFE3EA; border-radius:8px;
+  cursor:pointer; font-weight:700;
+}
+.icon-btn:hover{ background:#F3F4F6; }
+
+.filter-btn{
+  height:34px; padding:0 12px;
+  background:#0EA5E9; color:#FFFFFF; font-weight:700;
+  border:0; border-radius:8px;
+}
+.filter-btn:hover{ background:#0B96D2; }
+
+.primary{
+  height:34px; padding:0 14px; border:0; border-radius:8px;
+  background:#13A4F3; color:#FFFFFF; font-weight:700; box-shadow:0 1px 0 rgba(0,0,0,.02);
+}
+.primary:hover{ background:#0E96DB; }
+
+/* search */
+.search{ position:relative; }
+.search input{
+  height:34px; width:240px;            /* ⬅️ compact */
+  border:1px solid #DFE3EA; border-radius:8px;
+  padding:0 32px 0 10px; outline:none; background:#FFFFFF;
+}
+.search input::placeholder{ color:#9AA3AF; }
+.search .s-ico{ position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#A0A9B4; font-size:13px; }
+
+/* ===================== FILTERS GRID (STATUS BELOW LOCATION) ===================== */
+/* ⬇️ inputs compact: columns tightened */
+.ex2-filters{
+  display:grid;
+  grid-template-columns:220px 300px 180px 180px;  /* Location | Party | From | To */
+  grid-template-areas:
+    "loc party from to"
+    "status party from to";
+  gap:14px 18px;
+  padding:12px;
+}
+.f label{ display:block; margin-bottom:6px; color:#6E7C91; font-weight:700; font-size:12px; }
+.f-loc{ grid-area:loc; }
+.f-party{ grid-area:party; }
+.f-from{ grid-area:from; }
+.f-to{ grid-area:to; }
+.f-status{ grid-area:status; }
+
+/* ===================== DATE INPUT ===================== */
+.date{ position:relative; width:180px; }      /* ⬅️ compact */
+.date input{
+  height:32px;                                 /* ⬅️ compact height */
+  width:100%;
+  border:1px solid #CFD7E6; border-radius:8px;
+  padding:0 28px 0 10px; outline:none; background:#FFFFFF;
+}
+.date input:focus{ border-color:#7BB6FF; box-shadow:0 0 0 2px #E6F1FF; }
+.d-ico{ position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#98A6B8; }
+
+/* ===================== MULTISELECT (LOCATION) ===================== */
+.ms{ position:relative; width:220px !important; }     /* ⬅️ compact */
+.ms-box{
+  height:32px; display:flex; align-items:center; gap:6px; cursor:pointer;
+  border:1px solid #CFD7E6; border-radius:8px; padding:0 28px 0 10px; background:#FFFFFF;
+}
+.ms-box.open{ border-color:#AAB4C5; box-shadow:0 0 0 2px #E6F1FF; }
+.ms-ph{ color:#6E7C91; }
+.ms-ph.dim{ color:#111827; }
+.ms-badge{ margin-left:8px; padding:1px 6px; line-height:16px; border-radius:6px; background:#E5E7EB; color:#111827; font-weight:700; font-size:11px; }
+.ms-clear{
+  position:absolute; right:24px; width:18px; height:18px;
+  border-radius:50%; border:1px solid #D5DBE6; background:#FFFFFF;
+  color:#6B7280; font-size:12px; display:flex; align-items:center; justify-content:center;
+}
+.ms-caret{ position:absolute; right:8px; color:#94A3B8; font-size:12px; }
+
+.ms-dd{ position:absolute; left:0; right:0; top:36px; z-index:30; background:#FFFFFF; border:1px solid #E1E7F0; border-radius:10px; box-shadow:0 12px 32px rgba(16,24,40,.12); }
+.ms-search{ padding:8px; border-bottom:1px solid #EEF2F7; }
+.ms-search input{ height:28px; width:100%; border:1px solid #E1E7F0; border-radius:8px; padding:0 8px; }
+.ms-list{ max-height:150px; overflow:auto; padding:6px 6px 8px; }
+.ms-opt{ display:flex; align-items:center; gap:10px; padding:6px; border-radius:8px; cursor:pointer; }
+.ms-opt:hover{ background:#F7F8FA; }
+.ms-opt input{ display:inline-block; width:16px; height:16px; accent-color:#13A4F3; margin:0; }
+.ms-lbl{ font-size:12.5px; }
+.ms-empty{ padding:10px; color:#9AA3AF; }
+
+/* ===================== SINGLESELECTS (Party / Status / PageSize) ===================== */
+.ss{ position:relative; }
+.f-party .ss{ width:300px !important; }        /* ⬅️ compact */
+.f-status .ss{ width:220px !important; }       /* ⬅️ compact */
+.ss-box{
+  height:32px; border:1px solid #CFD7E6; border-radius:8px;
+  padding:0 28px 0 10px; display:flex; align-items:center; cursor:pointer; background:#FFFFFF;
+}
+.ss-box.open{ border-color:#AAB4C5; box-shadow:0 0 0 2px #E6F1FF; }
+.ss-val.dim{ color:#111827; }
+.ss-clear{
+  position:absolute; right:24px; width:18px; height:18px;
+  border-radius:50%; border:1px solid #D5DBE6; background:#FFFFFF;
+  color:#6B7280; font-size:12px; display:flex; align-items:center; justify-content:center;
+}
+.ss-caret{ position:absolute; right:8px; color:#94A3B8; font-size:12px; }
+.ss-dd{ position:absolute; left:0; right:0; top:36px; z-index:30; background:#FFFFFF; border:1px solid #E1E7F0; border-radius:10px; box-shadow:0 12px 32px rgba(16,24,40,.12); padding:6px; }
+.ss-opt{ padding:8px 10px; border-radius:8px; cursor:pointer; }
+.ss-opt:hover{ background:#F7F8FA; }
+.ss-opt.active{ background:#EAF2FF; color:#2A7DCF; }
+
+/* ===================== EXPORT button + dropdown ===================== */
+.exp-wrap{ position:relative; }
+.exp-btn{
+  height:34px; display:inline-flex; align-items:center; gap:8px;
+  padding:0 10px 0 12px; background:#0EA5E9; color:#fff;
+  border:0; border-radius:10px; box-shadow:0 1px 0 rgba(0,0,0,.02); cursor:pointer;
+}
+.exp-btn:hover{ background:#0B96D2; }
+.exp-btn.open{ filter:brightness(0.98); }
+.exp-ico{ font-size:14px; line-height:1; }
+.exp-caret{ font-size:12px; opacity:.95; }
+
+.exp-dd{
+  position:absolute; top:38px; left:0; min-width:160px;
+  background:#fff; border:1px solid #E1E7F0; border-radius:10px;
+  box-shadow:0 12px 28px rgba(16,24,40,.14); padding:6px 0; z-index:40;
+}
+.exp-item{
+  width:100%; display:flex; align-items:center; gap:10px;
+  padding:10px 14px; background:#fff; border:0; text-align:left;
+  font-size:13px; color:#293241; cursor:pointer;
+}
+.exp-item:hover{ background:#F7F8FA; }
+.exp-file-ico{ width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center; border-radius:4px; border:1px solid #E1E7F0; font-size:12px; }
+.exp-xls{ background:#ECFDF5; color:#059669; border-color:#D1FAE5; }
+.exp-pdf{ background:#FEF2F2; color:#DC2626; border-color:#FEE2E2; }
+
+/* ===================== TABLE ===================== */
+.ex2-table-wrap{ padding:0 10px 10px; }
+.ex2-table{ width:100%; border-collapse:separate; border-spacing:0; font-size:12.5px; }
+.ex2-table thead th{
+  text-align:left; padding:10px; background:#F3F6FB; color:#6E7C91;
+  border-top:1px solid #E7ECF3; border-bottom:1px solid #E7ECF3; font-weight:700;
+}
+.ex2-table tbody td{ padding:10px; vertical-align:middle; border-bottom:1px solid #F1F3F7; }
+.ex2-table .num{ text-align:right; font-variant-numeric:tabular-nums; }
+.ex2-table .empty td{ padding:18px 10px; text-align:center; color:#7D8AA2; background:#FFFFFF; }
+
+/* total row strip */
+.total td{ background:#EEF2F7; font-weight:700; border-bottom:0; }
+.row-dot{ width:26px; height:26px; border-radius:6px; border:1px solid #E6E9EF; background:#FFFFFF; cursor:pointer; }
+.row-dot:hover{ background:#F7F8FA; }
+
+/* ===================== FOOTER / PAGER ===================== */
+.ex2-foot{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border-top:1px solid #EEF2F7; color:#7D8AA2; font-size:12px;
+}
+.pager{ display:flex; gap:6px; }
+.pg{ width:30px; height:30px; border:1px solid #E6E9EF; border-radius:8px; background:#FFFFFF; }
+.pg:disabled{ opacity:.55; cursor:not-allowed; }
+
+/* bottom brand line */
+.ex2-brandline{ color:#7D8AA2; font-size:12px; margin-top:18px; }
+
+/* ========== SMALL RESPONSIVE NUDGE (optional) ========== */
+@media (max-width: 1400px){
+  .ex2-cards{ margin-left:220px; }
+}
+/* ----- Filter toggle active look (optional) ----- */
+.filter-btn.is-active{ box-shadow:inset 0 0 0 2px rgba(255,255,255,.35); }
+
+/* ----- Party dropdown ke andar search layout ----- */
+.ss.ss--search .ss-dd{ padding:0; }
+.ss.ss--search .ss-search{ padding:8px; border-bottom:1px solid #EEF2F7; }
+.ss.ss--search .ss-search input{
+  height:30px; width:100%;
+  border:1px solid #E1E7F0; border-radius:8px; padding:0 8px;
+}
+.ss.ss--search .ss-list{ max-height:200px; overflow:auto; padding:6px; }
+.ss.ss--search .ss-empty{ padding:10px; color:#9AA3AF; }
