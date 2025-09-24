@@ -68,12 +68,45 @@
 .dp-select select{
   appearance:none; -webkit-appearance:none; -moz-appearance:none;
   border:0; outline:0; background:transparent; padding:0 10px; height:34px; font-size:14px;
-  width:100%; text-align-last:center; text-align:center; font-variant-numeric:tabular-nums;
+  width:30%; text-align-last:center; text-align:center; font-variant-numeric:tabular-nums;
 }
 .dp-select option{ text-align:center; }
 .dp-select .material-icons{ position:absolute; right:6px; pointer-events:none; font-size:18px; color:#667085; }
-/* rows-per-page width like screenshot */
-.dp-select.pagesize{ width:64px; padding-right:26px; }
+
+/* ====== ROWS-PER-PAGE (integrated hard override) ====== */
+:root{ --rpp-w: 44px; } /* yahin se width control karein */
+
+/* If you use the wrapper */
+.dp-select.pagesize{
+  width: var(--rpp-w) !important;
+  padding-right: 22px !important;
+}
+.dp-select.pagesize select{ text-align-last:center; }
+
+/* DataTables/Bootstrap plain <select name="*_length"> inside toolbar/box */
+.dp-toolbar .dataTables_length select,
+.dp-card.box .dataTables_length select,
+.dp-toolbar select.form-select[name$="_length"],
+.dp-card.box select.form-select[name$="_length"],
+.dp-toolbar select[name$="_length"],
+.dp-card.box select[name$="_length"]{
+  width: var(--rpp-w) !important;
+  min-width: var(--rpp-w) !important;
+  height: 36px !important;
+  padding: 0 22px 0 6px !important;  /* caret spacing */
+  font-size: 14px !important;
+  text-align-last: center !important;
+  border: 1px solid #d0d5dd !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  appearance: none !important;
+}
+
+/* Container squeeze (optional) */
+.dp-toolbar .dataTables_length,
+.dp-card.box .dataTables_length{
+  width: calc(var(--rpp-w) + 10px) !important;
+}
 
 /* Table */
 .table-wrap{ overflow:auto; margin-top:10px; }

@@ -44,12 +44,16 @@
 .emp-toolbar .btn-icon .material-icons{ font-size:18px; color:#fff !important; }
 
 /* ===== Rows-per-page select (NARROW) ===== */
-.emp-select{
-  height:34px;
-  width:56px;           /* ⬅️ narrower */
-  min-width:56px;       /* keep fixed width */
-  padding:0 6px;
-  border:1px solid #d9dee6; border-radius:4px; background:#fff; font-size:13px;
+.emp-select {
+  height: 34px;
+  width: 44px;        /* ⬅️ aur kam kiya */
+  min-width: 44px;    /* fixed chhota width */
+  padding: 0 4px;     /* thoda kam padding */
+  border: 1px solid #d9dee6;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  text-align: center; /* numbers center aligned */
 }
 
 .btn{
