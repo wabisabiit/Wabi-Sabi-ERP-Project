@@ -44,8 +44,8 @@
 
 /* KPI row */
 .fb-kpis{ display:grid; grid-template-columns:1.2fr 1.4fr 1.6fr; gap:18px; margin-bottom:18px; }
-.fb-card{ background:#fff; border:1px solid #dfe5ef; border-radius:8px; padding:16px 18px; }
-.fb-avg{ display:grid; place-items:center; text-align:center; padding:22px 18px; }
+.fb-card{ background:#fff; border:1px solid #dfe5ef; border-radius:8px; padding:0px 10px; height: 165px }
+.fb-avg{ display:grid; place-items:center; text-align:center; padding:22px 18px; height: 165px;}
 .fb-avg-number{ font-size:56px; color:#18a2e3; line-height:1; font-weight:600; }
 .fb-avg-stars{ margin:10px 0 8px; }
 .fb-star{ font-size:24px; color:#c8d0df; letter-spacing:2px; }
@@ -104,7 +104,7 @@
   background:#fff; border:1px solid #dfe5ef; border-radius:8px;
   flex:1 1 0; min-height:0; overflow:auto;
 }
-.fb-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+.fb-table{ width:100%; border-collapse:collapse; table-layout:fixed }
 .fb-table thead th{
   text-align:left; background:#f6f9fe; color:#223046;
   padding:12px 14px; font-weight:600; font-size:13px; border-bottom:1px solid #e6edf7;
