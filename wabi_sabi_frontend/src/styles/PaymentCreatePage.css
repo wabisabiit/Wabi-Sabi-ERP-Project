@@ -1,0 +1,101 @@
+/* Container */
+.payc-wrap{
+  background:#eef2f7; min-height:100vh; padding:16px 20px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px; color:#1f2937;
+}
+.payc-card{
+  background:#fff; border:1px solid #e6e9f0; border-radius:12px;
+  padding:16px; box-shadow:0 1px 2px rgba(16,24,40,.03);
+}
+
+/* Top radio row */
+.payc-toprow{ display:flex; align-items:center; gap:24px; margin-bottom:10px; }
+.rb{ display:inline-flex; align-items:center; gap:8px; font-weight:700; color:#111827; cursor:pointer; }
+.rb input{ display:none; }
+.rb .dot{
+  height:16px; width:16px; border-radius:50%; border:2px solid #94a3b8; display:inline-block; position:relative;
+}
+.rb.active .dot{ border-color:#0ea5e9; }
+.rb.active .dot::after{
+  content:""; position:absolute; inset:3px; background:#0ea5e9; border-radius:50%;
+}
+
+/* Grid helpers */
+.grid{ display:grid; gap:16px; margin:10px 0 12px; }
+.g2{ grid-template-columns:1fr 1fr; }
+.g3{ grid-template-columns:1fr 1fr 1fr; }
+@media (max-width: 1000px){
+  .g2,.g3{ grid-template-columns:1fr; }
+}
+
+/* Form columns */
+.fcol label{ display:block; font-weight:700; margin-bottom:6px; color:#2b3341; }
+.muted{ color:#6b7280; margin-top:6px; }
+.muted .q{ display:inline-block; height:16px; width:16px; line-height:16px; text-align:center;
+  border:1px solid #d1d5db; border-radius:50%; margin-right:4px; color:#6b7280; }
+
+/* Inputs */
+.inp{ position:relative; }
+.inp input, .inp textarea{
+  width:100%; height:36px; padding:0 0px; border:1px solid #dfe3ea; border-radius:8px; outline:none; background:#fff;
+}
+.inp textarea{  padding:0px 0px; resize:vertical; }
+.inp.with-ico input{ padding-right:36px; }
+.inp .ico{ position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#9aa3af; }
+.select input{ cursor:pointer; background:#fff; }
+.caret{ position:absolute; right:10px; top:50%; transform:translateY(-50%); color:#9aa3af; font-size:12px; }
+
+/* Amount */
+.inp.amt{ display:flex; }
+.inp.amt .prefix{
+  background:#0ea5e9; color:#fff; padding:0 10px; display:inline-flex; align-items:center; border-radius:8px 0 0 8px;
+  border:1px solid #0ea5e9;
+}
+.inp.amt input{ border-radius:0 8px 8px 0; border-left:0; }
+
+/* Payment type cards */
+.ptype{
+  text-align:left; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:18px 16px;
+  display:flex; flex-direction:column; gap:6px; cursor:pointer;
+}
+.ptype .rdo{
+  height:18px; width:18px; border-radius:50%; border:2px solid #94a3b8; display:inline-block; margin-right:8px;
+}
+.ptype b{ font-size:16px; }
+.ptype .sub{ color:#6b7280; }
+.ptype.active{ border-color:#0ea5e9; box-shadow:0 0 0 2px rgba(14,165,233,.15) inset; }
+.ptype.active .rdo{ border-color:#0ea5e9; position:relative; }
+.ptype.active .rdo::after{ content:""; position:absolute; inset:3px; background:#0ea5e9; border-radius:50%; }
+
+/* Table */
+.tbl{ margin-top:8px; border:1px solid #eef2f7; border-radius:12px; overflow:hidden; }
+.tbl table{ width:100%; border-collapse:separate; border-spacing:0; }
+.tbl thead th{
+  background:#f3f5f9; text-align:left; padding:10px 12px; color:#3b4654; border-bottom:1px solid #e8edf4; font-weight:700;
+}
+.tbl tbody td{ padding:12px; border-bottom:1px solid #f1f3f7; }
+.tbl .right{ text-align:right; }
+.tbl .b{ font-weight:700; }
+.tbl .link{ color:#0ea5e9; font-weight:700; background:none; border:0; cursor:pointer; }
+.tbl .nodata{ text-align:center; color:#9aa3af; background:#fbfcfe; }
+.cell{
+  width:100%; border:1px solid #e5e7eb; border-radius:6px; padding:6px 8px; background:#fff;
+}
+.cell.num{ text-align:right; }
+
+/* Footer actions */
+.actrow{ display:flex; align-items:center; gap:10px; margin-top:14px; }
+.actrow .spacer{ flex:1; }
+.btn{ height:36px; padding:0 14px; border-radius:10px; border:1px solid #dfe3ea; cursor:pointer; font-weight:600; }
+.btn.ghost{ background:#fff; }
+.btn.outline{ background:#fff; border-color:#93c5fd; color:#0b85c6; }
+.btn.primary{ background:#0ea5e9; color:#fff; border-color:#0ea5e9; }
+.btn.primary:hover{ background:#0891d9; }
+
+.inp, select.inp, textarea.inp{
+    padding: 0;
+}
+.inp, select.inp, textarea.inp{
+    width: 50%;
+}
