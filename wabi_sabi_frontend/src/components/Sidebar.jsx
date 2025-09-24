@@ -11,6 +11,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
   const [expandAdmin, setExpandAdmin] = useState(true); // Admin open by default
   const [expandUtilities, setExpandUtilities] = useState(false);
   const [expandCRM, setExpandCRM] = useState(false);
+  const [expandBankCash, setExpandBankCash] = useState(false); // NEW
 
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
@@ -32,15 +33,14 @@ export default function Sidebar({ open, onClose, persistent = false }) {
     el && el.focus();
   }, [open]);
 
-  // Auto-expand CRM when on any /crm route
+  // Auto-expand groups based on route
   useEffect(() => {
     if (isPath("/crm")) setExpandCRM(true);
+    if (isPath("/bank")) setExpandBankCash(true); // NEW
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
-  const handleNav = () => {
-    if (!persistent) onClose?.();
-  };
+  const handleNav = () => { if (!persistent) onClose?.(); };
 
   return (
     <>
@@ -138,6 +138,30 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </div>
           </div>
 
+          {/* Bank / Cash — NEW */}
+          <div className="sb-group">
+            <button
+              className={`sb-item ${expandBankCash ? "open" : ""}`}
+              onClick={() => setExpandBankCash((v) => !v)}
+              aria-expanded={expandBankCash}
+              aria-controls="sb-bank-sub"
+              type="button"
+            >
+              <span className="material-icons sb-ic">account_balance_wallet</span>
+              <span className="sb-text">Bank / Cash</span>
+              <span className="material-icons sb-caret">
+                {expandBankCash ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+            <div id="sb-bank-sub" className={`sb-sub ${expandBankCash ? "show" : ""}`}>
+              <NavLink to="/bank" end className={linkClass} onClick={handleNav}>Bank</NavLink>
+              <NavLink to="/bank/transactions" className={linkClass} onClick={handleNav}>Bank Transaction</NavLink>
+              <NavLink to="/bank/payment" className={linkClass} onClick={handleNav}>Payment</NavLink>
+              <NavLink to="/bank/receipt" className={linkClass} onClick={handleNav}>Receipt</NavLink>
+              <NavLink to="/bank/expense" className={linkClass} onClick={handleNav}>Expense</NavLink>
+            </div>
+          </div>
+
           {/* POS */}
           <div className="sb-group">
             <button
@@ -165,7 +189,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
           {/* CRM */}
           <div className="sb-group">
             <button
-              className={`sb-item ${expandCRM || isPath("/crm") ? "active" : ""}`}
+              className={`sb-item ${expandCRM ? "open" : ""}`}
               onClick={() => setExpandCRM((v) => !v)}
               aria-expanded={expandCRM}
               aria-controls="sb-crm-sub"
@@ -179,18 +203,10 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
 
             <div id="sb-crm-sub" className={`sb-sub ${expandCRM ? "show" : ""}`}>
-              <NavLink to="/crm/coupon" className={linkClass} onClick={handleNav}>
-                Coupon
-              </NavLink>
-              <NavLink to="/crm/discount" className={linkClass} onClick={handleNav}>
-                Discount
-              </NavLink>
-              <NavLink to="/crm/loyalty" className={linkClass} onClick={handleNav}>
-                Loyalty
-              </NavLink>
-              <NavLink to="/crm/feedback" className={linkClass} onClick={handleNav}>
-                Feedback
-              </NavLink>
+              <NavLink to="/crm/coupon" className={linkClass} onClick={handleNav}>Coupon</NavLink>
+              <NavLink to="/crm/discount" className={linkClass} onClick={handleNav}>Discount</NavLink>
+              <NavLink to="/crm/loyalty" className={linkClass} onClick={handleNav}>Loyalty</NavLink>
+              <NavLink to="/crm/feedback" className={linkClass} onClick={handleNav}>Feedback</NavLink>
             </div>
           </div>
 

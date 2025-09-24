@@ -1,10 +1,10 @@
 :root{
-  --sb-bg: #1f2430;       /* deep slate/navy */
+  --sb-bg: #1f2430;
   --sb-bg-2: #2a3040;
   --sb-border: #3a4154;
   --sb-text: #cfd6e4;
   --sb-text-dim: #9aa3b7;
-  --sb-accent: #0ea5e9;   /* cyan for active bullets, optional */
+  --sb-accent: #0ea5e9;
 }
 
 .sb-overlay{
@@ -55,10 +55,7 @@
   cursor: pointer;
 }
 .sb-burger:hover{ background: rgba(255,255,255,.05); }
-.sb-brand{
-  font-weight: 600;
-  letter-spacing: .3px;
-}
+.sb-brand{ font-weight: 600; letter-spacing: .3px; }
 
 .sb-items{
   padding: 8px 6px;
@@ -77,8 +74,9 @@
   color: var(--sb-text);
   border-radius: 10px;
   cursor: pointer;
+  text-decoration: none;
 }
-.sb-item:hover{ background: var(--sb-bg-2); }
+.sb-item:hover{ background: var(--sb-bg-2); text-decoration: none; }
 .sb-ic{ font-size: 20px; opacity: .95; }
 .sb-text{ text-align: left; font-size: 13px;}
 .sb-caret{ margin-left: auto; opacity: .8; }
@@ -115,15 +113,14 @@
   color: #e6f7ff;
 }
 
+/* footer */
 .sb-foot{
   padding: 14px 14px 18px 14px;
   border-top: 1px solid var(--sb-border);
 }
 .sb-tip-title{ font-size: 13px; color: var(--sb-text); }
 .sb-tip-sub{ font-size: 12px; color: var(--sb-text-dim); margin-top: 2px; }
-.sb-socials{
-  display: flex; gap: 10px; margin-top: 10px;
-}
+.sb-socials{ display: flex; gap: 10px; margin-top: 10px; }
 .sb-socials a{
   width: 32px; height: 32px;
   display: grid; place-items: center;
@@ -134,61 +131,33 @@
 }
 .sb-socials a:hover{ filter: brightness(1.15); }
 
-
-/* Active subitem (POS → Credit Note) color treatment */
+/* Active subitem (also used by POS → Credit Note currently) */
 .sb-subitem.active{
   background:#0ea5e9;           /* blue background */
   color:#fff;                    /* white text */
   border-radius:6px;
 }
-
-/* Keep the icon/text white when active (if you show icons) */
 .sb-subitem.active .material-icons{ color:#fff; }
 
-/* Persistent sidebar mode (used on Credit Note page) */
-.sb-panel.persistent { transform: none; }          /* stay visible */
-.sb-overlay.persistent-hide { display: none; }     /* no overlay */
+/* Persistent sidebar mode (used on sidebar pages) */
+.sb-panel.persistent { transform: none; }
+.sb-overlay.persistent-hide { display: none; }
 
 /* Push page content to the right when sidebar is persistent */
 .with-sb { margin-left: 260px; }
 @media (max-width: 1024px) {
-  .with-sb { margin-left: 0; }                     /* fall back on small screens */
+  .with-sb { margin-left: 0; }
 }
 
-/* You already added the active color; leaving here just to confirm */
-.sb-subitem.active{
-  background:#0ea5e9;
-  color:#fff;
-  border-radius:6px;
-}
-
-/* top-level items (Dashboard, Contact, etc.) */
-.sb-item {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 28px 1fr 24px;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 10px;
-  background: transparent;
-  border: 0;
-  color: var(--sb-text);
-  border-radius: 10px;
-  cursor: pointer;
-  text-decoration: none;            /* ← remove underline */
-}
-.sb-item:hover {
-  background: var(--sb-bg-2);
-  text-decoration: none;            /* ← keep it off on hover */
-}
 /* active state for top-level items */
 .sb-item.active {
   background: #0ea5e9;  /* blue */
-  color: #fff;          /* white text */
-}
-
-/* ensure icon/text inside also flip to white */
-.sb-item.active .material-icons,
-.sb-item.active .sb-text {
   color: #fff;
+}
+.sb-item.active .material-icons,
+.sb-item.active .sb-text { color: #fff; }
+
+.sb-item.open {
+  background: var(--sb-bg-2);
+  color: var(--sb-text);
 }

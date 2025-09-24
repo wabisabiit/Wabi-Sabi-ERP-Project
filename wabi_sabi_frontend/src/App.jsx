@@ -31,6 +31,13 @@ import CouponPage from "./components/CouponPage";
 import NewCoupounPage from "./components/NewCoupounPage";
 import FeedbackPage from "./components/FeedbackPage";
 
+// Bank / Cash pages
+import BankPage from "./components/BankPage";
+import BankTransactionPage from "./components/BankTransactionPage";
+import PaymentPage from "./components/PaymentPage";
+import ReceiptPage from "./components/ReceiptPage";
+import ExpensePage from "./components/ExpensePage";
+
 import "./App.css";
 
 /* ---------- Layouts ---------- */
@@ -83,13 +90,19 @@ export default function App() {
       <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
       <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
 
+      {/* Bank / Cash (each its own component) */}
+      <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
+      <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
+      <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
+      <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
+      <Route path="/bank/expense" element={<SidebarLayout><ExpensePage /></SidebarLayout>} />
+
       {/* Sales */}
       <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
       <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
 
       {/* Utilities -> Barcode */}
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
-      {/* keep old deep-link (with space/case) working */}
       <Route path="/Utilities/Barcode Utility" element={<Navigate to="/utilities/barcode" replace />} />
 
       {/* Credit Note */}
@@ -99,13 +112,11 @@ export default function App() {
       <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
       <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
       <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
-      {/* old casing redirect */}
       <Route path="/CRM/Loyalty" element={<Navigate to="/crm/loyalty" replace />} />
 
       {/* CRM -> Discount */}
       <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
       <Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
-      {/* old casing redirect */}
       <Route path="/CRM/Discount" element={<Navigate to="/crm/discount" replace />} />
 
       {/* CRM -> Coupon */}
