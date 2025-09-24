@@ -153,3 +153,79 @@
 @media (max-width:640px){
   .dp-search input{ width:140px; }
 }
+/* ========= FIX: SELECTS FULL-WIDTH + PROPER TEXT ========= */
+.dp-select{
+  position:relative;
+  background:#fff;
+  border:1px solid #d0d5dd;
+  border-radius:8px;
+  height:36px;
+  display:flex; align-items:center;
+  padding-right:30px;             /* caret ke liye space */
+}
+.dp-select select{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  border:0; outline:0; background:transparent;
+  height:34px; font-size:14px;
+  width:100%; min-width:0;        /* <-- pehle 30% tha, cut hota tha */
+  padding:0 28px 0 10px;
+  text-align:left; text-align-last:left;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.dp-select option{ text-align:left; }
+.dp-select .material-icons{
+  position:absolute; right:8px; font-size:18px; color:#667085; pointer-events:none;
+}
+
+/* ========= RPP (rows-per-page) CHOTA SELECT KO CHOTA HI RAKHE ========= */
+:root{ --rpp-w:44px; }
+.dp-toolbar .dataTables_length select,
+.dp-card.box .dataTables_length select,
+.dp-toolbar select.form-select[name$="_length"],
+.dp-card.box select.form-select[name$="_length"],
+.dp-toolbar select[name$="_length"],
+.dp-card.box select[name$="_length"]{
+  width:var(--rpp-w) !important;
+  min-width:var(--rpp-w) !important;
+  height:36px !important;
+  padding:0 22px 0 6px !important;
+  border:1px solid #d0d5dd !important;
+  border-radius:8px !important;
+  background:#fff !important;
+  appearance:none !important;
+  text-align-last:center !important;
+}
+
+/* ========= DROPDOWNS CLIP NA HONE DEIN ========= */
+.with-sb, .dp-wrap, .dp-card.box, .dp-toolbar, .table-wrap{
+  overflow:visible !important;  /* parent overflow block na kare */
+}
+
+/* Common dropdown libs ko top pe lao */
+.select2-container,
+.select2-container .select2-dropdown,
+.choices__list--dropdown,
+.dropdown-menu,
+.flatpickr-calendar,
+.autocomplete-suggestions,
+[role="listbox"]{
+  z-index:9999 !important;
+}
+
+/* Agar Bootstrap modal ke andar ho */
+.modal{ z-index:1050; }
+.modal-backdrop{ z-index:1040; }
+
+/* ========= INPUT/SEARCH MINOR POLISH ========= */
+.dp-search input{
+  border:0; outline:0; width:190px; font-size:14px;
+}
+@media (max-width:640px){
+  .dp-search input{ width:140px; }
+}
+
+/* Generic selects (safety) */
+select{
+  max-width:100%;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
