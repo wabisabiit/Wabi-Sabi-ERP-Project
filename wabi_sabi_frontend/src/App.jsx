@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
@@ -38,9 +39,12 @@ import PaymentPage from "./components/PaymentPage";
 import ReceiptPage from "./components/ReceiptPage";
 import ExpensePage from "./components/ExpensePage";
 import NewBankPage from "./components/NewBankPage";
-// NEW import
 import PaymentCreatePage from "./components/PaymentCreatePage";
 
+// Settings pages (NEW)
+import SettingsHome from "./components/SettingsHome";
+import GeneralSettingsPage from "./components/GeneralSettingsPage";
+import EditProfilePage from "./components/EditProfilePage";
 
 import "./App.css";
 
@@ -94,7 +98,7 @@ export default function App() {
       <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
       <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
 
-      {/* Bank / Cash (each its own component) */}
+      {/* Bank / Cash */}
       <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
       <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
       <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
@@ -107,9 +111,15 @@ export default function App() {
       <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
       <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
 
-      {/* Utilities -> Barcode */}
+      {/* Utilities */}
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
       <Route path="/Utilities/Barcode Utility" element={<Navigate to="/utilities/barcode" replace />} />
+
+      {/* Settings (NEW) */}
+      <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
+      <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
+      <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
+
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />

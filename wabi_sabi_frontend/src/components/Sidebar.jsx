@@ -10,8 +10,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
   const [expandPOS, setExpandPOS] = useState(true);     // POS open by default
   const [expandAdmin, setExpandAdmin] = useState(true); // Admin open by default
   const [expandUtilities, setExpandUtilities] = useState(false);
+  const [expandSettings, setExpandSettings] = useState(false); // NEW
   const [expandCRM, setExpandCRM] = useState(false);
-  const [expandBankCash, setExpandBankCash] = useState(false); // NEW
+  const [expandBankCash, setExpandBankCash] = useState(false);
 
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
@@ -36,7 +37,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
   // Auto-expand groups based on route
   useEffect(() => {
     if (isPath("/crm")) setExpandCRM(true);
-    if (isPath("/bank")) setExpandBankCash(true); // NEW
+    if (isPath("/bank")) setExpandBankCash(true);
+    if (isPath("/utilities")) setExpandUtilities(true);
+    if (isPath("/settings")) setExpandSettings(true);        // NEW
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
@@ -133,12 +136,10 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </button>
             <div id="sb-inventory-sub" className={`sb-sub ${expandInventory ? "show" : ""}`}>
               <a className="sb-subitem" href="#stock">Products</a>
-              {/* <a className="sb-subitem" href="#transfers">Transfers</a>
-              <a className="sb-subitem" href="#adjustments">Adjustments</a> */}
             </div>
           </div>
 
-          {/* Bank / Cash — NEW */}
+          {/* Bank / Cash */}
           <div className="sb-group">
             <button
               className={`sb-item ${expandBankCash ? "open" : ""}`}
@@ -231,7 +232,29 @@ export default function Sidebar({ open, onClose, persistent = false }) {
                 Barcode Utility
               </NavLink>
             </div>
-            
+          </div>
+
+          {/* Settings (NEW, below Utilities) */}
+          <div className="sb-group">
+            <button
+              className="sb-item"
+              onClick={() => setExpandSettings((v) => !v)}
+              aria-expanded={expandSettings}
+              aria-controls="sb-settings-sub"
+              type="button"
+            >
+              <span className="material-icons sb-ic">settings</span>
+              <span className="sb-text">Settings</span>
+              <span className="material-icons sb-caret">
+                {expandSettings ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+
+            <div id="sb-settings-sub" className={`sb-sub ${expandSettings ? "show" : ""}`}>
+              <NavLink to="/settings/general" className={linkClass} onClick={handleNav}>
+                General
+              </NavLink>
+            </div>
           </div>
         </nav>
 
