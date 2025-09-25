@@ -38,7 +38,7 @@
 /* Inputs */
 .inp{ position:relative; }
 .inp input, .inp textarea{
-  width:100%; height:36px; padding:0 0px; border:1px solid #dfe3ea; border-radius:8px; outline:none; background:#fff;
+  width:100%; height:36px; padding:0 0px; border:1px solid #dfe3ea; border-radius:5px; outline:none; background:#fff;
 }
 .inp textarea{  padding:0px 0px; resize:vertical; }
 .inp.with-ico input{ padding-right:36px; }
@@ -104,7 +104,7 @@
 /* ====== Combo (Select + Searchable Popover) ====== */
 :root{
   --pc-input-h: 40px;           /* input height */
-  --pc-radius: 10px;            /* rounded corners to match UI */
+  --pc-radius: 5px;            /* rounded corners to match UI */
   --pc-border: #dfe3ea;
   --pc-border-focus: #60a5fa;
   --pc-shadow: 0 8px 28px rgba(16,24,40,.14);
@@ -259,3 +259,8 @@
 /* Keep button colors consistent with screenshot blues */
 .btn.primary { background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
 .btn.outline { border-color:#93c5fd; color:#0b85c6; background:#fff; }
+
+
+.inp, select.inp, textarea.inp {
+  border-radius: 10px ;
+}

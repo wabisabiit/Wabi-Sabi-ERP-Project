@@ -1,0 +1,389 @@
+/* Page shell */
+.gs-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:18px 22px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px;
+  color:#1f2937;
+}
+
+/* Header */
+.gs-header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:14px;
+}
+.gs-title{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:20px; color:#0f172a; }
+.gs-title .material-icons{ font-size:20px; color:#4b5563; }
+.gs-breadcrumb .material-icons{ font-size:18px; color:#94a3b8; }
+
+/* Body layout */
+.gs-body{ display:grid; grid-template-columns: 170px 1fr; gap:18px; }
+@media (max-width: 1100px){ .gs-body{ grid-template-columns: 1fr; } }
+
+/* LEFT tabs */
+.gs-tabs{ display:flex; flex-direction:column; gap:12px; }
+.gs-tab{
+  display:flex; align-items:center; gap:10px;
+  width:150px;
+  background:#fff; border:1px solid #e6e9f0; color:#1f2937;
+  border-radius:10px; padding:12px 14px; cursor:pointer;
+  text-align:left; box-shadow:0 1px 2px rgba(16,24,40,.03);
+}
+.gs-tab .material-icons{ font-size:22px; color:#6b7280; }
+.gs-tab.active{
+  background:#0ea5e9; color:#fff; border-color:#0ea5e9; position:relative;
+}
+.gs-tab.active .material-icons{ color:#fff; }
+.gs-tab.active::after{
+  content:""; position:absolute; right:-10px; top:12px;
+  border-left:10px solid #0ea5e9; border-top:10px solid transparent; border-bottom:10px solid transparent;
+}
+
+/* RIGHT content */
+.gs-content{
+  background:transparent;
+}
+
+/* Panel header (Profile / Taxes bar) */
+.gs-panel-head{
+  display:flex; align-items:center; justify-content:space-between;
+  background:#fff; border:1px solid #e6e9f0; border-radius:12px 12px 0 0;
+  padding:14px 16px;
+  margin:0 auto; max-width: calc(100% - 20px);
+  box-shadow:0 1px 2px rgba(16,24,40,.03);
+}
+.gs-panel-title{ display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; }
+.gs-panel-title .material-icons{ font-size:22px; color:#64748b; }
+.gs-icon-btn{
+  height:34px; width:34px; display:grid; place-items:center;
+  background:#e8f4ff; border:1px solid #bfe1fe; border-radius:10px; cursor:pointer; color:#0b85c6;
+}
+.gs-icon-btn .material-icons{ font-size:18px; }
+
+/* Big white card under header */
+.gs-card{
+  background:#fff; border:1px solid #e6e9f0; border-top:0;
+  border-radius:0 0 12px 12px;
+  padding:14px; margin:0 auto 18px; max-width: calc(100% - 20px);
+  box-shadow:0 1px 2px rgba(16,24,40,.03);
+}
+
+/* Sections */
+.gs-section{ border:1px solid #edf0f6; border-radius:8px; margin-bottom:14px; overflow:hidden; }
+.gs-section-head{
+  display:flex; align-items:center; gap:10px;
+  padding:12px 14px; background:#f8fafc; border-bottom:1px solid #edf0f6;
+}
+.gs-section-head .material-icons{ font-size:18px; color:#60a5fa; }
+.gs-section-head h3{ font-size:16px; margin:0; color:#1f2937; }
+
+/* Key-Value grids */
+.gs-kv{ display:grid; }
+.gs-kv .kv{ display:grid; grid-template-columns: 220px 1fr; border-bottom:1px solid #f1f5f9; }
+.gs-kv .kv:last-child{ border-bottom:0; }
+
+.kv .k{
+  padding:11px 14px; background:#f3f6fb; font-weight:700; color:#111827;
+}
+.kv .v{
+  padding:11px 14px; background:#fff; color:#111827;
+}
+
+/* Special shaded right column (to match the screenshot’s alternate band) */
+.muted-col .k,
+.shaded-right .kv .k{ background:#e9edf5; }
+
+/* Grids */
+.grid-2-2{ grid-template-columns: 406px 1fr; }
+.grid-2{ grid-template-columns: 1fr 1fr; }
+.grid-1{ grid-template-columns: 1fr; }
+
+.grid-2-2 .kv, .grid-2 .kv{ border-right:1px solid #f1f5f9; }
+.grid-2-2 .kv:nth-child(2n), .grid-2 .kv:nth-child(2n){ border-right:0; }
+
+@media (max-width: 1100px){
+  .grid-2-2, .grid-2{ grid-template-columns: 1fr; }
+  .grid-2-2 .kv, .grid-2 .kv{ border-right:0; }
+}
+
+/* Two-column section row */
+.gs-2col{
+  display:grid; grid-template-columns:2fr 1fr; gap:14px; margin-bottom:14px;
+}
+@media (max-width: 1100px){ .gs-2col{ grid-template-columns:2fr 1fr; } }
+
+/* Tall left block in "Other Details" */
+.tall-left .kv.tall .v.block{ min-height:120px; }
+.shaded{ background:#eef2f7; border:1px solid #e6e9f0; border-radius:6px; }
+
+/* Subtle page footer breathing space */
+.gs-card:last-child{ margin-bottom:24px; }
+
+/* ====== Tidy widths + consistent row heights (exact-match polish) ====== */
+:root{
+  /* label column width and row height tuned to your reference shots */
+  --gs-k-width: 230px;   /* left label cell width */
+  --gs-row-h: 44px;      /* default row height */
+}
+
+/* Center the main panel to the same content width as the ref UI */
+.gs-panel-head,
+.gs-card{
+  max-width: 1180px;   /* was calc(100% - 20px); now fixed like the screenshot */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Make both columns (label/value) align perfectly everywhere */
+.gs-kv .kv{
+  grid-template-columns: var(--gs-k-width) 1fr;  /* fixed label width */
+}
+
+/* Normalize cell height and vertical centering (no random tall rows) */
+.gs-kv .k,
+.gs-kv .v{
+  padding: 0px 10px;
+  display: flex;                 /* so we can vertically center text */
+  align-items: center;
+  min-height: var(--gs-row-h);   /* consistent height on most rows */
+  line-height: 1.35;
+}
+
+/* Rows that should stay taller (like the big shaded blocks) still can */
+.kv .v.block{
+  align-items: flex-start;       /* text to the top inside tall blocks */
+  min-height: 120px;             /* keep the tall ‘CIN No.’ area, etc. */
+}
+
+/* Sub-cards two-up layout: keep both columns balanced like the ref */
+.gs-2col{
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+/* Subtle tweak so the left shaded label column tone matches the ref */
+.kv .k{ background:#f3f6fb; }
+.muted-col .k,
+.shaded-right .kv .k{ background:#e9edf5; }
+
+/* Keep tidy vertical rhythm between sections */
+.gs-section{ margin-bottom: 16px; }
+
+/* Table-like borders between pairs align exactly */
+.grid-2-2 .kv,
+.grid-2 .kv{ border-right: 1px solid #f1f5f9; }
+.grid-2-2 .kv:nth-child(2n),
+.grid-2 .kv:nth-child(2n){ border-right: 0; }
+
+/* Slightly reduce header band padding to match height from the shot */
+.gs-section-head{ padding: 10px 14px; }
+.gs-section-head h3{ font-size: 15px; }
+
+/* ---------- Taxes: card header ---------- */
+.tax-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 6px 14px 6px;
+}
+.tax-title{ display:flex; align-items:center; gap:8px; font-size:20px; font-weight:700; color:#0f172a; }
+.tax-title .material-icons{ font-size:22px; color:#64748b; }
+
+/* Tools (page size, search, button) */
+.tax-tools{ display:flex; align-items:center; gap:12px; }
+.tax-select{
+  height:38px; width:68px;
+  padding:0 10px; border:1px solid #e6e9f0; border-radius:10px; background:#fff;
+  font:inherit; color:#111827;
+}
+.tax-search{
+  position:relative; width:320px;
+}
+.tax-search input{
+  width:100%; height:38px; padding:0 40px 0 14px;
+  border:1px solid #e6e9f0; border-radius:10px; outline:none; background:#fff;
+}
+.tax-search-btn{
+  position:absolute; right:4px; top:4px; height:30px; width:30px;
+  display:grid; place-items:center; border:0; background:#0ea5e9; color:#fff; border-radius:8px; cursor:pointer;
+}
+.tax-new{ height:38px; padding:0 14px; border-radius:10px; }
+
+/* ---------- Table ---------- */
+.tax-table-wrap{
+  border:1px solid #e9edf5; border-radius:12px; overflow:hidden; background:#fff;
+}
+.tax-table{ width:100%; border-collapse:separate; border-spacing:0; }
+.tax-table thead th{
+  background:#eef1f6; color:#111827; font-weight:700; text-align:left;
+  padding:12px 14px; border-bottom:1px solid #e5e9f2;
+}
+.tax-table tbody td{
+  padding:5px; border-bottom:1px solid #f1f4f9; color:#111827;
+}
+.tax-table tbody tr:nth-child(odd){ background:#fff; }
+.tax-table tbody tr:nth-child(even){ background:#f9fbfd; }
+.tax-table .chkcol{ width:48px; }
+.tax-table .numcol{ width:70px; }
+.tax-table .ratecol{ width:90px; }
+.tax-table .actcol{ width:120px; }
+.tax-ghost-box{
+  display:inline-block; width:26px; height:26px; background:#e9edf5; border-radius:6px;
+}
+.tax-table .empty{
+  text-align:center; padding:28px 14px; color:#64748b; font-weight:600;
+}
+
+/* ---------- Footer (count + pager) ---------- */
+.tax-footer{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 2px 2px 2px; color:#111827;
+}
+.tax-count{ color:#334155; }
+
+.tax-pager{ display:flex; align-items:center; gap:10px; }
+.pg-btn{
+  width:40px; height:40px; border-radius:999px; border:1px solid #e6e9f0;
+  background:#fff; display:grid; place-items:center; color:#111827; cursor:pointer;
+}
+.pg-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.pg-page{
+  min-width:40px; height:40px; border-radius:999px; border:1px solid #e6e9f0;
+  background:#fff; color:#111827; font-weight:600;
+}
+.pg-page.active{ background:#0ea5e9; color:#fff; border-color:#0ea5e9; }
+
+/* ---------- Buttons (reuse look from your app) ---------- */
+.btn.primary{
+  background:#0ea5e9; color:#fff; border:1px solid #0ea5e9;
+  padding:8px 12px; border-radius:10px; cursor:pointer;
+}
+
+/* ---------- (Profile) 2-line clamp helper where needed ---------- */
+.clamp-2{
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden; text-overflow:ellipsis;
+}
+
+
+/* ===== Modal (Create New Tax) ===== */
+.gs-modal-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55); /* dark, soft blur feel */
+  backdrop-filter: blur(1px);
+  z-index: 1098;
+}
+
+.gs-modal{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 1099;
+  padding: 16px;
+}
+
+.gs-dialog{
+  width: min(500px, 96vw);
+  background: #fff;
+  border: 1px solid #e6e9f0;
+  border-radius: 10px;
+  box-shadow: 0 25px 60px rgba(16, 24, 40, 0.25);
+  overflow: hidden;
+  animation: dlgPop .14s ease-out;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+@keyframes dlgPop {
+  from { transform: translateY(6px); opacity: .94; }
+  to   { transform: none;           opacity: 1;   }
+}
+
+.dlg-head{
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid #eef2f7;
+  background: #f9fafb;
+}
+.dlg-head h3{
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.dlg-x{
+  background: transparent; border: 0; cursor: pointer;
+  color: #6b7280; border-radius: 8px; padding: 6px;
+}
+.dlg-x:hover{ background: rgba(0,0,0,.05); }
+.dlg-x .material-icons{ font-size: 20px; }
+
+.dlg-body{
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+.dlg-body .fcol{
+  display: grid; gap: 8px;
+}
+.dlg-body label{
+  font-size: 14px; color: #111827; font-weight: 700;
+}
+.req{ color:#ef4444; margin-left:4px; }
+
+.dlg-input{
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid #cfd6e4;
+  padding: 0 12px;
+  outline: none;
+  font-size: 14px;
+  color: #111827;
+  background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.dlg-input::placeholder{ color:#9aa3b7; }
+.dlg-input:focus{
+  border-color: #4da3ff;
+  box-shadow: 0 0 0 4px rgba(77,163,255,.15);
+}
+
+.dlg-foot{
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-top: 1px solid #eef2f7;
+  background: #fff;
+}
+
+/* Buttons (reuses your palette) */
+.btn{
+  min-width: 96px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn.primary{
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #fff;
+}
+.btn.primary:disabled{
+  opacity: .6; cursor: not-allowed;
+}
+.btn.outline{
+  background: #fff;
+  color: #111827;
+  border-color: #cfd6e4;
+}
+.btn.outline:hover{ background:#f8fafc; }
+
+/* Align like screenshot: "Close" left, "Save" right */
+.dlg-close{ margin-right: auto; }
+.dlg-save{ margin-left: auto; }
+
+/* Match field spacing/rounded edges to your page */
+.gs-dialog .fcol + .fcol{ margin-top: 6px; }
