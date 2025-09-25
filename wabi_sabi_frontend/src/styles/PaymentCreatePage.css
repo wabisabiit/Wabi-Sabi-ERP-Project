@@ -95,7 +95,167 @@
 
 .inp, select.inp, textarea.inp{
     padding: 0;
+    margin-bottom: 5px;
 }
 .inp, select.inp, textarea.inp{
     width: 50%;
 }
+
+/* ====== Combo (Select + Searchable Popover) ====== */
+:root{
+  --pc-input-h: 40px;           /* input height */
+  --pc-radius: 10px;            /* rounded corners to match UI */
+  --pc-border: #dfe3ea;
+  --pc-border-focus: #60a5fa;
+  --pc-shadow: 0 8px 28px rgba(16,24,40,.14);
+  --pc-muted: #9aa3af;
+  --pc-text: #1f2937;
+
+  --pc-opt-h: 40px;             /* option row height */
+}
+
+/* the closed field */
+.inp.select{
+  position: relative;
+  display: block;
+}
+.inp.select > input{
+  height: var(--pc-input-h);
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius);
+  background: #fff;
+  color: var(--pc-text);
+  box-shadow: 0 1px 2px rgba(16,24,40,.03);
+}
+.inp.select > input::placeholder{ color: var(--pc-muted); }
+
+/* focus ring like screenshot */
+.inp.select > input:focus{
+  border-color: var(--pc-border-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25);
+}
+
+/* caret icon */
+.inp.select .caret{
+  position:absolute; right:10px; top:50%;
+  transform: translateY(-50%);
+  font-size: 12px; color: var(--pc-muted);
+  pointer-events:none;
+}
+
+/* ================= POPUP ================= */
+.select-pop{
+  position: absolute;
+  left: 0; right: 0; top: calc(100% + 6px);
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e6e9f0;
+  border-radius: var(--pc-radius);
+  box-shadow: var(--pc-shadow);
+  padding: 8px;
+  display: none; /* toggle via .open on parent */
+}
+
+/* when open */
+.inp.select.open .select-pop{ display:block; }
+
+/* search box inside the popover */
+.select-pop .pop-search{
+  height: var(--pc-input-h);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0 10px;
+  outline: none;
+  width: 100%;
+  margin-bottom: 8px;
+}
+.select-pop .pop-search::placeholder{ color: var(--pc-muted); }
+
+/* list: exactly 5 options visible with scroll */
+.select-pop .pop-list{
+  max-height: calc(var(--pc-opt-h) * 5 + 2px);
+  overflow-y: auto;
+  border-radius: 8px;
+  /* nice thin scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #cfd6e4 transparent;
+}
+.select-pop .pop-list::-webkit-scrollbar{ height: 10px; width: 8px; }
+.select-pop .pop-list::-webkit-scrollbar-thumb{
+  background: #cfd6e4; border-radius: 8px;
+}
+
+/* option rows */
+.select-pop .opt{
+  height: var(--pc-opt-h);
+  display: flex; align-items: center;
+  padding: 0 12px;
+  cursor: pointer; user-select: none;
+  color: #1f2937;
+  border-radius: 8px;
+}
+.select-pop .opt:hover{
+  background: #f3f8ff;
+}
+.select-pop .opt.active{           /* selected (blue strip) */
+  background: #0ea5e9; color: #fff;
+}
+
+/* empty/help message (“Please enter 1 or more characters”) */
+.select-pop .empty{
+  padding: 10px 12px;
+  color: var(--pc-muted);
+  font-size: 12.5px;
+}
+
+/* optional subtle divider at top of list */
+.select-pop .pop-head{
+  padding: 6px 12px 8px;
+  color:#6b7280; font-size:12px;
+  border-bottom: 1px solid #f1f3f7;
+  margin-bottom: 6px;
+}
+
+/* make the field look ‘pressed’ when open */
+.inp.select.open > input{
+  border-color: var(--pc-border-focus);
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25);
+}
+
+/* ====== small helper if you place hint under Select Party ====== */
+.payc-card .hint{ color:#6b7280; margin-top:6px; font-size:12.5px; }
+
+
+/* === General font size already 13px from your base === */
+
+/* 4-column grid for Party/Payment/Txn Date/Txn No */
+.g4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+@media (max-width: 1200px){ .g4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 800px){ .g4 { grid-template-columns: 1fr; } }
+
+/* Bank first row (Bank select + Online/Cheque) */
+.bank-first {
+  display: grid;
+  grid-template-columns: 360px 240px; /* left wider like screenshot */
+  gap: 16px;
+  margin: 10px 0 12px;
+}
+@media (max-width: 900px){ .bank-first { grid-template-columns: 1fr; } }
+
+/* Small radio looks in Bank method (Online/Cheque) */
+.bank-methods { display:flex; align-items:center; gap:20px; }
+.rb.sm { font-weight:700; color:#111827; }
+.rb.sm .dot { height:16px; width:16px; border-radius:50%; border:2px solid #94a3b8; }
+.rb.sm.active .dot { border-color:#0ea5e9; }
+.rb.sm.active .dot::after { content:""; position:absolute; inset:3px; background:#0ea5e9; border-radius:50%; }
+
+/* “fake” label spacer so radios align to input baseline */
+.fcol .fake { display:block; height:0; margin:0; }
+
+/* Inputs for Txn No (same height/rounded as others) – already covered by .inp input */
+
+/* Keep button colors consistent with screenshot blues */
+.btn.primary { background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+.btn.outline { border-color:#93c5fd; color:#0b85c6; background:#fff; }
