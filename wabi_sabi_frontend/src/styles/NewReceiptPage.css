@@ -1,0 +1,150 @@
+/* ---------- New Receipt styles (nr-*) ---------- */
+:root{
+  --blue:#0ea5e9;
+  --blue-soft:#e5f2ff;
+  --ink:#111827;
+  --muted:#6b7280;
+  --line:#e6ebf3;
+  --bg:#ffffff;
+}
+
+/* container card */
+.nr-card-shell{
+  background:var(--bg);
+  border:1px solid #e8edf4;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+  padding:14px 16px;
+}
+
+/* breadcrumb */
+.nr-bc{ color:#6b7280; margin-left:6px; }
+.nr-link{ background:transparent; border:0; color:var(--blue); cursor:pointer; display:inline-flex; align-items:center; gap:6px; padding:0; }
+
+/* tabs — text black, active blue */
+.nr-tabs{ display:flex; align-items:center; gap:14px; margin-bottom:10px; }
+.nr-tab,.nr-tab2{ display:inline-flex; align-items:center; gap:6px; color:var(--ink); font-weight:600; font-size:13px; }
+.nr-tab input,.nr-tab2 input{ margin-right:6px; }
+.nr-tab.on,.nr-tab2.on{ color:var(--blue); }
+.nr-bankm{ display:flex; align-items:center; gap:14px; margin-left:12px; }
+
+/* primary grid */
+.nr-grid{
+  display:grid;
+  grid-template-columns: 300px 220px 220px 1fr;
+  column-gap:20px;
+  row-gap:14px;
+  margin:8px 0;
+  align-items:end;
+}
+.nr-col{ display:flex; flex-direction:column; gap:6px; min-width:0; position:relative; }
+.nr-col--grow{ grid-column: 2 / -1; }
+.nr-label{ color:var(--ink); font-weight:600; font-size:13px; }
+.req{ color:#ef4444; margin-left:4px; }
+
+/* select */
+.nr-select{ position:relative; }
+.nr-sbtn{
+  width:100%; height:34px; padding:0 10px;
+  display:flex; align-items:center; justify-content:space-between;
+  border:1px solid var(--line); border-radius:8px; background:#fff;
+  font-size:13px; color:var(--ink);
+}
+.nr-sbtn .nr-sval{ color:#9aa3af; }
+.nr-sbtn.has .nr-sval{ color:var(--ink); }
+.nr-sbtn:focus{ outline:2px solid var(--blue-soft); outline-offset:1px; }
+.nr-pop{
+  position:absolute; z-index:50; top:38px; left:0; width:100%;
+  background:#fff; border:1px solid var(--line); border-radius:10px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08);
+}
+.nr-pop-search{ width:100%; border:0; border-bottom:1px solid #eef2f7; padding:8px 10px; outline:none; font-size:13px; }
+.nr-pop-list{ max-height:210px; overflow:auto; }
+.nr-pop-item{ padding:8px 10px; cursor:pointer; font-size:13px; }
+.nr-pop-item:hover{ background:#f5f7fb; }
+.nr-pop-empty{ padding:8px 10px; color:#9aa3af; }
+
+/* date */
+.nr-date{ position:relative; }
+.nr-date input{
+  width:100%; height:34px; padding:0 32px 0 10px;
+  border:1px solid var(--line); border-radius:8px; font-size:13px; background:#fff;
+  box-sizing:border-box;
+}
+.nr-date input:focus{ outline:2px solid var(--blue-soft); outline-offset:1px; }
+.nr-cal{ position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#6b7280; cursor:pointer; }
+
+/* closing balance */
+.nr-closebal{ margin-top:6px; color:#374151; font-size:12px; }
+.nr-help{ display:inline-flex; width:16px; height:16px; align-items:center; justify-content:center; border:1px solid #cbd5e1; border-radius:50%; margin-right:6px; color:#6b7280; font-size:11px; }
+
+/* radio cards — slimmer width, taller */
+.nr-cards{
+  display:grid;
+  grid-template-columns: repeat(3, 290px);
+  justify-content:space-between;
+  gap:12px; margin:8px 0 12px;
+}
+.nr-card{
+  display:flex; align-items:flex-start; gap:10px;
+  border:1px solid var(--line); border-radius:8px; background:#fff;
+  padding:16px; min-height:72px;
+  cursor:pointer; transition:box-shadow .15s, border-color .15s;
+}
+.nr-card.active{ border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-soft); }
+.nr-dot{ width:16px; height:16px; border:2px solid #9aa3af; border-radius:50%; margin-top:2px; background:#fff; }
+.nr-dot.on{ border-color:var(--blue); background:radial-gradient(var(--blue) 6px, transparent 7px); }
+.nr-card-title{ font-weight:700; font-size:13px; color:var(--ink); }
+.nr-card-sub{ color:#6b7280; font-size:12px; margin-top:2px; }
+
+/* inputs */
+.nr-input{
+  width:100%; height:34px; padding:0 10px; font-size:13px;
+  border:1px solid var(--line); border-radius:8px; background:#fff; box-sizing:border-box;
+}
+.nr-input:focus{ outline:2px solid var(--blue-soft); outline-offset:1px; }
+.nr-text{
+  width:100%; min-height:34px; height:34px; padding:8px 10px; font-size:13px;
+  border:1px solid var(--line); border-radius:8px; background:#fff; resize:vertical; box-sizing:border-box;
+}
+/* Description counter shouldn’t push layout */
+.nr-chars{ position:absolute; left:0; bottom:-18px; font-size:12px; color:#6b7280; }
+.nr-amt{ display:flex; align-items:center; gap:6px; }
+.nr-cur{ display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; background:#f1f5f9; border-radius:6px; font-size:12px; }
+
+/* AGAINST BILL grid (compact) */
+.nr-bwrap{ width:100%; overflow-x:auto; }
+.nr-bthead{
+  margin-top:8px; border:1px solid var(--line); border-radius:8px; background:#f6f8fc;
+  display:grid;
+  grid-template-columns:42px 120px 100px 100px 100px 110px 110px 110px 120px 46px;
+  padding:8px 10px; align-items:center; box-sizing:border-box;
+  font-weight:700; color:#1f2937; font-size:13px;
+}
+.nr-brow{
+  border:1px solid var(--line); border-top:0;
+  display:grid;
+  grid-template-columns:42px 120px 100px 100px 100px 110px 110px 110px 120px 46px;
+  gap:6px; padding:7px 10px; align-items:center; background:#fff; font-size:13px; box-sizing:border-box;
+}
+.nr-brow .c{ display:flex; align-items:center; }
+.nr-bthead .c.id, .nr-brow .c.id{ justify-content:center; }
+.nr-brow .nr-input{ height:30px; padding:0 8px; font-size:12.5px; }
+
+/* actions */
+.nr-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+.nr-btn{ height:32px; padding:0 12px; border:1px solid var(--blue); color:var(--blue); background:var(--blue-soft); border-radius:8px; cursor:pointer; font-size:13px; }
+.nr-btn.primary{ background:var(--blue); color:#fff; }
+.nr-btn.ghost{ background:#f1f5f9; color:#111827; border-color:#e2e8f0; }
+
+/* responsive */
+@media (max-width:1280px){
+  .nr-grid{ grid-template-columns:260px 200px 200px 1fr; column-gap:18px; row-gap:14px; }
+  .nr-cards{ grid-template-columns: repeat(3, 270px); }
+}
+@media (max-width:1024px){
+  .nr-grid{ grid-template-columns:1fr 1fr; column-gap:16px; row-gap:28px; }
+  .nr-col--grow{ grid-column:1 / -1; }
+  .nr-cards{ grid-template-columns:1fr; }
+  .nr-chars{ bottom:-16px; }
+}

@@ -8,7 +8,7 @@
   padding: 0.2rem 1rem;
   font-family: Arial, sans-serif;
   font-size: 14px;
-  position: relative;      /* important: menu header से anchor होगा */
+  position: relative;
   z-index: 500;
   overflow: visible;
 }
@@ -25,31 +25,29 @@
 .salesman { display: flex; align-items: center; gap: .3rem; }
 
 /* ===== Collision-proof dropdown (ws-dd*) ===== */
-/* 1) Control ko compact कर दो */
 .ws-dd { 
   position: relative; 
-  width: 180px;                 /* पहले 220px था */
+  width: 180px;
 }
 
 .ws-dd-selected{
   border: 1px solid #ccc;
   background: #fff;
-  padding: 2px 8px;             /* height कम */
+  padding: 2px 8px;
   border-radius: 3px;
   cursor: pointer;
   width: 100%;
   display: flex; align-items: center; justify-content: space-between;
-  min-height: 28px;             /* ~28px control height */
-  font-size: 13px;              /* छोटा font */
+  min-height: 28px;
+  font-size: 13px;
   line-height: 1.2;
 }
 
-/* 2) MENU: अब हमेशा नीचे खुले (left aligned), हल्का gap दें */
 .salesman .ws-dd-menu{
   position: absolute;
-  top: calc(100% + 4px);        /* trigger के नीचे 4px */
-  left: 0;                      /* trigger से left-align */
-  width: 180px;                 /* dropdown चौड़ाई */
+  top: calc(100% + 4px);
+  left: 0;
+  width: 180px;
   background: #fff;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -58,11 +56,10 @@
   padding: 4px;
 }
 
-/* 3) Search input ko छोटा करें */
 .ws-dd-search{
   width: 100%;
-  padding: 4px 6px;             /* height कम */
-  font-size: 13px;              /* छोटा font */
+  padding: 4px 6px;
+  font-size: 13px;
   border: none;
   border-bottom: 1px solid #ddd;
   outline: none;
@@ -73,21 +70,54 @@
 .ws-dd-option{ padding: 6px 10px; font-size: 13px; }
 .ws-dd-option.selected{ background:#e0f2fe; font-weight:600; }
 
-/* 4) अब media-query की जरूरत नहीं, पर रखना चाहें तो: */
-/* @media (max-width: 900px){ .salesman .ws-dd-menu{ top: calc(100% + 4px); left:0; width: 100%; } } */
-
 .ws-dd-noresult{ padding: 8px 10px; color:#999; text-align:center; }
 
 /* Icons */
 .green { color:#4caf50; font-size:18px; }
 .icon-btn { background:none; border:none; padding:0; cursor:pointer; }
+
+/* --- FIXED: keep black background on hover/focus/active --- */
 .icon-btn.black{
-  display:inline-grid; place-items:center; width:32px; height:32px; background:#000; color:#fff;
-  border-radius:6px; user-select:none;
+  display:inline-grid;
+  place-items:center;
+  width:32px; height:32px;
+  background:#000;               /* base */
+  color:#fff;
+  border-radius:6px;
+  user-select:none;
+  transition: transform .08s ease, box-shadow .12s ease;
 }
-.icon-btn.black .material-icons{ font-size:18px; line-height:1; }
-.icon-btn.black:hover{ filter:brightness(1.2); }
-.icon-btn.black:active{ transform: translateY(1px); }
+
+/* remove brightness filter that turned it grey/white */
+.icon-btn.black:hover,
+.icon-btn.black:focus,
+.icon-btn.black:focus-visible {
+  background:#000;               /* stay black */
+  color:#fff;                    /* keep icon white */
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.08); /* optional subtle ring */
+}
+
+/* active press feedback without changing color */
+.icon-btn.black:active{
+  background:#000;
+  color:#fff;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* ensure nested icon color never flips */
+.icon-btn.black .material-icons{
+  font-size:18px;
+  line-height:1;
+  color:#fff;                    /* force white */
+}
+
+/* disabled state (optional) */
+.icon-btn.black[disabled],
+.icon-btn.black[aria-disabled="true"]{
+  opacity:.5;
+  pointer-events:none;
+}
 
 /* Mobile: open below */
 @media (max-width: 900px){

@@ -1,0 +1,172 @@
+/* ================ Page ================= */
+.rc-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:14px 16px 28px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px; color:#1f2937;
+}
+
+/* Title + home icon */
+.rc-head{ display:flex; align-items:center; gap:8px; margin:0 4px 8px; }
+.rc-title{ margin:0; font-size:16px; font-weight:600; color:#1f2937; }
+.rc-home{ color:#9aa3af; display:inline-flex; }
+
+/* Card */
+.rc-card{
+  background:#fff; border:1px solid #e8edf4; border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+}
+
+/* ================ Top bar ================= */
+.rc-top{ padding:10px 12px; }
+.rc-top--right{ display:flex; justify-content:flex-end; }
+.rc-right{ display:flex; align-items:center; gap:8px; }
+
+/* Export + dropdown */
+.rc-export-wrap{ position:relative; }
+.rc-export{
+  display:flex; align-items:center; gap:6px; height:30px;
+  background:#0ea5e9; color:#fff; border:0; border-radius:8px; padding:6px 8px; cursor:pointer;
+}
+.rc-drop-caret{ display:inline-flex; margin-left:2px; color:#fff; }
+.rc-export-menu{
+  position:absolute; top:34px; right:0; width:140px; z-index:60;
+  background:#fff; border:1px solid #e6ebf3; border-radius:10px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08); overflow:hidden;
+}
+.rc-export-item{ width:100%; display:flex; align-items:center; gap:8px; padding:10px; border:0; background:#fff; cursor:pointer; }
+.rc-export-item:hover{ background:#f3f8ff; }
+
+/* Per-page dropdown */
+.rc-pp-wrap{ position:relative; }
+.rc-pp-btn{
+  display:inline-flex; align-items:center; gap:6px; height:30px;
+  padding:0 8px; border:1px solid #e6ebf3; border-radius:8px; background:#fff; color:#374151;
+  min-width:56px; justify-content:space-between;
+}
+.rc-pp-menu{
+  position:absolute; top:34px; right:0; width:90px; z-index:60;
+  background:#fff; border:1px solid #e6ebf3; border-radius:8px; box-shadow:0 10px 24px rgba(16,24,40,.08);
+  overflow:hidden;
+}
+.rc-pp-item{ width:100%; padding:8px 10px; text-align:left; border:0; background:#fff; cursor:pointer; }
+.rc-pp-item:hover{ background:#f5f7fb; }
+
+/* Filter button */
+.rc-filter{
+  display:inline-flex; align-items:center; gap:6px; height:30px;
+  padding:0 10px; border-radius:8px; border:0; background:#0ea5e9; color:#fff; cursor:pointer;
+}
+.rc-filter.active{ filter:brightness(0.95); }
+
+/* Search (small width) */
+.rc-search{ position:relative; width:230px; }
+.rc-search input{
+  width:100%; height:32px; padding:0 34px 0 28px;
+  border:1px solid #e6ebf3; border-radius:8px; outline:none;
+}
+.rc-search-ic{
+  position:absolute; top:50%; left:8px; transform:translateY(-50%); color:#9aa3af; display:inline-flex;
+}
+
+/* Create */
+.rc-create{
+  background:#0ea5e9; color:#fff; border:0; border-radius:8px;
+  padding:6px 10px; height:30px; cursor:pointer;
+}
+
+/* ================ Filters row ================= */
+.rc-filters{
+  display:grid;
+  grid-template-columns: 170px 170px 160px 160px 240px;
+  gap:10px 16px; padding:6px 12px 12px;
+}
+.rc-lb{ color:#6b7280; margin:2px 0 6px 2px; font-size:12px; }
+
+/* date */
+.rc-date{ position:relative; }
+.rc-date input{
+  width:100%; height:32px; border:1px solid #e6ebf3; border-radius:8px; padding:0 32px 0 10px; outline:none;
+}
+.rc-cal{ position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#6b7280; }
+
+/* location clear */
+.rc-location-clear{ position:relative; }
+.rc-clear{
+  position:absolute; right:-24px; top:50%; transform:translateY(-50%);
+  height:22px; width:22px; border-radius:50%; border:0; background:#fff; color:#6b7280;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(16,24,40,.12); cursor:pointer;
+}
+
+/* Combobox */
+.rc-combo{ position:relative; }
+.rc-combo-btn{
+  width:100%; height:32px; border:1px solid #e6ebf3; border-radius:8px;
+  background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 8px; cursor:pointer;
+}
+.rc-combo-btn.has .rc-combo-val{ color:#111827; }
+.rc-caret{ display:inline-flex; margin-left:6px; color:#6b7280; }
+.rc-combo-val{ color:#9aa3af; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* dropdown pop */
+.rc-pop{
+  position:absolute; z-index:55; top:36px; left:0; width:100%;
+  background:#fff; border:1px solid #e6ebf3; border-radius:10px; box-shadow:0 10px 24px rgba(16,24,40,.08);
+}
+.rc-pop-search{ width:100%; border:0; border-bottom:1px solid #eef2f7; padding:8px 10px; outline:none; }
+.rc-pop-list{ max-height:260px; overflow:auto; }
+.rc-pop-list--5{ max-height:170px; overflow:auto; }
+.rc-pop-item{ padding:8px 10px; cursor:pointer; }
+.rc-pop-item:hover{ background:#f5f7fb; }
+.rc-pop-item.chk{ display:flex; align-items:center; gap:8px; cursor:default; }
+.rc-pop-empty{ padding:10px; color:#9aa3af; }
+.rc-pop-actions{ display:flex; justify-content:flex-end; gap:10px; padding:8px 10px; border-top:1px solid #eef2f7; }
+.rc-link{ background:transparent; border:0; color:#0ea5e9; cursor:pointer; }
+
+/* badge */
+.rc-badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  background:#e5f2ff; color:#2563eb; font-weight:600;
+  padding:0 6px; height:18px; border-radius:6px; margin-left:6px; font-size:11px;
+}
+
+/* ================ Table ================= */
+.rc-table{ padding:6px 10px 12px; }
+
+/* ---- Header ---- */
+.rc-thead{
+  background:#f6f8fc; border:1px solid #e6ebf3; border-radius:8px;
+  display:grid;
+  /* party/party name column को थोड़ा चौड़ा रखा है */
+  grid-template-columns: 48px 130px 1.6fr 120px 120px 120px 120px 120px 140px 110px;
+  padding:10px 0px; font-weight:700; color:#1f2937; font-size:12px;padding-bottom: 7px;
+}
+.rc-thead .c{ padding:0 6px; }
+.rc-thead .id{ text-align:center; }
+
+/* ---- Rows (make sure body grid matches header) ---- */
+.rc-row{
+  display:grid;
+  grid-template-columns: 48px 130px 1.6fr 120px 120px 120px 120px 120px 140px 110px;
+  align-items:center;
+  border-bottom:1px solid #eef2f7;
+  min-height:38px;
+}
+.rc-row .c{ padding:6px; }
+
+/* === FIX: Party name single line + ellipsis === */
+/* header cell (optional) */
+.rc-thead .party { white-space:nowrap; }
+
+/* body cells */
+.rc-row .party{
+  white-space: nowrap;           /* एक लाइन में */
+  overflow: hidden;              /* extra hide */
+  text-overflow: ellipsis;       /* ... दिखेगा */
+  word-break: normal;            
+  overflow-wrap: normal;
+}
+
+/* utility: कहीं भी जरूरत पड़े तो ये class लगाएं */
+.rc-nowrap{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
