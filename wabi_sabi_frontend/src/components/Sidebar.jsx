@@ -231,6 +231,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
                 Barcode Utility
               </NavLink>
             </div>
+            
           </div>
         </nav>
 
