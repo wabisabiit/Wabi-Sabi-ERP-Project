@@ -132,9 +132,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               </span>
             </button>
             <div id="sb-inventory-sub" className={`sb-sub ${expandInventory ? "show" : ""}`}>
-              <a className="sb-subitem" href="#stock">Stock</a>
-              <a className="sb-subitem" href="#transfers">Transfers</a>
-              <a className="sb-subitem" href="#adjustments">Adjustments</a>
+              <a className="sb-subitem" href="#stock">Products</a>
+              {/* <a className="sb-subitem" href="#transfers">Transfers</a>
+              <a className="sb-subitem" href="#adjustments">Adjustments</a> */}
             </div>
           </div>
 

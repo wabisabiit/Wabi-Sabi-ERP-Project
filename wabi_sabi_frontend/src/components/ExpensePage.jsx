@@ -1,7 +1,9 @@
-// src/components/ExpenseExact.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/ExpensePage.css";
-import NewExpense from "./NewExpense"; // ⬅️ NEW: form component ko import
+
+
+/* 🔧 Icons (Feather) */
+import { FiHome, FiSearch, FiFilter, FiDownload, FiChevronDown } from "react-icons/fi";
 
 /* ---------------- Mock data ---------------- */
 const ROWS = [];
@@ -36,7 +38,9 @@ function MultiSelect({placeholder="Select", options=[], selected=[], onChange, w
       <div className={cx("ms-box",open&&"open")} onClick={()=>setOpen(v=>!v)}>
         <span className={cx("ms-ph",selected.length&&"dim")}>{placeholder}</span>
         {!!selected.length && <span className="ms-badge">{selected.length}</span>}
-        {!!selected.length && <button className="ms-clear" onClick={e=>{e.stopPropagation(); onChange([]);}} aria-label="Clear">×</button>}
+        {!!selected.length && (
+          <button className="ms-clear" onClick={e=>{e.stopPropagation(); onChange([]);}} aria-label="Clear">×</button>
+        )}
         <span className="ms-caret">▾</span>
       </div>
       {open && (
@@ -108,10 +112,16 @@ function exportCSV(rows){
 }
 function ExportMenu({rows}){ const [open,setOpen]=useState(false); const ref=useClickOutside(()=>setOpen(false));
   return (<div className="exp-wrap" ref={ref}>
-    <button className={cx("exp-btn",open&&"open")} onClick={()=>setOpen(v=>!v)} title="Export"><span className="exp-ico">📄</span><span className="exp-caret">▾</span></button>
+    <button className={cx("exp-btn",open&&"open")} onClick={()=>setOpen(v=>!v)} title="Export">
+      <FiDownload className="ico" /><FiChevronDown className="caret" />
+    </button>
     {open&&(<div className="exp-dd">
-      <button className="exp-item" onClick={()=>{exportCSV(rows);setOpen(false);}}><span className="exp-file-ico exp-xls">🗎</span><span>Excel</span></button>
-      <button className="exp-item" onClick={()=>{window.print();setOpen(false);}}><span className="exp-file-ico exp-pdf">🗎</span><span>PDF</span></button>
+      <button className="exp-item" onClick={()=>{exportCSV(rows);setOpen(false);}}>
+        <span className="exp-file-ico exp-xls">XLS</span><span>Excel</span>
+      </button>
+      <button className="exp-item" onClick={()=>{window.print();setOpen(false);}}>
+        <span className="exp-file-ico exp-pdf">PDF</span><span>PDF</span>
+      </button>
     </div>)}
   </div>);
 }
@@ -144,7 +154,7 @@ export default function ExpenseExact(){
   const totalPages = Math.max(1, Math.ceil(filtered.length/pageSize));
   useEffect(()=>setPage(1),[pageSize,selLocations,party,status,fromDate,toDate,query]);
   const pageRows = useMemo(()=> filtered.slice((page-1)*pageSize,(page-1)*pageSize+pageSize),[filtered,page,pageSize]);
-  const totals = useMemo(()=>({ total:0, paid:0, unpaid:0 }),[filtered]); // empty state like screenshot
+  const totals = useMemo(()=>({ total:0, paid:0, unpaid:0 }),[filtered]); // empty state
 
   if(view==="form"){
     return <NewExpense onCancel={()=>setView("list")} onSaved={()=>setView("list")} />;
@@ -152,7 +162,11 @@ export default function ExpenseExact(){
 
   return (
     <div className="ex2-wrap">
-      <div className="ex2-bc"><h1 className="ex2-title">Expense</h1><span className="ex2-home">🏠</span></div>
+      <div className="ex2-bc">
+        <FiHome className="ex2-home" />
+        <h1 className="ex2-title">Expense</h1>
+      </div>
+
       <div className="ex2-cards">
         <KPI label="Total Expense" value={totals.total} />
         <KPI label="Paid" value={totals.paid} />
@@ -163,14 +177,22 @@ export default function ExpenseExact(){
         <div className="ex2-toolbar">
           <div className="ex2-tools-left">
             <ExportMenu rows={filtered} />
-            <SingleSelect placeholder="10" value={String(pageSize)} options={["10","25","50","100"]}
-              onChange={(v)=>setPageSize(Number(v||10))} width={80} clearable={false} />
+            <SingleSelect
+              placeholder="10" value={String(pageSize)}
+              options={["10","25","50","100"]}
+              onChange={(v)=>setPageSize(Number(v||10))} width={80} clearable={false}
+            />
             <button className={cx("filter-btn",filtersOpen&&"is-active")} onClick={()=>setFiltersOpen(v=>!v)}>
-              <span className="funnel">⏳</span>Filter
+              <FiFilter className="ico" />
+              <span>Filter</span>
             </button>
           </div>
+
           <div className="ex2-tools-right">
-            <div className="search"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search List..." /><span className="s-ico">🔍</span></div>
+            <div className="search">
+              <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search List..." />
+              <FiSearch className="s-ico" />
+            </div>
             <button className="primary" onClick={()=>setView("form")}>Create New</button>
           </div>
         </div>
@@ -222,13 +244,25 @@ export default function ExpenseExact(){
         </div>
 
         <div className="ex2-foot">
-          <div className="showing">{filtered.length ? `Showing ${(page-1)*pageSize+1} to ${Math.min(page*pageSize,filtered.length)} of ${filtered.length} entries` : "Showing 0 to 0 of 0 entries"}</div>
-          <div className="pager"><button className="pg" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>‹</button><button className="pg" disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>›</button></div>
+          <div className="showing">
+            {filtered.length ? `Showing ${(page-1)*pageSize+1} to ${Math.min(page*pageSize,filtered.length)} of ${filtered.length} entries` : "Showing 0 to 0 of 0 entries"}
+          </div>
+          <div className="pager">
+            <button className="pg" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>‹</button>
+            <button className="pg" disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>›</button>
+          </div>
         </div>
-      </div> 
+      </div>
     </div>
   );
 }
 
 /* KPI */
-function KPI({label,value=0}){ return (<div className="kpi"><div className="kpi-badge">{Number(value||0).toLocaleString()}</div><div className="kpi-lb">{label}</div></div>); }
+function KPI({label,value=0}){
+  return (
+    <div className="kpi">
+      <div className="kpi-badge">{Number(value||0).toLocaleString()}</div>
+      <div className="kpi-lb">{label}</div>
+    </div>
+  );
+}
