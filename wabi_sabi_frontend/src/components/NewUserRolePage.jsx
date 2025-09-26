@@ -130,209 +130,105 @@ export default function NewUserRolePage() {
   const toggle = (key) =>
     setOpen((s) => (s.has(key) ? new Set() : new Set([key])));
 
-  /* ---- Dashboard (same as before) ---- */
+  /* ---- Dashboard ---- */
   const dashCols = ["Select All", "View"];
   const dashRows = [{ label: "Dashboard", keys: ["selectAll", "view"] }];
   const [dashOutlet, setDashOutlet] = useState(false);
   const [dashState, setDashState] = useState(() => {
     const base = {};
-    dashRows.forEach(
-      (r) => (base[r.label] = makeRowState(["selectAll", "view"]))
-    );
+    dashRows.forEach((r) => (base[r.label] = makeRowState(["selectAll", "view"])));
     return base;
   });
 
-  /* ---- Contact (same as before) ---- */
-  const contactCols = [
-    "Select All",
-    "Insert",
-    "View",
-    "Edit",
-    "Delete",
-    "Pdf",
-    "Bell Notification",
-  ];
+  /* ---- Contact ---- */
+  const contactCols = ["Select All","Insert","View","Edit","Delete","Pdf","Bell Notification"];
   const contactRows = [
-    { label: "Suppliers/Vendors" },
-    { label: "Contact" },
-    { label: "Customers" },
-    { label: "Transport" },
-  ].map((r) => ({
-    ...r,
-    keys: ["selectAll", "insert", "view", "edit", "delete", "pdf", "bell"],
-  }));
+    "Suppliers/Vendors","Contact","Customers","Transport"
+  ].map(label => ({ label, keys:["selectAll","insert","view","edit","delete","pdf","bell"] }));
   const [contactOutlet, setContactOutlet] = useState(false);
   const [contactState, setContactState] = useState(() => {
     const base = {};
-    contactRows.forEach(
-      (r) =>
-        (base[r.label] = makeRowState([
-          "selectAll",
-          "insert",
-          "view",
-          "edit",
-          "delete",
-          "pdf",
-          "bell",
-        ]))
-    );
+    contactRows.forEach(r => base[r.label] = makeRowState(["selectAll","insert","view","edit","delete","pdf","bell"]));
     return base;
   });
 
-  /* ---- Employee (same as before) ---- */
-  const empCols = ["Select All", "Insert", "View", "Edit", "Delete"];
-  const empRows = [
-    { label: "Employee", keys: ["selectAll", "insert", "view", "edit", "delete"] },
-  ];
+  /* ---- Employee ---- */
+  const empCols = ["Select All","Insert","View","Edit","Delete"];
+  const empRows = [{ label:"Employee", keys:["selectAll","insert","view","edit","delete"] }];
   const [empOutlet, setEmpOutlet] = useState(false);
   const [empState, setEmpState] = useState(() => {
     const base = {};
-    empRows.forEach(
-      (r) =>
-        (base[r.label] = makeRowState([
-          "selectAll",
-          "insert",
-          "view",
-          "edit",
-          "delete",
-        ]))
-    );
+    empRows.forEach(r => base[r.label] = makeRowState(["selectAll","insert","view","edit","delete"]));
     return base;
   });
 
-  /* -------- Bank / Cash (exactly like your image) -------- */
-  const bankCols = [
-    "Select All",
-    "Insert",
-    "View",
-    "Edit",
-    "Delete",
-    "Pdf",
-    "Approve/Reject",
-  ];
+  /* -------- Bank / Cash -------- */
+  const bankCols = ["Select All","Insert","View","Edit","Delete","Pdf","Approve/Reject"];
   const bankRows = [
-    "Bank",
-    "Bank Transaction",
-    "Payment",
-    "Receipt",
-    "Expense",
-    "Owner Cash Flow",
-    "Manager Cash Flow",
-    "Cash Flow",
-  ].map((label) => ({
-    label,
-    keys: [
-      "selectAll",
-      "insert",
-      "view",
-      "edit",
-      "delete",
-      "pdf",
-      "approve",
-    ],
-  }));
+    "Bank","Bank Transaction","Payment","Receipt","Expense","Owner Cash Flow","Manager Cash Flow","Cash Flow"
+  ].map(label => ({ label, keys:["selectAll","insert","view","edit","delete","pdf","approve"] }));
   const [bankOutlet, setBankOutlet] = useState(false);
   const [bankState, setBankState] = useState(() => {
     const base = {};
-    bankRows.forEach(
-      (r) =>
-        (base[r.label] = makeRowState([
-          "selectAll",
-          "insert",
-          "view",
-          "edit",
-          "delete",
-          "pdf",
-          "approve",
-        ]))
-    );
+    bankRows.forEach(r => base[r.label] = makeRowState(["selectAll","insert","view","edit","delete","pdf","approve"]));
     return base;
   });
 
-  /* -------- POS (exactly like your image) -------- */
-  const posCols = [
-    "Select All",
-    "Insert",
-    "View",
-    "Edit",
-    "Delete",
-    "Bell Notification",
-    "Show Profit",
-    "E-way Bill",
-    "E-Invoice",
-  ];
-  const posRows = [
-    "New",
-    "Order List",
-    "Online Order List",
-    "Credit Note",
-    "Sales Register",
-  ].map((label) => ({
-    label,
-    keys: [
-      "selectAll",
-      "insert",
-      "view",
-      "edit",
-      "delete",
-      "bell",
-      "profit",
-      "eway",
-      "einvoice",
-    ],
-  }));
+  /* -------- POS -------- */
+  const posCols = ["Select All","Insert","View","Edit","Delete","Bell Notification","Show Profit","E-way Bill","E-Invoice"];
+  const posRows = ["New","Order List","Online Order List","Credit Note","Sales Register"]
+    .map(label => ({ label, keys:["selectAll","insert","view","edit","delete","bell","profit","eway","einvoice"] }));
   const [posOutlet, setPosOutlet] = useState(false);
   const [posState, setPosState] = useState(() => {
     const base = {};
-    posRows.forEach(
-      (r) =>
-        (base[r.label] = makeRowState([
-          "selectAll",
-          "insert",
-          "view",
-          "edit",
-          "delete",
-          "bell",
-          "profit",
-          "eway",
-          "einvoice",
-        ]))
-    );
+    posRows.forEach(r => base[r.label] = makeRowState(["selectAll","insert","view","edit","delete","bell","profit","eway","einvoice"]));
     return base;
   });
 
-  /* -------- CRM (exactly like your image) -------- */
-  const crmCols = ["Select All", "Insert", "View", "Edit", "Delete"];
-  const crmRows = [
-    "Coupon",
-    "Membership",
-    "Discount",
-    "Loyalty",
-    "Feedback",
-    "Campaign",
-    "Point setup",
-  ].map((label) => ({
-    label,
-    keys: ["selectAll", "insert", "view", "edit", "delete"],
-  }));
+  /* -------- CRM -------- */
+  const crmCols = ["Select All","Insert","View","Edit","Delete"];
+  const crmRows = ["Coupon","Membership","Discount","Loyalty","Feedback","Campaign","Point setup"]
+    .map(label => ({ label, keys:["selectAll","insert","view","edit","delete"] }));
   const [crmOutlet, setCrmOutlet] = useState(false);
   const [crmState, setCrmState] = useState(() => {
     const base = {};
-    crmRows.forEach(
-      (r) =>
-        (base[r.label] = makeRowState([
-          "selectAll",
-          "insert",
-          "view",
-          "edit",
-          "delete",
-        ]))
-    );
+    crmRows.forEach(r => base[r.label] = makeRowState(["selectAll","insert","view","edit","delete"]));
+    return base;
+  });
+
+  /* -------- Utilities -------- */
+  const utilCols = ["Select All","Insert","View","Edit","Delete","Pdf"];
+  const utilRows = ["Company Drive","Barcode Utility","Print Labels","Export to Tally"]
+    .map(label => ({ label, keys:["selectAll","insert","view","edit","delete","pdf"] }));
+  const [utilOutlet, setUtilOutlet] = useState(false);
+  const [utilState, setUtilState] = useState(() => {
+    const base = {};
+    utilRows.forEach(r => base[r.label] = makeRowState(["selectAll","insert","view","edit","delete","pdf"]));
+    return base;
+  });
+
+  /* -------- Report (updated: Select All + View; row: Reports) -------- */
+  const repCols = ["Select All","View"];
+  const repRows = [{ label:"Reports", keys:["selectAll","view"] }];
+  const [repOutlet, setRepOutlet] = useState(false);
+  const [repState, setRepState] = useState(() => {
+    const base = {};
+    repRows.forEach(r => base[r.label] = makeRowState(["selectAll","view"]));
+    return base;
+  });
+
+  /* -------- Versions -------- */
+  const verCols = ["Select All","View"];
+  const verRows = [{ label:"Versions", keys:["selectAll","view"] }];
+  const [verOutlet, setVerOutlet] = useState(false);
+  const [verState, setVerState] = useState(() => {
+    const base = {};
+    verRows.forEach(r => base[r.label] = makeRowState(["selectAll","view"]));
     return base;
   });
 
   /* Remaining simple sections (placeholders) */
-  const otherSections = ["Inventory", "Purchase", "Sales", "Reports", "Settings"];
+  const otherSections = ["Inventory", "Purchase", "Sales", "Settings"]; // Reports moved to its own block
 
   return (
     <div className="ur-wrap">
@@ -401,9 +297,7 @@ export default function NewUserRolePage() {
 
           {/* sub-tabs */}
           <div className="ur-subtabs">
-            <button className="ur-tab active" type="button">
-              User Role Details
-            </button>
+            <button className="ur-tab active" type="button">User Role Details</button>
             <button className="ur-tab" type="button">Report Details</button>
             <button className="ur-tab" type="button">Outlet Details</button>
           </div>
@@ -411,12 +305,7 @@ export default function NewUserRolePage() {
           {/* Accordions */}
           {/* Dashboard */}
           <div className="ur-acc">
-            <button
-              className="ur-acc-head"
-              onClick={() => toggle("Dashboard")}
-              type="button"
-              aria-expanded={open.has("Dashboard")}
-            >
+            <button className="ur-acc-head" onClick={() => toggle("Dashboard")} type="button" aria-expanded={open.has("Dashboard")}>
               <span>Dashboard</span>
               <span className={`material-icons ur-caret ${open.has("Dashboard") ? "open" : ""}`}>expand_more</span>
             </button>
@@ -436,12 +325,7 @@ export default function NewUserRolePage() {
 
           {/* Contact */}
           <div className="ur-acc">
-            <button
-              className="ur-acc-head"
-              onClick={() => toggle("Contact")}
-              type="button"
-              aria-expanded={open.has("Contact")}
-            >
+            <button className="ur-acc-head" onClick={() => toggle("Contact")} type="button" aria-expanded={open.has("Contact")}>
               <span>Contact</span>
               <span className={`material-icons ur-caret ${open.has("Contact") ? "open" : ""}`}>expand_more</span>
             </button>
@@ -461,12 +345,7 @@ export default function NewUserRolePage() {
 
           {/* Employee */}
           <div className="ur-acc">
-            <button
-              className="ur-acc-head"
-              onClick={() => toggle("Employee")}
-              type="button"
-              aria-expanded={open.has("Employee")}
-            >
+            <button className="ur-acc-head" onClick={() => toggle("Employee")} type="button" aria-expanded={open.has("Employee")}>
               <span>Employee</span>
               <span className={`material-icons ur-caret ${open.has("Employee") ? "open" : ""}`}>expand_more</span>
             </button>
@@ -486,12 +365,7 @@ export default function NewUserRolePage() {
 
           {/* Bank / Cash */}
           <div className="ur-acc">
-            <button
-              className="ur-acc-head"
-              onClick={() => toggle("Bank / Cash")}
-              type="button"
-              aria-expanded={open.has("Bank / Cash")}
-            >
+            <button className="ur-acc-head" onClick={() => toggle("Bank / Cash")} type="button" aria-expanded={open.has("Bank / Cash")}>
               <span>Bank / Cash</span>
               <span className={`material-icons ur-caret ${open.has("Bank / Cash") ? "open" : ""}`}>expand_more</span>
             </button>
@@ -511,12 +385,7 @@ export default function NewUserRolePage() {
 
           {/* POS */}
           <div className="ur-acc">
-            <button
-              className="ur-acc-head"
-              onClick={() => toggle("POS")}
-              type="button"
-              aria-expanded={open.has("POS")}
-            >
+            <button className="ur-acc-head" onClick={() => toggle("POS")} type="button" aria-expanded={open.has("POS")}>
               <span>POS</span>
               <span className={`material-icons ur-caret ${open.has("POS") ? "open" : ""}`}>expand_more</span>
             </button>
@@ -536,12 +405,7 @@ export default function NewUserRolePage() {
 
           {/* CRM */}
           <div className="ur-acc">
-            <button
-              className="ur-acc-head"
-              onClick={() => toggle("CRM")}
-              type="button"
-              aria-expanded={open.has("CRM")}
-            >
+            <button className="ur-acc-head" onClick={() => toggle("CRM")} type="button" aria-expanded={open.has("CRM")}>
               <span>CRM</span>
               <span className={`material-icons ur-caret ${open.has("CRM") ? "open" : ""}`}>expand_more</span>
             </button>
@@ -559,15 +423,70 @@ export default function NewUserRolePage() {
             )}
           </div>
 
+          {/* Utilities */}
+          <div className="ur-acc">
+            <button className="ur-acc-head" onClick={() => toggle("Utilities")} type="button" aria-expanded={open.has("Utilities")}>
+              <span>Utilities</span>
+              <span className={`material-icons ur-caret ${open.has("Utilities") ? "open" : ""}`}>expand_more</span>
+            </button>
+            {open.has("Utilities") && (
+              <div className="ur-acc-body">
+                <PermissionTable
+                  title="Utilities"
+                  outletPerm={[utilOutlet, setUtilOutlet]}
+                  columns={utilCols}
+                  rows={utilRows}
+                  state={utilState}
+                  setState={setUtilState}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Report (updated) */}
+          <div className="ur-acc">
+            <button className="ur-acc-head" onClick={() => toggle("Report")} type="button" aria-expanded={open.has("Report")}>
+              <span>Report</span>
+              <span className={`material-icons ur-caret ${open.has("Report") ? "open" : ""}`}>expand_more</span>
+            </button>
+            {open.has("Report") && (
+              <div className="ur-acc-body">
+                <PermissionTable
+                  title="Report"
+                  outletPerm={[repOutlet, setRepOutlet]}
+                  columns={repCols}
+                  rows={repRows}
+                  state={repState}
+                  setState={setRepState}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Versions */}
+          <div className="ur-acc">
+            <button className="ur-acc-head" onClick={() => toggle("Versions")} type="button" aria-expanded={open.has("Versions")}>
+              <span>Versions</span>
+              <span className={`material-icons ur-caret ${open.has("Versions") ? "open" : ""}`}>expand_more</span>
+            </button>
+            {open.has("Versions") && (
+              <div className="ur-acc-body">
+                <PermissionTable
+                  title="Versions"
+                  outletPerm={[verOutlet, setVerOutlet]}
+                  columns={verCols}
+                  rows={verRows}
+                  state={verState}
+                  setState={setVerState}
+                />
+              </div>
+            )}
+          </div>
+
           {/* Remaining simple sections */}
           {otherSections.map((t) => (
             <div className="ur-acc" key={t}>
-              <button
-                className="ur-acc-head"
-                onClick={() => toggle(t)}
-                type="button"
-                aria-expanded={open.has(t)}
-              >
+              <button className="ur-acc-head" onClick={() => toggle(t)} type="button" aria-expanded={open.has(t)}>
                 <span>{t}</span>
                 <span className={`material-icons ur-caret ${open.has(t) ? "open" : ""}`}>expand_more</span>
               </button>
