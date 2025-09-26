@@ -3,16 +3,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/BarcodeUtility2Page.css";
 
-/* ✅ Seed rows must be defined before useState */
+/* Location options (short names only) */
+const LOCATIONS = ["IC", "RJR", "RJO", "TN", "UP-AP", "M3M", "UV", "KN"];
+
+/* ✅ Seed rows (now include size:"") */
 const INIT_ROWS = [
-  { id: 1, itemCode: "8000325", product: "Lenova LCD", location: "IFFCO Chowk", mrp: 3500.0, sp: 1999.0, qty: 1, discount: 0 },
-  { id: 2, itemCode: "8000326", product: "Top",        location: "IFFCO Chowk", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
-  { id: 3, itemCode: "8000327", product: "Top",        location: "IFFCO Chowk", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
-  { id: 4, itemCode: "8000328", product: "Top",        location: "IFFCO Chowk", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
-  { id: 5, itemCode: "8000329", product: "Top",        location: "IFFCO Chowk", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
-  { id: 6, itemCode: "8000330", product: "Top",        location: "IFFCO Chowk", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
-  { id: 7, itemCode: "8000331", product: "Top",        location: "IFFCO Chowk", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
-  { id: 8, itemCode: "8000332", product: "Top",        location: "IFFCO Chowk", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
+  { id: 1, itemCode: "0", product: "Lenova LCD", size: "", location: "", mrp: 3500.0, sp: 1999.0, qty: 1, discount: 0 },
+  { id: 2, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
+  { id: 3, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
+  { id: 4, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
+  { id: 5, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
+  { id: 6, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
+  { id: 7, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
+  { id: 8, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
 ];
 
 export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
@@ -20,6 +23,14 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
   const [page, setPage] = useState(1);
   const rowsPerPage = 5;
   const navigate = useNavigate();
+
+  // Header select: start empty (placeholder "Location")
+  const [location, setLocation] = useState("");
+
+  // keep initial rows empty for location (no prefill)
+  useEffect(() => {
+    setRows(prev => prev.map(r => ({ ...r, location: "" })));
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
@@ -31,10 +42,28 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
     setSelected((prev) => pageRows.find(r => r.id === prev?.id) || pageRows[0] || rows[0]);
   }, [pageRows, rows]);
 
+  const sanitizeDigits = (val) => (val || "").replace(/\D+/g, "");
+
   const handleChange = (id, field, value) => {
-    setRows(prev => prev.map(r => r.id === id
-      ? { ...r, [field]: (field === "qty" || field === "discount") ? Number(value || 0) : value }
-      : r));
+    setRows(prev =>
+      prev.map(r =>
+        r.id === id
+          ? {
+              ...r,
+              [field]:
+                field === "qty" || field === "discount" || field === "sp"
+                  ? Number(value || 0)
+                  : value,
+            }
+          : r
+      )
+    );
+  };
+
+  // TH dropdown -> update header state + ALL rows' location
+  const handleLocationChange = (val) => {
+    setLocation(val);
+    setRows(prev => prev.map(r => ({ ...r, location: val })));
   };
 
   const getLineAmount = (r) => Math.max(0, (r.sp - r.discount) * r.qty);
@@ -48,14 +77,15 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
   const formatINR = (n) =>
     `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Navigate to confirm page with only rows having qty > 0
   const handleSubmit = () => {
     const payload = rows
       .filter(r => Number(r.qty) > 0)
       .map(r => ({
         ...r,
+        itemCode: r.itemCode && r.itemCode !== "" ? r.itemCode : "0",
         salesPrice: Math.max(0, r.sp - r.discount),
-        barcodeName: r.itemCode,
+        barcodeName: r.itemCode && r.itemCode !== "" ? r.itemCode : "0",
+        // size और location अब payload में साथ जाएंगे
       }));
     navigate("/utilities/barcode2/confirm", { state: { rows: payload } });
   };
@@ -80,7 +110,6 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
       </div>
 
       <div className="sit-card">
-        {/* Two-column layout */}
         <div className="sit-body">
           {/* LEFT: table + controls */}
           <div className="sit-left">
@@ -91,7 +120,25 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
                     <th style={{ width: 60 }}>S.No</th>
                     <th style={{ width: 120 }}>Item Code</th>
                     <th style={{ minWidth: 180 }}>Product Name</th>
-                    <th style={{ minWidth: 170 }}>Location</th>
+                    <th style={{ width: 120 }}>Size</th>
+
+                    {/* TH = placeholder-first select for Location (short codes) */}
+                    <th style={{ minWidth: 150 }}>
+                      <select
+                        className="sit-select sit-select-th"
+                        value={location}
+                        onChange={(e) => handleLocationChange(e.target.value)}
+                        title="Select Location"
+                      >
+                        <option value="" disabled>
+                          Location
+                        </option>
+                        {LOCATIONS.map((loc) => (
+                          <option key={loc} value={loc}>{loc}</option>
+                        ))}
+                      </select>
+                    </th>
+
                     <th style={{ width: 110 }}>Discount</th>
                     <th style={{ width: 130 }}>Selling Price</th>
                     <th style={{ width: 110 }}>MRP</th>
@@ -107,23 +154,72 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
                       style={{ cursor: "pointer" }}
                     >
                       <td className="t-right">{start + idx + 1}</td>
-                      <td className="t-mono">{r.itemCode}</td>
+
+                      {/* Item Code (digits only, default "0" on blur) */}
+                      <td>
+                        <input
+                          className="sit-input t-mono"
+                          type="text"
+                          inputMode="numeric"
+                          value={r.itemCode}
+                          onChange={(e) => handleChange(r.id, "itemCode", sanitizeDigits(e.target.value))}
+                          onBlur={(e) => {
+                            if (!e.target.value || e.target.value.trim() === "") {
+                              handleChange(r.id, "itemCode", "0");
+                            }
+                          }}
+                          placeholder="0"
+                        />
+                      </td>
+
                       <td><span className="t-link">{r.product}</span></td>
-                      <td className="t-dim">{r.location}</td>
+
+                      {/* Size (per-row editable) */}
+                      <td>
+                        <input
+                          className="sit-input"
+                          type="text"
+                          value={r.size}
+                          onChange={(e) => handleChange(r.id, "size", e.target.value)}
+                          placeholder="Size"
+                        />
+                      </td>
+
+                      {/* row location reflects header selection */}
+                      <td className="t-dim">{r.location || ""}</td>
+
                       <td>
                         <input
                           className="sit-input t-right"
-                          type="number" min="0" step="0.01"
+                          type="number"
+                          min="0"
+                          step="0.01"
                           value={r.discount}
                           onChange={(e) => handleChange(r.id, "discount", e.target.value)}
                         />
                       </td>
-                      <td className="t-right">{formatINR(r.sp - r.discount)}</td>
-                      <td className="t-right t-dim">{formatINR(r.mrp)}</td>
+
+                      {/* Selling Price editable */}
                       <td>
                         <input
                           className="sit-input t-right"
-                          type="number" min="0" step="1"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={r.sp}
+                          onChange={(e) => handleChange(r.id, "sp", e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </td>
+
+                      <td className="t-right t-dim">{formatINR(r.mrp)}</td>
+
+                      <td>
+                        <input
+                          className="sit-input t-right"
+                          type="number"
+                          min="0"
+                          step="1"
                           value={r.qty}
                           onChange={(e) => handleChange(r.id, "qty", e.target.value)}
                         />
@@ -147,9 +243,9 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
             </div>
 
             <div className="sit-pagination">
-              <button className="pg-btn" disabled={page===1} onClick={() => setPage(p=>Math.max(1,p-1))}>‹</button>
+              <button className="pg-btn" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>‹</button>
               <span className="pg-current">{page}</span>
-              <button className="pg-btn" disabled={page===totalPages} onClick={() => setPage(p=>Math.min(totalPages,p+1))}>›</button>
+              <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>›</button>
             </div>
 
             <div className="sit-actions">

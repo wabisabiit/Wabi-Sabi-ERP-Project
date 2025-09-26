@@ -9,21 +9,21 @@ export default function BarcodePrintConfirmPage() {
 
   /* --- pagination --- */
   const [page, setPage] = useState(1);
-  const rowsPerPage = 8;                          // like your screenshot
+  const rowsPerPage = 8;
   const totalPages = Math.max(1, Math.ceil(allRows.length / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
   const end = start + rowsPerPage;
   const rows = allRows.slice(start, end);
 
-  /* totals (optional, if you want to show somewhere later) */
+  /* totals (optional) */
   const totals = useMemo(() => {
     const qty = rows.reduce((s, r) => s + Number(r.qty || 0), 0);
     const sp  = rows.reduce((s, r) => s + Number(r.salesPrice ?? r.sp ?? 0), 0);
     return { qty, sp };
   }, [rows]);
 
-  const goPrev = () => setPage(p => Math.max(1, p - 1));
-  const goNext = () => setPage(p => Math.min(totalPages, p + 1));
+  const goPrev = () => setPage((p) => Math.max(1, p - 1));
+  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
     <div className="sit-wrap confirm-page">
@@ -48,6 +48,7 @@ export default function BarcodePrintConfirmPage() {
               <tr>
                 <th style={{ width: 60 }}>S.No</th>
                 <th style={{ minWidth: 220 }}>Product Name</th>
+                <th style={{ width: 120 }}>Item Code</th>
                 <th style={{ width: 120 }}>Size</th>
                 <th style={{ width: 130 }}>Sales Price</th>
                 <th style={{ width: 110 }}>MRP</th>
@@ -59,7 +60,7 @@ export default function BarcodePrintConfirmPage() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="t-dim" style={{ padding: "14px 10px" }}>
+                  <td colSpan={9} className="t-dim" style={{ padding: "14px 10px" }}>
                     No items to review. Go back and select quantity.
                   </td>
                 </tr>
@@ -68,6 +69,7 @@ export default function BarcodePrintConfirmPage() {
                   <tr key={`${r.itemCode ?? r.barcodeName}-${start + i}`}>
                     <td className="t-right">{start + i + 1}</td>
                     <td>{r.product}</td>
+                    <td className="t-mono">{r.itemCode || "-"}</td>
                     <td>{r.size || "-"}</td>
                     <td className="t-right">₹ {Number(r.salesPrice ?? r.sp ?? 0).toFixed(2)}</td>
                     <td className="t-right t-dim">₹ {Number(r.mrp ?? 0).toFixed(2)}</td>
@@ -81,7 +83,7 @@ export default function BarcodePrintConfirmPage() {
           </table>
         </div>
 
-        {/* Pagination under table, right-aligned */}
+        {/* Pagination */}
         <div className="confirm-pagination">
           <button className="pg-btn" onClick={() => setPage(1)} disabled={page === 1}>«</button>
           <button className="pg-btn" onClick={goPrev} disabled={page === 1}>‹</button>
