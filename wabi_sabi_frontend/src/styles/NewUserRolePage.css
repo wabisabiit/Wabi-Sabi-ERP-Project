@@ -68,3 +68,43 @@
 }
 
 /* reuse existing .btn, .btn.primary, .btn.outline from your GS css */
+
+/* ----- card width to match your GS pages ----- */
+.ur-card{ max-width:1180px; width:100%; }
+
+/* ===== Permission block (matches your screenshots) ===== */
+.perm-wrap{ background:#fff; }
+.perm-title{
+  font-size:13px; color:#374151; margin-bottom:6px; margin-left:6px;
+}
+.perm-outlet{
+  display:flex; align-items:center; gap:8px;
+  font-weight:700; color:#111827; margin:6px 0 8px 6px;
+}
+.perm-outlet input{ width:14px; height:14px; }
+
+/* table */
+.perm-table-wrap{
+  border:1px solid #e6e9f0; border-radius:6px; overflow:hidden;
+}
+.perm-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+.perm-table thead th{
+  background:#eef1f6; color:#111827; font-weight:700;
+  padding:10px 12px; text-align:left; border-bottom:1px solid #e5e9f2;
+}
+.perm-th{ width:110px; }             /* like the screenshot: narrow, even columns */
+.perm-left{ width:220px; }
+
+.perm-table tbody td{
+  padding:10px 12px; border-bottom:1px solid #f1f4f9; color:#111827;
+  background:#fff;
+}
+.perm-table tbody tr:nth-child(even) td{ background:#f9fbfd; }
+
+.perm-table input[type="checkbox"]{
+  width:14px; height:14px; vertical-align:middle;
+}
+
+/* keep accordion spacing tight to look like the images */
+.ur-acc-body{ padding:8px 8px 10px; background:#fff; border:1px solid #eef2f7; border-top:0; }
+.ur-acc + .ur-acc{ margin-top:10px; }
