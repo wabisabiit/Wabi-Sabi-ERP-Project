@@ -22,6 +22,7 @@ import EmployeeCreatePage from "./components/EmployeeCreatePage";
 import OutletPage from "./components/OutletPage";
 import OutletCreatePage from "./components/OutletCreatePage";
 import BarcodeUtilityPage from "./components/BarcodeUtilityPage";
+import BarcodeUtility2Page from "./components/BarcodeUtility2Page"; // ✅
 import ContactPage from "./components/ContactPage";
 import PointSetupPage from "./components/PointSetupPage";
 
@@ -41,7 +42,7 @@ import ExpensePage from "./components/ExpensePage";
 import NewBankPage from "./components/NewBankPage";
 import PaymentCreatePage from "./components/PaymentCreatePage";
 
-// Settings pages (NEW)
+// Settings pages
 import SettingsHome from "./components/SettingsHome";
 import GeneralSettingsPage from "./components/GeneralSettingsPage";
 import EditProfilePage from "./components/EditProfilePage";
@@ -113,13 +114,13 @@ export default function App() {
 
       {/* Utilities */}
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
-      <Route path="/Utilities/Barcode Utility" element={<Navigate to="/utilities/barcode" replace />} />
+      {/* ❌ BAD path removed: '/Utilities/Barcode Utility' */}
+      <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} /> {/* ✅ wrapped */}
 
-      {/* Settings (NEW) */}
+      {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
       <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
       <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
-
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
@@ -128,18 +129,10 @@ export default function App() {
       <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
       <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
       <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
-      <Route path="/CRM/Loyalty" element={<Navigate to="/crm/loyalty" replace />} />
-
-      {/* CRM -> Discount */}
       <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
       <Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
-      <Route path="/CRM/Discount" element={<Navigate to="/crm/discount" replace />} />
-
-      {/* CRM -> Coupon */}
       <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
       <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
-
-      {/* CRM -> Feedback */}
       <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
       {/* Multiple Pay (POS flow) */}

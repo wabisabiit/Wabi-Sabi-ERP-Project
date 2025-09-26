@@ -39,7 +39,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
     if (isPath("/crm")) setExpandCRM(true);
     if (isPath("/bank")) setExpandBankCash(true);
     if (isPath("/utilities")) setExpandUtilities(true);
-    if (isPath("/settings")) setExpandSettings(true);        // NEW
+    if (isPath("/settings")) setExpandSettings(true);
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
@@ -231,10 +231,14 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/utilities/barcode" className={linkClass} onClick={handleNav}>
                 Barcode Utility
               </NavLink>
+              {/* NEW: Barcode Utility 2 */}
+              <NavLink to="/utilities/barcode2" className={linkClass} onClick={handleNav}>
+                Barcode Utility 2
+              </NavLink>
             </div>
           </div>
 
-          {/* Settings (NEW, below Utilities) */}
+          {/* Settings */}
           <div className="sb-group">
             <button
               className="sb-item"
