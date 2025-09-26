@@ -1,0 +1,70 @@
+.ur-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:18px 22px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px; color:#1f2937;
+}
+
+/* header line (title on right like your shot) */
+.ur-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.ur-left{ display:flex; align-items:center; gap:6px; color:#6b7280; }
+.ur-home{ font-size:18px; color:#9aa3af; }
+.ur-dash{ color:#9aa3af; }
+.ur-bc{ color:#6b7280; }
+.ur-title{ margin:0; font-size:18px; font-weight:700; color:#0f172a; }
+
+/* card */
+.ur-card{
+  background:#fff; border:1px solid #e6e9f0; border-radius:12px;
+  box-shadow:0 1px 2px rgba(16,24,40,.03);
+  padding:14px; width:750px; margin:0 auto;
+}
+
+/* card head strip */
+.ur-head{
+  padding:4px 0 10px; border-bottom:1px solid #eef2f7; margin-bottom:10px;
+}
+.ur-head-left{ display:flex; align-items:center; gap:8px; font-weight:700; color:#0f172a; }
+.ur-head-left .material-icons{ font-size:20px; color:#64748b; }
+
+/* input row */
+.ur-row{ display:grid; gap:6px; max-width:320px; margin-bottom:8px; }
+.ur-row label{ font-weight:700; }
+.ur-input{
+  height:38px; border:1px solid #cfd6e4; border-radius:8px; padding:0 10px; outline:none; background:#fff;
+}
+.ur-input::placeholder{ color:#9aa3b7; }
+
+/* sub-tabs */
+.ur-subtabs{ display:flex; gap:16px; border-bottom:1px solid #eef2f7; margin:4px 0 12px; }
+.ur-tab{
+  background:transparent; border:0; cursor:pointer; padding:8px 0; font-weight:600; color:#64748b; position:relative;
+}
+.ur-tab.active{ color:#0ea5e9; }
+.ur-tab.active::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:#0ea5e9; border-radius:2px;
+}
+
+/* accordion */
+.ur-acc-list{ display:grid; gap:10px; }
+.ur-acc{
+  border:1px solid #e6e9f0; border-radius:8px; overflow:hidden; background:#fff;
+}
+.ur-acc-head{
+  width:100%; text-align:left; background:#fff; border:0; padding:12px 14px;
+  display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+}
+.ur-acc-head:hover{ background:#f9fafb; }
+.ur-caret{ transition:transform .15s ease; color:#6b7280; }
+.ur-caret.open{ transform:rotate(180deg); }
+
+.ur-acc-body{ border-top:1px solid #eef2f7; padding:12px 14px; background:#f9fbfd; }
+.ur-perm-row{ display:flex; flex-wrap:wrap; gap:18px; color:#334155; }
+
+/* footer buttons */
+.ur-foot{
+  display:flex; justify-content:flex-end; gap:10px; margin-top:14px; padding-top:10px; border-top:1px solid #eef2f7;
+}
+
+/* reuse existing .btn, .btn.primary, .btn.outline from your GS css */

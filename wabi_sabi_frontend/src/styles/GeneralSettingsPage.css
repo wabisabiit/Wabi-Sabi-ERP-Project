@@ -387,3 +387,65 @@
 
 /* Match field spacing/rounded edges to your page */
 .gs-dialog .fcol + .fcol{ margin-top: 6px; }
+
+/* =================== USER ROLES (new) =================== */
+.roles-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 6px 14px 6px;
+}
+.roles-title{ display:flex; align-items:center; gap:8px; font-size:20px; font-weight:700; color:#0f172a; }
+.roles-title .material-icons{ font-size:22px; color:#64748b; }
+
+.roles-tools{ display:flex; align-items:center; gap:12px; }
+.roles-select{
+  height:38px; width:68px;
+  padding:0 10px; border:1px solid #e6e9f0; border-radius:10px; background:#fff;
+  font:inherit; color:#111827;
+}
+.roles-search{ position:relative; width:320px; }
+.roles-search input{
+  width:100%; height:38px; padding:0 40px 0 14px;
+  border:1px solid #e6e9f0; border-radius:10px; outline:none; background:#fff;
+}
+.roles-search-btn{
+  position:absolute; right:4px; top:4px; height:30px; width:30px;
+  display:grid; place-items:center; border:0; background:#0ea5e9; color:#fff; border-radius:8px; cursor:pointer;
+}
+.roles-new{ height:38px; padding:0 14px; border-radius:10px; }
+
+/* Table */
+.roles-table-wrap{
+  border:1px solid #e9edf5; border-radius:12px; overflow:hidden; background:#fff;
+}
+.roles-table{ width:100%; border-collapse:separate; border-spacing:0; }
+.roles-table thead th{
+  background:#eef1f6; color:#111827; font-weight:700; text-align:left;
+  padding:12px 14px; border-bottom:1px solid #e5e9f2;
+}
+.roles-table tbody td{
+  padding:1px 1px; border-bottom:1px solid #f1f4f9; color:#111827;
+}
+.roles-table tbody tr:nth-child(odd){ background:#fff; }
+.roles-table tbody tr:nth-child(even){ background:#f9fbfd; }
+.roles-table .numcol{ width:70px; }
+.roles-table .actcol{ width:120px; text-align:left; }
+
+.icon-mini{
+  height:28px; width:28px; display:inline-grid; place-items:center;
+  border-radius:6px; border:1px solid #e6e9f0; background:#fff; margin-right:8px; cursor:pointer;
+}
+.icon-mini .material-icons{ font-size:16px; color:#475569; }
+.icon-mini.danger .material-icons{ color:#ef4444; }
+
+.roles-table .empty{
+  text-align:center; padding:28px 14px; color:#64748b; font-weight:600;
+}
+
+/* Footer */
+.roles-footer{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 2px 2px 2px; color:#111827;
+}
+.roles-count{ color:#334155; }
+.roles-pager{ display:flex; align-items:center; gap:10px; }
+/* re-use .pg-btn and .pg-page from Taxes styles */

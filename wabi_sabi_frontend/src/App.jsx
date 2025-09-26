@@ -46,6 +46,8 @@ import PaymentCreatePage from "./components/PaymentCreatePage";
 import SettingsHome from "./components/SettingsHome";
 import GeneralSettingsPage from "./components/GeneralSettingsPage";
 import EditProfilePage from "./components/EditProfilePage";
+import NewUserRolePage from "./components/NewUserRolePage";
+
 
 import "./App.css";
 
@@ -72,7 +74,7 @@ function SidebarLayout({ children }) {
   return (
     <>
       {/* Sidebar is always open/persistent for these pages */}
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -121,6 +123,10 @@ export default function App() {
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
       <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
       <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
+      <Route
+        path="/settings/general/roles/new"
+        element={<SidebarLayout><NewUserRolePage /></SidebarLayout>}
+      />
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
