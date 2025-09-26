@@ -6,7 +6,7 @@
   font-size:13px; color:#1f2937;
 }
 
-/* header line (title on right like your shot) */
+/* header line */
 .ur-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .ur-left{ display:flex; align-items:center; gap:6px; color:#6b7280; }
 .ur-home{ font-size:18px; color:#9aa3af; }
@@ -19,12 +19,11 @@
   background:#fff; border:1px solid #e6e9f0; border-radius:12px;
   box-shadow:0 1px 2px rgba(16,24,40,.03);
   padding:14px; width:750px; margin:0 auto;
+  max-width:1180px; width:100%;
 }
 
-/* card head strip */
-.ur-head{
-  padding:4px 0 10px; border-bottom:1px solid #eef2f7; margin-bottom:10px;
-}
+/* card head */
+.ur-head{ padding:4px 0 10px; border-bottom:1px solid #eef2f7; margin-bottom:10px; }
 .ur-head-left{ display:flex; align-items:center; gap:8px; font-weight:700; color:#0f172a; }
 .ur-head-left .material-icons{ font-size:20px; color:#64748b; }
 
@@ -46,11 +45,9 @@
   content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:#0ea5e9; border-radius:2px;
 }
 
-/* accordion */
-.ur-acc-list{ display:grid; gap:10px; }
-.ur-acc{
-  border:1px solid #e6e9f0; border-radius:8px; overflow:hidden; background:#fff;
-}
+/* accordions */
+.ur-acc{ border:1px solid #e6e9f0; border-radius:8px; overflow:hidden; background:#fff; }
+.ur-acc + .ur-acc{ margin-top:10px; }
 .ur-acc-head{
   width:100%; text-align:left; background:#fff; border:0; padding:12px 14px;
   display:flex; align-items:center; justify-content:space-between; cursor:pointer;
@@ -58,53 +55,41 @@
 .ur-acc-head:hover{ background:#f9fafb; }
 .ur-caret{ transition:transform .15s ease; color:#6b7280; }
 .ur-caret.open{ transform:rotate(180deg); }
+.ur-acc-body{ padding:8px 8px 10px; background:#fff; border:1px solid #eef2f7; border-top:0; }
 
-.ur-acc-body{ border-top:1px solid #eef2f7; padding:12px 14px; background:#f9fbfd; }
-.ur-perm-row{ display:flex; flex-wrap:wrap; gap:18px; color:#334155; }
-
-/* footer buttons */
-.ur-foot{
-  display:flex; justify-content:flex-end; gap:10px; margin-top:14px; padding-top:10px; border-top:1px solid #eef2f7;
-}
-
-/* reuse existing .btn, .btn.primary, .btn.outline from your GS css */
-
-/* ----- card width to match your GS pages ----- */
-.ur-card{ max-width:1180px; width:100%; }
-
-/* ===== Permission block (matches your screenshots) ===== */
+/* permission block */
 .perm-wrap{ background:#fff; }
-.perm-title{
-  font-size:13px; color:#374151; margin-bottom:6px; margin-left:6px;
-}
+.perm-title{ font-size:13px; color:#374151; margin-bottom:6px; margin-left:6px; }
 .perm-outlet{
   display:flex; align-items:center; gap:8px;
   font-weight:700; color:#111827; margin:6px 0 8px 6px;
 }
 .perm-outlet input{ width:14px; height:14px; }
 
-/* table */
-.perm-table-wrap{
-  border:1px solid #e6e9f0; border-radius:6px; overflow:hidden;
-}
+/* table + scroll viewport for long dropdowns */
+.perm-table-wrap{ border:1px solid #e6e9f0; border-radius:6px; overflow:hidden; }
+.perm-table-viewport{ max-height:360px; overflow:auto; }
 .perm-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
 .perm-table thead th{
   background:#eef1f6; color:#111827; font-weight:700;
   padding:10px 12px; text-align:left; border-bottom:1px solid #e5e9f2;
 }
-.perm-th{ width:110px; }             /* like the screenshot: narrow, even columns */
+.perm-th{ width:110px; }
 .perm-left{ width:220px; }
-
 .perm-table tbody td{
-  padding:10px 12px; border-bottom:1px solid #f1f4f9; color:#111827;
-  background:#fff;
+  padding:2px 3px; border-bottom:1px solid #f1f4f9; color:#111827; background:#fff;
 }
 .perm-table tbody tr:nth-child(even) td{ background:#f9fbfd; }
+.perm-table input[type="checkbox"]{ width:14px; height:14px; vertical-align:middle; }
 
-.perm-table input[type="checkbox"]{
-  width:14px; height:14px; vertical-align:middle;
+/* footer */
+.ur-foot{
+  display:flex; justify-content:flex-end; gap:10px; margin-top:14px; padding-top:10px; border-top:1px solid #eef2f7;
 }
 
-/* keep accordion spacing tight to look like the images */
-.ur-acc-body{ padding:8px 8px 10px; background:#fff; border:1px solid #eef2f7; border-top:0; }
-.ur-acc + .ur-acc{ margin-top:10px; }
+/* put this at the end of NewUserRolePage.css */
+.ur-acc-body.scrollable{
+  max-height: 360px;         /* tune if you want more/less visible rows */
+  overflow: auto;            /* vertical scroll when content is long   */
+  padding-right: 6px;        /* keeps scrollbar from covering content  */
+}
