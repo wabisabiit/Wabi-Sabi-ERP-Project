@@ -1,4 +1,3 @@
-// src/App.jsx
 import React from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
@@ -22,7 +21,8 @@ import EmployeeCreatePage from "./components/EmployeeCreatePage";
 import OutletPage from "./components/OutletPage";
 import OutletCreatePage from "./components/OutletCreatePage";
 import BarcodeUtilityPage from "./components/BarcodeUtilityPage";
-import BarcodeUtility2Page from "./components/BarcodeUtility2Page"; // ✅
+import BarcodeUtility2Page from "./components/BarcodeUtility2Page";
+import BarcodePrintConfirmPage from "./components/BarcodePrintConfirmPage";   // ⬅️ NEW
 import ContactPage from "./components/ContactPage";
 import PointSetupPage from "./components/PointSetupPage";
 
@@ -48,7 +48,6 @@ import GeneralSettingsPage from "./components/GeneralSettingsPage";
 import EditProfilePage from "./components/EditProfilePage";
 import NewUserRolePage from "./components/NewUserRolePage";
 
-
 import "./App.css";
 
 /* ---------- Layouts ---------- */
@@ -73,7 +72,6 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      {/* Sidebar is always open/persistent for these pages */}
       <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
@@ -116,17 +114,15 @@ export default function App() {
 
       {/* Utilities */}
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
-      {/* ❌ BAD path removed: '/Utilities/Barcode Utility' */}
-      <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} /> {/* ✅ wrapped */}
+      <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
+      {/* NEW confirm page */}
+      <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
       <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
       <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
-      <Route
-        path="/settings/general/roles/new"
-        element={<SidebarLayout><NewUserRolePage /></SidebarLayout>}
-      />
+      <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
