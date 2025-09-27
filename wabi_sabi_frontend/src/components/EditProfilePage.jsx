@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";   // ← added
 import "../styles/EditProfilePage.css";
 
 export default function EditProfilePage() {
+  const navigate = useNavigate();                 // ← added
+
   // ----- defaults (from screenshot) -----
   const FY_OPTIONS = useMemo(
     () => ["2023–2024", "2024–2025", "2025–2026", "2026–2027"],
@@ -149,15 +152,7 @@ export default function EditProfilePage() {
           <button
             className="btn soft"
             type="button"
-            onClick={() =>
-              setForm({
-                name: "IT Account",
-                email: "",
-                mobile: "7859456858",
-                username: "IT",
-                finYear: "2025–2026",
-              })
-            }
+            onClick={() => navigate(-1)}   // ← go back
           >
             Cancel
           </button>

@@ -46,7 +46,7 @@ const COLS = [
   { id: "segment",     label: "Customer Segment",td: r => r.segment || "" },
   { id: "membership",  label: "Membership Type", td: r => r.membership || "" },
   { id: "status",      label: "Status",          td: () => <span className="con-status">ACTIVE</span> },
-  { id: "loyalty",     label: "Loyalty Point",   th: (<><div>Loyalty</div><div>Point</div></>), td: r => r.loyalty, tdClass: "right" },
+  { id: "loyalty",     label: "Loyalty Point",   th: (<><div>Loyalty</div><div>Point</div></>), td: r => r.loyalty },
   { id: "actions",     label: "Actions",         td: () => (
       <>
         <button className="con-ico" title="Edit"><span className="material-icons">edit</span></button>
@@ -325,7 +325,7 @@ export default function ContactPage() {
 
           {/* ⟵ ADD: Create New button (right of search) */}
           <button className="con-btn primary create-new" onClick={openCreate}>
-            <span className="material-icons">add</span>
+
             <span>Create New</span>
           </button>
         </div>

@@ -24,7 +24,7 @@
 .con-btn-icon .material-icons{ font-size:18px; color:#fff; }
 
 .con-select{
-  height:40px; min-width:70px; padding:0 8px; font-size:13px;
+  height:40px; width:70px; padding:0 8px; font-size:13px;
   border:1px solid #d9dee6; border-radius:6px; background:#fff;
   appearance:none;
   background-image: linear-gradient(45deg, transparent 50%, #9aa3af 50%),
@@ -68,7 +68,7 @@
 .con-table{ width:100%; border-collapse:separate; border-spacing:0; }
 .con-table thead th{
   background:#eef3f8; color:#23324a; font-weight:500; text-align:left;
-  padding:5px 10px; border-bottom:1px solid #e1e7ef;
+  padding:5px 10px; border-bottom:1px solid #e1e7ef; font-size: 13px;
 }
 .con-table thead th:first-child{ border-top-left-radius:8px; }
 .con-table thead th:last-child{ border-top-right-radius:8px; }
@@ -76,10 +76,10 @@
 /* rows — tall like the reference */
 /* rows — COMPACT */
 .con-table tbody td{
-  padding:10px 12px;          /* was 18px 16px */
+  padding:10px 9px;          /* was 18px 16px */
   border-bottom:1px solid #e1e7ef;
   vertical-align:middle;       /* was top */
-  font-size:12px;              /* was 13px */
+  font-size:10px;              /* was 13px */
   line-height:1.2;             /* was 1.35 */
 }
 
