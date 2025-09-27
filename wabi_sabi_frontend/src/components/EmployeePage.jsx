@@ -507,7 +507,7 @@ export default function EmployeePage() {
                         onClick={() => toggleStatus(r.id)}
                         aria-label="Toggle status"
                       >
-                        <img src={ToggleStatusIcon} alt="toggle status" className="ico-img" />
+          
                       </button>
                     </td>
                   </tr>

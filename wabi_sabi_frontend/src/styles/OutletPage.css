@@ -26,7 +26,7 @@
 
 .out-export{ position:relative; }
 .btn-export{ height:30px; padding:0 8px; display:inline-flex; align-items:center; gap:6px;
-  border:0; border-radius:8px; background:#09c; color:#fff; font-weight:700; cursor:pointer; }
+  border:0; border-radius:8px; background:#0aa1d9; color:#fff; font-weight:700; cursor:pointer; }
 .btn-export .material-icons{ font-size:18px; line-height:1; color:#fff; }
 .btn-export:hover{ background:#0aa1d9; }
 
@@ -49,7 +49,7 @@
   position:relative;
   background:#f2f5fb;
   color:#0f172a;
-  font-weight:700;
+  font-weight:500;
   font-size:11.5px;
   text-align:left;
   padding:4px 22px 4px 8px; /* space for icon */
@@ -81,7 +81,7 @@
 .col-cno{ width:132px; }
 .col-year{ width:100px; }
 .col-month{ width:112px; }
-.col-actions{ width:142px; text-align:right; }
+.col-actions{ width:142px; text-align:right; height: 50px; }
 
 /* links */
 .out-link{ color:#0e8ae6; font-weight:700; text-decoration:none; }

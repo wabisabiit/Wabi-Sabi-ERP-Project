@@ -64,7 +64,7 @@
 .btn .material-icons{ font-size:18px; }
 .btn.filter{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
 .btn.filter .material-icons{ color:#fff !important; }
-.btn.primary{ background:#0284c7; border-color:#0284c7; color:#fff; font-weight:600; }
+.btn.primary{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; font-weight:600; }
 
 /* ===== Search ===== */
 .emp-search{
@@ -203,7 +203,7 @@
 /* Actions */
 .col-sr{ width:46px; }
 .col-status{ width:132px; }
-.col-actions{ width:116px; white-space:nowrap; }
+.col-actions{ width:900px; white-space:nowrap; display: grid; grid-template-columns: repeat(2,1fr);}
 .ico{
   width:28px; height:28px; display:inline-grid; place-items:center;
   background:#fff; border:1px solid #d9dee6; border-radius:4px; margin-right:6px; cursor:pointer;
@@ -237,3 +237,5 @@
 
 /* Actions column thoda चौड़ा क्योंकि नया आइकन जोड़ दिया है */
 .col-actions{ width:140px; }
+
+.btn.primary{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; font-weight:600; }
