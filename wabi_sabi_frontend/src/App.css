@@ -20,8 +20,8 @@ body {
 .container {
   max-width: 900px;   /* cap width on very large screens */
   width: 100%;        /* use available width of viewport (centered by margin) */
-  margin: 6px auto;
-  padding: 0 25px;
+  margin: 0px auto;
+  padding: 0 0px;
 }
 
 /* layout */

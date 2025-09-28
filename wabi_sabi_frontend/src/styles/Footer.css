@@ -13,13 +13,14 @@
 /* ================= Footer ================= */
 .pos-footer{
   background:#fff;
-  padding: 0px 0px 10px;
+  padding: 0px 0px 0px;
   border-top:1px solid var(--divider);
 
   /* LEFT ALIGN: remove centering */
   max-width: var(--footer-max);   /* keeps things tidy on big screens */
   width: 100%;                    /* will not exceed max-width */
-  margin-left: 20px;                      /* no auto-centering */
+  margin-left: 20px;   
+  margin-top: -30px;                   /* no auto-centering */
   /* margin-left: var(--footer-gutter); */
 }
 

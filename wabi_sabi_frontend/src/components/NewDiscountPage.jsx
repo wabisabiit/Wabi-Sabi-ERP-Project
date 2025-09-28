@@ -233,6 +233,9 @@ export default function NewDiscountPage() {
 
   // Common
   const [eligible, setEligible] = useState("All");
+  /* NEW: Old Customer sub-options */
+  const [oldCustomerScope, setOldCustomerScope] = useState("Everyone"); // "Everyone" | "Specific Customers"
+
   const [limitTotal, setLimitTotal] = useState(false);
   const [limitTotalValue, setLimitTotalValue] = useState("");
   const [limitPerCustomer, setLimitPerCustomer] = useState(false);
@@ -873,12 +876,39 @@ export default function NewDiscountPage() {
                       type="radio"
                       name="elig"
                       checked={eligible === v}
-                      onChange={() => setEligible(v)}
+                      onChange={() => {
+                        setEligible(v);
+                        if (v === "Old Customer") setOldCustomerScope("Everyone");
+                      }}
                     />
                     <span>{v}</span>
                   </label>
                 ))}
               </div>
+
+              {/* NEW: Old Customer sub-options */}
+              {eligible === "Old Customer" && (
+                <div className="nd-radio-inline mt6">
+                  <label className="nd-radio">
+                    <input
+                      type="radio"
+                      name="elig_old_scope"
+                      checked={oldCustomerScope === "Everyone"}
+                      onChange={() => setOldCustomerScope("Everyone")}
+                    />
+                    <span>Everyone</span>
+                  </label>
+                  <label className="nd-radio">
+                    <input
+                      type="radio"
+                      name="elig_old_scope"
+                      checked={oldCustomerScope === "Specific Customers"}
+                      onChange={() => setOldCustomerScope("Specific Customers")}
+                    />
+                    <span>Specific Customers</span>
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="nd-row">

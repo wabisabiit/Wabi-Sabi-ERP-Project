@@ -15,7 +15,7 @@
 
 .header-left  { display: flex; align-items: center; gap: 1rem; justify-content: flex-start; }
 .header-center{ display: flex; align-items: center; justify-content: center; overflow: visible; }
-.header-right { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.header-right { display: flex; align-items: center; gap: 6px; justify-content: flex-end; line-height: 0; } /* center icons perfectly */
 
 .menu-icon { font-size: 22px; cursor: pointer; background: none; border: none; padding: 0; }
 .logo-wrap { display: flex; align-items: center; gap: .2rem; }
@@ -76,28 +76,32 @@
 .green { color:#4caf50; font-size:18px; }
 .icon-btn { background:none; border:none; padding:0; cursor:pointer; }
 
-/* --- FIXED: keep black background on hover/focus/active --- */
+/* ===== Centered white icons inside black boxes ===== */
 .icon-btn.black{
-  display:inline-grid;
-  place-items:center;
-  width:32px; height:32px;
-  background:#000;               /* base */
+  display: flex;                  /* center container */
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  line-height: 0;                 /* remove extra vertical space */
+  background:#000;                /* base */
   color:#fff;
   border-radius:6px;
   user-select:none;
   transition: transform .08s ease, box-shadow .12s ease;
 }
 
-/* remove brightness filter that turned it grey/white */
+/* keep black on hover/focus */
 .icon-btn.black:hover,
 .icon-btn.black:focus,
 .icon-btn.black:focus-visible {
-  background:#000;               /* stay black */
-  color:#fff;                    /* keep icon white */
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.08); /* optional subtle ring */
+  background:#000;
+  color:#fff;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
 }
 
-/* active press feedback without changing color */
+/* active press feedback */
 .icon-btn.black:active{
   background:#000;
   color:#fff;
@@ -105,11 +109,25 @@
   box-shadow: none;
 }
 
-/* ensure nested icon color never flips */
-.icon-btn.black .material-icons{
-  font-size:18px;
-  line-height:1;
-  color:#fff;                    /* force white */
+/* inner icon glyphs: perfectly centered & white */
+.icon-btn.black .material-icons,
+.icon-btn.black .material-icons-outlined,
+.icon-btn.black .material-icons-round,
+.icon-btn.black .mi{
+  display: block;
+  font-size: 18px;
+  line-height: 1;
+  color:#fff;
+}
+
+/* SVG/IMG icons support */
+.icon-btn.black svg,
+.icon-btn.black img{
+  width: 18px;
+  height: 18px;
+  display: block;
+  pointer-events: none;
+  fill: currentColor;
 }
 
 /* disabled state (optional) */
