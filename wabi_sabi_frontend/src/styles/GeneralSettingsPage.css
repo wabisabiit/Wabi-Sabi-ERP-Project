@@ -449,3 +449,151 @@
 .roles-count{ color:#334155; }
 .roles-pager{ display:flex; align-items:center; gap:10px; }
 /* re-use .pg-btn and .pg-page from Taxes styles */
+/* ======================= POS TAB (new) ======================= */
+
+/* Top grid (two rows, 4 columns like screenshot) */
+.pos-top-grid{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px 12px;
+  margin-bottom: 14px;
+}
+.pos-top-cell{
+  background:#f8fafc;
+  border:1px solid #e6e9f0;
+  border-radius:10px;
+  padding:10px;
+  display:grid;
+  gap:8px;
+}
+.pos-top-k{ font-weight:700; color:#0f172a; }
+
+/* Blue/white YES-NO pill buttons (also used for ON/OFF) */
+.pos-pill{
+  display:inline-flex;
+  background:#e5f2ff;
+  border:1px solid #bfe1fe;
+  border-radius:8px;
+  padding:3px;
+  gap:4px;
+  width:max-content;
+}
+.pos-pill.single{ padding:3px; }
+.pos-pill-btn{
+  min-width:64px;
+  height:32px;
+  padding:0 12px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  color:#0b85c6;
+  font-weight:700;
+  cursor:pointer;
+}
+.pos-pill-btn.active{
+  background:#0ea5e9;
+  color:#fff;
+}
+
+/* Inputs beside the pills (ZERO, Product Scan/Search, etc.) */
+.pos-input-wrap{ display:flex; }
+.pos-input{
+  height:34px;
+  padding:0 10px;
+  border:1px solid #e6e9f0;
+  border-radius:8px;
+  background:#fff;
+  width:100%;
+  font:inherit;
+  color:#111827;
+}
+
+/* Advance Settings title bar */
+.pos-adv-head{
+  background:#263238;
+  color:#fff;
+  font-weight:700;
+  padding:8px 12px;
+  border-radius:6px;
+  margin:8px 0 10px;
+}
+
+/* Advance grid of 4 columns with right-side switches */
+.pos-adv-grid{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:10px;
+  margin-bottom:12px;
+}
+.pos-adv-grid.pos-compact{ margin-top:6px; }
+
+.pos-item{
+  display:flex; align-items:center; justify-content:space-between;
+  border:1px solid #e6e9f0;
+  background:#fff;
+  border-radius:22px;
+  padding:8px 12px;
+  min-height:40px;
+  font-weight:600;
+  color:#111827;
+}
+
+/* iOS-like right-side switch (blue when ON) */
+.pos-switch{
+  width:44px; height:24px;
+  border-radius:999px;
+  border:1px solid #cfd6e4;
+  background:#e9edf5;
+  position:relative;
+  cursor:pointer;
+  transition: all .15s ease;
+}
+.pos-switch .dot{
+  position:absolute; top:2px; left:2px;
+  width:20px; height:20px; border-radius:999px;
+  background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.1);
+  transition: transform .15s ease;
+}
+.pos-switch.checked{
+  background:#0ea5e9;
+  border-color:#0ea5e9;
+}
+.pos-switch.checked .dot{
+  transform: translateX(20px);
+}
+
+/* Second band spacing tighter like screenshot */
+.pos-compact .pos-item{ border-radius:12px; }
+
+/* Bottom grid (label + pill/input) — 4 columns then wraps */
+.pos-bottom-grid{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:12px;
+  margin-top:6px;
+}
+.pos-bottom-cell{
+  background:#fff;
+  border:1px solid #e6e9f0;
+  border-radius:10px;
+  padding:10px;
+  display:grid;
+  gap:8px;
+}
+.pos-bottom-cell .lbl{ font-weight:700; color:#0f172a; }
+
+/* Responsive */
+@media (max-width: 1200px){
+  .pos-top-grid,
+  .pos-adv-grid,
+  .pos-bottom-grid{
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 700px){
+  .pos-top-grid,
+  .pos-adv-grid,
+  .pos-bottom-grid{
+    grid-template-columns: 1fr;
+  }
+}

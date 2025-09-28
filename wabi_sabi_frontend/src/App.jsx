@@ -47,6 +47,7 @@ import SettingsHome from "./components/SettingsHome";
 import GeneralSettingsPage from "./components/GeneralSettingsPage";
 import EditProfilePage from "./components/EditProfilePage";
 import NewUserRolePage from "./components/NewUserRolePage";
+import PosSettingPage from "./components/PosSettingPage";
 
 import "./App.css";
 
@@ -123,6 +124,8 @@ export default function App() {
       <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
       <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
       <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
+      <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
+
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
