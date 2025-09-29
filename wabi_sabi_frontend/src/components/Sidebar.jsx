@@ -40,6 +40,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
     if (isPath("/bank")) setExpandBankCash(true);
     if (isPath("/utilities")) setExpandUtilities(true);
     if (isPath("/settings")) setExpandSettings(true);
+    if (isPath("/inventory")) setExpandInventory(true); // ✅ make Inventory open when on its routes
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
@@ -135,7 +136,14 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               </span>
             </button>
             <div id="sb-inventory-sub" className={`sb-sub ${expandInventory ? "show" : ""}`}>
-              <a className="sb-subitem" href="#stock">Products</a>
+              {/* ✅ changed from <a href="#stock"> to real NavLink route */}
+              <NavLink
+                to="/inventory/products"
+                className={linkClass}
+                onClick={handleNav}
+              >
+                Products
+              </NavLink>
             </div>
           </div>
 

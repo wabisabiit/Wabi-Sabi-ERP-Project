@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
@@ -22,7 +23,7 @@ import OutletPage from "./components/OutletPage";
 import OutletCreatePage from "./components/OutletCreatePage";
 import BarcodeUtilityPage from "./components/BarcodeUtilityPage";
 import BarcodeUtility2Page from "./components/BarcodeUtility2Page";
-import BarcodePrintConfirmPage from "./components/BarcodePrintConfirmPage";   // ⬅️ NEW
+import BarcodePrintConfirmPage from "./components/BarcodePrintConfirmPage";
 import ContactPage from "./components/ContactPage";
 import PointSetupPage from "./components/PointSetupPage";
 
@@ -50,6 +51,18 @@ import NewUserRolePage from "./components/NewUserRolePage";
 import PosSettingPage from "./components/PosSettingPage";
 
 import "./App.css";
+
+/* ---------- Minimal Products page (so the route works right away) ---------- */
+function ProductsPage() {
+  return (
+    <div style={{ padding: 16 }}>
+      <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Products</h1>
+      <p style={{ color: "#667085", marginTop: 6 }}>
+        This is a placeholder Products page under Inventory. Replace with your actual UI when ready.
+      </p>
+    </div>
+  );
+}
 
 /* ---------- Layouts ---------- */
 function POSLayout() {
@@ -100,6 +113,9 @@ export default function App() {
       <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
       <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
 
+      {/* ✅ Inventory -> Products (opens with sidebar) */}
+      <Route path="/inventory/products" element={<SidebarLayout><ProductsPage /></SidebarLayout>} />
+
       {/* Bank / Cash */}
       <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
       <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
@@ -125,7 +141,6 @@ export default function App() {
       <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
       <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
       <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
-
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />

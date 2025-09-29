@@ -13,7 +13,7 @@
 /* ================= Footer ================= */
 .pos-footer{
   background:#fff;
-  padding: 0px 0px 0px;
+  padding: 0px 0px 15px;
   border-top:1px solid var(--divider);
 
   /* LEFT ALIGN: remove centering */
@@ -125,7 +125,7 @@
   gap:10px;
 }
 .kbtn{
-  height:var(--btn-h);
+  height:30px;
   background:var(--black);
   color:#fff;
   border:none;
@@ -134,7 +134,7 @@
   align-items:center;
   justify-content:center;
   gap:8px;
-  font-weight:700;
+  font-weight:500;
   cursor:pointer;
 }
 .kbtn .material-icons{ font-size:18px; }

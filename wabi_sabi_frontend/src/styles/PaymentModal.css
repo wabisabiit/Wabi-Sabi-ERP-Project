@@ -10,23 +10,35 @@
   width:820px; max-width:90vw;
   background:#fff; border:1px solid #dcdcdc; border-radius:6px;
   box-shadow:0 10px 28px rgba(0,0,0,.22);
-  overflow:hidden; font-family:inherit;
+  overflow:hidden;                     /* ⬅️ clip inner overflow to keep shell fixed */
+  font-family:inherit;
+
+  /* ⬇️ Prevent stretch */
+  display:flex; flex-direction:column; /* header/body/footer layout */
+  max-height:88vh;                     /* cap height to viewport */
 }
 
 /* Header */
 .payx-header{
   height:52px; display:flex; align-items:center; justify-content:space-between;
   padding:0 16px; border-bottom:1px solid #ececec;
+  flex:0 0 auto;                       /* fixed area */
 }
-.payx-header h3{ margin:0; font-size:22px; font-weight:500; }
+.payx-header h3{ margin:0; font-size:23px; font-weight:bold; }
 .payx-close{ width:32px; height:32px; border:0; background:transparent; cursor:pointer; font-size:20px; }
 
-/* Body (no inner scroll) */
-.payx-body{ padding:18px 22px 22px; overflow:visible; }
+/* Body */
+.payx-body{
+  padding:18px 22px 22px;
+
+  /* ⬇️ Key change: body scrolls, card stays same height */
+  flex:1 1 auto;                       /* fills remaining space */
+  overflow:auto;                       /* internal scroll instead of stretching */
+}
 
 /* Titles & radios */
 .payx-title{ display:block; font-weight:500; margin:0 0 8px; font-size:16px; }
-.payx-radios{ display:flex; gap:32px; align-items:center;margin-bottom: 10px; }
+.payx-radios{ display:flex; gap:32px; align-items:center; margin-bottom:10px; }
 .payx-radio{ display:inline-flex; align-items:center; gap:8px; font-weight:500; font-size:15px; }
 .payx-radio input{ width:16px; height:16px; accent-color:#0ea5e9; }
 
@@ -71,35 +83,45 @@
 .payx-check{ display:inline-flex; align-items:center; gap:8px; font-weight:500; }
 
 /* Footer */
-.payx-actions{ display:flex; justify-content:center; margin-top:6px; }
+.payx-actions{
+  display:flex; justify-content:center; margin-top:6px;
+  padding:0 22px 18px;
+  flex:0 0 auto;                     /* fixed area */
+  border-top:1px solid #f1f1f1;
+}
 .payx-btn{
   background:#000; color:#fff; border:0; border-radius:6px;
   min-width:70px; height:32px; font-weight:500; cursor:pointer;
 }
-/* <------------------------------------Advance Payment-------------> */
-/* Wallet pseudo-select (matches existing control look) */
-.payx-wallet { position: relative; }
+
+/* ---------- Advance Payment dropdown (custom) ---------- */
+
+/* Wallet wrapper stays the positioning context */
+.payx-wallet{ position:relative; }
+
+/* Toggle styled like control */
 .payx-wallet-toggle{
   display:flex; align-items:center; justify-content:space-between;
   width:100%; text-align:left; background:#fff;
 }
-.payx-wallet-caret{ margin-left:8px; }
 
-/* Dropdown panel like your screenshots */
+/* Dropdown panel */
 .payx-dd-panel{
   position:absolute; left:0; right:0; top:44px;
   background:#fff; border:1px solid #cfcfcf; border-radius:6px;
   box-shadow:0 10px 24px rgba(0,0,0,.12);
   padding:10px; z-index:10;
+
+  /* ⬇️ Ensure it never forces card to grow */
+  max-height:260px;                  /* cap the panel height */
+  overflow:auto;                     /* scroll inside the panel */
 }
+
+/* Search + list inside panel */
 .payx-dd-search{ margin-bottom:8px; }
-.payx-dd-hint{
-  font-size:13px; color:#6b7280; margin-top:6px;
-}
-.payx-dd-section{
-  font-weight:500; font-size:15px; margin:8px 2px;
-}
-.payx-dd-list{ list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; }
+.payx-dd-hint{ font-size:13px; color:#6b7280; margin-top:6px; }
+.payx-dd-section{ font-weight:500; font-size:15px; margin:8px 2px; }
+.payx-dd-list{ list-style:none; margin:0; padding:0; max-height:none; }
 .payx-dd-item{
   width:100%; text-align:left; border:1px solid #cfcfcf;
   border-radius:6px; height:36px; padding:0 10px; background:#fff; cursor:pointer;
@@ -107,10 +129,9 @@
 .payx-dd-item + .payx-dd-item{ margin-top:8px; }
 .payx-dd-item:hover{ background:#f7f7f7; }
 .payx-dd-item.active{ outline:2px solid #2563eb; }
-.payx-dd-empty{
-  padding:10px; color:#6b7280; font-size:14px;
+.payx-dd-empty{ padding:10px; color:#6b7280; font-size:14px; }
+
+/* Small screens: keep same behavior */
+@media (max-height: 640px){
+  .payx-card{ max-height:92vh; }
 }
-
-/* <------------------------------------/ Advance Payment-------------> */
-
-

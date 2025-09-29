@@ -1,5 +1,5 @@
 /* ===== TOP BAR ===== */
-.search-row{background:#f9fafb;padding:0;border-bottom:1px solid #e5e7eb;}
+.search-row{background:#f9fafb;padding:2px;border-bottom:1px solid #e5e7eb;}
 .search-bar{display:flex;gap:17px;align-items:center;padding:12px 0;}
 .scan,.invoice{flex:1;border:1px solid #d1d5db;border-radius:3px;padding:8px;font-size:14px;background:#fff;}
 
