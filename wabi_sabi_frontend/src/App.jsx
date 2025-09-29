@@ -24,6 +24,8 @@ import OutletCreatePage from "./components/OutletCreatePage";
 import BarcodeUtilityPage from "./components/BarcodeUtilityPage";
 import BarcodeUtility2Page from "./components/BarcodeUtility2Page";
 import BarcodePrintConfirmPage from "./components/BarcodePrintConfirmPage";
+import ExpandedLabelsPage from "./components/ExpandedLabelsPage";
+
 import ContactPage from "./components/ContactPage";
 import PointSetupPage from "./components/PointSetupPage";
 
@@ -50,19 +52,9 @@ import EditProfilePage from "./components/EditProfilePage";
 import NewUserRolePage from "./components/NewUserRolePage";
 import PosSettingPage from "./components/PosSettingPage";
 
-import "./App.css";
+import ProductsPage from "./components/InventoryProductsPage";
 
-/* ---------- Minimal Products page (so the route works right away) ---------- */
-function ProductsPage() {
-  return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Products</h1>
-      <p style={{ color: "#667085", marginTop: 6 }}>
-        This is a placeholder Products page under Inventory. Replace with your actual UI when ready.
-      </p>
-    </div>
-  );
-}
+import "./App.css";
 
 /* ---------- Layouts ---------- */
 function POSLayout() {
@@ -86,7 +78,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -113,7 +105,7 @@ export default function App() {
       <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
       <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
 
-      {/* ✅ Inventory -> Products (opens with sidebar) */}
+      {/* Inventory */}
       <Route path="/inventory/products" element={<SidebarLayout><ProductsPage /></SidebarLayout>} />
 
       {/* Bank / Cash */}
@@ -132,8 +124,9 @@ export default function App() {
       {/* Utilities */}
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
       <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
-      {/* NEW confirm page */}
       <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
+      {/* ✅ Third page with sidebar */}
+      <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />

@@ -1,162 +1,84 @@
-/* ===========================
-   Confirm Page – Top bar (no wrapping)
-   =========================== */
-.confirm-page .sit-bc{
-  height: 38px;
-  margin: 0 2px 12px;
-  padding: 0 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: linear-gradient(#f7faff,#eef3fb);
-  border: 1px solid #e3e8f4;
-  border-radius: 10px;
-  white-space: nowrap; /* keep single line */
-}
-.confirm-page .sit-bc-left{
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  overflow: hidden;
-}
-.confirm-page .sit-title{
-  font-size: 15px;
-  font-weight: 700;
-  color: #0f172a;
-  white-space: nowrap;
-}
-.confirm-page .sit-sep{ color:#c8d1df; white-space: nowrap; }
-.confirm-page .sit-bc .t-dim{
-  font-size: 12.5px;
-  color: #64748b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.confirm-page .sit-home{
-  flex: 0 0 auto;
-  width: 22px; height: 22px;
-  display: inline-grid; place-items: center;
-  color: #94a3b8;
-}
-@media (max-width: 720px){
-  .confirm-page .sit-bc{ white-space: normal; }
-  .confirm-page .sit-bc-left{ overflow: visible; }
-  .confirm-page .sit-bc .t-dim{ text-overflow: clip; }
-}
-
-/* ===========================
-   Card + Table – polished
-   =========================== */
+/* ===== Confirm layout (compact) ===== */
 .confirm-page .sit-card{
-  --table-w: 100%;
-  padding: 12px 14px 16px;
-}
-.confirm-page .sit-table-wrap{
-  width: 100%;
-  border: 1px solid #e6eaf2;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 6px 18px rgba(16,24,40,.06);
-  background: #fff;
-}
-.confirm-page .sit-table{
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 13px;
-}
-.confirm-page .sit-table thead th{
-  position: sticky; top: 0;
-  padding: 10px 14px;
-  background: linear-gradient(#f9fbff,#f3f7ff);
-  color:#334155;
-  font-weight: 700;
-  text-align: left;
-  border-bottom: 1px solid #e6eaf2;
-  z-index: 1;
-}
-.confirm-page .sit-table tbody td{
-  padding: 9px 14px;
-  border-bottom: 1px solid #f1f4f9;
-  color:#0f172a;
-  vertical-align: middle;
-}
-.confirm-page .sit-table tbody tr:nth-child(even){ background:#fbfdff; }
-.confirm-page .sit-table tbody tr:hover{ background:#f1f6ff; }
-
-/* numeric columns right-aligned: 1,4,5,6 */
-.confirm-page .sit-table thead th:nth-child(1),
-.confirm-page .sit-table tbody td:nth-child(1),
-.confirm-page .sit-table thead th:nth-child(4),
-.confirm-page .sit-table tbody td:nth-child(4),
-.confirm-page .sit-table thead th:nth-child(5),
-.confirm-page .sit-table tbody td:nth-child(5),
-.confirm-page .sit-table thead th:nth-child(6),
-.confirm-page .sit-table tbody td:nth-child(6){
-  text-align: right;
-}
-
-/* Barcode column styling */
-.confirm-page .sit-table tbody td:nth-child(8){
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  letter-spacing: .3px;
-  color:#0f172a;
-}
-.confirm-page .sit-table tbody td:nth-child(8)::before{
-  content:"";
-  display:inline-block;
-  width:6px; height:6px;
-  border-radius:50%;
-  background:#22c55e;
-  margin-right:8px;
-  vertical-align:middle;
-  opacity:.65;
-}
-
-/* Empty size dash */
-.confirm-page .sit-table tbody td:nth-child(3):empty::after{
-  content:"-";
-  color:#94a3b8;
-}
-
-/* ===========================
-   Pagination
-   =========================== */
-.confirm-pagination{
-  width: 100%;
   display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:8px;
-  padding: 10px 2px 0;
-}
-.confirm-pagination .pg-btn{
-  min-width:32px; height:32px; padding:0 10px;
-  border:1px solid #cfe5f7;
-  background:#fff; color:#3b82f6;
-  border-radius:8px; cursor:pointer;
-}
-.confirm-pagination .pg-btn:disabled{ opacity:.4; cursor:not-allowed; }
-.confirm-pagination .pg-current{
-  min-width:36px; height:32px; padding:0 12px;
-  display:inline-flex; align-items:center; justify-content:center;
-  background:#0ea5e9; color:#fff; border-radius:8px; font-weight:600;
-}
-.confirm-pagination .pg-info{
-  color:#94a3b8; font-size:12.5px; margin-left:4px;
+  gap:12px;
+  padding:10px 12px;
 }
 
-/* ===========================
-   Actions
-   =========================== */
-.confirm-page .confirm-actions{
-  justify-content: center;
-  gap: 14px;
-  padding-top: 14px;
+/* Two-column layout */
+.confirm-grid{
+  --side-w: 220px;          /* थोड़ा सा बढ़ाया ताकि barcode card आराम से आ जाए */
+  display:flex;
 }
-.confirm-page .confirm-actions .btn{ min-width: 148px; }
-.confirm-page .confirm-actions .btn-outline{ border-color:#cfe5f7; }
+.confirm-side{
+  width:var(--side-w);
+  flex:0 0 var(--side-w);
+}
+.confirm-main{
+  flex:1 1 auto;
+  min-width:0;
+}
+
+/* Sidebar box */
+.side-box{
+  border:1px solid #e6e9f0; border-radius:10px;
+  padding:10px;
+  background:#f9fafb;
+  display:flex; flex-direction:column; gap:8px;
+}
+.side-title{ font-weight:700; color:#0f172a; font-size:12.5px; }
+.side-note{ font-size:11.5px; color:#64748b; line-height:1.35; }
+.side-stats{ font-size:12.5px; display:grid; gap:4px; }
+
+/* Buttons */
+.btn-sm{ height:26px; padding:0 8px; font-size:11.5px; }
+
+/* ===== Table compaction ===== */
+.confirm-narrow{ overflow:hidden; }
+.confirm-table{
+  font-size:11.5px;
+  table-layout:auto;
+}
+.confirm-table thead th{ padding:5px 5px; }
+.confirm-table tbody td{  padding:4px 5px; }
+
+.confirm-table .sit-input{
+  height:24px;
+  padding:0 5px;
+  font-size:11.5px;
+  min-width:0;
+}
+
+/* Equal buttons row */
+.equal-actions{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+.equal-actions .btn{
+  flex:1 1 0;
+}
+
+/* ===== Barcode Preview Card (moved here for Expanded page) ===== */
+.bc-card{
+  width:100%;
+  background:#fff; border:1px solid #e6e9f0; border-radius:12px;
+  box-shadow:0 4px 14px rgba(25,42,70,.08);
+  padding:9px 10px 8px;
+  position:relative; text-align:center; box-sizing:border-box;
+}
+.bc-brand{ position:absolute; top:6px; right:8px; font-size:10px; color:#9aa3af; }
+.bc-title{ margin-top:6px; font-size:17px; font-weight:800; color:#0f172a; }
+.bc-mrp{ margin-top:2px; font-weight:700; color:#0f172a; font-size:12.5px; }
+.bc-bars{ margin:8px auto 6px; height:56px; width:88%; display:flex; align-items:flex-end; justify-content:center; gap:2px; }
+.bc-bars .bar{ display:block; width:2px; height:100%; background:#0f172a; }
+.bc-bars .bar-thick{ width:3px; }
+.bc-code{ letter-spacing:2px; font-weight:600; color:#0f172a; font-size:12px; }
+.bc-generate{ margin-top:8px; width:100%; box-sizing:border-box; }
+
+/* Responsive: stack sidebar under 900px */
+@media (max-width: 900px){
+  .confirm-grid{ flex-direction:column; }
+  .confirm-side{ width:100%; flex:1 1 auto; order:2; }
+  .confirm-main{ order:1; }
+}

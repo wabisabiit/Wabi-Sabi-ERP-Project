@@ -1,12 +1,12 @@
 // src/components/BarcodeUtility2Page.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/BarcodeUtility2Page.css";
 
 /* Location options (short names only) */
 const LOCATIONS = ["IC", "RJR", "RJO", "TN", "UP-AP", "M3M", "UV", "KN"];
 
-/* ✅ Seed rows (now include size:"") */
+/* Seed rows */
 const INIT_ROWS = [
   { id: 1, itemCode: "0", product: "Lenova LCD", size: "", location: "", mrp: 3500.0, sp: 1999.0, qty: 1, discount: 0 },
   { id: 2, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
@@ -18,19 +18,25 @@ const INIT_ROWS = [
   { id: 8, itemCode: "0", product: "Top",        size: "", location: "", mrp: 99.0,   sp: 49.0,   qty: 1, discount: 0 },
 ];
 
+const STORAGE_KEY = "barcode2_rows_v1";
+
 export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
-  const [rows, setRows] = useState(INIT_ROWS);
-  const [page, setPage] = useState(1);
-  const rowsPerPage = 5;
   const navigate = useNavigate();
 
-  // Header select: start empty (placeholder "Location")
-  const [location, setLocation] = useState("");
-
-  // keep initial rows empty for location (no prefill)
+  // ---- Load persisted rows if available ----
+  const [rows, setRows] = useState(INIT_ROWS);
   useEffect(() => {
-    setRows(prev => prev.map(r => ({ ...r, location: "" })));
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) setRows(parsed);
+      }
+    } catch (_) {}
   }, []);
+
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 5;
 
   const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
@@ -39,60 +45,56 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
 
   const [selected, setSelected] = useState(pageRows[0] || rows[0]);
   useEffect(() => {
-    setSelected((prev) => pageRows.find(r => r.id === prev?.id) || pageRows[0] || rows[0]);
+    setSelected((prev) => pageRows.find((r) => r.id === prev?.id) || pageRows[0] || rows[0]);
   }, [pageRows, rows]);
+
+  const persist = (next) => {
+    setRows(next);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch (_) {}
+  };
 
   const sanitizeDigits = (val) => (val || "").replace(/\D+/g, "");
 
   const handleChange = (id, field, value) => {
-    setRows(prev =>
-      prev.map(r =>
-        r.id === id
-          ? {
-              ...r,
-              [field]:
-                field === "qty" || field === "discount" || field === "sp"
-                  ? Number(value || 0)
-                  : value,
-            }
-          : r
-      )
+    const next = rows.map((r) =>
+      r.id === id
+        ? {
+            ...r,
+            [field]:
+              field === "qty" || field === "discount" || field === "sp"
+                ? Number(value || 0)
+                : value,
+          }
+        : r
     );
+    persist(next);
   };
 
-  // TH dropdown -> update header state + ALL rows' location
-  const handleLocationChange = (val) => {
-    setLocation(val);
-    setRows(prev => prev.map(r => ({ ...r, location: val })));
+  const handleSubmit = () => {
+    // Persist again to be safe (data stays after submit)
+    persist(rows);
+
+    // Prepare payload for confirm page (unchanged)
+    const initialRows = rows.map((r) => ({
+      ...r,
+      itemCode: r.itemCode && r.itemCode !== "" ? r.itemCode : "0",
+      salesPrice: Math.max(0, r.sp - r.discount), // final per-unit amount
+      barcodeName: r.itemCode && r.itemCode !== "" ? r.itemCode : "0",
+    }));
+    navigate("/utilities/barcode2/confirm", { state: { initialRows } });
   };
 
-  const getLineAmount = (r) => Math.max(0, (r.sp - r.discount) * r.qty);
-
-  const summary = useMemo(() => {
-    const totalQty = pageRows.reduce((s, r) => s + Number(r.qty || 0), 0);
-    const totalAmt = pageRows.reduce((s, r) => s + getLineAmount(r), 0);
-    return { totalQty, totalAmt };
-  }, [pageRows]);
+  const handleReset = () => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+    setPage(1);
+    setRows(INIT_ROWS);
+  };
 
   const formatINR = (n) =>
     `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const handleSubmit = () => {
-    const payload = rows
-      .filter(r => Number(r.qty) > 0)
-      .map(r => ({
-        ...r,
-        itemCode: r.itemCode && r.itemCode !== "" ? r.itemCode : "0",
-        salesPrice: Math.max(0, r.sp - r.discount),
-        barcodeName: r.itemCode && r.itemCode !== "" ? r.itemCode : "0",
-        // size और location अब payload में साथ जाएंगे
-      }));
-    navigate("/utilities/barcode2/confirm", { state: { rows: payload } });
-  };
-
-  const handleGenerate = () => {
-    console.log("Generate for:", selected);
-  };
+  // compute Total Amt = max(0, Price - Discount)
+  const totalAmt = (r) => Math.max(0, Number(r.sp || 0) - Number(r.discount || 0));
 
   return (
     <div className="sit-wrap">
@@ -111,38 +113,21 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
 
       <div className="sit-card">
         <div className="sit-body">
-          {/* LEFT: table + controls */}
-          <div className="sit-left">
+          {/* LEFT: table + controls (RIGHT panel removed) */}
+          <div className="sit-left" style={{ maxWidth: "100%" }}>
             <div className="sit-table-wrap">
               <table className="sit-table">
                 <thead>
                   <tr>
                     <th style={{ width: 60 }}>S.No</th>
-                    <th style={{ width: 120 }}>Item Code</th>
-                    <th style={{ minWidth: 180 }}>Product Name</th>
-                    <th style={{ width: 120 }}>Size</th>
-
-                    {/* TH = placeholder-first select for Location (short codes) */}
-                    <th style={{ minWidth: 150 }}>
-                      <select
-                        className="sit-select sit-select-th"
-                        value={location}
-                        onChange={(e) => handleLocationChange(e.target.value)}
-                        title="Select Location"
-                      >
-                        <option value="" disabled>
-                          Location
-                        </option>
-                        {LOCATIONS.map((loc) => (
-                          <option key={loc} value={loc}>{loc}</option>
-                        ))}
-                      </select>
-                    </th>
-
-                    <th style={{ width: 110 }}>Discount</th>
-                    <th style={{ width: 130 }}>Selling Price</th>
-                    <th style={{ width: 110 }}>MRP</th>
-                    <th style={{ width: 80 }}>Qty</th>
+                    <th style={{ width: 110 }}>Item Code</th>
+                    <th style={{ minWidth: 160 }}>Product Name</th>
+                    <th style={{ width: 100 }}>Size</th>
+                    <th style={{ width: 128 }}>Location</th>
+                    <th style={{ width: 90 }}>Discount</th>
+                    <th style={{ width: 96 }}>Price</th>
+                    <th style={{ width: 100 }}>Total Amt</th>
+                    <th style={{ width: 60 }}>Qty</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -155,14 +140,16 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
                     >
                       <td className="t-right">{start + idx + 1}</td>
 
-                      {/* Item Code (digits only, default "0" on blur) */}
+                      {/* Item Code */}
                       <td>
                         <input
                           className="sit-input t-mono"
                           type="text"
                           inputMode="numeric"
                           value={r.itemCode}
-                          onChange={(e) => handleChange(r.id, "itemCode", sanitizeDigits(e.target.value))}
+                          onChange={(e) =>
+                            handleChange(r.id, "itemCode", sanitizeDigits(e.target.value))
+                          }
                           onBlur={(e) => {
                             if (!e.target.value || e.target.value.trim() === "") {
                               handleChange(r.id, "itemCode", "0");
@@ -174,7 +161,7 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
 
                       <td><span className="t-link">{r.product}</span></td>
 
-                      {/* Size (per-row editable) */}
+                      {/* Size */}
                       <td>
                         <input
                           className="sit-input"
@@ -185,9 +172,21 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
                         />
                       </td>
 
-                      {/* row location reflects header selection */}
-                      <td className="t-dim">{r.location || ""}</td>
+                      {/* Location — per-row select */}
+                      <td>
+                        <select
+                          className="sit-input"
+                          value={r.location}
+                          onChange={(e) => handleChange(r.id, "location", e.target.value)}
+                        >
+                          <option value="">Select</option>
+                          {LOCATIONS.map((loc) => (
+                            <option key={loc} value={loc}>{loc}</option>
+                          ))}
+                        </select>
+                      </td>
 
+                      {/* Discount */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -196,10 +195,11 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
                           step="0.01"
                           value={r.discount}
                           onChange={(e) => handleChange(r.id, "discount", e.target.value)}
+                          placeholder="0.00"
                         />
                       </td>
 
-                      {/* Selling Price editable */}
+                      {/* Price */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -212,8 +212,10 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
                         />
                       </td>
 
-                      <td className="t-right t-dim">{formatINR(r.mrp)}</td>
+                      {/* Total Amt (computed: Price - Discount) */}
+                      <td className="t-right t-dim">{formatINR(totalAmt(r))}</td>
 
+                      {/* Qty */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -222,6 +224,7 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
                           step="1"
                           value={r.qty}
                           onChange={(e) => handleChange(r.id, "qty", e.target.value)}
+                          placeholder="0"
                         />
                       </td>
                     </tr>
@@ -230,49 +233,21 @@ export default function SaleItemsTable({ title = "Common Barcode Printing" }) {
               </table>
             </div>
 
-            {/* Totals, pagination, submit */}
-            <div className="sit-summary-center">
-              <div className="sum-chip">
-                <span className="sum-label">Selling Price</span>
-                <span className="sum-value">{formatINR(summary.totalAmt)}</span>
-              </div>
-              <div className="sum-chip">
-                <span className="sum-label">Qty</span>
-                <span className="sum-value">{summary.totalQty.toFixed(2)}</span>
-              </div>
-            </div>
-
+            {/* Pagination + Submit/Reset */}
             <div className="sit-pagination">
-              <button className="pg-btn" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>‹</button>
+              <button className="pg-btn" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
               <span className="pg-current">{page}</span>
-              <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>›</button>
+              <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
             </div>
 
-            <div className="sit-actions">
-              <button type="button" className="btn btn-primary" onClick={handleSubmit}>
-                Submit
-              </button>
+            <div className="sit-actions" style={{ gap: 10 }}>
+              {/* ⬇️ Yellow reset button */}
+              <button type="button" className="btn btn-warning" onClick={handleReset}>Reset</button>
+              <button type="button" className="btn btn-primary" onClick={handleSubmit}>Submit</button>
             </div>
           </div>
 
-          {/* RIGHT: barcode preview */}
-          <aside className="sit-right">
-            <div className="bc-card">
-              <div className="bc-brand">vyparerp</div>
-              <div className="bc-title">{selected?.product || "-"}</div>
-              <div className="bc-mrp">MRP : {selected ? selected.mrp : 0}</div>
-              <div className="bc-bars" aria-hidden="true">
-                {[...Array(26)].map((_, i) => (
-                  <span key={i} className={`bar ${i % 5 === 0 ? "bar-thick" : ""}`} />
-                ))}
-              </div>
-              <div className="bc-code">{selected?.itemCode || ""}</div>
-            </div>
-
-            <button className="btn btn-primary bc-generate" onClick={handleGenerate}>
-              Generate Barcode
-            </button>
-          </aside>
+          {/* RIGHT preview removed */}
         </div>
       </div>
     </div>
