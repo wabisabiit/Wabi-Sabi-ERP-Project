@@ -70,9 +70,9 @@ export default function ExpandedLabelsPage() {
         <div className="sit-bc-left">
           <span className="sit-title">Expanded Labels</span>
           <span className="sit-sep">|</span>
-          <span className="t-dim">
+          {/* <span className="t-dim">
             {summary.count} rows · {summary.uniqueItems} unique (item+size)
-          </span>
+          </span> */}
         </div>
         <div className="sit-home" aria-label="Home">
           <svg
@@ -115,7 +115,7 @@ export default function ExpandedLabelsPage() {
               </div>
             </div>
 
-            {/* Barcode Preview moved here */}
+            {/* Barcode Preview */}
             <div className="bc-card" style={{ marginTop: 10 }}>
               <div className="bc-title">{selected?.product || "-"}</div>
               <div className="bc-mrp">
@@ -140,26 +140,7 @@ export default function ExpandedLabelsPage() {
               Generate Barcode
             </button>
 
-            <div className="side-title" style={{ marginTop: 10 }}>
-              Actions
-            </div>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>
-              Back to Edit
-            </button>
-            <button
-              className="btn btn-outline btn-sm"
-              title="Open Excel-like editor"
-              onClick={() =>
-                navigate("/utilities/barcode2/confirm", {
-                  state: { initialRows: stored.length ? stored : fromRows },
-                })
-              }
-            >
-              Open Editor
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={printNow}>
-              Print
-            </button>
+            {/* ⬇️ Actions section removed as requested */}
           </div>
         </aside>
 

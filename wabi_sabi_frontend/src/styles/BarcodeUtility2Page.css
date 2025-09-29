@@ -16,7 +16,7 @@
   padding:0 10px 0 12px; color:#334155; margin:0 2px 10px;
 }
 .sit-bc-left{ display:flex; align-items:center; gap:8px; }
-.sit-title{ font-size:14px; font-weight:600; color:#1e293b; }
+.sit-title{ font-size:13px; font-weight:600; color:#1e293b; }
 .sit-sep{ color:#c5ced8; }
 .sit-home{
   font-size:14px; line-height:1; display:inline-grid; place-items:center;

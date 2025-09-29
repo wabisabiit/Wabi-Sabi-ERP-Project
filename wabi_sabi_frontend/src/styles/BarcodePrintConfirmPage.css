@@ -1,84 +1,173 @@
-/* ===== Confirm layout (compact) ===== */
+/* ===== Confirm layout (extra-tight + taller rows) ===== */
 .confirm-page .sit-card{
   display:flex;
-  gap:12px;
-  padding:10px 12px;
+  gap:6px;
+  padding:6px 8px;
 }
 
 /* Two-column layout */
 .confirm-grid{
-  --side-w: 220px;          /* थोड़ा सा बढ़ाया ताकि barcode card आराम से आ जाए */
+  --side-w: 140px;            /* 150 -> 140 (sidebar और पतला) */
   display:flex;
 }
-.confirm-side{
-  width:var(--side-w);
-  flex:0 0 var(--side-w);
-}
-.confirm-main{
-  flex:1 1 auto;
-  min-width:0;
-}
+.confirm-side{ width:var(--side-w); flex:0 0 var(--side-w); }
+.confirm-main{ flex:1 1 auto; min-width:0; }
 
-/* Sidebar box */
+/* Sidebar */
 .side-box{
   border:1px solid #e6e9f0; border-radius:10px;
-  padding:10px;
-  background:#f9fafb;
-  display:flex; flex-direction:column; gap:8px;
+  padding:6px; background:#f9fafb;
+  display:flex; flex-direction:column; gap:6px;
 }
-.side-title{ font-weight:700; color:#0f172a; font-size:12.5px; }
-.side-note{ font-size:11.5px; color:#64748b; line-height:1.35; }
-.side-stats{ font-size:12.5px; display:grid; gap:4px; }
+.side-title{ font-weight:700; color:#0f172a; font-size:11.5px; }
+.side-note{ font-size:10.5px; color:#64748b; line-height:1.3; }
+.side-stats{ font-size:11.5px; display:grid; gap:4px; }
+.btn-sm{ height:22px; padding:0 6px; font-size:10.5px; }
 
-/* Buttons */
-.btn-sm{ height:26px; padding:0 8px; font-size:11.5px; }
-
-/* ===== Table compaction ===== */
+/* ===== Table (no scroll, tighter width, taller rows) ===== */
 .confirm-narrow{ overflow:hidden; }
 .confirm-table{
-  font-size:11.5px;
-  table-layout:auto;
+  font-size:10.5px;
+  table-layout:fixed;
+  border-collapse:separate;
+  border-spacing:0;
+  width:100%;
+  min-width:auto;
+  line-height:1.25;
 }
-.confirm-table thead th{ padding:5px 5px; }
-.confirm-table tbody td{  padding:4px 5px; }
+.confirm-table thead th{
+  padding:4px 3px;
+  white-space:nowrap;
+}
+.confirm-table tbody td{
+  padding:5px 3px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 
+/* Inputs: slim width, taller height */
 .confirm-table .sit-input{
   height:24px;
-  padding:0 5px;
-  font-size:11.5px;
+  padding:0 3px;
+  font-size:10.5px;
   min-width:0;
 }
-
-/* Equal buttons row */
-.equal-actions{
-  display:flex;
-  gap:8px;
-  margin-top:10px;
-}
-.equal-actions .btn{
-  flex:1 1 0;
+.confirm-table select.sit-input{
+  padding-right:16px;
+  -webkit-appearance:none;
+     -moz-appearance:none;
+          appearance:none;
 }
 
-/* ===== Barcode Preview Card (moved here for Expanded page) ===== */
+/* ---- EVEN NARROWER column widths (S.No + 9 cols) ---- */
+.confirm-table thead th:nth-child(1){  width:36px; }   /* S.No   */
+.confirm-table thead th:nth-child(2){  width:68px; }   /* Code   */
+.confirm-table thead th:nth-child(3){  width:108px; }  /* Product*/
+.confirm-table thead th:nth-child(4){  width:58px; }   /* Size   */
+.confirm-table thead th:nth-child(5){  width:80px; }   /* Location*/
+.confirm-table thead th:nth-child(6){  width:56px; }   /* Discount*/
+.confirm-table thead th:nth-child(7){  width:68px; }   /* Selling Price*/
+.confirm-table thead th:nth-child(8){  width:64px; }   /* MRP    */
+.confirm-table thead th:nth-child(9){  width:42px; }   /* Qty    */
+.confirm-table thead th:nth-child(10){ width:88px; }   /* Barcode*/
+
+/* Numbers right-aligned */
+.confirm-table tbody td:nth-child(6) .sit-input,
+.confirm-table tbody td:nth-child(7) .sit-input,
+.confirm-table tbody td:nth-child(8) .sit-input,
+.confirm-table tbody td:nth-child(9) .sit-input{
+  text-align:right;
+}
+
+/* Bottom actions */
+.equal-actions{ display:flex; gap:6px; margin-top:6px; }
+.equal-actions .btn{ flex:1 1 0; }
+
+/* Barcode preview */
 .bc-card{
   width:100%;
   background:#fff; border:1px solid #e6e9f0; border-radius:12px;
   box-shadow:0 4px 14px rgba(25,42,70,.08);
-  padding:9px 10px 8px;
-  position:relative; text-align:center; box-sizing:border-box;
+  padding:6px 7px 6px; text-align:center; box-sizing:border-box;
 }
-.bc-brand{ position:absolute; top:6px; right:8px; font-size:10px; color:#9aa3af; }
-.bc-title{ margin-top:6px; font-size:17px; font-weight:800; color:#0f172a; }
-.bc-mrp{ margin-top:2px; font-weight:700; color:#0f172a; font-size:12.5px; }
-.bc-bars{ margin:8px auto 6px; height:56px; width:88%; display:flex; align-items:flex-end; justify-content:center; gap:2px; }
-.bc-bars .bar{ display:block; width:2px; height:100%; background:#0f172a; }
+.bc-title{ margin-top:3px; font-size:15px; font-weight:800; color:#0f172a; }
+.bc-mrp{ margin-top:2px; font-weight:700; color:#0f172a; font-size:11.5px; }
+.bc-bars{ margin:5px auto; height:48px; width:88%; display:flex; align-items:flex-end; justify-content:center; gap:2px; }
+.bc-bars .bar{ width:2px; height:100%; background:#0f172a; }
 .bc-bars .bar-thick{ width:3px; }
-.bc-code{ letter-spacing:2px; font-weight:600; color:#0f172a; font-size:12px; }
-.bc-generate{ margin-top:8px; width:100%; box-sizing:border-box; }
+.bc-code{ letter-spacing:2px; font-weight:600; color:#0f172a; font-size:11.5px; }
 
-/* Responsive: stack sidebar under 900px */
+/* Responsive */
 @media (max-width: 900px){
   .confirm-grid{ flex-direction:column; }
   .confirm-side{ width:100%; flex:1 1 auto; order:2; }
   .confirm-main{ order:1; }
+}
+
+/* ====== UPDATES: taller buttons + header home icon alignment + dark Back ====== */
+
+/* Make all page buttons taller */
+.confirm-page .btn{
+  height:34px;                /* 28 -> 34 */
+  padding:6px 12px;           /* 4/10 -> 6/12 */
+  font-size:12px;             /* slight bump for legibility */
+  line-height:1;              
+}
+
+/* Bottom action buttons should NOT stretch full width */
+.equal-actions .btn{
+  flex:0 0 auto;              
+  min-width:120px;            /* a bit wider to match new height */
+}
+
+/* Sidebar Generate button: keep compact and centered */
+.confirm-page .bc-generate{
+  align-self:center;
+  min-width:130px;
+  width:auto;
+}
+
+/* Pagination buttons (unchanged size) */
+.confirm-page .pg-btn{
+  padding:2px 6px;
+  min-width:28px;
+  height:24px;
+  line-height:1;
+}
+
+/* Header: align Home icon with content */
+.sit-bc{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  height:34px;
+}
+.sit-bc .sit-home{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:34px;
+  width:34px;
+  margin-left:8px;
+  cursor:pointer;
+}
+.sit-bc .sit-home svg{
+  display:block;
+  width:18px; height:18px;
+}
+
+/* Dark BACK button (bottom actions) */
+.confirm-page .confirm-actions .btn.btn-outline{
+  background:#0f172a;         /* dark slate */
+  border:1px solid #0f172a;
+  color:#fff;
+}
+.confirm-page .confirm-actions .btn.btn-outline:hover{
+  background:#111827;         /* slightly darker on hover */
+  border-color:#111827;
+}
+.confirm-page .confirm-actions .btn.btn-outline:focus{
+  outline:2px solid #1f2937;  /* subtle focus ring */
+  outline-offset:1px;
 }

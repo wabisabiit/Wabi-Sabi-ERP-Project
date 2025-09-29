@@ -252,8 +252,8 @@ export default function BarcodePrintConfirmPage() {
       <div className="sit-bc">
         <div className="sit-bc-left">
           <span className="sit-title">Barcode Print – Excel Mode</span>
-          <span className="sit-sep">|</span>
-          <span className="t-dim">Paste from Excel • Use arrows / Tab / Enter</span>
+          {/* <span className="sit-sep">|</span> */}
+          {/* <span className="t-dim">Paste from Excel • Use arrows / Tab / Enter</span> */}
         </div>
         <div className="sit-home" aria-label="Home">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
@@ -310,7 +310,7 @@ export default function BarcodePrintConfirmPage() {
                 {excelRows.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="t-dim" style={{ padding: "12px 8px" }}>
-                      Click any cell or the table and press <b>Ctrl/Cmd+V</b> to paste a grid from Excel/Sheets.
+                      {/* Click any cell or the table and press <b>Ctrl/Cmd+V</b> to paste a grid from Excel/Sheets. */}
                     </td>
                   </tr>
                 ) : (
