@@ -124,3 +124,132 @@
 .c-actions{
     padding-left: 20px;
 }
+
+/* ========== Colors used in the screenshots ========== */
+:root{
+  --ns-blue:#2da7f7;         /* highlight blue */
+  --ns-blue-weak:#e9f5fe;    /* light blue bg */
+  --ns-border:#d7e6f3;       /* light border */
+  --ns-text:#2c3e50;
+  --ns-muted:#6a7d90;
+  --ns-placeholder:#9fb4c6;
+  --ns-shadow:0 8px 24px rgba(16,24,40,.08);
+}
+
+/* keep labels tidy */
+.ns-fg label{
+  display:block;
+  font-size:12px;
+  color:#6a7d90;
+  margin:0 0 6px;
+}
+
+/* ================== Searchable Select ================== */
+.sselect{
+  position:relative;
+  user-select:none;
+  cursor:pointer;
+}
+
+.sselect-display{
+  height:36px;
+  padding:6px 34px 6px 10px;
+  border:1px solid var(--ns-border);
+  border-radius:6px;
+  background:#fff;
+  color:var(--ns-text);
+  font-size:13px;
+  line-height:22px;
+}
+.sselect-display.placeholder{ color:var(--ns-placeholder); }
+
+/* arrow like native select */
+.sselect-display .arrow{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent;
+  border-top:6px solid var(--ns-placeholder);
+}
+
+/* popup */
+.sselect-pop{
+  position:absolute; left:0; top:calc(100% + 6px);
+  background:#fff;
+  border:1px solid var(--ns-border);
+  border-radius:6px;
+  box-shadow:var(--ns-shadow);
+  z-index:1000;
+  overflow:hidden;
+}
+
+/* search input at top (like image) */
+.sselect-search{
+  padding:8px;
+  border-bottom:1px solid var(--ns-border);
+  background:#fff;
+}
+.sselect-search input{
+  width:100%;
+  height:30px;
+  border:1px solid var(--ns-border);
+  border-radius:6px;
+  padding:4px 8px;
+  font-size:13px;
+  outline:none;
+}
+.sselect-search input:focus{
+  border-color:var(--ns-blue);
+  box-shadow:0 0 0 2px rgba(45,167,247,.12);
+}
+
+/* list */
+.sselect-list{
+  max-height:220px;
+  overflow:auto;
+  background:#fff;
+}
+.sselect-opt{
+  padding:8px 10px;
+  font-size:13px;
+  color:var(--ns-text);
+}
+.sselect-opt:hover{
+  background:var(--ns-blue);
+  color:#fff;
+}
+.sselect-opt.active{
+  background:var(--ns-blue);
+  color:#fff;
+}
+
+/* empty state in dropdown */
+.sselect-empty{
+  padding:10px;
+  font-size:13px;
+  color:var(--ns-muted);
+  background:#fff;
+}
+
+/* focus ring when opened (optional) */
+.sselect.open .sselect-display{
+  border-color:var(--ns-blue);
+  box-shadow:0 0 0 2px rgba(45,167,247,.12);
+}
+
+/* Filters layout stays compact */
+.ns-filters{
+  display:flex; gap:16px; padding:12px 12px 6px;
+}
+
+/* “Result not found.” row in table */
+.ns-empty{
+  text-align:center;
+  padding:28px 8px;
+  color:#6a7d90;
+  background:#fff;
+}
+
+/* Pills (existing tones) – ensure visibility */
+.pill{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; margin:0 6px 6px 0; }
+.pill--blue{ background:#e6f0ff; color:#1f3b8e; }
+.pill--green{ background:#e9f7ef; color:#246b3d; }
+.pill--red{ background:#fde8e8; color:#9b1c1c; }

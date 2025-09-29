@@ -1,0 +1,196 @@
+/* ====== Page Skin (matches your app theme) ====== */
+.ip-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:14px 16px 24px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px; color:#1f2937;
+}
+
+/* Breadcrumb / top bar */
+.ip-bc{
+  height:34px;
+  background:linear-gradient(#f4f7fb,#edf1f7);
+  border:1px solid #e6e9f0; border-radius:8px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 10px 0 12px; color:#334155; margin:0 2px 10px;
+}
+.ip-bc-left{ display:flex; align-items:center; gap:8px; }
+.ip-title{ font-size:14px; font-weight:600; color:#1e293b; }
+.ip-home{ font-size:18px; color:#94a3b8; }
+
+/* ====== Tabs ====== */
+.ip-tabs{
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  padding:6px 4px 12px;
+}
+.ip-tab{
+  border:1px solid #e5e7eb; background:#fff; color:#374151;
+  padding:6px 12px; border-radius:20px; cursor:pointer;
+  font-weight:500;
+}
+.ip-tab.active{
+  background:#2563eb; border-color:#2563eb; color:#fff;
+}
+
+/* ====== Body ====== */
+.ip-body{ padding:6px 2px 0; }
+
+/* Cards grid (3 cols in screenshot, we’ll keep responsive) */
+.ip-cards{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap:16px;
+}
+@media (max-width: 1100px){
+  .ip-cards{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+}
+@media (max-width: 720px){
+  .ip-cards{ grid-template-columns: 1fr; }
+}
+
+/* Card */
+.ip-card{
+  background:#fff; border:1px solid #e8edf4; border-radius:8px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+  padding:14px 14px 10px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.ip-card-head{
+  display:flex; align-items:center; justify-content:space-between;
+}
+.ip-brand{ display:flex; align-items:center; gap:14px; }
+.ip-logo{
+  width:68px; height:40px; display:grid; place-items:center;
+  background:#fff;
+}
+.ip-woo{
+  font-weight:800; font-size:18px; padding:4px 8px; border-radius:6px;
+  background:#7c3aed; color:#fff; text-transform:uppercase;
+}
+.ip-shopify-logo{ width:68px; height:auto; object-fit:contain; }
+
+.ip-brand-name{ display:flex; align-items:baseline; gap:6px; }
+.ip-woo-badge{
+  display:inline-block; padding:3px 8px; border-radius:6px;
+  background:#7c3aed; color:#fff; font-weight:700; font-size:12px;
+}
+.ip-brand-text{ font-size:20px; font-weight:700; letter-spacing:.2px; color:#111827; }
+
+.ip-card-arrow{
+  width:30px; height:30px; display:inline-grid; place-items:center;
+  border:0; border-radius:50%;
+  background:#e7eefb; color:#2563eb; cursor:pointer;
+}
+
+/* Footer row inside card */
+.ip-card-foot{
+  display:flex; align-items:center; gap:8px; padding-left:6px;
+}
+.ip-mini-toggle{
+  width:26px; height:16px; padding:0; border-radius:16px; border:0;
+  background:#e5e7eb; position:relative; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:flex-start;
+}
+.ip-mini-toggle .ip-dot{
+  width:10px; height:10px; border-radius:50%;
+  background:#9ca3af; margin-left:3px; transition:all .18s ease;
+}
+.ip-mini-toggle .ip-dot.on{
+  background:#2563eb; margin-left:13px;
+}
+.ip-activate{
+  color:#6b7280; font-weight:600;
+}
+
+/* Empty placeholders for other tabs */
+.ip-empty{ padding:20px 4px; }
+.ip-empty-card{
+  background:#fff; border:1px solid #e8edf4; border-radius:8px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+  padding:20px; display:flex; align-items:center; gap:10px; color:#6b7280;
+}
+
+/* Footer */
+.ip-foot{ margin-top:18px; color:#9aa3af; font-size:12px; }
+
+/* ===== Filters row for Payment ===== */
+.ip-filters{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  align-items:end;
+  gap:16px;
+  padding:8px 2px 14px;
+}
+
+/* ===== Searchable Select ===== */
+.ip-ss-field{ display:flex; flex-direction:column; gap:6px; }
+.ip-ss-label{ font-weight:600; color:#4b5563; }
+.ip-req{ color:#ef4444; }
+
+.ip-ss{
+  position:relative;
+  width:100%;
+  outline:0;
+}
+.ip-ss-btn{
+  width:100%;
+  height:34px;
+  border:1px solid #d1d5db;
+  border-radius:6px;
+  background:#fff;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 10px; cursor:pointer;
+}
+.ip-ss.open .ip-ss-btn{ border-color:#9bb3ff; box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+
+.ip-ss-placeholder{ color:#9ca3af; }
+.ip-ss-placeholder.has{ color:#111827; }
+
+.ip-ss-caret{ color:#6b7280; font-size:20px; }
+
+/* popup */
+.ip-ss-pop{
+  position:absolute; top:36px;
+  min-width:100%;
+  background:#fff;
+  border:1px solid #e5e7eb; border-radius:6px;
+  box-shadow:0 10px 28px rgba(0,0,0,.16);
+  z-index:20;
+}
+.ip-ss-pop.right{ right:0; }
+.ip-ss-pop.left{ left:0; }
+
+.ip-ss-search{
+  width:100%;
+  height:34px;
+  border:0; border-bottom:1px solid #e5e7eb;
+  padding:0 10px;
+  outline:none;
+}
+
+.ip-ss-list{ max-height:220px; overflow:auto; }
+.ip-ss-opt{
+  width:100%; text-align:left;
+  padding:8px 10px; background:#fff; border:0; cursor:pointer;
+}
+.ip-ss-opt:hover{ background:#2563eb; color:#fff; }
+.ip-ss-opt.sel{ background:#eaf0ff; }
+
+.ip-ss-empty{ padding:10px; color:#9ca3af; }
+
+/* Logo text helper (for placeholders) */
+.ip-logo-text{ font-weight:800; font-size:18px; }
+
+/* keep cards spacing under filters */
+.ip-cards{ margin-top:4px; }
+
+/* Payment card logos */
+.ip-pay-logo{
+  max-width: 120px;
+  max-height: 40px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}

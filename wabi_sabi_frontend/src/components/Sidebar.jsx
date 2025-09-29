@@ -272,6 +272,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/settings/notification" className={linkClass} onClick={handleNav}>
                 Notification
               </NavLink>
+              <NavLink to="/settings/integration" className={linkClass} onClick={handleNav}>
+                Integration
+              </NavLink>
             </div>
           </div>
         </nav>
