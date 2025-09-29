@@ -1,0 +1,126 @@
+/* ===== Page ===== */
+:root{
+  --ns-btn-blue: #2AA6FF;      /* Filter button bg */
+  --ns-btn-blue-hover: #1E95F0;
+  --ns-tick-blue: #2AA6FF;     /* Checkbox tick color */
+}
+.ns-wrap{
+  background:#eef2f7; min-height:100vh; padding:14px 16px 26px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px; color:#1f2937;
+}
+
+/* Breadcrumb */
+.ns-bc{ display:flex; align-items:center; justify-content:space-between; margin:2px 2px 10px; }
+.ns-left{ display:flex; align-items:center; gap:8px; }
+.ns-home{ color:#9aa3af; }
+.ns-title{ font-size:16px; font-weight:500; color:#1f2937; }
+
+/* Card */
+.ns-card{
+  background:#fff; border:1px solid #e6ebf2; border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06); padding:10px 10px 14px;
+}
+
+/* ===== Top right bar ===== */
+.ns-topbar{
+  display:flex; align-items:center; gap:10px; justify-content:flex-end;
+  padding:4px 4px 8px;
+}
+
+.ns-btn{
+  height:34px; border-radius:6px; border:1px solid transparent;
+  display:inline-flex; align-items:center; gap:6px; padding:0 12px; cursor:pointer;
+  font-weight:600; letter-spacing:.2px;
+}
+.ns-btn--primary{ background:#0ea5e9; color:#fff; }
+
+
+/* Blue filter button, white icon; when active, icon turns black */
+.ns-btn--filter{ background:var(--ns-btn-blue); color:#fff; }
+.ns-btn--filter:hover{ background:var(--ns-btn-blue-hover); }
+.ns-btn--filter .material-icons{ font-size:18px; color:#fff; }
+.ns-btn--filter.active .material-icons{ color:#111827; } /* icon becomes black when open */
+
+/* Search box (right) */
+.ns-search input{
+  height:34px; width:220px; border:1px solid #d1d5db; border-radius:6px; padding:0 10px;
+}
+
+
+/* ===== Collapsible filters row ===== */
+.ns-filters{
+  display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;
+  padding:6px 4px 10px; border-top:1px dashed #e5e7eb; margin-top:6px;
+}
+.ns-fg{ display:flex; flex-direction:column; gap:4px; }
+.ns-fg label{ font-size:12px; color:#6b7280; }
+.ns-fg select{
+  min-width:180px; height:34px; border:1px solid #d1d5db; border-radius:6px;
+  padding:0 10px; background:#fff;
+}
+
+/* ===== Table ===== */
+.ns-table-wrap{ overflow:auto; border:1px solid #e8edf4; border-radius:8px; }
+.ns-table{ width:100%; border-collapse:separate; border-spacing:0; }
+.ns-table thead th{
+  background:linear-gradient(#f7f9fc,#f0f4f9);
+  color:#374151; font-weight:700; font-size:12px; text-align:left;
+  padding:10px 12px; border-bottom:1px solid #e5e7eb;
+}
+.ns-table tbody td{ padding:10px 12px; border-bottom:1px solid #f0f2f5; color:#374151; }
+.ns-table tbody tr:nth-child(even){ background:#fafbfe; }
+
+/* Column sizing */
+.c-sr{ width:70px; }
+.c-event{ width:320px; }
+.c-module{ width:140px; }
+.c-sender{ width:120px; }
+.c-receiver{ min-width:260px; }
+.c-chan{ width:110px; text-align:center; }
+.c-actions{ width:150px; white-space:nowrap; }   /* keep icons in one line */
+
+/* Pills */
+.pill{
+  display:inline-block; padding:3px 10px; border-radius:6px; font-weight:700;
+  border:1px solid; margin-right:6px; margin-bottom:4px; font-size:11px;
+}
+.pill--blue { color:#2563eb; background:#eef5ff; border-color:#cfe1ff; }
+.pill--green{ color:#16a34a; background:#ecfdf5; border-color:#bbf7d0; }
+.pill--red  { color:#b91c1c; background:#fef2f2; border-color:#fecaca; }
+
+/* Checkboxes – white tick */
+.chk{ position:relative; display:inline-flex; align-items:center; justify-content:center; }
+.chk input{ position:absolute; opacity:0; }
+.chk .box{
+  width:18px; height:18px; border:1px solid #cbd5e1; border-radius:4px; background:#fff; display:inline-block;
+  position:relative;
+}
+.chk input:checked + .box{
+  border-color:var(--ns-tick-blue); background:#fff; /* stays white */
+}
+.chk input:checked + .box::after{
+  content:""; position:absolute; left:4px; top:1px; width:8px; height:14px;
+  border-right:3px solid var(--ns-tick-blue);
+  border-bottom:3px solid var(--ns-tick-blue);
+  transform:rotate(45deg);
+}
+
+
+/* Actions – single row, black background */
+.act{ display:flex; align-items:center; gap:8px; }
+.ico{
+  width:28px; height:28px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:#ffffff; color:#111827;
+  border:1px solid #cbd5e1; box-shadow:0 1px 0 #e5e7eb inset;
+}
+.ico .material-icons{ font-size:16px; line-height:1; }
+/* Small screens */
+@media (max-width:1100px){
+  .ns-table-wrap{ box-shadow:inset -8px 0 8px -8px rgba(0,0,0,.06); }
+}
+
+.c-actions{
+    padding-left: 20px;
+}

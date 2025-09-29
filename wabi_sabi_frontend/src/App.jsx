@@ -51,6 +51,7 @@ import GeneralSettingsPage from "./components/GeneralSettingsPage";
 import EditProfilePage from "./components/EditProfilePage";
 import NewUserRolePage from "./components/NewUserRolePage";
 import PosSettingPage from "./components/PosSettingPage";
+import NotificationSettingsPage from "./components/NotificationSettingsPage";
 
 import ProductsPage from "./components/InventoryProductsPage";
 
@@ -134,6 +135,7 @@ export default function App() {
       <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
       <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
       <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
+      <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />

@@ -269,6 +269,9 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               <NavLink to="/settings/pos" className={linkClass} onClick={handleNav}>
                 POS
               </NavLink>
+              <NavLink to="/settings/notification" className={linkClass} onClick={handleNav}>
+                Notification
+              </NavLink>
             </div>
           </div>
         </nav>
