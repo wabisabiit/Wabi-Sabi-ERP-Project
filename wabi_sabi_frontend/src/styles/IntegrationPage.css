@@ -1,3 +1,5 @@
+/* src/styles/IntegrationPage.css */
+
 /* ====== Page Skin (matches your app theme) ====== */
 .ip-wrap{
   background:#eef2f7;
@@ -100,7 +102,7 @@
   background:#2563eb; margin-left:13px;
 }
 .ip-activate{
-  color:#6b7280; font-weight:600;
+  color:#6b7280; font-weight:600; position: relative; top:25px;
 }
 
 /* Empty placeholders for other tabs */
@@ -193,4 +195,211 @@
   height: auto;
   object-fit: contain;
   display: block;
+}
+
+/* Slightly taller cards so the grid fills without scrolling */
+.ip-card { min-height: 128px; }
+
+/* ===== Payment card layout (scoped) ===== */
+.ip-card-pay .ip-card-head { position: relative; }
+.ip-card-pay .ip-brand { display: flex; align-items: center; }
+.ip-card-pay .ip-brand-name { z-index: 2; }
+.ip-card-pay .ip-logo{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 8px;
+  width: 160px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.ip-card-pay .ip-pay-logo{
+  width: 100%;
+  height: 100%;
+  max-width: 160px;
+  max-height: 48px;
+  object-fit: contain;
+  display: block;
+}
+.ip-card-pay .ip-card-arrow { position: relative; z-index: 3; }
+
+/* ================= Messages tab ================= */
+.msg-wrap{
+  display:grid;
+  grid-template-columns: 170px 1fr;
+  gap:18px;
+  align-items:start;
+}
+
+/* Left vertical tabs */
+.msg-left{ display:flex; flex-direction:column; gap:12px; }
+.msg-tab{
+  height:64px;
+  border:1px solid #e5e7eb;
+  background:#f7fafc;
+  border-radius:10px;
+  font-weight:600;
+  color:#475569;
+  cursor:pointer;
+}
+.msg-tab.active{
+  background:#dbeafe;
+  border-color:#bfdbfe;
+  color:#2563eb;
+}
+
+/* Top row (toggle + default select) */
+.msg-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  margin-bottom:8px;
+}
+.msg-default{
+  display:flex; align-items:center; gap:10px;
+}
+.msg-default-label{ color:#334155; font-weight:600; }
+
+/* iOS-style toggle */
+.msg-toggle{ display:flex; align-items:center; gap:10px; }
+.msg-toggle input{ display:none; }
+.msg-toggle-track{
+  width:42px; height:22px; background:#e5e7eb; border-radius:22px;
+  position:relative; display:inline-block; vertical-align:middle;
+}
+.msg-toggle-thumb{
+  position:absolute; top:3px; left:3px;
+  width:16px; height:16px; background:#9ca3af; border-radius:50%;
+  transition:all .2s ease;
+}
+.msg-toggle input:checked + .msg-toggle-track{ background:#2563eb; }
+.msg-toggle input:checked + .msg-toggle-track .msg-toggle-thumb{ left:23px; background:#fff; }
+.msg-toggle-label{ font-weight:600; color:#374151; }
+
+/* Providers grid (3 cards) */
+.msg-grid{
+  display:grid; grid-template-columns: repeat(3, minmax(220px,1fr));
+  gap:18px; margin:10px 0 14px;
+}
+.msg-card{
+  background:#fff; border:1px solid #e8edf4; border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+  height:120px; position:relative; display:flex; align-items:center; justify-content:center;
+}
+.msg-card-logo{ width:200px; height:70px; display:grid; place-items:center; }
+.msg-logo{ width:120px; height:80px; object-fit:contain; display:block; }
+
+/* NEW: provider name top-left */
+.msg-card-name{
+  position:absolute;
+  left:12px;
+  top:10px;
+  font-weight:700;
+  color:#0f172a;
+}
+
+/* round action button bottom-right (now shows → only) */
+.msg-card-btn{
+  position:absolute; right:12px; bottom:12px;
+  width:30px; height:30px; border-radius:50%;
+  border:0; background:#e7f0ff; color:#2563eb; cursor:pointer;
+  display:grid; place-items:center;
+}
+.msg-card-btn.on{ background:#2563eb; color:#fff; }
+
+/* Table */
+.msg-table-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin:6px 0 8px;
+}
+.msg-table-title{ font-weight:700; color:#0f172a; }
+.msg-create-btn{
+  background:#22a6f2; color:#fff; border:0; border-radius:8px;
+  padding:8px 14px; font-weight:600; cursor:pointer;
+}
+
+.msg-table-wrap{
+  background:#fff; border:1px solid #e8edf4; border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+  overflow:hidden;
+}
+.msg-table{
+  width:100%; border-collapse:separate; border-spacing:0;
+}
+.msg-table thead th{
+  background:#f8fafc; color:#374151; text-align:left;
+  padding:10px 12px; font-weight:700; border-bottom:1px solid #eef2f7;
+}
+.msg-table tbody td{ padding:12px; color:#374151; }
+.msg-empty-row td{ text-align:center; color:#9ca3af; padding:24px 12px; }
+
+.msg-table-foot{
+  padding:10px 12px; color:#64748b; border-top:1px solid #eef2f7;
+  background:#fafafa;
+}
+
+/* ===== New SMS Template Modal (namespaced) ===== */
+.msgm-overlay{
+  position:fixed; inset:0; z-index:3000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.35);
+}
+
+.msgm-card{
+  width:650px; max-width:92vw; background:#fff;
+  border:1px solid #e6e6e6; border-radius:8px; overflow:hidden;
+  box-shadow:0 14px 36px rgba(0,0,0,.22); font-family:inherit;
+}
+
+.msgm-header{
+  height:56px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; border-bottom:1px solid #eee;
+}
+.msgm-header h3{ margin:0; font-size:22px; font-weight:700; color:#111827; }
+.msgm-close{ width:36px; height:36px; border:0; background:transparent; cursor:pointer; color:#6b7280; }
+.msgm-close .material-icons{ font-size:22px; }
+
+.msgm-body{ padding:18px 18px 8px; }
+.msgm-grid{
+  display:grid; grid-template-columns: 1fr 1fr; gap:14px 16px; margin-bottom:10px;
+}
+.msgm-field{ display:flex; flex-direction:column; gap:6px; }
+.msgm-label{ font-weight:600; color:#374151; }
+.req{ color:#ef4444; }
+
+.msgm-input, .msgm-textarea{
+  width:100%; border:1px solid #d1d5db; border-radius:6px; background:#fff;
+  padding:9px 10px; font:inherit; color:#111827;
+}
+.msgm-textarea{ min-height:96px; resize:vertical; }
+
+.msgm-select .ip-ss { width:100%; }
+.msgm-select .ip-ss-btn{ height:36px; }
+
+.msgm-default{
+  margin:10px 0 8px; display:flex; align-items:center; gap:8px; color:#4b5563; font-weight:600;
+}
+.msgm-default input{ width:16px; height:16px; }
+
+.msgm-metrics{
+  display:flex; gap:36px; color:#64748b; padding-top:6px; padding-bottom:4px;
+  border-top:1px solid transparent;
+}
+
+.msgm-footer{
+  display:flex; justify-content:flex-end; gap:10px;
+  padding:10px 16px 14px; border-top:1px solid #eee; background:#fafafa;
+}
+.msgm-btn{
+  height:36px; padding:0 14px; border-radius:8px; border:1px solid transparent;
+  font-weight:600; cursor:pointer;
+}
+.msgm-btn-light{
+  background:#eef2f7; color:#374151; border-color:#e5e7eb;
+}
+.msgm-btn-primary{
+  background:#22a6f2; color:#fff; border-color:#22a6f2;
 }
