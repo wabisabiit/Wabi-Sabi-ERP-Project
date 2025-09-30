@@ -55,6 +55,7 @@ import NotificationSettingsPage from "./components/NotificationSettingsPage";
 import IntegrationPage from "./components/IntegrationPage";
 
 import ProductsPage from "./components/InventoryProductsPage";
+import NewInventoryProductPage from "./components/NewInventoryProductPage"; // ✅ renamed import
 
 import "./App.css";
 
@@ -92,23 +93,25 @@ export default function App() {
 
   return (
     <Routes>
-      {/* Home -> POS */}
       <Route path="/" element={<Navigate to="/new" replace />} />
       <Route path="/new" element={<POSLayout />} />
 
       {/* Contact */}
       <Route path="/contact" element={<SidebarLayout><ContactPage /></SidebarLayout>} />
 
-      {/* Admin -> Employees */}
+      {/* Admin */}
       <Route path="/admin/employee" element={<SidebarLayout><EmployeePage /></SidebarLayout>} />
       <Route path="/admin/employee/new" element={<SidebarLayout><EmployeeCreatePage /></SidebarLayout>} />
-
-      {/* Admin -> Outlets */}
       <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
       <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
 
       {/* Inventory */}
       <Route path="/inventory/products" element={<SidebarLayout><ProductsPage /></SidebarLayout>} />
+      {/* ✅ New Inventory Product page (no top header, sidebar only) */}
+      <Route
+        path="/inventory/products/new"
+        element={<SidebarLayout><NewInventoryProductPage /></SidebarLayout>}
+      />
 
       {/* Bank / Cash */}
       <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
@@ -127,7 +130,6 @@ export default function App() {
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
       <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
       <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
-      {/* ✅ Third page with sidebar */}
       <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
 
       {/* Settings */}
@@ -138,8 +140,6 @@ export default function App() {
       <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
       <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
       <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
-
-      
 
       {/* Credit Note */}
       <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
@@ -154,7 +154,7 @@ export default function App() {
       <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
       <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
-      {/* Multiple Pay (POS flow) */}
+      {/* Multiple Pay */}
       <Route
         path="/multiple-pay"
         element={
@@ -170,7 +170,6 @@ export default function App() {
         }
       />
 
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/new" replace />} />
     </Routes>
   );
