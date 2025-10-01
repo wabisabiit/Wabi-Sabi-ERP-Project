@@ -36,12 +36,12 @@ function makeRow(i) {
     showOnline: false,
   };
 }
-function generateRows(n = 200) {
+function generateRows(n = 15) {
   return Array.from({ length: n }, (_, i) => makeRow(i));
 }
 
 /* -------------------- helpers -------------------- */
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200, 500, 1000];
+const PAGE_SIZE_OPTIONS = [10, 15];
 
 function paginate(totalPages, current) {
   const last = totalPages;
@@ -229,23 +229,70 @@ async function exportRowsToPdf(rows, filename) {
   }
 }
 
+/* ===== CSV → Map(ItemCode -> HSN) ===== */
+function parseHsnCsv(text) {
+  // pick delimiter: comma, semicolon or tab (the one that appears most in the first line)
+  const firstLine = text.split(/\r?\n/)[0] || "";
+  const delims = [",", ";", "\t"];
+  const delim =
+    delims
+      .map((d) => [d, (firstLine.match(new RegExp(`\\${d}`, "g")) || []).length])
+      .sort((a, b) => b[1] - a[1])[0]?.[0] || ",";
+
+  const rows = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const unquote = (s) => s.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1").trim();
+
+  const splitRow = (line) => line.split(delim).map((c) => unquote(c));
+
+  if (rows.length === 0) return new Map();
+
+  // detect headers
+  const header = splitRow(rows[0]).map((h) => h.toLowerCase().replace(/\s+/g, ""));
+  const looksHeader =
+    header.includes("itemcode") ||
+    header.includes("item_code") ||
+    header.includes("code") ||
+    header.includes("hsn");
+
+  const startIdx = looksHeader ? 1 : 0;
+  let idxItem = 0, idxHsn = 1;
+  if (looksHeader) {
+    idxItem = header.findIndex((h) => ["itemcode", "item_code", "code"].includes(h));
+    idxHsn = header.findIndex((h) => ["hsn", "hsncode", "hsn_code"].includes(h));
+    if (idxItem === -1) idxItem = 0;
+    if (idxHsn === -1) idxHsn = 1;
+  }
+
+  const map = new Map();
+  for (let i = startIdx; i < rows.length; i++) {
+    const cols = splitRow(rows[i]);
+    const item = (cols[idxItem] || "").trim();
+    const hsn = (cols[idxHsn] || "").trim();
+    if (!item || !hsn) continue;
+    map.set(item, hsn);
+  }
+  return map;
+}
+
 /* -------------------- main component -------------------- */
 export default function InventoryProductsPage() {
   const navigate = useNavigate();
-  const [rows, setRows] = useState(() => generateRows(200));
+  const [rows, setRows] = useState(() => generateRows(15)); // ← only 15 rows
 
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10); // default 10
   const [page, setPage] = useState(1);
   const [psOpen, setPsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  // ✅ per-row action menu open id
+  // per-row action menu
   const [actionOpenId, setActionOpenId] = useState(null);
-
-  // ✅ store DOM refs per row for outside-click handling
-  const actionRefs = useRef({}); // { [rowId]: HTMLElement }
+  const actionRefs = useRef({});
 
   const [selectedIds, setSelectedIds] = useState(new Set());
 
@@ -262,9 +309,54 @@ export default function InventoryProductsPage() {
     setRows((list) => list.map((r) => (r.id === uploadForRowRef.current ? { ...r, images: [...(r.images || []), ...urls] } : r)));
     e.target.value = "";
   };
-  useEffect(() => () => { rows.forEach((r) => (r.images || []).forEach((u) => URL.revokeObjectURL(u))); }, []); // eslint-disable-line
+  useEffect(() => () => {
+    rows.forEach((r) => (r.images || []).forEach((u) => URL.revokeObjectURL(u)));
+  }, []); // eslint-disable-line
 
-  // options (sub brand / sub category removed)
+  // ===== NEW: HSN import =====
+  const hsnImportRef = useRef(null);
+  const onPickHsnFile = () => hsnImportRef.current?.click();
+  const onHsnFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = String(reader.result || "");
+        const map = parseHsnCsv(text);
+        if (map.size === 0) {
+          alert("CSV me valid 'Item Code' aur 'HSN' data nahi mila.");
+          e.target.value = "";
+          return;
+        }
+        let updated = 0, matched = 0;
+        setRows((list) =>
+          list.map((r) => {
+            const nextHsn = map.get(r.itemCode) || map.get(r.itemCode.trim());
+            if (nextHsn) {
+              matched++;
+              if (nextHsn !== r.hsn) {
+                updated++;
+                return { ...r, hsn: nextHsn };
+              }
+            }
+            return r;
+          })
+        );
+        setTimeout(() => {
+          alert(`HSN Import complete:\nMatched: ${matched}\nUpdated: ${updated}`);
+        }, 0);
+      } catch (err) {
+        console.error(err);
+        alert("Import fail ho gaya. Kripya valid CSV file use karein (Item Code, HSN).");
+      } finally {
+        e.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // options
   const DEPT_OPTIONS = ["All", "Test", "S", "clothes", "Miscellaneous", "Sweater"];
   const CAT_OPTIONS = ["All", ...CATS];
   const BRAND_OPTIONS = ["All", "B4L"];
@@ -330,7 +422,6 @@ export default function InventoryProductsPage() {
     <div className="pp-wrap">
       <div className="pp-topbar">
         <div className="pp-title">Product</div>
-        <a href="#setup-opening" className="pp-link">Setup Opening Stock</a>
       </div>
 
       <div className="pp-card">
@@ -368,14 +459,27 @@ export default function InventoryProductsPage() {
             <button className="pp-btn outline" onClick={() => setShowFilters((v) => !v)}>
               <span className="mi">filter_list</span> Filter
             </button>
+
+            {/* ===== NEW: Import HSN Code button (same style as Filter) ===== */}
+            <button className="pp-btn outline" onClick={onPickHsnFile} title="Import HSN Code from CSV">
+              <span className="mi">upload_file</span> Import HSN Code
+            </button>
           </div>
+
+            {/* hidden input for HSN CSV */}
+            <input
+              ref={hsnImportRef}
+              type="file"
+              accept=".csv,text/csv"
+              style={{ display: "none" }}
+              onChange={onHsnFileSelected}
+            />
 
           <div className="pp-right">
             <div className="pp-search">
               <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search List..." />
               <span className="mi">search</span>
             </div>
-            {/* ✅ Navigate to New Product page */}
             <button className="pp-btn blue" onClick={() => navigate("/inventory/products/new")}>Create New</button>
           </div>
         </div>
@@ -403,7 +507,7 @@ export default function InventoryProductsPage() {
             <thead>
               <tr>
                 <th className="chk">
-                  <label className="pp-chk"><input type="checkbox" checked={allChecked} onChange={(e) => toggleAll(e.target.checked)} /><span /></label>
+                  <label className="pp-chk"><input type="checkbox" checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))} onChange={(e) => toggleAll(e.target.checked)} /><span /></label>
                 </th>
                 <th>Sr. No.</th><th>Image</th><th>Item Code</th><th>Category</th><th>Brand</th>
                 <th>Name</th><th>MRP</th><th>Selling Price</th><th>HSN</th><th>Qty</th><th>Status</th><th>Show Online</th><th className="act">Actions</th>
@@ -437,7 +541,21 @@ export default function InventoryProductsPage() {
                     <td className="mono">{r.itemCode}</td>
                     <td>{r.category}</td>
                     <td className="mono">{r.brand}</td>
-                    <td><a className="pp-link blue" href="#name">{r.name}</a></td>
+
+                    {/* ✅ Name navigates to detail screen with sidebar */}
+                    <td>
+                      <button
+                        className="pp-link blue"
+                        onClick={() =>
+                          navigate(`/inventory/products/${r.id}`, { state: { row: r } })
+                        }
+                        title="Open product details"
+                        style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
+                      >
+                        {r.name}
+                      </button>
+                    </td>
+
                     <td className="num">{r.mrp.toFixed(2)}</td>
                     <td className="num">{r.sp.toFixed(2)}</td>
                     <td className="mono">{r.hsn}</td>
@@ -447,7 +565,6 @@ export default function InventoryProductsPage() {
                       <label className="pp-switch"><input type="checkbox" checked={!!r.showOnline} onChange={(e) => onToggleOnline(r.id, e.target.checked)} /><span className="slider" /></label>
                     </td>
                     <td className="act">
-                      {/* ✅ per-row action container with ref stored in map */}
                       <div
                         className="pp-actions"
                         ref={(el) => { if (el) actionRefs.current[r.id] = el; }}
