@@ -44,6 +44,7 @@ import ReceiptPage from "./components/ReceiptPage";
 import ExpensePage from "./components/ExpensePage";
 import NewBankPage from "./components/NewBankPage";
 import PaymentCreatePage from "./components/PaymentCreatePage";
+import InventoryProductDetailPage from "./components/InventoryProductDetailPage";
 
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
@@ -162,6 +163,10 @@ export default function App() {
         path="/inventory/stock-transfer"
         element={<SidebarLayout><StockTransferPage /></SidebarLayout>}
       />
+      <Route
+  path="/inventory/products/:id"
+  element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>}
+/>
 
       {/* Multiple Pay */}
       <Route

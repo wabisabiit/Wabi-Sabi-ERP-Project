@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/NewInventoryProductPage.css";
 
-/* ---------- masters (expanded to match screenshots) ---------- */
+/* ---------- masters ---------- */
 const INITIAL_UOMS = ["PIECES", "PACK", "BOX", "SET"];
 const CATEGORIES = [
   "Accessories",
@@ -16,7 +16,7 @@ const CATEGORIES = [
 ];
 const BRANDS = ["B4L", "Lee", "Test"];
 const SUB_BRANDS = ["—"];
-const TAXES = ["GST 5(5.0%)", "GST 12(12%)", "GST 18(18%)"];
+const INITIAL_TAXES = ["GST 5(5.0%)", "GST 12(12%)", "GST 18(18%)"];
 
 /* ---------- helpers ---------- */
 const initialForm = {
@@ -35,11 +35,10 @@ const initialForm = {
   purchaseTaxIncl: false,
   salesTaxIncl: true,
   cess: false,
-  /* NEW: value for the Cess % field that shows under the checkbox */
   cessPercent: "",
   manageBatch: true,
   shortDescription: "",
-  description: "",           // stores HTML from the rich text editor
+  description: "",
   netWeight: "",
   purchasePrice: "0.00",
   landingCost: "0.00",
@@ -72,7 +71,7 @@ const cartesian = (arrays) =>
     [[]]
   );
 
-/* ---------- click-away (used by dropdowns) ---------- */
+/* ---------- click-away (for dropdowns) ---------- */
 function useClickAway(ref, onAway) {
   useEffect(() => {
     const fn = (e) => {
@@ -191,7 +190,7 @@ function RichTextEditor({ label = "Description", value, onChange }) {
 }
 
 /* ============================================================
-   Searchable Select (single Add New only when no results)
+   Searchable Select
    ============================================================ */
 function SearchSelect({
   label,
@@ -202,7 +201,7 @@ function SearchSelect({
   required = false,
   allowAddNew = false,
   addNewLabel = "+ Add New",
-  onAddNew,                 // trigger (e.g., open modal)
+  onAddNew,
   width,
 }) {
   const wrapRef = useRef(null);
@@ -253,16 +252,11 @@ function SearchSelect({
           <div className="np-ss-list">
             {filtered.length > 0 ? (
               filtered.map((opt) => (
-                <div
-                  key={opt}
-                  className="np-ss-item"
-                  onClick={() => choose(opt)}
-                >
+                <div key={opt} className="np-ss-item" onClick={() => choose(opt)}>
                   {opt}
                 </div>
               ))
             ) : hasQuery ? (
-              // 👇 Only here "Add New" appears (single place)
               <div className="np-ss-empty">
                 <div>No results found</div>
                 {allowAddNew && (
@@ -272,7 +266,8 @@ function SearchSelect({
                     onClick={() => {
                       const term = q.trim();
                       if (!term) return;
-                      if (onAddNew) onAddNew(term);
+                      onAddNew && onAddNew(term);
+                      setOpen(false); // close pop on add new
                     }}
                   >
                     {addNewLabel}
@@ -288,7 +283,7 @@ function SearchSelect({
 }
 
 /* ============================================================
-   UOM Modal (exact look/feel)
+   UOM Modal (same as before)
    ============================================================ */
 const UQC_CODES = [
   "PCS - Pieces",
@@ -337,19 +332,15 @@ function NewUOMModal({ open, onClose, onSave }) {
   return (
     <div className="uom-overlay">
       <div className="uom-card">
-        {/* Header */}
         <div className="uom-header">
           <h3>New Unit Of Measurement</h3>
           <button className="uom-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Body */}
         <div className="uom-body">
           <div className="np-grid" style={{ gridTemplateColumns: "1fr" }}>
             <div className="np-field">
-              <label>
-                Name <span className="req">*</span>
-              </label>
+              <label>Name <span className="req">*</span></label>
               <input
                 placeholder="Name"
                 value={name}
@@ -359,9 +350,7 @@ function NewUOMModal({ open, onClose, onSave }) {
             </div>
 
             <div className="np-field">
-              <label>
-                Unit Code <span className="req">*</span>
-              </label>
+              <label>Unit Code <span className="req">*</span></label>
               <input
                 placeholder="Unit Code"
                 value={code}
@@ -380,9 +369,7 @@ function NewUOMModal({ open, onClose, onSave }) {
             />
 
             <div className="np-field">
-              <label>
-                No of Decimal Places <span className="req">*</span>
-              </label>
+              <label>No of Decimal Places <span className="req">*</span></label>
               <input
                 type="number"
                 placeholder="No of Decimal Places"
@@ -394,8 +381,82 @@ function NewUOMModal({ open, onClose, onSave }) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="uom-footer">
+          <button className="btn ghost" onClick={onClose}>Close</button>
+          <button className="btn primary" onClick={handleSave}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   NEW TAX MODAL (exact screenshot-like)
+   ============================================================ */
+function NewTaxModal({ open, onClose, onSave, prefillName = "" }) {
+  const [name, setName] = useState("");
+  const [rate, setRate] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setName(prefillName || "");
+      setRate("");
+    }
+  }, [open, prefillName]);
+
+  if (!open) return null;
+
+  const errors = {
+    name: !String(name).trim(),
+    rate:
+      String(rate).trim() === "" ||
+      Number.isNaN(Number(rate)) ||
+      Number(rate) < 0,
+  };
+
+  const handleSave = () => {
+    if (Object.values(errors).some(Boolean)) return;
+
+    const r = String(Number(rate)).replace(/\.0+$/, "");
+    const display = `${name.trim()} ${r}(${r}%)`;
+    onSave({ display });
+  };
+
+  return (
+    <div className="tax-overlay">
+      <div className="tax-card">
+        <div className="tax-header">
+          <h3>New Tax</h3>
+          <button className="tax-x" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        <div className="tax-body">
+          <div className="np-grid" style={{ gridTemplateColumns: "1fr" }}>
+            <div className="np-field">
+              <label>Tax Name <span className="req">*</span></label>
+              <input
+                placeholder="Tax Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                aria-invalid={errors.name}
+              />
+            </div>
+
+            <div className="np-field">
+              <label>Tax Rate</label>
+              <input
+                placeholder="Enter Tax Rate"
+                type="number"
+                step="0.01"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                aria-invalid={errors.rate}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="tax-footer">
           <button className="btn ghost" onClick={onClose}>Close</button>
           <button className="btn primary" onClick={handleSave}>Save</button>
         </div>
@@ -414,9 +475,15 @@ export default function NewInventoryProductPage() {
   }));
   const [saving, setSaving] = useState(false);
 
-  /* UOM list is now dynamic */
+  /* dynamic masters */
   const [uoms, setUoms] = useState(INITIAL_UOMS);
+  const [taxes, setTaxes] = useState(INITIAL_TAXES);
+
+  /* modals */
   const [uomModalOpen, setUomModalOpen] = useState(false);
+  const [taxModalOpen, setTaxModalOpen] = useState(false);
+  const [taxTarget, setTaxTarget] = useState(null); // 'purchase' | 'sales'
+  const [taxPrefill, setTaxPrefill] = useState("");
 
   // ===== Variants =====
   const [showVariants, setShowVariants] = useState(false);
@@ -500,10 +567,7 @@ export default function NewInventoryProductPage() {
 
   /* ===== Variant helpers ===== */
   const addOptionRow = () =>
-    setOptions((rows) => [
-      ...rows,
-      { id: Date.now(), name: "", values: "" },
-    ]);
+    setOptions((rows) => [...rows, { id: Date.now(), name: "", values: "" }]);
 
   const removeOptionRow = (id) =>
     setOptions((rows) => rows.filter((r) => r.id !== id));
@@ -559,18 +623,30 @@ export default function NewInventoryProductPage() {
     setShowVariants(false);
   };
 
-  /* ====== UOM modal handlers ====== */
+  /* ===== UOM modal handlers ===== */
   const openUomModal = () => setUomModalOpen(true);
   const closeUomModal = () => setUomModalOpen(false);
 
   const saveNewUom = (u) => {
     const display = u.name.toUpperCase();
-    setUoms((list) => {
-      if (!list.includes(display)) return [...list, display];
-      return list;
-    });
-    setVal("uom", display);      // auto-select
+    setUoms((list) => (list.includes(display) ? list : [...list, display]));
+    setVal("uom", display); // auto-select
     setUomModalOpen(false);
+  };
+
+  /* ===== TAX modal handlers ===== */
+  const openTaxModal = (target, prefill = "") => {
+    setTaxTarget(target);      // 'purchase' or 'sales'
+    setTaxPrefill(prefill);    // pass search term as name
+    setTaxModalOpen(true);
+  };
+  const closeTaxModal = () => setTaxModalOpen(false);
+
+  const saveNewTax = ({ display }) => {
+    setTaxes((list) => (list.includes(display) ? list : [...list, display]));
+    if (taxTarget === "purchase") setVal("purchaseTax", display);
+    if (taxTarget === "sales") setVal("salesTax", display);
+    setTaxModalOpen(false);
   };
 
   return (
@@ -590,9 +666,7 @@ export default function NewInventoryProductPage() {
         <div className="np-grid">
           {/* Item Code */}
           <div className="np-field">
-            <label>
-              Item Code/Barcode <span className="req">*</span>
-            </label>
+            <label>Item Code/Barcode <span className="req">*</span></label>
             <input
               placeholder="Item Code/Barcode"
               value={form.itemCode}
@@ -614,11 +688,9 @@ export default function NewInventoryProductPage() {
             </label>
           </div>
 
-          {/* Product/Print names */}
+          {/* Names */}
           <div className="np-field">
-            <label>
-              Product Name <span className="req">*</span>
-            </label>
+            <label>Product Name <span className="req">*</span></label>
             <input
               placeholder="Product Name"
               value={form.productName}
@@ -628,9 +700,7 @@ export default function NewInventoryProductPage() {
           </div>
 
           <div className="np-field">
-            <label>
-              Print Name <span className="req">*</span>
-            </label>
+            <label>Print Name <span className="req">*</span></label>
             <input
               placeholder="Print Name"
               value={form.printName}
@@ -639,7 +709,7 @@ export default function NewInventoryProductPage() {
             />
           </div>
 
-          {/* Category */}
+          {/* Category, Subcategory, Brand, Sub Brand */}
           <SearchSelect
             label="Category"
             required
@@ -649,7 +719,6 @@ export default function NewInventoryProductPage() {
             placeholder="Select Category"
           />
 
-          {/* Sub Category */}
           <SearchSelect
             label="Sub Category"
             value={form.subCategory}
@@ -659,7 +728,6 @@ export default function NewInventoryProductPage() {
             allowAddNew
           />
 
-          {/* Brand */}
           <SearchSelect
             label="Select Brand"
             required
@@ -670,7 +738,6 @@ export default function NewInventoryProductPage() {
             allowAddNew
           />
 
-          {/* Sub Brand */}
           <SearchSelect
             label="Sub Brand"
             value={form.subBrand}
@@ -680,7 +747,7 @@ export default function NewInventoryProductPage() {
             allowAddNew
           />
 
-          {/* UOM with Add New -> Modal */}
+          {/* UOM */}
           <SearchSelect
             label="Select UOM"
             required
@@ -690,7 +757,7 @@ export default function NewInventoryProductPage() {
             placeholder="Select UOM"
             allowAddNew
             addNewLabel="+ Add New"
-            onAddNew={openUomModal}
+            onAddNew={() => openUomModal()}
           />
 
           {/* HSN */}
@@ -715,9 +782,10 @@ export default function NewInventoryProductPage() {
             required
             value={form.purchaseTax}
             onChange={(v) => setVal("purchaseTax", v)}
-            options={TAXES}
+            options={taxes}
             placeholder="Select Purchase Tax"
             allowAddNew
+            onAddNew={(term) => openTaxModal("purchase", term)}
           />
 
           {/* Sales Tax */}
@@ -726,9 +794,10 @@ export default function NewInventoryProductPage() {
             required
             value={form.salesTax}
             onChange={(v) => setVal("salesTax", v)}
-            options={TAXES}
+            options={taxes}
             placeholder="Select Sales Tax"
             allowAddNew
+            onAddNew={(term) => openTaxModal("sales", term)}
           />
 
           {/* Toggles row */}
@@ -784,7 +853,7 @@ export default function NewInventoryProductPage() {
             </label>
           </div>
 
-          {/* Short description */}
+          {/* Short Description */}
           <div className="np-field full">
             <label>Short Description</label>
             <input
@@ -794,7 +863,7 @@ export default function NewInventoryProductPage() {
             />
           </div>
 
-          {/* Description editor */}
+          {/* Description */}
           <RichTextEditor
             label="Description"
             value={form.description}
@@ -821,120 +890,56 @@ export default function NewInventoryProductPage() {
 
         <div className="np-grid pricing">
           <div className="np-field">
-            <label>
-              Purchase Price <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.purchasePrice}
-              onChange={onChange("purchasePrice")}
-            />
+            <label>Purchase Price <span className="req">*</span></label>
+            <input type="number" step="0.01" value={form.purchasePrice} onChange={onChange("purchasePrice")} />
           </div>
           <div className="np-field">
-            <label>
-              Landing Cost <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.landingCost}
-              onChange={onChange("landingCost")}
-            />
+            <label>Landing Cost <span className="req">*</span></label>
+            <input type="number" step="0.01" value={form.landingCost} onChange={onChange("landingCost")} />
           </div>
           <div className="np-field">
-            <label>
-              MRP <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.mrp}
-              onChange={onChange("mrp")}
-            />
+            <label>MRP <span className="req">*</span></label>
+            <input type="number" step="0.01" value={form.mrp} onChange={onChange("mrp")} />
           </div>
           <div className="np-field">
-            <label>
-              Selling Discount <span className="req">*</span>
-            </label>
+            <label>Selling Discount <span className="req">*</span></label>
             <div className="np-prefix">
               <span className="np-curr">₹</span>
-              <input
-                type="number"
-                step="0.01"
-                value={form.sellingDiscount}
-                onChange={onChange("sellingDiscount")}
-              />
+              <input type="number" step="0.01" value={form.sellingDiscount} onChange={onChange("sellingDiscount")} />
             </div>
           </div>
           <div className="np-field">
-            <label>
-              Selling Price <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.sellingPrice}
-              onChange={onChange("sellingPrice")}
-            />
+            <label>Selling Price <span className="req">*</span></label>
+            <input type="number" step="0.01" value={form.sellingPrice} onChange={onChange("sellingPrice")} />
           </div>
           <div className="np-field">
-            <label>
-              Selling Margin <span className="req">*</span>
-            </label>
+            <label>Selling Margin <span className="req">*</span></label>
             <div className="np-prefix">
               <span className="np-curr">₹</span>
-              <input
-                type="number"
-                step="0.01"
-                value={form.sellingMargin}
-                onChange={onChange("sellingMargin")}
-              />
+              <input type="number" step="0.01" value={form.sellingMargin} onChange={onChange("sellingMargin")} />
             </div>
           </div>
           <div className="np-field">
-            <label>
-              Online Price <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.onlinePrice}
-              onChange={onChange("onlinePrice")}
-            />
+            <label>Online Price <span className="req">*</span></label>
+            <input type="number" step="0.01" value={form.onlinePrice} onChange={onChange("onlinePrice")} />
           </div>
           <div className="np-field">
-            <label>
-              Minimum Quantity <span className="req">*</span>
-            </label>
-            <input
-              type="number"
-              value={form.minQty}
-              onChange={onChange("minQty")}
-            />
+            <label>Minimum Quantity <span className="req">*</span></label>
+            <input type="number" value={form.minQty} onChange={onChange("minQty")} />
           </div>
           <div className="np-field">
             <label>Opening Qty</label>
-            <input
-              type="number"
-              value={form.openingQty}
-              onChange={onChange("openingQty")}
-            />
+            <input type="number" value={form.openingQty} onChange={onChange("openingQty")} />
           </div>
         </div>
 
         {!showVariants && (
           <div className="np-variant-note">
-            <button
-              type="button"
-              className="btn tiny blue"
-              onClick={() => setShowVariants(true)}
-            >
+            <button type="button" className="btn tiny blue" onClick={() => setShowVariants(true)}>
               Add Variant
             </button>
             <div>
-              Add Variants If This Product Comes In Multiple Versions, Like
-              Different Sizes or Colors.
+              Add Variants If This Product Comes In Multiple Versions, Like Different Sizes or Colors.
             </div>
           </div>
         )}
@@ -946,69 +951,39 @@ export default function NewInventoryProductPage() {
           <div className="np-var-head">
             <div className="np-var-title">
               <span className="np-var-link">Variants</span>
-              <span className="np-var-help">
-                &nbsp;product comes in multiple versions, like different sizes
-                or colors.
-              </span>
+              <span className="np-var-help">&nbsp;product comes in multiple versions, like different sizes or colors.</span>
             </div>
-            <button className="np-var-cancel" onClick={removeVariants}>
-              Cancel
-            </button>
+            <button className="np-var-cancel" onClick={removeVariants}>Cancel</button>
           </div>
 
           <div className="np-var-lines">
             {options.map((o, i) => (
               <div className={`np-var-line ${i % 2 ? "alt" : ""}`} key={o.id}>
                 <div className="np-field">
-                  <label>
-                    Option Name <span className="req">*</span>
-                  </label>
+                  <label>Option Name <span className="req">*</span></label>
                   <input
                     placeholder="Eg. Size, Color"
                     value={o.name}
-                    onChange={(e) =>
-                      updateOption(o.id, "name", e.target.value)
-                    }
+                    onChange={(e) => updateOption(o.id, "name", e.target.value)}
                   />
                 </div>
                 <div className="np-field">
-                  <label>
-                    Option Values <span className="req">*</span>
-                  </label>
+                  <label>Option Values <span className="req">*</span></label>
                   <input
                     placeholder="Enter Option Value"
                     value={o.values}
-                    onChange={(e) =>
-                      updateOption(o.id, "values", e.target.value)
-                    }
+                    onChange={(e) => updateOption(o.id, "values", e.target.value)}
                   />
                 </div>
-                <button
-                  type="button"
-                  className="np-var-del"
-                  title="Remove"
-                  onClick={() => removeOptionRow(o.id)}
-                >
+                <button type="button" className="np-var-del" title="Remove" onClick={() => removeOptionRow(o.id)}>
                   ✖
                 </button>
               </div>
             ))}
 
             <div className="np-var-actions">
-              <button
-                type="button"
-                className="btn tiny blue"
-                onClick={addOptionRow}
-              >
-                Add Row
-              </button>
-              <button
-                type="button"
-                className="btn tiny blue gen"
-                onClick={generateVariantRows}
-              >
-                Generate Variants
-              </button>
+              <button type="button" className="btn tiny blue" onClick={addOptionRow}>Add Row</button>
+              <button type="button" className="btn tiny blue gen" onClick={generateVariantRows}>Generate Variants</button>
             </div>
           </div>
 
@@ -1070,12 +1045,9 @@ export default function NewInventoryProductPage() {
         </div>
       </div>
 
-      {/* New UOM Modal */}
-      <NewUOMModal
-        open={uomModalOpen}
-        onClose={closeUomModal}
-        onSave={saveNewUom}
-      />
+      {/* Modals */}
+      <NewUOMModal open={uomModalOpen} onClose={closeUomModal} onSave={saveNewUom} />
+      <NewTaxModal open={taxModalOpen} onClose={closeTaxModal} onSave={saveNewTax} prefillName={taxPrefill} />
     </div>
   );
 }
