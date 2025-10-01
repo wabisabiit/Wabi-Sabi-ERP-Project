@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/NewInventoryProductPage.css";
 
 /* ---------- masters (expanded to match screenshots) ---------- */
-const UOMS = ["PIECES", "PACK", "BOX", "SET"];
+const INITIAL_UOMS = ["PIECES", "PACK", "BOX", "SET"];
 const CATEGORIES = [
   "Accessories",
   "Boys & Girls – Blouse",
@@ -85,12 +85,11 @@ function useClickAway(ref, onAway) {
 }
 
 /* ============================================================
-   Rich Text Editor (functional + matches screenshot look)
+   Rich Text Editor
    ============================================================ */
 function RichTextEditor({ label = "Description", value, onChange }) {
   const editorRef = useRef(null);
 
-  // Keep internal HTML in sync with prop
   useEffect(() => {
     if (editorRef.current && value !== editorRef.current.innerHTML) {
       editorRef.current.innerHTML = value || "";
@@ -101,7 +100,6 @@ function RichTextEditor({ label = "Description", value, onChange }) {
     const el = editorRef.current;
     if (!el) return;
     el.focus();
-    // place caret at end if empty
     if (window.getSelection && document.createRange && el.childNodes.length === 0) {
       const range = document.createRange();
       range.selectNodeContents(el);
@@ -115,7 +113,6 @@ function RichTextEditor({ label = "Description", value, onChange }) {
   const exec = (cmd, arg = null) => {
     focusEditor();
     document.execCommand(cmd, false, arg);
-    // propagate HTML out
     onChange(editorRef.current.innerHTML);
   };
 
@@ -187,7 +184,6 @@ function RichTextEditor({ label = "Description", value, onChange }) {
           spellCheck={false}
         />
 
-        {/* resize handle (visual) */}
         <div className="np-editor-resize" />
       </div>
     </div>
@@ -195,7 +191,7 @@ function RichTextEditor({ label = "Description", value, onChange }) {
 }
 
 /* ============================================================
-   Searchable Select (only shows empty-state after typing)
+   Searchable Select (single Add New only when no results)
    ============================================================ */
 function SearchSelect({
   label,
@@ -205,6 +201,8 @@ function SearchSelect({
   placeholder = "Select...",
   required = false,
   allowAddNew = false,
+  addNewLabel = "+ Add New",
+  onAddNew,                 // trigger (e.g., open modal)
   width,
 }) {
   const wrapRef = useRef(null);
@@ -264,6 +262,7 @@ function SearchSelect({
                 </div>
               ))
             ) : hasQuery ? (
+              // 👇 Only here "Add New" appears (single place)
               <div className="np-ss-empty">
                 <div>No results found</div>
                 {allowAddNew && (
@@ -271,12 +270,12 @@ function SearchSelect({
                     className="np-ss-add"
                     type="button"
                     onClick={() => {
-                      if (!q.trim()) return;
-                      const val = q.trim();
-                      choose(val);
+                      const term = q.trim();
+                      if (!term) return;
+                      if (onAddNew) onAddNew(term);
                     }}
                   >
-                    + Add New
+                    {addNewLabel}
                   </button>
                 )}
               </div>
@@ -284,6 +283,123 @@ function SearchSelect({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ============================================================
+   UOM Modal (exact look/feel)
+   ============================================================ */
+const UQC_CODES = [
+  "PCS - Pieces",
+  "KGS - Kilograms",
+  "MTR - Meter",
+  "LTR - Litre",
+  "BAG - Bag",
+  "BOX - Box",
+  "SET - Set",
+];
+
+function NewUOMModal({ open, onClose, onSave }) {
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [uqc, setUqc] = useState("");
+  const [decimals, setDecimals] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setName("");
+      setCode("");
+      setUqc("");
+      setDecimals("");
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const errors = {
+    name: !name.trim(),
+    code: !code.trim(),
+    uqc: !uqc.trim(),
+    decimals: String(decimals).trim() === "" || Number(decimals) < 0,
+  };
+
+  const handleSave = () => {
+    if (Object.values(errors).some(Boolean)) return;
+    onSave({
+      name: name.trim(),
+      code: code.trim().toUpperCase(),
+      uqc,
+      decimals: String(decimals).trim(),
+    });
+  };
+
+  return (
+    <div className="uom-overlay">
+      <div className="uom-card">
+        {/* Header */}
+        <div className="uom-header">
+          <h3>New Unit Of Measurement</h3>
+          <button className="uom-x" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        {/* Body */}
+        <div className="uom-body">
+          <div className="np-grid" style={{ gridTemplateColumns: "1fr" }}>
+            <div className="np-field">
+              <label>
+                Name <span className="req">*</span>
+              </label>
+              <input
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                aria-invalid={errors.name}
+              />
+            </div>
+
+            <div className="np-field">
+              <label>
+                Unit Code <span className="req">*</span>
+              </label>
+              <input
+                placeholder="Unit Code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                aria-invalid={errors.code}
+              />
+            </div>
+
+            <SearchSelect
+              label="UQC Code"
+              required
+              value={uqc}
+              onChange={setUqc}
+              options={UQC_CODES}
+              placeholder="Select Unit Quantity Code"
+            />
+
+            <div className="np-field">
+              <label>
+                No of Decimal Places <span className="req">*</span>
+              </label>
+              <input
+                type="number"
+                placeholder="No of Decimal Places"
+                value={decimals}
+                onChange={(e) => setDecimals(e.target.value)}
+                aria-invalid={errors.decimals}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="uom-footer">
+          <button className="btn ghost" onClick={onClose}>Close</button>
+          <button className="btn primary" onClick={handleSave}>Save</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -297,6 +413,10 @@ export default function NewInventoryProductPage() {
     itemCode: generateItemCode(),
   }));
   const [saving, setSaving] = useState(false);
+
+  /* UOM list is now dynamic */
+  const [uoms, setUoms] = useState(INITIAL_UOMS);
+  const [uomModalOpen, setUomModalOpen] = useState(false);
 
   // ===== Variants =====
   const [showVariants, setShowVariants] = useState(false);
@@ -314,16 +434,9 @@ export default function NewInventoryProductPage() {
     if (!form.purchaseTax) e.purchaseTax = "Required";
     if (!form.uom) e.uom = "Required";
     if (!form.itemCode) e.itemCode = "Required";
-
-    /* NEW: when Cess is checked, HSN becomes required */
     if (form.cess && !String(form.hsn || "").trim()) {
       e.hsn = "HSN Code is required when Cess is checked";
     }
-    /* (optional) Cess % itself can be required when Cess is checked */
-    // if (form.cess && !String(form.cessPercent || "").trim()) {
-    //   e.cessPercent = "Enter Cess %";
-    // }
-
     return e;
   }, [form]);
 
@@ -446,6 +559,20 @@ export default function NewInventoryProductPage() {
     setShowVariants(false);
   };
 
+  /* ====== UOM modal handlers ====== */
+  const openUomModal = () => setUomModalOpen(true);
+  const closeUomModal = () => setUomModalOpen(false);
+
+  const saveNewUom = (u) => {
+    const display = u.name.toUpperCase();
+    setUoms((list) => {
+      if (!list.includes(display)) return [...list, display];
+      return list;
+    });
+    setVal("uom", display);      // auto-select
+    setUomModalOpen(false);
+  };
+
   return (
     <div className="np-wrap">
       {/* header */}
@@ -512,7 +639,7 @@ export default function NewInventoryProductPage() {
             />
           </div>
 
-          {/* Category (searchable) */}
+          {/* Category */}
           <SearchSelect
             label="Category"
             required
@@ -553,15 +680,17 @@ export default function NewInventoryProductPage() {
             allowAddNew
           />
 
-          {/* UOM */}
+          {/* UOM with Add New -> Modal */}
           <SearchSelect
             label="Select UOM"
             required
             value={form.uom}
             onChange={(v) => setVal("uom", v)}
-            options={UOMS}
+            options={uoms}
             placeholder="Select UOM"
             allowAddNew
+            addNewLabel="+ Add New"
+            onAddNew={openUomModal}
           />
 
           {/* HSN */}
@@ -573,7 +702,6 @@ export default function NewInventoryProductPage() {
               onChange={onChange("hsn")}
               aria-invalid={!!requiredErrors.hsn}
             />
-            {/* red helper under HSN when needed */}
             {requiredErrors.hsn && (
               <div style={{ color: "#d92d20", fontSize: 12, marginTop: 4 }}>
                 HSN Code is required when Cess is checked
@@ -614,7 +742,6 @@ export default function NewInventoryProductPage() {
               <span /> Purchase Tax Including
             </label>
 
-            {/* Cess block with nested input below when checked */}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <label className="np-check" style={{ marginBottom: 4 }}>
                 <input
@@ -633,7 +760,6 @@ export default function NewInventoryProductPage() {
                     placeholder="Cess %"
                     value={form.cessPercent}
                     onChange={onChange("cessPercent")}
-                    aria-invalid={!!requiredErrors.cessPercent}
                   />
                 </div>
               )}
@@ -668,7 +794,7 @@ export default function NewInventoryProductPage() {
             />
           </div>
 
-          {/* Description editor (functional) */}
+          {/* Description editor */}
           <RichTextEditor
             label="Description"
             value={form.description}
@@ -943,6 +1069,13 @@ export default function NewInventoryProductPage() {
           </button>
         </div>
       </div>
+
+      {/* New UOM Modal */}
+      <NewUOMModal
+        open={uomModalOpen}
+        onClose={closeUomModal}
+        onSave={saveNewUom}
+      />
     </div>
   );
 }

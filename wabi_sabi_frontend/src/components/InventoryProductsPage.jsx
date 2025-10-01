@@ -241,12 +241,16 @@ export default function InventoryProductsPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
+  // ✅ per-row action menu open id
   const [actionOpenId, setActionOpenId] = useState(null);
+
+  // ✅ store DOM refs per row for outside-click handling
+  const actionRefs = useRef({}); // { [rowId]: HTMLElement }
+
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const psRef = useClickOutside(psOpen, () => setPsOpen(false));
   const exportRef = useClickOutside(exportOpen, () => setExportOpen(false));
-  const menuRef = useClickOutside(!!actionOpenId, () => setActionOpenId(null));
 
   const fileInputRef = useRef(null);
   const uploadForRowRef = useRef(null);
@@ -305,6 +309,23 @@ export default function InventoryProductsPage() {
   const showingTo = Math.min(end, totalRecords);
   const allChecked = pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id));
 
+  /* ===== CLOSE ACTION MENU ON OUTSIDE CLICK / ESC ===== */
+  useEffect(() => {
+    if (!actionOpenId) return;
+    const handleDown = (e) => {
+      const host = actionRefs.current[actionOpenId];
+      if (!host) return setActionOpenId(null);
+      if (!host.contains(e.target)) setActionOpenId(null);
+    };
+    const handleEsc = (e) => { if (e.key === "Escape") setActionOpenId(null); };
+    document.addEventListener("mousedown", handleDown);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleDown);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [actionOpenId]);
+
   return (
     <div className="pp-wrap">
       <div className="pp-topbar">
@@ -361,12 +382,12 @@ export default function InventoryProductsPage() {
 
         {showFilters && (
           <div className="pp-filterbar">
-            <SearchSelect label="Department" value={filters.dept} onChange={(v) => setFilters((f) => ({ ...f, dept: v }))} options={DEPT_OPTIONS} width={240}/>
-            <SearchSelect label="Category" value={filters.category} onChange={(v) => setFilters((f) => ({ ...f, category: v }))} options={CAT_OPTIONS} width={260}/>
-            <SearchSelect label="Brand" value={filters.brand} onChange={(v) => setFilters((f) => ({ ...f, brand: v }))} options={BRAND_OPTIONS} width={240}/>
-            <SearchSelect label="HSN" value={filters.hsn} onChange={(v) => setFilters((f) => ({ ...f, hsn: v }))} options={HSN_OPTIONS} width={240}/>
-            <SearchSelect label="Purchase Tax" value={filters.purchaseTax} onChange={(v) => setFilters((f) => ({ ...f, purchaseTax: v }))} options={TAX_OPTIONS} width={240}/>
-            <SearchSelect label="Sales Tax" value={filters.salesTax} onChange={(v) => setFilters((f) => ({ ...f, salesTax: v }))} options={TAX_OPTIONS} width={240}/>
+            <SearchSelect label="Department" value={filters.dept} onChange={(v) => setFilters((f) => ({ ...f, dept: v }))} options={["All", "Test", "S", "clothes", "Miscellaneous", "Sweater"]} width={240}/>
+            <SearchSelect label="Category" value={filters.category} onChange={(v) => setFilters((f) => ({ ...f, category: v }))} options={["All", ...CATS]} width={260}/>
+            <SearchSelect label="Brand" value={filters.brand} onChange={(v) => setFilters((f) => ({ ...f, brand: v }))} options={["All", "B4L"]} width={240}/>
+            <SearchSelect label="HSN" value={filters.hsn} onChange={(v) => setFilters((f) => ({ ...f, hsn: v }))} options={["All", "63090000", "90041000", "102", "7117", "64039990", "42022210"]} width={240}/>
+            <SearchSelect label="Purchase Tax" value={filters.purchaseTax} onChange={(v) => setFilters((f) => ({ ...f, purchaseTax: v }))} options={["All", "Gst 15", "GST 28", "GST18", "GST12", "GST 5", "NON GST 0"]} width={240}/>
+            <SearchSelect label="Sales Tax" value={filters.salesTax} onChange={(v) => setFilters((f) => ({ ...f, salesTax: v }))} options={["All", "Gst 15", "GST 28", "GST18", "GST12", "GST 5", "NON GST 0"]} width={240}/>
           </div>
         )}
 
@@ -426,15 +447,34 @@ export default function InventoryProductsPage() {
                       <label className="pp-switch"><input type="checkbox" checked={!!r.showOnline} onChange={(e) => onToggleOnline(r.id, e.target.checked)} /><span className="slider" /></label>
                     </td>
                     <td className="act">
-                      <div className="pp-actions" ref={menuRef}>
-                        <button className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`} onClick={() => setActionOpenId((id) => (id === r.id ? null : r.id))} aria-label="Row actions">
+                      {/* ✅ per-row action container with ref stored in map */}
+                      <div
+                        className="pp-actions"
+                        ref={(el) => { if (el) actionRefs.current[r.id] = el; }}
+                      >
+                        <button
+                          className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionOpenId((id) => (id === r.id ? null : r.id));
+                          }}
+                          aria-label="Row actions"
+                          aria-expanded={actionOpenId === r.id}
+                        >
                           <span className="dot" /><span className="dot" /><span className="dot" />
                         </button>
+
                         {actionOpenId === r.id && (
                           <div className="pp-menu right kebab">
-                            <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}><span className="mi icon">open_in_new</span>Edit Details</button>
-                            <button onClick={() => { alert("Delete"); setActionOpenId(null); }}><span className="mi icon">delete</span>Delete</button>
-                            <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}><span className="mi icon">block</span>Deactivate</button>
+                            <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
+                              <span className="mi icon">open_in_new</span>Edit Details
+                            </button>
+                            <button onClick={() => { alert("Delete"); setActionOpenId(null); }}>
+                              <span className="mi icon">delete</span>Delete
+                            </button>
+                            <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
+                              <span className="mi icon">block</span>Deactivate
+                            </button>
                           </div>
                         )}
                       </div>

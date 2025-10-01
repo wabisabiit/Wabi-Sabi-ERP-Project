@@ -218,3 +218,32 @@
   .np-grid,.np-grid.pricing{grid-template-columns:1fr}
   .np-footer-inner{flex-wrap:wrap;gap:8px}
 }
+/* ===== UOM Modal (exact screenshot-like) ===== */
+.uom-overlay{
+  position:fixed; inset:0; z-index:3000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.35);
+}
+.uom-card{
+  width:540px; max-width:95vw;
+  background:#fff; border:1px solid #e6ebf3; border-radius:10px;
+  box-shadow:0 12px 28px rgba(16,24,40,.18);
+  overflow:hidden; font-family:inherit;
+}
+.uom-header{
+  height:52px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; border-bottom:1px solid #eef2f7;
+}
+.uom-header h3{ margin:0; font-size:16px; font-weight:800; color:#0f172a; }
+.uom-x{
+  width:32px; height:32px; border:0; background:transparent; cursor:pointer;
+  font-size:18px; color:#64748b; border-radius:6px;
+}
+.uom-x:hover{ background:#f3f5f9; }
+
+.uom-body{ padding:14px 16px 8px; }
+
+.uom-footer{
+  display:flex; justify-content:flex-end; gap:8px;
+  padding:10px 12px; border-top:1px solid #eef2f7; background:#fafbfd;
+}
