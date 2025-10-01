@@ -452,16 +452,11 @@ export default function StockTransferPage() {
 
         <div className="st-foot">
           <div className="st-info">
-            Showing 1 to {Math.min(pageSize, rows.length)} of 1,368 entries
+            Showing 1 to {Math.min(pageSize, rows.length)} of 10 entries
           </div>
           <div className="st-pager">
             <button className="st-page" disabled><span className="material-icons">chevron_left</span></button>
             <button className="st-page sel">1</button>
-            <button className="st-page">2</button>
-            <button className="st-page">3</button>
-            <button className="st-page">4</button>
-            <span className="st-ellipsis">…</span>
-            <button className="st-page">137</button>
             <button className="st-page"><span className="material-icons">chevron_right</span></button>
           </div>
         </div>
