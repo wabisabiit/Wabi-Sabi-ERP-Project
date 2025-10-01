@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import "../styles/IntegrationPage.css";
 
-const TOP_TABS = ["Ecommerce", "Payment", "Messages", "Loyalty", "GST", "Vasy API", "Self Checkout"];
+const TOP_TABS = ["Ecommerce", "Payment", "Messages", "Loyalty", "GST"];
 
 /* ============ Searchable Dropdown ============ */
 function SearchSelect({ label, placeholder = "Select...", options, value, onChange, align = "left", width }) {

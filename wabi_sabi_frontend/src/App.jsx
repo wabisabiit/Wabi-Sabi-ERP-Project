@@ -57,6 +57,9 @@ import IntegrationPage from "./components/IntegrationPage";
 import ProductsPage from "./components/InventoryProductsPage";
 import NewInventoryProductPage from "./components/NewInventoryProductPage"; // ✅ renamed import
 
+// Stock Transfer
+import StockTransferPage from "./components/StockTransferPage";
+
 import "./App.css";
 
 /* ---------- Layouts ---------- */
@@ -81,7 +84,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -153,6 +156,12 @@ export default function App() {
       <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
       <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
       <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
+
+
+      <Route
+        path="/inventory/stock-transfer"
+        element={<SidebarLayout><StockTransferPage /></SidebarLayout>}
+      />
 
       {/* Multiple Pay */}
       <Route

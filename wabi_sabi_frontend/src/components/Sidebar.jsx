@@ -144,6 +144,15 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               >
                 Products
               </NavLink>
+
+              <NavLink
+                to="/inventory/stock-transfer"
+                className={linkClass}
+                onClick={handleNav}
+              >
+                Stock Transfer
+              </NavLink>
+
             </div>
           </div>
 

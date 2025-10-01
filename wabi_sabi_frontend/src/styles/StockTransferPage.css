@@ -1,0 +1,232 @@
+/* src/styles/StockTransferPage.css */
+
+.st-wrap{
+  padding: 18px 24px;
+  min-height: 100vh;
+  background: #eef2f7;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color:#0f172a;
+}
+
+/* header: keep both on the LEFT */
+.st-head{
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:14px;
+}
+.st-home{ font-size:20px; color:#64748b; }
+.st-title{ font-size:16px; font-weight:500; color:#1f2937; }
+
+/* toolbar */
+.st-toolbar{
+  background:#fff; border:1px solid #e6e9f0; border-radius:12px;
+  padding:10px; box-shadow:0 6px 18px rgba(25,42,70,.06);
+}
+.st-left{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+/* export + dropdown */
+.st-export{
+  height:36px; padding:0 10px; border:0; border-radius:8px;
+  background:#1e90ff; color:#fff; display:flex; align-items:center; gap:4px;
+  cursor:pointer;
+}
+.st-export .material-icons{ font-size:18px; }
+.st-export .st-caret{ margin-left:-4px; }
+.st-export-wrap{ position:relative; }
+.st-export-menu{
+  position:absolute; top:40px; left:0; z-index:10;
+  background:#fff; border:1px solid #e5e7eb; border-radius:8px;
+  box-shadow:0 10px 24px rgba(0,0,0,.12); overflow:hidden;
+  min-width:140px;
+}
+.st-export-menu button{
+  width:100%; text-align:left; padding:10px 12px; background:#fff; border:0; cursor:pointer;
+}
+.st-export-menu button:hover{ background:#f3f4f6; }
+
+.st-length{
+  height:36px; border:1px solid #d1d5db; background:#fff; border-radius:8px;
+  padding:0 8px; width:68px;
+}
+
+/* Filter (turns black when active) */
+.st-filter-btn{
+  height:36px; padding:0 14px; border-radius:8px; border:0;
+  background:#1ea7fd; color:#fff; font-weight:600; display:flex; align-items:center; gap:6px;
+  cursor:pointer;
+}
+.st-filter-btn .material-icons{ font-size:18px; }
+.st-filter-btn.active{color:#111; }
+
+.st-search{
+  height:36px; border:1px solid #d1d5db; border-radius:8px; background:#fff;
+  width:280px; padding:0 10px;
+}
+
+/* filters row */
+.st-filters{
+  display:grid; grid-template-columns: 1fr 1fr 1fr;
+  gap:14px; background:#fff; border:1px solid #e6e9f0; border-radius:12px;
+  padding:12px; margin:10px 0 12px; box-shadow:0 6px 18px rgba(25,42,70,.06);
+}
+.st-field{ display:flex; flex-direction:column; gap:6px; }
+.st-field label{ font-weight:700; color:#1f2937; }
+.st-field input, .st-field select{
+  height:36px; border:1px solid #d1d5db; border-radius:8px; padding:0 10px; background:#fff;
+}
+.st-input-ico{ position:relative; }
+.st-input-ico input{ width:100%; padding-right:34px; }
+.st-input-ico .material-icons{ position:absolute; right:8px; top:6px; font-size:22px; color:#64748b; }
+
+/* table */
+.st-table-wrap{
+  background:#fff; border:1px solid #e6e9f0; border-radius:12px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06); overflow:hidden;
+}
+.st-table{ width:100%; border-collapse:separate; border-spacing:0; }
+.st-table thead th{
+  background:#f8fafc; color:#374151; text-align:left;
+  padding:10px 7px; font-weight:500; border-bottom:1px solid #eef2f7; font-size:16px;
+}
+.st-table tbody td{
+  padding:1px 7px; border-bottom:1px solid #f1f5f9; color:#111827; font-size:13px;
+}
+.st-table tbody tr:hover{ background:#fafafa; }
+.st-right{ text-align:right; }
+.st-link{ color:#0ea5e9; text-decoration:none; font-weight:700; }
+.st-actions button{
+  width:28px; height:28px; border-radius:6px; border:1px solid #e5e7eb;
+  background:#fff; color:#475569; margin-right:6px; cursor:pointer;
+  display:inline-grid; place-items:center;
+}
+.st-actions .material-icons{ font-size:18px; }
+.st-empty{ text-align:center; color:#94a3b8; padding:26px 0; }
+
+/* footer */
+.st-foot{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; color:#64748b; background:#fafafa;
+}
+.st-pager{ display:flex; align-items:center; gap:6px; }
+.st-page{
+  min-width:36px; height:32px; border-radius:6px; border:1px solid #e5e7eb;
+  background:#fff; color:#334155; cursor:pointer;
+}
+.st-page.sel{ background:#0ea5e9; color:#fff; border-color:#0ea5e9; }
+.st-ellipsis{ padding:0 4px; color:#94a3b8; }
+
+/* --- Right-align toolbar content --- */
+.st-toolbar{
+  display:flex;                 /* make it a flex row */
+  align-items:center;
+}
+.st-left{
+  margin-left:auto;             /* push group to the right */
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;     /* keep items right-justified */
+}
+.st-search{
+  margin-left:0;                /* no auto spacing; we want tight right grouping */
+}
+
+/* Drop the export menu from the right edge of the button (since it’s on the right) */
+.st-export-wrap{ position:relative; }
+.st-export-menu{
+  left:auto;
+  right:0;                      /* anchor to right so it doesn't overflow */
+}
+
+/* ===== Date Range Picker (matches screenshot) ===== */
+.st-drp { position: relative; width: 280px; }
+.st-drp .st-input-ico { position: relative; }
+.st-drp-input{
+  width: 100%;
+  height: 36px;
+  padding: 0 36px 0 12px;
+  border: 1px solid #d6dee9;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+  color: #0f172a;
+  cursor: pointer;
+}
+.st-drp .material-icons{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:18px; color:#6b7280; pointer-events:none;
+}
+
+/* Popover */
+.st-drp-pop{
+  position:absolute; z-index:2000; margin-top:8px;
+  background:#fff; border:1px solid #dcdfe6; border-radius:6px;
+  box-shadow:0 10px 28px rgba(0,0,0,.18);
+  display:flex; gap:16px; padding:14px; min-width:720px;
+}
+
+/* Left preset pane */
+.st-drp-left{
+  width: 240px; flex:0 0 240px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.st-drp-preset{
+  text-align:left; height:34px; padding:0 12px; border-radius:4px;
+  border:0; background:#f5f7fa; cursor:pointer; font-size:13px; color:#0f172a;
+}
+.st-drp-preset.sel, .st-drp-preset:hover{ background:#00a6ec; color:#fff; }
+.st-drp-actions{ display:flex; gap:10px; margin-top:8px; }
+.st-drp-apply{
+  height:34px; padding:0 14px; border:0; border-radius:4px; background:#00a6ec; color:#fff; font-weight:600; cursor:pointer;
+}
+.st-drp-cancel{
+  height:34px; padding:0 14px; border:1px solid #d6dee9; border-radius:4px; background:#eef1f5; color:#0f172a; cursor:pointer;
+}
+
+/* Right side: quick inputs + calendars */
+.st-drp-right{ flex:1 1 auto; min-width:0; }
+.st-drp-quick{
+  display:flex; gap:12px; margin-bottom:12px;
+}
+.st-drp-quick .st-input-ico input{
+  width: 220px; height: 36px; padding:0 34px 0 12px;
+  border:1px solid #cfd6e3; border-radius:6px; font-size:13px;
+}
+.st-drp-quick .material-icons{ right:8px; color:#7b8794; }
+
+/* Calendars */
+.st-drp-cals{ display:flex; gap:16px; }
+.st-cal{ width: 300px; }
+.st-cal-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:6px;
+}
+.st-cal-title{ font-weight:600; color:#0f172a; }
+.st-nav{
+  width:28px; height:28px; border:1px solid #d6dee9; border-radius:6px; background:#fff; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.st-cal-grid{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap:4px;
+}
+.st-dow{
+  font-size:12px; color:#6b7280; text-align:center; padding:4px 0;
+}
+.st-day{
+  height:36px; border-radius:6px; border:0; background:#f3f6fb; cursor:pointer;
+  font-size:13px; color:#0f172a;
+}
+.st-day.muted{ color:#9aa4b2; background:#f7f9fc; }
+.st-day.in-range{
+  background:#00a6ec; color:#fff;
+}
+
+/* Make popover responsive */
+@media (max-width: 860px){
+  .st-drp-pop{ min-width:0; width: calc(100vw - 40px); }
+  .st-drp-left{ display:none; }
+  .st-cal{ width: 100%; }
+  .st-drp-cals{ gap:8px; }
+}
