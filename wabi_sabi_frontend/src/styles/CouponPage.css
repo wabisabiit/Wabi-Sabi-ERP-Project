@@ -143,7 +143,7 @@
   overflow:auto; margin:6px 12px 0; border:1px solid #e7eaf0; border-radius:10px;
 }
 .cp-table{ width:100%; border-collapse:separate; border-spacing:0; }
-.cp-table--wide{ width:398px; } /* big enough to force horizontal scroll */
+.cp-table--wide{ width:100%; } /* big enough to force horizontal scroll */
 
 .cp-table thead th{
   background:#f3f6fb; color:#4a5568; font-weight:700; font-size:13px; text-align:left;
