@@ -36,24 +36,31 @@
 }
 .flex-spacer{ flex:1; }
 
+/* unified blue for icon/primary/filter buttons */
+.btn-icon,
+.btn.filter,
+.btn.primary{
+  background:#0ea5e9;
+  border:1px solid #0ea5e9;
+  color:#fff;
+}
 .btn-icon{
   width:34px; height:34px; display:grid; place-items:center;
-  background:#0ea5e9; border:1px solid #0ea5e9;
-  border-radius:4px; cursor:pointer; color:#fff;
+  border-radius:4px; cursor:pointer;
 }
 .emp-toolbar .btn-icon .material-icons{ font-size:18px; color:#fff !important; }
 
-/* ===== Rows-per-page select (NARROW) ===== */
+/* Rows-per-page select (compact) */
 .emp-select {
   height: 34px;
-  width: 44px;        /* ⬅️ aur kam kiya */
-  min-width: 44px;    /* fixed chhota width */
-  padding: 0 4px;     /* thoda kam padding */
+  width: 44px;
+  min-width: 44px;
+  padding: 0 4px;
   border: 1px solid #d9dee6;
   border-radius: 4px;
   background: #fff;
   font-size: 13px;
-  text-align: center; /* numbers center aligned */
+  text-align: center;
 }
 
 .btn{
@@ -62,11 +69,8 @@
   border:1px solid #d9dee6; border-radius:4px; cursor:pointer; background:#fff;
 }
 .btn .material-icons{ font-size:18px; }
-.btn.filter{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
-.btn.filter .material-icons{ color:#fff !important; }
-.btn.primary{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; font-weight:600; }
 
-/* ===== Search ===== */
+/* Search */
 .emp-search{
   display:flex; align-items:center; gap:6px;
   height:34px; padding:0 8px; background:#fff;
@@ -89,7 +93,7 @@
   font-weight:600; color:#374151; margin:0 0 6px 0; font-size:15px;
 }
 
-/* --- Location multi-select (pill + popup) --- */
+/* --- Location multi-select --- */
 .emp-loc{ position:relative; }
 .emp-loc-pill{
   display:inline-flex; align-items:center; gap:8px;
@@ -125,7 +129,7 @@
 .emp-loc-txt{ white-space:normal; overflow:visible; text-overflow:clip; max-width:none; word-break:break-word; }
 .emp-loc-empty{ padding:16px 12px; color:#6b7280; }
 
-/* --- Name select (search + list) --- */
+/* --- Name select --- */
 .emp-nselect{ position:relative; width:260px; }
 .emp-ns-btn{
   height:36px; width:100%; display:flex; align-items:center; justify-content:space-between;
@@ -151,7 +155,7 @@
 .emp-ns-item.is-selected{ background:#e8f4ff; color:#0d8aff; font-weight:700; }
 .emp-ns-empty{ padding:14px 12px; color:#6b7280; }
 
-/* --- Status select (checkbox inside dropdown) --- */
+/* --- Status select --- */
 .emp-status{ width:260px; }
 .emp-status .emp-ns-btn{ width:100%; }
 .emp-status-pop .emp-ns-list{ max-height:220px; overflow:auto; padding:4px 0; }
@@ -177,7 +181,7 @@
 }
 .emp-export-item:hover{ background:#f5f7fb; }
 
-/* Popups never clipped */
+/* Prevent clipping of popovers */
 .emp-wrap, .emp-card, .emp-toolbar, .table-wrap { overflow: visible; }
 
 /* ===== Table ===== */
@@ -200,16 +204,33 @@
   font-size:12px; font-weight:700; text-align:center; color:#fff; background:#22c55e;
 }
 
-/* Actions */
+/* Column widths */
 .col-sr{ width:46px; }
 .col-status{ width:132px; }
-.col-actions{ width:900px; white-space:nowrap; display: grid; grid-template-columns: repeat(2,1fr);}
+
+/* ===== Actions column – aligned & compact (EXACTLY 4 buttons) ===== */
+.emp-table th.col-actions,
+.emp-table td.col-actions{
+  text-align:center;
+  width: 180px;          /* enough for 4 icons */
+  white-space:nowrap;
+}
+.emp-table td.col-actions{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+/* Action icon buttons */
 .ico{
   width:28px; height:28px; display:inline-grid; place-items:center;
-  background:#fff; border:1px solid #d9dee6; border-radius:4px; margin-right:6px; cursor:pointer;
+  background:#fff; border:1px solid #d9dee6; border-radius:4px; cursor:pointer;
+  transition: border-color .15s ease, color .15s ease, box-shadow .15s ease;
 }
-.ico:last-child{ margin-right:0; }
 .ico .material-icons{ font-size:16px; color:#4b5563; }
+.ico:hover{ border-color:#0ea5e9; box-shadow:0 0 0 2px rgba(14,165,233,.12); }
+.ico:hover .material-icons{ color:#0ea5e9; }
 
 /* ===== Footer / Pager ===== */
 .emp-table-foot{
@@ -226,16 +247,4 @@
 /* ===== Small screens ===== */
 @media (max-width: 720px){
   .emp-search input{ width:160px; }
-  .col-branch{ min-width:220px; }
 }
-/* toggle icon image inside action button */
-.ico-img{
-  width:14px;
-  height:14px;
-  display:block;
-}
-
-/* Actions column thoda चौड़ा क्योंकि नया आइकन जोड़ दिया है */
-.col-actions{ width:140px; }
-
-.btn.primary{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; font-weight:600; }

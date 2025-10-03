@@ -3,20 +3,20 @@ import { useNavigate } from "react-router-dom";
 import "../styles/ReportsPage.css";
 
 const TABS = [
-  { key: "fav",      label: "Favourite",   icon: "grade" },
-  { key: "sales",    label: "Sales",       icon: "shopping_cart" },
-  { key: "purchase", label: "Purchase",    icon: "shopping_bag" },
-  { key: "inventory",label: "Inventory",   icon: "inventory_2" },
-  { key: "accounts", label: "Accounts",    icon: "badge" },
-  { key: "gst",      label: "GST Returns", icon: "assignment" },
-  { key: "other",    label: "Other",       icon: "show_chart" },
+  { key: "fav", label: "Favourite", icon: "grade" },
+  { key: "sales", label: "Sales", icon: "shopping_cart" },
+  { key: "purchase", label: "Purchase", icon: "shopping_bag" },
+  { key: "inventory", label: "Inventory", icon: "inventory_2" },
+  { key: "accounts", label: "Accounts", icon: "badge" },
+  { key: "gst", label: "GST Returns", icon: "assignment" },
+  { key: "other", label: "Other", icon: "show_chart" },
 ];
 
 const SALES_ITEMS = [
-  { key: "daywise",   title: "Day wise Sales Summary" },
-  { key: "register",  title: "Sales Register" },
-  { key: "category",  title: "Category Wise Sales Summary" },
-  { key: "tax",       title: "Sales Tax summary" },
+  { key: "daywise", title: "Day wise Sales Summary" },
+  { key: "register", title: "Sales Register" },
+  { key: "category", title: "Category Wise Sales Summary" },
+  { key: "tax", title: "Sales Tax summary" },
 ];
 
 export default function ReportsPage() {
@@ -91,7 +91,9 @@ export default function ReportsPage() {
                     if (it.key === "daywise") {
                       navigate("/reports/day-wise-sales-summary");
                     } else if (it.key === "register") {
-                      navigate("/reports/sales-register"); // ✅ route fixed
+                      navigate("/reports/sales-register");
+                    } else if (it.key === "category") {
+                      navigate("/reports/category-wise-sales-summary"); // ✅ opens this screen
                     }
                   }}
                 >

@@ -48,6 +48,7 @@ import InventoryProductDetailPage from "./components/InventoryProductDetailPage"
 // Reports
 import ReportsPage, { DayWiseSalesSummaryPage } from "./components/ReportsPage";
 import ReportSalesRegister from "./components/ReportSalesRegister"; // 👈 Sales Register (mini sidebar)
+import ReportCategoryWiseSales from "./components/ReportCategoryWiseSales";
 
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
@@ -88,7 +89,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -100,7 +101,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -155,6 +156,11 @@ export default function App() {
       <Route
         path="/reports/sales-register"
         element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>}
+      />
+
+      <Route
+        path="/reports/category-wise-sales-summary"
+        element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>}
       />
 
       {/* Settings */}

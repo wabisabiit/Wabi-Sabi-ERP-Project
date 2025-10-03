@@ -3,10 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ReactDOM from "react-dom";
 import "../styles/EmployeePage.css";
 
-/* ⬇️ अपने दिए हुए आइकन का सही path यहाँ लगाएँ (png/svg) */
-import ToggleStatusIcon from "../assets/inactive.svg";
-// उदाहरण: "../assets/toggle_active_inactive.svg"  या  "../assets/status.png"
-
+/* Demo data */
 const INITIAL_DATA = [
   { id: 1, name: "Rajdeep",        phone: "+91-7827635203", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
   { id: 2, name: "IT Account",     phone: "+91-7859456588", email: "", branch: "WABI SABI SUSTAINABILITY LLP", status: "ACTIVE" },
@@ -16,7 +13,7 @@ const INITIAL_DATA = [
 
 /* ========= Filter controls ========= */
 
-// Location multi-select (pill + popup)
+/* Location multi-select (pill + popup) */
 function EmpLocationSelect({ value = [], onChange, options = [] }) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
@@ -80,7 +77,7 @@ function EmpLocationSelect({ value = [], onChange, options = [] }) {
   );
 }
 
-// Name single-select (search + list)
+/* Name single-select (search + list) */
 function EmpNameSelect({ value, onChange, options = [], placeholder = "Select Name" }) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
@@ -144,7 +141,7 @@ function EmpNameSelect({ value, onChange, options = [], placeholder = "Select Na
   );
 }
 
-/* ======== Status select (checkbox inside dropdown, scoped) ======== */
+/* Status select (checkbox inside dropdown) */
 function EmpStatusSelect({ value = "Active", onChange, options = ["Active", "Deactive", "All"] }) {
   const [open, setOpen] = React.useState(false);
   const wrapRef = React.useRef(null);
@@ -184,7 +181,7 @@ function EmpStatusSelect({ value = "Active", onChange, options = ["Active", "Dea
                     checked={checked}
                     onChange={() => {
                       onChange(opt);
-                      setOpen(false); // select & close
+                      setOpen(false);
                     }}
                   />
                   <span>{opt}</span>
@@ -204,34 +201,19 @@ export default function EmployeePage() {
   const [pageSize, setPageSize] = useState(15);
   const [query, setQuery] = useState("");
 
-  // rows in state so we can toggle status inline
   const [rows, setRows] = useState(INITIAL_DATA);
 
-  // filters
   const [openFilter, setOpenFilter] = useState(false);
   const [empLocations, setEmpLocations] = useState([]);
   const [empName, setEmpName] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Active"); // default Active
+  const [statusFilter, setStatusFilter] = useState("Active");
 
-  // export menu state
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = React.useRef(null);
 
   const navigate = useNavigate();
   const NAME_OPTIONS = useMemo(() => rows.map((d) => d.name), [rows]);
 
-  // toggle status handler (ACTIVE <-> DEACTIVE)
-  const toggleStatus = (id) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, status: (r.status || "").toUpperCase() === "ACTIVE" ? "DEACTIVE" : "ACTIVE" }
-          : r
-      )
-    );
-  };
-
-  // combined filter
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
@@ -255,7 +237,6 @@ export default function EmployeePage() {
   const showingFrom = filtered.length ? 1 : 0;
   const showingTo = Math.min(filtered.length, pageSize);
 
-  // export helpers
   React.useEffect(() => {
     const onDoc = (e) =>
       exportRef.current && !exportRef.current.contains(e.target) && setExportOpen(false);
@@ -334,7 +315,7 @@ export default function EmployeePage() {
     parts.forEach((off) => { pdf += `${pad(off)} 00000 n \n`; });
     pdf += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
 
-    download(new Blob([pdf], { type: "application/pdf" }), "employees.pdf");
+    download(new Blob([pdf]), "employees.pdf");
     setExportOpen(false);
   };
 
@@ -420,7 +401,7 @@ export default function EmployeePage() {
             />
           </div>
 
-          {/* navigate to Create page */}
+          {/* Create page */}
           <button className="btn primary" onClick={() => navigate("/admin/employee/new")}>
             Create New
           </button>
@@ -458,7 +439,6 @@ export default function EmployeePage() {
               />
             </div>
 
-            {/* Status dropdown with checkbox inside */}
             <div className="emp-field">
               <div className="emp-field-label">Status</div>
               <EmpStatusSelect value={statusFilter} onChange={setStatusFilter} />
@@ -499,16 +479,6 @@ export default function EmployeePage() {
                       <button className="ico" title="Edit"><span className="material-icons">edit</span></button>
                       <button className="ico" title="Duplicate"><span className="material-icons">content_copy</span></button>
                       <button className="ico" title="Delete"><span className="material-icons">delete_outline</span></button>
-
-                      {/* ⬇️ आपका कस्टम टॉगल आइकन — Delete के बराबर में */}
-                      <button
-                        className="ico"
-                        title={st === "ACTIVE" ? "Mark Deactive" : "Mark Active"}
-                        onClick={() => toggleStatus(r.id)}
-                        aria-label="Toggle status"
-                      >
-          
-                      </button>
                     </td>
                   </tr>
                 );
