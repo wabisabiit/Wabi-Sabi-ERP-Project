@@ -13,7 +13,6 @@ import Sidebar from "./components/Sidebar";
 import CampaignCreatePage from "./components/CampaignCreatePage";
 import MultiplePay from "./components/MultiplePay";
 import CreditNotePage from "./components/CreditNotePage";
-import SalesRegisterPage from "./components/SalesRegisterPage";
 import OrderList from "./components/OrderListPage";
 
 import EmployeePage from "./components/EmployeePage";
@@ -46,9 +45,9 @@ import NewBankPage from "./components/NewBankPage";
 import PaymentCreatePage from "./components/PaymentCreatePage";
 import InventoryProductDetailPage from "./components/InventoryProductDetailPage";
 
-// Repote Page
-import ReportsPage from "./components/ReportsPage";
-
+// Reports
+import ReportsPage, { DayWiseSalesSummaryPage } from "./components/ReportsPage";
+import ReportSalesRegister from "./components/ReportSalesRegister"; // 👈 Sales Register (mini sidebar)
 
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
@@ -60,7 +59,7 @@ import NotificationSettingsPage from "./components/NotificationSettingsPage";
 import IntegrationPage from "./components/IntegrationPage";
 
 import ProductsPage from "./components/InventoryProductsPage";
-import NewInventoryProductPage from "./components/NewInventoryProductPage"; // ✅ renamed import
+import NewInventoryProductPage from "./components/NewInventoryProductPage";
 
 // Stock Transfer
 import StockTransferPage from "./components/StockTransferPage";
@@ -89,8 +88,20 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
+    </>
+  );
+}
+
+/** Mini sidebar (icons-only) that expands on hover — only for Sales Register */
+function MiniSidebarLayout({ children }) {
+  // Content ko full width dene ke liye fix margin (icon rail ~56px)
+  const ICON_RAIL = 56;
+  return (
+    <>
+      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
 }
@@ -115,11 +126,7 @@ export default function App() {
 
       {/* Inventory */}
       <Route path="/inventory/products" element={<SidebarLayout><ProductsPage /></SidebarLayout>} />
-      {/* ✅ New Inventory Product page (no top header, sidebar only) */}
-      <Route
-        path="/inventory/products/new"
-        element={<SidebarLayout><NewInventoryProductPage /></SidebarLayout>}
-      />
+      <Route path="/inventory/products/new" element={<SidebarLayout><NewInventoryProductPage /></SidebarLayout>} />
 
       {/* Bank / Cash */}
       <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
@@ -131,7 +138,6 @@ export default function App() {
       <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
 
       {/* Sales */}
-      <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
       <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
 
       {/* Utilities */}
@@ -140,9 +146,16 @@ export default function App() {
       <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
       <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
 
-      {/* Repotes */}
+      {/* Reports */}
       <Route path="/reports" element={<SidebarLayout><ReportsPage /></SidebarLayout>} />
-
+      <Route
+        path="/reports/day-wise-sales-summary"
+        element={<SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>}
+      />
+      <Route
+        path="/reports/sales-register"
+        element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>}
+      />
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
@@ -166,15 +179,14 @@ export default function App() {
       <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
       <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
-
       <Route
         path="/inventory/stock-transfer"
         element={<SidebarLayout><StockTransferPage /></SidebarLayout>}
       />
       <Route
-  path="/inventory/products/:id"
-  element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>}
-/>
+        path="/inventory/products/:id"
+        element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>}
+      />
 
       {/* Multiple Pay */}
       <Route

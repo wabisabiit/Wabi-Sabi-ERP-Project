@@ -3,19 +3,28 @@ import React, { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import "../styles/Sidebar.css";
 
-export default function Sidebar({ open, onClose, persistent = false }) {
+export default function Sidebar({ open, onClose, persistent = false, miniHover = false }) {
   const panelRef = useRef(null);
 
   const [expandInventory, setExpandInventory] = useState(false);
-  const [expandPOS, setExpandPOS] = useState(true);     // POS open by default
-  const [expandAdmin, setExpandAdmin] = useState(true); // Admin open by default
+  const [expandPOS, setExpandPOS] = useState(true);
+  const [expandAdmin, setExpandAdmin] = useState(true);
   const [expandUtilities, setExpandUtilities] = useState(false);
-  const [expandSettings, setExpandSettings] = useState(false); // NEW
+  const [expandSettings, setExpandSettings] = useState(false);
   const [expandCRM, setExpandCRM] = useState(false);
   const [expandBankCash, setExpandBankCash] = useState(false);
 
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
+
+  // mini-hover collapse/expand width
+  const COLLAPSED_W = 56;
+  const EXPANDED_W = 260;
+  const [collapsed, setCollapsed] = useState(!!miniHover);
+
+  useEffect(() => {
+    if (miniHover) setCollapsed(true);
+  }, [miniHover, location.pathname]);
 
   // Close on ESC (when not persistent)
   useEffect(() => {
@@ -40,11 +49,15 @@ export default function Sidebar({ open, onClose, persistent = false }) {
     if (isPath("/bank")) setExpandBankCash(true);
     if (isPath("/utilities")) setExpandUtilities(true);
     if (isPath("/settings")) setExpandSettings(true);
-    if (isPath("/inventory")) setExpandInventory(true); // ✅ make Inventory open when on its routes
+    if (isPath("/inventory")) setExpandInventory(true);
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
   const handleNav = () => { if (!persistent) onClose?.(); };
+
+  // helpers to hide/show text when collapsed
+  const textStyle = collapsed ? { width: 0, opacity: 0, pointerEvents: "none" } : {};
+  const caretStyle = collapsed ? { opacity: 0, pointerEvents: "none" } : {};
 
   return (
     <>
@@ -58,9 +71,15 @@ export default function Sidebar({ open, onClose, persistent = false }) {
       {/* panel */}
       <aside
         ref={panelRef}
-        className={`sb-panel ${open ? "open" : ""} ${persistent ? "persistent" : ""}`}
+        className={`sb-panel ${open ? "open" : ""} ${persistent ? "persistent" : ""} ${miniHover ? "mini-hover" : ""}`}
         role="navigation"
         aria-label="Main menu"
+        style={{
+          width: miniHover ? (collapsed ? COLLAPSED_W : EXPANDED_W) : undefined,
+          transition: "width 160ms ease"
+        }}
+        onMouseEnter={() => miniHover && setCollapsed(false)}
+        onMouseLeave={() => miniHover && setCollapsed(true)}
       >
         {/* header */}
         <div className="sb-top">
@@ -71,7 +90,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
           >
             <span className="material-icons">menu</span>
           </button>
-          <div className="sb-brand">Wabi&nbsp;Sabi</div>
+          <div className="sb-brand" style={textStyle}>Wabi&nbsp;Sabi</div>
         </div>
 
         {/* items */}
@@ -79,7 +98,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
           {/* Dashboard */}
           <NavLink to="/new" className="sb-item" onClick={handleNav}>
             <span className="material-icons sb-ic">dashboard</span>
-            <span className="sb-text">Dashboard</span>
+            <span className="sb-text" style={textStyle}>Dashboard</span>
           </NavLink>
 
           {/* Contact */}
@@ -90,7 +109,7 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               onClick={handleNav}
             >
               <span className="material-icons sb-ic">contacts</span>
-              <span className="sb-text">Contact</span>
+              <span className="sb-text" style={textStyle}>Contact</span>
             </NavLink>
           </div>
 
@@ -104,19 +123,15 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               type="button"
             >
               <span className="material-icons sb-ic">admin_panel_settings</span>
-              <span className="sb-text">Admin</span>
-              <span className="material-icons sb-caret">
+              <span className="sb-text" style={textStyle}>Admin</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
                 {expandAdmin ? "expand_less" : "expand_more"}
               </span>
             </button>
 
-            <div id="sb-admin-sub" className={`sb-sub ${expandAdmin ? "show" : ""}`}>
-              <NavLink to="/admin/employee" className={linkClass} onClick={handleNav}>
-                Employee
-              </NavLink>
-              <NavLink to="/admin/outlet" className={linkClass} onClick={handleNav}>
-                Outlet
-              </NavLink>
+            <div id="sb-admin-sub" className={`sb-sub ${expandAdmin ? "show" : ""}`} style={textStyle}>
+              <NavLink to="/admin/employee" className={linkClass} onClick={handleNav}>Employee</NavLink>
+              <NavLink to="/admin/outlet" className={linkClass} onClick={handleNav}>Outlet</NavLink>
             </div>
           </div>
 
@@ -130,29 +145,14 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               type="button"
             >
               <span className="material-icons sb-ic">inventory_2</span>
-              <span className="sb-text">Inventory</span>
-              <span className="material-icons sb-caret">
+              <span className="sb-text" style={textStyle}>Inventory</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
                 {expandInventory ? "expand_less" : "expand_more"}
               </span>
             </button>
-            <div id="sb-inventory-sub" className={`sb-sub ${expandInventory ? "show" : ""}`}>
-              {/* ✅ changed from <a href="#stock"> to real NavLink route */}
-              <NavLink
-                to="/inventory/products"
-                className={linkClass}
-                onClick={handleNav}
-              >
-                Products
-              </NavLink>
-
-              <NavLink
-                to="/inventory/stock-transfer"
-                className={linkClass}
-                onClick={handleNav}
-              >
-                Stock Transfer
-              </NavLink>
-
+            <div id="sb-inventory-sub" className={`sb-sub ${expandInventory ? "show" : ""}`} style={textStyle}>
+              <NavLink to="/inventory/products" className={linkClass} onClick={handleNav}>Products</NavLink>
+              <NavLink to="/inventory/stock-transfer" className={linkClass} onClick={handleNav}>Stock Transfer</NavLink>
             </div>
           </div>
 
@@ -166,12 +166,12 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               type="button"
             >
               <span className="material-icons sb-ic">account_balance_wallet</span>
-              <span className="sb-text">Bank / Cash</span>
-              <span className="material-icons sb-caret">
+              <span className="sb-text" style={textStyle}>Bank / Cash</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
                 {expandBankCash ? "expand_less" : "expand_more"}
               </span>
             </button>
-            <div id="sb-bank-sub" className={`sb-sub ${expandBankCash ? "show" : ""}`}>
+            <div id="sb-bank-sub" className={`sb-sub ${expandBankCash ? "show" : ""}`} style={textStyle}>
               <NavLink to="/bank" end className={linkClass} onClick={handleNav}>Bank</NavLink>
               <NavLink to="/bank/transactions" className={linkClass} onClick={handleNav}>Bank Transaction</NavLink>
               <NavLink to="/bank/payment" className={linkClass} onClick={handleNav}>Payment</NavLink>
@@ -190,13 +190,13 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               type="button"
             >
               <span className="material-icons sb-ic">point_of_sale</span>
-              <span className="sb-text">POS</span>
-              <span className="material-icons sb-caret">
+              <span className="sb-text" style={textStyle}>POS</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
                 {expandPOS ? "expand_less" : "expand_more"}
               </span>
             </button>
 
-            <div id="sb-pos-sub" className={`sb-sub ${expandPOS ? "show" : ""}`}>
+            <div id="sb-pos-sub" className={`sb-sub ${expandPOS ? "show" : ""}`} style={textStyle}>
               <NavLink to="/new" className={linkClass} onClick={handleNav}>New</NavLink>
               <NavLink to="/order-list" className={linkClass} onClick={handleNav}>Order List</NavLink>
               <NavLink to="/credit-note" className={linkClass} onClick={handleNav}>Credit Note</NavLink>
@@ -214,13 +214,13 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               type="button"
             >
               <span className="material-icons sb-ic">diversity_3</span>
-              <span className="sb-text">CRM</span>
-              <span className="material-icons sb-caret">
+              <span className="sb-text" style={textStyle}>CRM</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
                 {expandCRM ? "expand_less" : "expand_more"}
               </span>
             </button>
 
-            <div id="sb-crm-sub" className={`sb-sub ${expandCRM ? "show" : ""}`}>
+            <div id="sb-crm-sub" className={`sb-sub ${expandCRM ? "show" : ""}`} style={textStyle}>
               <NavLink to="/crm/coupon" className={linkClass} onClick={handleNav}>Coupon</NavLink>
               <NavLink to="/crm/discount" className={linkClass} onClick={handleNav}>Discount</NavLink>
               <NavLink to="/crm/loyalty" className={linkClass} onClick={handleNav}>Loyalty</NavLink>
@@ -238,30 +238,23 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               type="button"
             >
               <span className="material-icons sb-ic">build</span>
-              <span className="sb-text">Utilities</span>
-              <span className="material-icons sb-caret">
+              <span className="sb-text" style={textStyle}>Utilities</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
                 {expandUtilities ? "expand_less" : "expand_more"}
               </span>
             </button>
 
-            <div id="sb-utils-sub" className={`sb-sub ${expandUtilities ? "show" : ""}`}>
-              <NavLink to="/utilities/barcode" className={linkClass} onClick={handleNav}>
-                Barcode Utility
-              </NavLink>
-              {/* NEW: Barcode Utility 2 */}
-              <NavLink to="/utilities/barcode2" className={linkClass} onClick={handleNav}>
-                Barcode Utility 2
-              </NavLink>
+            <div id="sb-utils-sub" className={`sb-sub ${expandUtilities ? "show" : ""}`} style={textStyle}>
+              <NavLink to="/utilities/barcode" className={linkClass} onClick={handleNav}>Barcode Utility</NavLink>
+              <NavLink to="/utilities/barcode2" className={linkClass} onClick={handleNav}>Barcode Utility 2</NavLink>
             </div>
           </div>
 
-
-          {/* Reports (single link) */}
+          {/* Reports */}
           <NavLink to="/reports" className="sb-item" onClick={handleNav}>
             <span className="material-icons sb-ic">insights</span>
-            <span className="sb-text">Report</span>
+            <span className="sb-text" style={textStyle}>Report</span>
           </NavLink>
-
 
           {/* Settings */}
           <div className="sb-group">
@@ -273,31 +266,23 @@ export default function Sidebar({ open, onClose, persistent = false }) {
               type="button"
             >
               <span className="material-icons sb-ic">settings</span>
-              <span className="sb-text">Settings</span>
-              <span className="material-icons sb-caret">
+              <span className="sb-text" style={textStyle}>Settings</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
                 {expandSettings ? "expand_less" : "expand_more"}
               </span>
             </button>
 
-            <div id="sb-settings-sub" className={`sb-sub ${expandSettings ? "show" : ""}`}>
-              <NavLink to="/settings/general" className={linkClass} onClick={handleNav}>
-                General
-              </NavLink>
-              <NavLink to="/settings/pos" className={linkClass} onClick={handleNav}>
-                POS
-              </NavLink>
-              <NavLink to="/settings/notification" className={linkClass} onClick={handleNav}>
-                Notification
-              </NavLink>
-              <NavLink to="/settings/integration" className={linkClass} onClick={handleNav}>
-                Integration
-              </NavLink>
+            <div id="sb-settings-sub" className={`sb-sub ${expandSettings ? "show" : ""}`} style={textStyle}>
+              <NavLink to="/settings/general" className={linkClass} onClick={handleNav}>General</NavLink>
+              <NavLink to="/settings/pos" className={linkClass} onClick={handleNav}>POS</NavLink>
+              <NavLink to="/settings/notification" className={linkClass} onClick={handleNav}>Notification</NavLink>
+              <NavLink to="/settings/integration" className={linkClass} onClick={handleNav}>Integration</NavLink>
             </div>
           </div>
         </nav>
 
         {/* footer */}
-        <div className="sb-foot">
+        <div className="sb-foot" style={textStyle}>
           <div className="sb-tip-title">Want insider tips &amp; updates?</div>
           <div className="sb-tip-sub">Follow us:</div>
           <div className="sb-socials">
