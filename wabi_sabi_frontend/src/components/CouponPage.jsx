@@ -478,14 +478,14 @@ export default function CouponPage() {
             </select>
 
             <button
-              className="btn primary"
+              className="mybtn"
               type="button"
               onClick={() => navigate("/crm/coupon/new")}
             >
               New Coupon
             </button>
             <button
-              className="btn primary"
+              className="mybtn"
               type="button"
               onClick={() => setGenOpen(true)}   /* ← open popup here */
             >
