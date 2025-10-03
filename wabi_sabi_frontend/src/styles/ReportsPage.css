@@ -1,0 +1,90 @@
+/* ===== fonts for Material Icons (keeps consistent with other pages) ===== */
+@import url("https://fonts.googleapis.com/css2?family=Material+Icons&family=Material+Icons+Outlined");
+
+/* ===== Page skin (matches screenshot spacing/colors) ===== */
+.rp-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:18px 16px 24px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color:#0f172a;
+  font-size:14px;
+}
+
+/* top row */
+.rp-top{
+  display:flex; align-items:center;
+  margin:2px 4px 12px;
+}
+.rp-title{
+  font-weight:500; font-size:16px; color:#293241;
+}
+.rp-crumb{
+  display:flex; align-items:center; gap:8px; color:#94a3b8;
+}
+.rp-crumb .material-icons-outlined{ font-size:22px; }
+
+/* ===== Blue strip with tiles ===== */
+.rp-strip{
+  background:#07a6e3;                 /* vivid cyan/blue like screenshot */
+  border-radius:10px;
+  padding:10px;
+  border:1px solid #46c3ee;
+  display:grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap:10px;
+}
+@media (max-width:1200px){
+  .rp-strip{ grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+}
+@media (max-width:720px){
+  .rp-strip{ grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+}
+
+.rp-tab{
+  cursor:pointer; border:0; background:#0db3f0; color:#fff;
+  border-radius:10px; padding:6px 6px;
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+  outline:none; position:relative;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
+  transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
+}
+.rp-tab:hover{ transform: translateY(-1px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.4); }
+.rp-tab.active{ background:#12b9f3; box-shadow: inset 0 0 0 2px #fff; }
+
+.rp-tab-icon{
+  width:160px; max-width:100%;
+  height:96px;
+  background:#fff; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  color:#07a6e3; border:2px dashed rgba(7,166,227,.25);
+}
+.rp-tab .material-icons-outlined{ font-size:42px; }
+
+.rp-tab-label{
+  font-weight:700; letter-spacing:.25px; text-transform:none;
+}
+
+/* ===== Section title ===== */
+.rp-section-title{
+  text-align:center;
+  margin:22px 0 14px;
+  color:#0aa3da;
+  font-weight:800; letter-spacing:6px;
+  font-size:30px;
+}
+
+/* ===== Empty surface (white card area) ===== */
+.rp-surface{
+  background:#fff;
+  border:1px solid #e7eaef;
+  border-radius:10px;
+  min-height:360px;
+  box-shadow: 0 1px 0 rgba(15,23,42,.02);
+}
+
+/* footer (bottom-left like screenshot) */
+.rp-footer{
+  font-size:12px; color:#64748b;
+  margin-top:20px;
+}

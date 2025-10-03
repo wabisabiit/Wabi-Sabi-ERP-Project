@@ -255,6 +255,14 @@ export default function Sidebar({ open, onClose, persistent = false }) {
             </div>
           </div>
 
+
+          {/* Reports (single link) */}
+          <NavLink to="/reports" className="sb-item" onClick={handleNav}>
+            <span className="material-icons sb-ic">insights</span>
+            <span className="sb-text">Report</span>
+          </NavLink>
+
+
           {/* Settings */}
           <div className="sb-group">
             <button

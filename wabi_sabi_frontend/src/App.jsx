@@ -46,6 +46,10 @@ import NewBankPage from "./components/NewBankPage";
 import PaymentCreatePage from "./components/PaymentCreatePage";
 import InventoryProductDetailPage from "./components/InventoryProductDetailPage";
 
+// Repote Page
+import ReportsPage from "./components/ReportsPage";
+
+
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
 import GeneralSettingsPage from "./components/GeneralSettingsPage";
@@ -135,6 +139,10 @@ export default function App() {
       <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
       <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
       <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
+
+      {/* Repotes */}
+      <Route path="/reports" element={<SidebarLayout><ReportsPage /></SidebarLayout>} />
+
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
