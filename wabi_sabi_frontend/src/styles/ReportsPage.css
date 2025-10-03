@@ -19,45 +19,55 @@
 .rp-crumb .material-icons-outlined{ font-size:18px; }
 
 /* clickable breadcrumb links */
-.rp-crumb-link{
-  color:#0aa3da;
-  cursor:pointer;
-  outline:none;
-}
+.rp-crumb-link{ color:#0aa3da; cursor:pointer; outline:none; }
 .rp-crumb-link:hover{ text-decoration:underline; }
 .rp-crumb-link:focus-visible{
   outline:2px solid #0aa3da; outline-offset:2px; border-radius:4px;
 }
 .rp-crumb-sep{ color:#cbd5e1; }
 
-/* ===== Blue strip with tiles ===== */
+/* ===== Blue strip with tiles (COMPACT for 7 visible) ===== */
 .rp-strip{
-  background:#07a6e3; border-radius:10px; padding:10px; border:1px solid #46c3ee;
-  display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
+  background:#07a6e3; border-radius:10px; padding:8px; border:1px solid #46c3ee;
+  display:flex; gap:8px; overflow-x:auto; overflow-y:hidden;
   -ms-overflow-style:none; scrollbar-width:none;
 }
 .rp-strip::-webkit-scrollbar{ display:none; }
 
+/* one tile ≈140px so 7 fit on ~1366px wide screens */
 .rp-tab{
   cursor:pointer; border:0; background:#0db3f0; color:#fff;
-  border-radius:10px; padding:10px 12px;
-  display:flex; flex-direction:column; align-items:center; gap:10px;
-  outline:none; position:relative; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
+  border-radius:10px; padding:8px 10px;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  outline:none; position:relative;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
   transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
-  flex:0 0 180px;
+  flex:0 0 140px;            /* ⬅️ compact width */
+  min-width:140px;
 }
 .rp-tab:hover{ transform: translateY(-1px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.4); }
 .rp-tab.active{ background:#fff; color:#0aa3da; box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px rgba(255,255,255,.35); }
-.rp-tab::after{ content:""; position:absolute; inset:6px; border-radius:8px; border:2px dashed rgba(255,255,255,.45); pointer-events:none; }
+.rp-tab::after{ content:""; position:absolute; inset:5px; border-radius:8px; border:2px dashed rgba(255,255,255,.45); pointer-events:none; }
 .rp-tab.active::after{ border-color:#9bdcf5; }
-.rp-tab-icon{ width:120px; height:72px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
-.rp-tab .material-icons-outlined{ font-size:36px; line-height:1; }
+
+/* compact icon box */
+.rp-tab-icon{
+  width:64px; height:42px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+}
+.rp-tab .material-icons-outlined{ font-size:28px; line-height:1; } /* ⬅️ smaller icon */
 .rp-tab:not(.active) .material-icons-outlined{ color:#fff; }
 .rp-tab.active .material-icons-outlined{ color:#07a6e3; }
-.rp-tab-label{ font-weight:700; letter-spacing:.25px; font-size:12px; line-height:1.2; text-align:center; opacity:.95; }
+.rp-tab-label{
+  font-weight:700; letter-spacing:.25px; font-size:11px; line-height:1.15;
+  text-align:center; opacity:.95;
+}
 
-/* ===== Section title ===== */
-.rp-section-title{ text-align:center; margin:22px 0 14px; color:#0aa3da; font-weight:800; letter-spacing:6px; font-size:30px; }
+/* ===== Section title (slightly tighter) ===== */
+.rp-section-title{
+  text-align:center; margin:16px 0 12px; color:#0aa3da;
+  font-weight:800; letter-spacing:5px; font-size:26px;
+}
 
 /* ===== Generic surface ===== */
 .rp-surface{
@@ -81,7 +91,11 @@
 .rp-item-left{ display:flex; align-items:center; gap:10px; min-width:0; }
 .rp-item-icon{ font-size:20px; color:#0aa3da; }
 .rp-item-title{ font-size:14px; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.rp-item-star{ display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; border:1px solid #dfe8f0; color:#8fb9d7; background:#fff; flex-shrink:0; transition: background .12s ease,border-color .12s ease,color .12s ease; }
+.rp-item-star{
+  display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px;
+  border-radius:6px; border:1px solid #dfe8f0; color:#8fb9d7; background:#fff; flex-shrink:0;
+  transition: background .12s ease,border-color .12s ease,color .12s ease;
+}
 .rp-item-star .material-icons-outlined{ font-size:20px; }
 .rp-item-star:hover{ background:#eef7fd; border-color:#cfe3f2; color:#0aa3da; cursor:pointer; }
 .rp-item-star.active{ color:#ffb300; border-color:#ffde8a; background:#fffaf0; }
@@ -129,7 +143,10 @@
 
 /* Voucher multiselect */
 .rp-field-grow{ min-width: clamp(170px, 26%, 250px); }
-.rp-multiselect{ position:relative; min-height:34px; border:1px solid #dfe8f0; border-radius:6px; background:#f8fafc; padding:6px; cursor:text; }
+.rp-multiselect{
+  position:relative; min-height:34px; border:1px solid #dfe8f0; border-radius:6px;
+  background:#f8fafc; padding:6px; cursor:text;
+}
 .rp-chips{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .rp-chip{ background:#e6f5fc; color:#0b92c8; border:1px solid #bfe8f9; border-radius:14px; padding:2px 8px; display:inline-flex; align-items:center; gap:6px; font-size:12px; }
 .rp-chip-x{ border:0; background:transparent; line-height:1; font-size:14px; color:#0b92c8; cursor:pointer; }

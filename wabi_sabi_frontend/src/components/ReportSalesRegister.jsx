@@ -1,15 +1,16 @@
-// src/components/ReportSalesRegister.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportSalesRegister.css";
 
 export default function ReportSalesRegister() {
   const navigate = useNavigate();
-
-  // filters
   const today = new Date().toISOString().slice(0, 10);
+
+  // ── Filters ───────────────────────────────────────────────────────────────────
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
+  const [voucherNo, setVoucherNo] = useState("");
+  const [pageSize, setPageSize] = useState(25);
 
   const LOCATIONS = [
     "All",
@@ -31,19 +32,26 @@ export default function ReportSalesRegister() {
     "sandeep – 9689652369",
   ];
 
-  const [locOpen, setLocOpen] = useState(false);
-  const [salesOpen, setSalesOpen] = useState(false);
   const [selectedLocs, setSelectedLocs] = useState([]);
   const [selectedSales, setSelectedSales] = useState([]);
-  const [voucherNo, setVoucherNo] = useState("");
-  const [pageSize, setPageSize] = useState(25);
+  const [locOpen, setLocOpen] = useState(false);
+  const [salesOpen, setSalesOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
-  // columns modal
-  const [colModal, setColModal] = useState(false);
+  const locWrapRef = useRef(null);
+  const salesWrapRef = useRef(null);
+  const exportRef = useRef(null);
 
-  // Visible columns default (blue chips in screenshot)
+  // ── Columns (modal) ───────────────────────────────────────────────────────────
   const DEFAULT_COLS = [
-    "Sr No","Date","Party Name","City Name","Voucher Type","Voucher No","Gross Total","Created By"
+    "Sr No",
+    "Date",
+    "Party Name",
+    "City Name",
+    "Voucher Type",
+    "Voucher No",
+    "Gross Total",
+    "Created By",
   ];
   const ALL_COLS = [
     "Sr No","PAN no","Total Basic","Cess","Ack date",
@@ -61,226 +69,291 @@ export default function ReportSalesRegister() {
     "Order Type","Basic (28%)","Tax (28%)","Profit (%) (On Costing)","Restore visibility",
     "GSTIN","Basic (Other)","Tax (Other)","Profit (%) (On Selling)"
   ];
-
+  const [colModal, setColModal] = useState(false);
   const [visibleCols, setVisibleCols] = useState(new Set(DEFAULT_COLS));
+
+  const headerCols = [
+    "Sr No",
+    "Date",
+    "Party Name",
+    "City Name",
+    "Voucher Type",
+    "Voucher No",
+    "Gross Total",
+    "Created By",
+  ];
+  const renderedCols = headerCols.filter((c) => visibleCols.has(c));
 
   const toggleCol = (name) => {
     if (name === "Restore visibility") return;
-    setVisibleCols((prev) => {
-      const n = new Set(prev);
-      if (n.has(name)) n.delete(name);
-      else n.add(name);
+    setVisibleCols((p) => {
+      const n = new Set(p);
+      n.has(name) ? n.delete(name) : n.add(name);
       return n;
     });
   };
   const restoreCols = () => setVisibleCols(new Set(DEFAULT_COLS));
 
-  // dataset (empty for now to match screenshot)
+  // ── Data (stub) ───────────────────────────────────────────────────────────────
   const DATA = useMemo(() => [], []);
-  const filtered = useMemo(() => DATA, [DATA]); // hook up real filters later
-
+  const filtered = DATA;
   const totalGross = 0;
 
-  const asLinkKeys = (fn) => (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } };
-
-  // multi-select togglers
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  const asLinkKeys = (fn) => (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+  };
   const toggleLoc = (l) => {
     if (l === "All") {
-      setSelectedLocs((p) => p.length === LOCATIONS.length - 1 ? [] : LOCATIONS.filter((x) => x !== "All"));
-    } else {
-      setSelectedLocs((p) => p.includes(l) ? p.filter((x) => x !== l) : [...p, l]);
+      setSelectedLocs((p) =>
+        p.length === LOCATIONS.length - 1 ? [] : LOCATIONS.filter((x) => x !== "All")
+      );
+      return;
     }
+    setSelectedLocs((p) => (p.includes(l) ? p.filter((x) => x !== l) : [...p, l]));
   };
   const toggleSales = (s) => {
     if (s === "All") {
-      setSelectedSales((p) => p.length === SALESMEN.length - 1 ? [] : SALESMEN.filter((x) => x !== "All"));
-    } else {
-      setSelectedSales((p) => p.includes(s) ? p.filter((x) => x !== s) : [...p, s]);
+      setSelectedSales((p) =>
+        p.length === SALESMEN.length - 1 ? [] : SALESMEN.filter((x) => x !== "All")
+      );
+      return;
     }
+    setSelectedSales((p) => (p.includes(s) ? p.filter((x) => x !== s) : [...p, s]));
   };
-
-  // download helpers
   const download = (filename, mime) => {
     const blob = new Blob([""], { type: mime });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
+  // click-outside to close popovers
+  useEffect(() => {
+    const handler = (e) => {
+      if (!locWrapRef.current?.contains(e.target)) setLocOpen(false);
+      if (!salesWrapRef.current?.contains(e.target)) setSalesOpen(false);
+      if (!exportRef.current?.contains(e.target)) setExportOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // ── UI ────────────────────────────────────────────────────────────────────────
   return (
-    <div className="rp-wrap">
-      {/* top bar */}
-      <div className="rp-top">
-        <div className="rp-title">Sales Register</div>
-        <div className="rp-crumb" aria-label="breadcrumb">
+    <div className="sr-wrap">
+      {/* Title + Breadcrumb */}
+      <div className="sr-head">
+        <div className="sr-title">Sales Register</div>
+        <div className="sr-bc">
           <span
-            className="material-icons-outlined rp-crumb-link"
-            role="link" tabIndex={0}
+            className="material-icons-outlined sr-home"
+            role="link"
+            tabIndex={0}
             onClick={() => navigate("/")}
             onKeyDown={asLinkKeys(() => navigate("/"))}
-          >home</span>
-          <span className="rp-crumb-sep">›</span>
-          <span
-            className="rp-crumb-link"
-            role="link" tabIndex={0}
-            onClick={() => navigate("/reports")}
-            onKeyDown={asLinkKeys(() => navigate("/reports"))}
-          >Report</span>
+          >
+            home
+          </span>
         </div>
+        <span className="sr-bc-sep">›</span>
+        <button className="sr-bc-link" onClick={() => navigate("/reports")}>
+          Report
+        </button>
       </div>
 
-      {/* card */}
-      <div className="rp-surface rp-result-surface sr-card">
-        {/* filter grid */}
-        <div className="sr-toolbar">
+      {/* Card */}
+      <div className="sr-card">
+        {/* Filter row (single line @1366px) */}
+        <div className="sr-bar">
+          {/* From */}
           <div className="sr-field">
             <label>From Date</label>
-            <div className="rp-input with-icon">
+            <div className="sr-input with-ic">
               <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
               <span className="material-icons-outlined">calendar_month</span>
             </div>
           </div>
 
+          {/* To */}
           <div className="sr-field">
             <label>To Date</label>
-            <div className="rp-input with-icon">
+            <div className="sr-input with-ic">
               <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
               <span className="material-icons-outlined">calendar_month</span>
             </div>
           </div>
 
-          <div className="sr-field">
+          {/* Location */}
+          <div className="sr-field" ref={locWrapRef}>
             <label>Location</label>
-            <div className="rp-select" onClick={() => setLocOpen((s) => !s)}>
-              <span className="rp-select-text">
-                {selectedLocs.length ? `Select Location ${selectedLocs.length}` : "Select Location"}
+            <div className="sr-select" onClick={() => setLocOpen((s) => !s)}>
+              <span className="sr-select-text">
+                Select Location {selectedLocs.length > 0 && <span className="sr-badge">{selectedLocs.length}</span>}
               </span>
-              <span className="material-icons-outlined rp-clear" onClick={(e) => { e.stopPropagation(); setSelectedLocs([]); }}>close</span>
-              {locOpen && (
-                <div className="rp-popover rp-popover-loc" onClick={(e) => e.stopPropagation()}>
-                  <div className="rp-popover-search"><input placeholder="Search..." /></div>
-                  <div className="rp-popover-list">
-                    {LOCATIONS.map((l) => (
-                      <label key={l} className="rp-check">
-                        <input
-                          type="checkbox"
-                          checked={l === "All" ? selectedLocs.length === LOCATIONS.length - 1 : selectedLocs.includes(l)}
-                          onChange={() => toggleLoc(l)}
-                        />
-                        <span>{l}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <span
+                className="material-icons-outlined sr-clear"
+                onClick={(e) => { e.stopPropagation(); setSelectedLocs([]); }}
+              >
+                close
+              </span>
             </div>
+            {locOpen && (
+              <div className="sr-pop">
+                <div className="sr-pop-search"><input placeholder="Search..." /></div>
+                <div className="sr-pop-list">
+                  {LOCATIONS.map((l) => (
+                    <label key={l} className="sr-check">
+                      <input
+                        type="checkbox"
+                        checked={l === "All"
+                          ? selectedLocs.length === LOCATIONS.length - 1
+                          : selectedLocs.includes(l)}
+                        onChange={() => toggleLoc(l)}
+                      />
+                      <span>{l}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="sr-field">
+          {/* Sales Man */}
+          <div className="sr-field" ref={salesWrapRef}>
             <label>Sales Man</label>
-            <div className="rp-select" onClick={() => setSalesOpen((s) => !s)}>
-              <span className="rp-select-text">
-                {selectedSales.length ? `Select Sales Man ${selectedSales.length}` : "Select Sales Man"}
+            <div className="sr-select" onClick={() => setSalesOpen((s) => !s)}>
+              <span className="sr-select-text">
+                Select Sales Man {selectedSales.length > 0 && <span className="sr-badge">{selectedSales.length}</span>}
               </span>
-              <span className="material-icons-outlined rp-clear" onClick={(e) => { e.stopPropagation(); setSelectedSales([]); }}>close</span>
-              {salesOpen && (
-                <div className="rp-popover rp-popover-loc" onClick={(e) => e.stopPropagation()}>
-                  <div className="rp-popover-search"><input placeholder="Search..." /></div>
-                  <div className="rp-popover-list">
-                    {SALESMEN.map((s) => (
-                      <label key={s} className="rp-check">
-                        <input
-                          type="checkbox"
-                          checked={s === "All" ? selectedSales.length === SALESMEN.length - 1 : selectedSales.includes(s)}
-                          onChange={() => toggleSales(s)}
-                        />
-                        <span>{s}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <span
+                className="material-icons-outlined sr-clear"
+                onClick={(e) => { e.stopPropagation(); setSelectedSales([]); }}
+              >
+                close
+              </span>
             </div>
+            {salesOpen && (
+              <div className="sr-pop">
+                <div className="sr-pop-search"><input placeholder="Search..." /></div>
+                <div className="sr-pop-list">
+                  {SALESMEN.map((s) => (
+                    <label key={s} className="sr-check">
+                      <input
+                        type="checkbox"
+                        checked={s === "All"
+                          ? selectedSales.length === SALESMEN.length - 1
+                          : selectedSales.includes(s)}
+                        onChange={() => toggleSales(s)}
+                      />
+                      <span>{s}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="sr-field sr-field--vno">
+          {/* Voucher No */}
+          <div className="sr-field">
             <label>Voucher No</label>
-            <div className="rp-input">
+            <div className="sr-input">
               <input type="text" value={voucherNo} onChange={(e) => setVoucherNo(e.target.value)} />
             </div>
           </div>
 
-          {/* right-side controls */}
-          <div className="sr-actions">
-            <select className="sr-page-size" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+          {/* Right controls (fit in one line, no overlap) */}
+          <div className="sr-right" ref={exportRef}>
+            <select className="sr-pages" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
               {[25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
 
-            <button className="sr-btn icon" title="Export PDF" onClick={() => download("sales-register.pdf", "application/pdf")}>
-              <span className="material-icons-outlined">picture_as_pdf</span>
-            </button>
-            <button className="sr-btn icon" title="Export Excel" onClick={() =>
-              download("sales-register.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            }>
-              <span className="material-icons-outlined">table_view</span>
-            </button>
-
-            <div className="sr-columns">
-              <button className="sr-btn" onClick={() => setColModal(true)}>
-                Columns <span className="material-icons-outlined">arrow_drop_down</span>
+            {/* Export button + dropdown */}
+            <div className="sr-export-wrap">
+              <button className="btn-blue" onClick={() => setExportOpen((s)=>!s)} title="Export">
+                <span className="material-icons-outlined">folder</span>
+                <span>Export</span>
+                <span className="material-icons-outlined">arrow_drop_down</span>
               </button>
+              {exportOpen && (
+                <div className="sr-dd">
+                  <button className="sr-dd-item"
+                    onClick={() => download("sales-register.xlsx",
+                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}>
+                    <span className="material-icons-outlined">table_view</span> Excel
+                  </button>
+                  <button className="sr-dd-item"
+                    onClick={() => download("sales-register.pdf","application/pdf")}>
+                    <span className="material-icons-outlined">picture_as_pdf</span> PDF
+                  </button>
+                  <button className="sr-dd-item"
+                    onClick={() => download("sales-register-all.xlsx",
+                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}>
+                    <span className="material-icons-outlined">dataset</span> All Data Excel
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Columns */}
+            <button className="btn-blue" onClick={() => setColModal(true)}>
+              Columns <span className="material-icons-outlined">arrow_drop_down</span>
+            </button>
           </div>
         </div>
 
-        {/* table */}
-        <div className="rp-table-wrap">
-          <table className="rp-table">
+        {/* Table */}
+        <div className="sr-table-wrap">
+          <table className="sr-table">
             <thead>
               <tr>
-                {Array.from(visibleCols).includes("Sr No") && <th>Sr No</th>}
-                {Array.from(visibleCols).includes("Date") && <th>Date</th>}
-                {Array.from(visibleCols).includes("Party Name") && <th>Party Name</th>}
-                {Array.from(visibleCols).includes("City Name") && <th>City Name</th>}
-                {Array.from(visibleCols).includes("Voucher Type") && <th>Voucher Type</th>}
-                {Array.from(visibleCols).includes("Voucher No") && <th>Voucher No</th>}
-                {Array.from(visibleCols).includes("Gross Total") && <th>Gross Total</th>}
-                {Array.from(visibleCols).includes("Created By") && <th>Created By</th>}
-                {Array.from(visibleCols).includes("Action") && <th>Action</th>}
+                {visibleCols.has("Sr No") && <th>Sr No</th>}
+                {visibleCols.has("Date") && <th>Date</th>}
+                {visibleCols.has("Party Name") && <th>Party Name</th>}
+                {visibleCols.has("City Name") && <th>City Name</th>}
+                {visibleCols.has("Voucher Type") && <th>Voucher Type</th>}
+                {visibleCols.has("Voucher No") && <th>Voucher No</th>}
+                {visibleCols.has("Gross Total") && <th>Gross Total</th>}
+                {visibleCols.has("Created By") && <th>Created By</th>}
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={Math.max(1, visibleCols.size)} className="rp-empty">No data available in table</td></tr>
-              ) : null}
-
-              {/* total row */}
-              <tr className="sr-total-row">
-                {Array.from(visibleCols).includes("Sr No") && <td />}
-                {Array.from(visibleCols).includes("Date") && <td />}
-                {Array.from(visibleCols).includes("Party Name") && <td className="bold">Total</td>}
-                {Array.from(visibleCols).includes("City Name") && <td />}
-                {Array.from(visibleCols).includes("Voucher Type") && <td />}
-                {Array.from(visibleCols).includes("Voucher No") && <td />}
-                {Array.from(visibleCols).includes("Gross Total") && <td className="num bold">{totalGross}</td>}
-                {Array.from(visibleCols).includes("Created By") && <td />}
-                {Array.from(visibleCols).includes("Action") && <td />}
+              {filtered.length === 0 && (
+                <tr>
+                  <td className="sr-empty" colSpan={renderedCols.length}>No data available in table</td>
+                </tr>
+              )}
+              <tr className="sr-total">
+                {visibleCols.has("Sr No") && <td />}
+                {visibleCols.has("Date") && <td />}
+                {visibleCols.has("Party Name") && <td className="bold">Total</td>}
+                {visibleCols.has("City Name") && <td />}
+                {visibleCols.has("Voucher Type") && <td />}
+                {visibleCols.has("Voucher No") && <td />}
+                {visibleCols.has("Gross Total") && <td className="num bold">{totalGross}</td>}
+                {visibleCols.has("Created By") && <td />}
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div className="sr-footer">
+        {/* Bottom */}
+        <div className="sr-bottom">
           <div className="sr-info">Showing 0 to 0 of 0 entries</div>
-          <div className="sr-pager">
-            <button disabled className="sr-btn icon"><span className="material-icons-outlined">chevron_left</span></button>
-            <button disabled className="sr-btn icon"><span className="material-icons-outlined">chevron_right</span></button>
+          <div>
+            <button className="sr-icon-btn" disabled>
+              <span className="material-icons-outlined">chevron_left</span>
+            </button>
+            <button className="sr-icon-btn" disabled style={{ marginLeft: 6 }}>
+              <span className="material-icons-outlined">chevron_right</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Columns Modal (border-grid as per screenshot) */}
+      {/* Columns modal */}
       {colModal && (
         <div className="sr-col-overlay" onClick={() => setColModal(false)}>
           <div className="sr-col-modal" onClick={(e) => e.stopPropagation()}>
@@ -291,9 +364,8 @@ export default function ReportSalesRegister() {
                 return (
                   <button
                     key={name}
-                    className={`sr-col-tile ${isRestore ? "restore" : ""} ${selected ? "selected" : ""}`}
+                    className={`sr-col-tile ${selected ? "selected" : ""} ${isRestore ? "restore" : ""}`}
                     onClick={() => (isRestore ? restoreCols() : toggleCol(name))}
-                    type="button"
                   >
                     {name}
                   </button>
