@@ -17,8 +17,7 @@ function makeRow(i) {
   const cat = CATS[i % CATS.length];
   const brand = BRANDS[i % BRANDS.length];
   const name = SAMPLE_NAMES[i % SAMPLE_NAMES.length];
-  const code =
-    String(86000 + (i % 999)).padStart(5, "0") + ["-F", "-M", "-W"][i % 3];
+  const code = String(86000 + (i % 999)).padStart(5, "0") + ["-F", "-M", "-W"][i % 3];
   const mrp = [1499, 1499, 1499, 1499][i % 4];
   const sp = [599, 599, 599, 599][i % 4];
   return {
@@ -92,12 +91,7 @@ function SearchSelect({ label, value, onChange, options, placeholder = "All", wi
       {open && (
         <div className="ff-menu">
           <div className="ff-search">
-            <input
-              autoFocus
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search…"
-            />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" />
           </div>
           <div className="ff-list">
             {filtered.map((opt) => (
@@ -208,7 +202,10 @@ async function exportRowsToPdf(rows, filename) {
         if (idx % 2 === 1) { doc.setFillColor(252, 253, 255); doc.rect(x, y, w, rowH, "F"); }
         doc.setDrawColor(238, 242, 247); doc.rect(x, y, w, rowH, "S");
         let txt = data[i] ?? "";
-        if (i === 4) { const maxChars = Math.floor((w - 10) / 6.2); if (txt.length > maxChars) txt = txt.slice(0, maxChars - 1) + "…"; }
+        if (i === 4) {
+          const maxChars = Math.floor((w - 10) / 6.2);
+          if (txt.length > maxChars) txt = txt.slice(0, maxChars - 1) + "…";
+        }
         if ([5, 6, 8].includes(i)) { doc.text(txt, x + w - 6, y + 15, { align: "right" }); }
         else { doc.text(txt, x + 6, y + 15); }
         x += w;
@@ -229,53 +226,75 @@ async function exportRowsToPdf(rows, filename) {
   }
 }
 
-/* ===== CSV → Map(ItemCode -> HSN) ===== */
-function parseHsnCsv(text) {
-  // pick delimiter: comma, semicolon or tab (the one that appears most in the first line)
-  const firstLine = text.split(/\r?\n/)[0] || "";
-  const delims = [",", ";", "\t"];
-  const delim =
-    delims
-      .map((d) => [d, (firstLine.match(new RegExp(`\\${d}`, "g")) || []).length])
-      .sort((a, b) => b[1] - a[1])[0]?.[0] || ",";
+/* ===== CSV / TXT parsing for HSN =====
+   Supports:
+   - 2 columns: Item Code, HSN   -> returns { map, list: [] }
+   - 1 column: HSN only          -> returns { map: Map(), list: [HSN...] }
+*/
+function parseHsnCsvOrTxt(text) {
+  const cleaned = text.replace(/^\uFEFF/, ""); // strip BOM if present
+  const lines = cleaned.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return { map: new Map(), list: [] };
 
-  const rows = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  const first = lines[0];
+  const cand = [",", ";", "\t", "|"];
+  const delim = cand
+    .map((d) => [d, (first.match(new RegExp(`\\${d}`, "g")) || []).length])
+    .sort((a, b) => b[1] - a[1])[0][0];
 
-  const unquote = (s) => s.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1").trim();
+  const unquote = (s) => s.replace(/^["'](.*)["']$/, "$1").trim();
+  const split = (row) => row.split(delim).map(unquote);
 
-  const splitRow = (line) => line.split(delim).map((c) => unquote(c));
+  const headerCells = split(first).map((h) => h.toLowerCase().replace(/\s+/g, ""));
+  const headerLooks =
+    headerCells.includes("itemcode") ||
+    headerCells.includes("item_code") ||
+    headerCells.includes("code") ||
+    headerCells.includes("hsn") ||
+    headerCells.length === 1; // one-column header like "hsn"
 
-  if (rows.length === 0) return new Map();
+  // One-column (HSN only) CSV (header "hsn" or no header)
+  if (headerCells.length === 1 && (headerCells[0] === "hsn" || headerCells[0] === "")) {
+    const start = headerCells[0] === "hsn" ? 1 : 0;
+    const list = lines.slice(start).map((l) => unquote(l)).filter(Boolean);
+    return { map: new Map(), list };
+  }
 
-  // detect headers
-  const header = splitRow(rows[0]).map((h) => h.toLowerCase().replace(/\s+/g, ""));
-  const looksHeader =
-    header.includes("itemcode") ||
-    header.includes("item_code") ||
-    header.includes("code") ||
-    header.includes("hsn");
-
-  const startIdx = looksHeader ? 1 : 0;
+  // If two or more columns and looks like it has headers
+  let startIdx = 0;
   let idxItem = 0, idxHsn = 1;
-  if (looksHeader) {
-    idxItem = header.findIndex((h) => ["itemcode", "item_code", "code"].includes(h));
-    idxHsn = header.findIndex((h) => ["hsn", "hsncode", "hsn_code"].includes(h));
-    if (idxItem === -1) idxItem = 0;
-    if (idxHsn === -1) idxHsn = 1;
+
+  if (headerLooks) {
+    const idxItemTmp = headerCells.findIndex((h) => ["itemcode", "item_code", "code"].includes(h));
+    const idxHsnTmp = headerCells.findIndex((h) => ["hsn", "hsncode", "hsn_code"].includes(h));
+    if (idxItemTmp !== -1 || idxHsnTmp !== -1) {
+      startIdx = 1;
+      idxItem = idxItemTmp !== -1 ? idxItemTmp : 0;
+      idxHsn = idxHsnTmp !== -1 ? idxHsnTmp : (idxItem === 0 ? 1 : 0);
+    }
   }
 
   const map = new Map();
-  for (let i = startIdx; i < rows.length; i++) {
-    const cols = splitRow(rows[i]);
+  for (let i = startIdx; i < lines.length; i++) {
+    const cols = split(lines[i]);
+    if (!cols.length) continue;
+    if (cols.length === 1) {
+      // treat as HSN-only row (fallback)
+      continue;
+    }
     const item = (cols[idxItem] || "").trim();
     const hsn = (cols[idxHsn] || "").trim();
     if (!item || !hsn) continue;
     map.set(item, hsn);
   }
-  return map;
+
+  // If still empty and file was strictly one column (no header case)
+  if (map.size === 0 && split(first).length === 1) {
+    const list = lines.map((l) => unquote(l)).filter(Boolean);
+    return { map: new Map(), list };
+  }
+
+  return { map, list: [] };
 }
 
 /* -------------------- main component -------------------- */
@@ -313,47 +332,80 @@ export default function InventoryProductsPage() {
     rows.forEach((r) => (r.images || []).forEach((u) => URL.revokeObjectURL(u)));
   }, []); // eslint-disable-line
 
-  // ===== NEW: HSN import =====
+  // ===== NEW: HSN import (robust) =====
   const hsnImportRef = useRef(null);
   const onPickHsnFile = () => hsnImportRef.current?.click();
   const onHsnFileSelected = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const text = String(reader.result || "");
-        const map = parseHsnCsv(text);
-        if (map.size === 0) {
-          alert("CSV me valid 'Item Code' aur 'HSN' data nahi mila.");
-          e.target.value = "";
+        const { map, list } = parseHsnCsvOrTxt(text);
+
+        // Case 1: Matching by Item Code
+        if (map.size > 0) {
+          let matched = 0, updated = 0;
+          setRows((prev) =>
+            prev.map((r) => {
+              const next = map.get(r.itemCode) || map.get(r.itemCode.trim());
+              if (next) {
+                matched++;
+                if (next !== r.hsn) {
+                  updated++;
+                  return { ...r, hsn: next };
+                }
+              }
+              return r;
+            })
+          );
+          setTimeout(() => alert(`HSN Import complete (by Item Code):\nMatched: ${matched}\nUpdated: ${updated}`), 0);
           return;
         }
-        let updated = 0, matched = 0;
-        setRows((list) =>
-          list.map((r) => {
-            const nextHsn = map.get(r.itemCode) || map.get(r.itemCode.trim());
-            if (nextHsn) {
-              matched++;
-              if (nextHsn !== r.hsn) {
-                updated++;
-                return { ...r, hsn: nextHsn };
-              }
+
+        // Case 2: HSN-only list -> fill sequentially over current filtered view (top-to-bottom)
+        if (list.length > 0) {
+          let applied = 0;
+          setRows((prev) => {
+            // Build the same filtered order here to apply consistently
+            const q = search.trim().toLowerCase();
+            const currFilteredIds = prev
+              .filter((r) => {
+                // (mirror current filters from state below if needed)
+                return !q || `${r.itemCode} ${r.category} ${r.brand} ${r.name} ${r.mrp} ${r.sp} ${r.hsn}`.toLowerCase().includes(q);
+              })
+              .map((r) => r.id);
+
+            const idToNewHsn = new Map();
+            for (let i = 0; i < currFilteredIds.length && i < list.length; i++) {
+              const val = (list[i] || "").trim();
+              if (val) idToNewHsn.set(currFilteredIds[i], val);
             }
-            return r;
-          })
-        );
-        setTimeout(() => {
-          alert(`HSN Import complete:\nMatched: ${matched}\nUpdated: ${updated}`);
-        }, 0);
+
+            return prev.map((r) => {
+              const val = idToNewHsn.get(r.id);
+              if (val) {
+                applied++;
+                return { ...r, hsn: val };
+              }
+              return r;
+            });
+          });
+          setTimeout(() => alert(`HSN Import complete (sequential):\nApplied: ${applied}`), 0);
+          return;
+        }
+
+        alert("CSV/TXT me valid data nahi mila. Kripya 'Item Code,HSN' ya sirf 'HSN' column provide karein.");
       } catch (err) {
         console.error(err);
-        alert("Import fail ho gaya. Kripya valid CSV file use karein (Item Code, HSN).");
+        alert("Import fail ho gaya. Kripya valid CSV/TXT file use karein.");
       } finally {
         e.target.value = "";
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, "utf-8");
   };
 
   // options
@@ -399,7 +451,6 @@ export default function InventoryProductsPage() {
   const totalRecords = filtered.length;
   const showingFrom = totalRecords ? start + 1 : 0;
   const showingTo = Math.min(end, totalRecords);
-  const allChecked = pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id));
 
   /* ===== CLOSE ACTION MENU ON OUTSIDE CLICK / ESC ===== */
   useEffect(() => {
@@ -460,20 +511,20 @@ export default function InventoryProductsPage() {
               <span className="mi">filter_list</span> Filter
             </button>
 
-            {/* ===== NEW: Import HSN Code button (same style as Filter) ===== */}
-            <button className="pp-btn outline" onClick={onPickHsnFile} title="Import HSN Code from CSV">
+            {/* ===== Import HSN Code (now supports ItemCode+HSN or HSN-only) ===== */}
+            <button className="pp-btn outline" onClick={onPickHsnFile} title="Import HSN Code">
               <span className="mi">upload_file</span> Import HSN Code
             </button>
           </div>
 
-            {/* hidden input for HSN CSV */}
-            <input
-              ref={hsnImportRef}
-              type="file"
-              accept=".csv,text/csv"
-              style={{ display: "none" }}
-              onChange={onHsnFileSelected}
-            />
+          {/* hidden input for HSN CSV/TXT */}
+          <input
+            ref={hsnImportRef}
+            type="file"
+            accept=".csv,.txt,text/csv,text/plain"
+            style={{ display: "none" }}
+            onChange={onHsnFileSelected}
+          />
 
           <div className="pp-right">
             <div className="pp-search">
@@ -498,7 +549,13 @@ export default function InventoryProductsPage() {
         <div className={`pp-bulk ${selectedIds.size ? "show" : ""}`}>
           <div className="pp-bulk-left">
             Selected {selectedIds.size || 0} Records:
-            <button className="pp-btn danger" onClick={deleteSelected}><span className="mi">delete</span> Delete</button>
+            <button className="pp-btn danger" onClick={() => {
+              if (!selectedIds.size) return;
+              setRows((l) => l.filter((r) => !selectedIds.has(r.id)));
+              setSelectedIds(new Set());
+            }}>
+              <span className="mi">delete</span> Delete
+            </button>
           </div>
         </div>
 
@@ -507,107 +564,107 @@ export default function InventoryProductsPage() {
             <thead>
               <tr>
                 <th className="chk">
-                  <label className="pp-chk"><input type="checkbox" checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))} onChange={(e) => toggleAll(e.target.checked)} /><span /></label>
+                  <label className="pp-chk"><input type="checkbox" checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))} onChange={(e) => {
+                    if (e.target.checked) setSelectedIds(new Set([...selectedIds, ...pageRows.map((r) => r.id)]));
+                    else { const next = new Set(selectedIds); pageRows.forEach((r) => next.delete(r.id)); setSelectedIds(next); }
+                  }} /><span /></label>
                 </th>
                 <th>Sr. No.</th><th>Image</th><th>Item Code</th><th>Category</th><th>Brand</th>
                 <th>Name</th><th>MRP</th><th>Selling Price</th><th>HSN</th><th>Qty</th><th>Status</th><th>Show Online</th><th className="act">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((r, idx) => {
-                const rowChecked = selectedIds.has(r.id);
-                return (
-                  <tr key={r.id}>
-                    <td className="chk">
-                      <label className="pp-chk"><input type="checkbox" checked={rowChecked} onChange={(e) => toggleOne(r.id, e.target.checked)} /><span /></label>
-                    </td>
-                    <td>{start + idx + 1}</td>
-                    <td onClick={() => handlePickImages(r.id)} style={{ cursor: "pointer" }} title="Click to add images">
-                      {r.images?.length ? (
-                        <div style={{ display: "flex", gap: 4 }}>
-                          {r.images.slice(0, 3).map((u, i) => (
-                            <img key={i} src={u} alt="" style={{ width: 44, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid #cfd7e6", background: "#f9fbff" }}
-                              onClick={(e) => { e.stopPropagation(); handlePickImages(r.id); }} />
-                          ))}
-                          {r.images.length > 3 && (
-                            <div style={{ width: 44, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-                              border: "1px dashed #cfd7e6", borderRadius: 8, fontSize: 11, color: "#6b7280", background: "#f9fbff" }}>
-                              +{r.images.length - 3}
-                            </div>
-                          )}
-                        </div>
-                      ) : (<div className="pp-img-skel"><span className="mi">image</span></div>)}
-                    </td>
-                    <td className="mono">{r.itemCode}</td>
-                    <td>{r.category}</td>
-                    <td className="mono">{r.brand}</td>
-
-                    {/* ✅ Name navigates to detail screen with sidebar */}
-                    <td>
-                      <button
-                        className="pp-link blue"
-                        onClick={() =>
-                          navigate(`/inventory/products/${r.id}`, { state: { row: r } })
-                        }
-                        title="Open product details"
-                        style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
-                      >
-                        {r.name}
-                      </button>
-                    </td>
-
-                    <td className="num">{r.mrp.toFixed(2)}</td>
-                    <td className="num">{r.sp.toFixed(2)}</td>
-                    <td className="mono">{r.hsn}</td>
-                    <td className="num">{r.qty.toFixed(2)}</td>
-                    <td><span className="pp-badge success">ACTIVE</span></td>
-                    <td>
-                      <label className="pp-switch"><input type="checkbox" checked={!!r.showOnline} onChange={(e) => onToggleOnline(r.id, e.target.checked)} /><span className="slider" /></label>
-                    </td>
-                    <td className="act">
-                      <div
-                        className="pp-actions"
-                        ref={(el) => { if (el) actionRefs.current[r.id] = el; }}
-                      >
-                        <button
-                          className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionOpenId((id) => (id === r.id ? null : r.id));
-                          }}
-                          aria-label="Row actions"
-                          aria-expanded={actionOpenId === r.id}
-                        >
-                          <span className="dot" /><span className="dot" /><span className="dot" />
-                        </button>
-
-                        {actionOpenId === r.id && (
-                          <div className="pp-menu right kebab">
-                            <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
-                              <span className="mi icon">open_in_new</span>Edit Details
-                            </button>
-                            <button onClick={() => { alert("Delete"); setActionOpenId(null); }}>
-                              <span className="mi icon">delete</span>Delete
-                            </button>
-                            <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
-                              <span className="mi icon">block</span>Deactivate
-                            </button>
+              {pageRows.map((r, idx) => (
+                <tr key={r.id}>
+                  <td className="chk">
+                    <label className="pp-chk"><input type="checkbox" checked={selectedIds.has(r.id)} onChange={(e) => {
+                      const next = new Set(selectedIds);
+                      if (e.target.checked) next.add(r.id); else next.delete(r.id);
+                      setSelectedIds(next);
+                    }} /><span /></label>
+                  </td>
+                  <td>{start + idx + 1}</td>
+                  <td onClick={() => { uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} style={{ cursor: "pointer" }} title="Click to add images">
+                    {r.images?.length ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {r.images.slice(0, 3).map((u, i) => (
+                          <img key={i} src={u} alt="" style={{ width: 44, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid #cfd7e6", background: "#f9fbff" }}
+                            onClick={(e) => { e.stopPropagation(); uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} />
+                        ))}
+                        {r.images.length > 3 && (
+                          <div style={{ width: 44, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
+                            border: "1px dashed #cfd7e6", borderRadius: 8, fontSize: 11, color: "#6b7280", background: "#f9fbff" }}>
+                            +{r.images.length - 3}
                           </div>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                    ) : (<div className="pp-img-skel"><span className="mi">image</span></div>)}
+                  </td>
+                  <td className="mono">{r.itemCode}</td>
+                  <td>{r.category}</td>
+                  <td className="mono">{r.brand}</td>
+                  <td>
+                    <button
+                      className="pp-link blue"
+                      onClick={() => navigate(`/inventory/products/${r.id}`, { state: { row: r } })}
+                      title="Open product details"
+                      style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
+                    >
+                      {r.name}
+                    </button>
+                  </td>
+                  <td className="num">{r.mrp.toFixed(2)}</td>
+                  <td className="num">{r.sp.toFixed(2)}</td>
+                  <td className="mono">{r.hsn}</td>
+                  <td className="num">{r.qty.toFixed(2)}</td>
+                  <td><span className="pp-badge success">ACTIVE</span></td>
+                  <td>
+                    <label className="pp-switch"><input type="checkbox" checked={!!r.showOnline} onChange={(e) => {
+                      const checked = e.target.checked;
+                      setRows((l) => l.map((row) => (row.id === r.id ? { ...row, showOnline: checked } : row)));
+                    }} /><span className="slider" /></label>
+                  </td>
+                  <td className="act">
+                    <div className="pp-actions" ref={(el) => { if (el) actionRefs.current[r.id] = el; }}>
+                      <button
+                        className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionOpenId((id) => (id === r.id ? null : r.id));
+                        }}
+                        aria-label="Row actions"
+                        aria-expanded={actionOpenId === r.id}
+                      >
+                        <span className="dot" /><span className="dot" /><span className="dot" />
+                      </button>
+
+                      {actionOpenId === r.id && (
+                        <div className="pp-menu right kebab">
+                          <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
+                            <span className="mi icon">open_in_new</span>Edit Details
+                          </button>
+                          <button onClick={() => { alert("Delete"); setActionOpenId(null); }}>
+                            <span className="mi icon">delete</span>Delete
+                          </button>
+                          <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
+                            <span className="mi icon">block</span>Deactivate
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
               {pageRows.length === 0 && (<tr><td colSpan={14} className="empty">No records found</td></tr>)}
             </tbody>
           </table>
         </div>
 
+        {/* hidden input for image uploads */}
         <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleFilesSelected} />
 
         <div className="pp-foot">
-          <div className="pp-foot-left">Showing {showingFrom} to {showingTo} of {totalRecords.toLocaleString()} entries</div>
+          <div className="pp-foot-left">Showing {showingFrom} to {Math.min(end, filtered.length)} of {filtered.length.toLocaleString()} entries</div>
           <div className="pp-pagination">
             <button className="pg-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
             {paginate(totalPages, safePage).map((p, i) =>
