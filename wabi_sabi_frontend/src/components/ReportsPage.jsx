@@ -1,3 +1,4 @@
+// src/components/ReportsPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportsPage.css";
@@ -17,6 +18,9 @@ const SALES_ITEMS = [
   { key: "register", title: "Sales Register" },
   { key: "category", title: "Category Wise Sales Summary" },
   { key: "salesman", title: "Sales Man Report" },
+  // ⬇️ NEW
+  { key: "creditNoteItemReg", title: "Credit Note Item Register" },
+  { key: "productWise", title: "Product Wise Sales Summary" },
 ];
 
 export default function ReportsPage() {
@@ -93,10 +97,13 @@ export default function ReportsPage() {
                     } else if (it.key === "register") {
                       navigate("/reports/sales-register");
                     } else if (it.key === "category") {
-                      navigate("/reports/category-wise-sales-summary"); // ✅ opens this screen
-                    }
-                    else if (it.key === "salesman") {
-                      navigate("/reports/salesman");              // ⬅️ new route
+                      navigate("/reports/category-wise-sales-summary");
+                    } else if (it.key === "salesman") {
+                      navigate("/reports/salesman");
+                    } else if (it.key === "creditNoteItemReg") {
+                      navigate("/reports/credit-note-item-register"); // NEW
+                    } else if (it.key === "productWise") {
+                      navigate("/reports/product-wise-sales-summary"); // NEW
                     }
                   }}
                 >
@@ -292,6 +299,70 @@ export function DayWiseSalesSummaryPage() {
       </div>
 
       <div className="rp-surface rp-result-surface" />
+    </div>
+  );
+}
+
+/* ---------- NEW: Credit Note Item Register (placeholder) ---------- */
+export function CreditNoteItemRegisterPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="rp-wrap">
+      <div className="rp-top">
+        <div className="rp-title">Credit Note Item Register</div>
+        <div className="rp-crumb" aria-label="breadcrumb">
+          <span
+            className="material-icons-outlined rp-crumb-link"
+            role="link" tabIndex={0}
+            aria-label="Go to Home"
+            onClick={() => navigate("/")}
+          >
+            home
+          </span>
+          <span className="rp-crumb-sep">›</span>
+          <span className="rp-crumb-link" role="link" tabIndex={0} onClick={() => navigate("/reports")}>
+            Reports
+          </span>
+          <span className="rp-crumb-sep">›</span>
+        </div>
+      </div>
+
+      {/* Simple blank surface — upgrade later */}
+      <div className="rp-surface" style={{ minHeight: 240, display: "grid", placeItems: "center" }}>
+        <div className="rp-empty">Setup coming soon…</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- NEW: Product Wise Sales Summary (placeholder) ---------- */
+export function ProductWiseSalesSummaryPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="rp-wrap">
+      <div className="rp-top">
+        <div className="rp-title">Product Wise Sales Summary</div>
+        <div className="rp-crumb" aria-label="breadcrumb">
+          <span
+            className="material-icons-outlined rp-crumb-link"
+            role="link" tabIndex={0}
+            aria-label="Go to Home"
+            onClick={() => navigate("/")}
+          >
+            home
+          </span>
+          <span className="rp-crumb-sep">›</span>
+          <span className="rp-crumb-link" role="link" tabIndex={0} onClick={() => navigate("/reports")}>
+            Reports
+          </span>
+          <span className="rp-crumb-sep">›</span>
+        </div>
+      </div>
+
+      {/* Simple blank surface — upgrade later */}
+      <div className="rp-surface" style={{ minHeight: 240, display: "grid", placeItems: "center" }}>
+        <div className="rp-empty">Setup coming soon…</div>
+      </div>
     </div>
   );
 }
