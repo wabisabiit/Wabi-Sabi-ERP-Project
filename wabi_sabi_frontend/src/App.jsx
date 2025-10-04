@@ -49,6 +49,7 @@ import InventoryProductDetailPage from "./components/InventoryProductDetailPage"
 import ReportsPage, { DayWiseSalesSummaryPage } from "./components/ReportsPage";
 import ReportSalesRegister from "./components/ReportSalesRegister"; // 👈 Sales Register (mini sidebar)
 import ReportCategoryWiseSales from "./components/ReportCategoryWiseSales";
+import ReportSalesMan from "./components/ReportSalesMan";
 
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
@@ -162,6 +163,8 @@ export default function App() {
         path="/reports/category-wise-sales-summary"
         element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>}
       />
+
+      <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />

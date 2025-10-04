@@ -16,7 +16,7 @@ const SALES_ITEMS = [
   { key: "daywise", title: "Day wise Sales Summary" },
   { key: "register", title: "Sales Register" },
   { key: "category", title: "Category Wise Sales Summary" },
-  { key: "tax", title: "Sales Tax summary" },
+  { key: "salesman", title: "Sales Man Report" },
 ];
 
 export default function ReportsPage() {
@@ -94,6 +94,9 @@ export default function ReportsPage() {
                       navigate("/reports/sales-register");
                     } else if (it.key === "category") {
                       navigate("/reports/category-wise-sales-summary"); // ✅ opens this screen
+                    }
+                    else if (it.key === "salesman") {
+                      navigate("/reports/salesman");              // ⬅️ new route
                     }
                   }}
                 >

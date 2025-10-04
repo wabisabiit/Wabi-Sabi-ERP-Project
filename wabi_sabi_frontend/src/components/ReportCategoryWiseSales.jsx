@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/ReportCategoryWiseSales.css";
 import { useNavigate } from "react-router-dom";
 
@@ -21,10 +21,11 @@ const ALL_CATEGORIES = [
   "Boys & Girls - Pant",
   "Boys & Girls - Shirt",
   "Boys & Girls - Shorts",
-  "Boys & Girls - T-Shirt",
-  "Children - Mix",
-  "Clothing",
-  "Footwear",
+  "Boys & Girls - Shoes",
+  "Boys & Girls - Shorts",
+  "Boys & Girls - Sockes",
+  "Boys & Girls - T-shirts",
+  "Boys & Girls - Undergarments",
 ];
 
 const SUBCAT_MAP = {
@@ -33,16 +34,16 @@ const SUBCAT_MAP = {
 };
 
 const RAW_ROWS = [
-  { sr: 1, category: "Accessories",          location: "WABI SABI SUSTAINABILITY LLP", qty: 770,   taxable: 86193.01,  tax: 4309.64,  total: 90502.65 },
-  { sr: 2, category: "Boys & Girls - Blouse",location: "WABI SABI SUSTAINABILITY LLP", qty: 77,    taxable: 6914.29,   tax: 345.72,   total: 7260.00  },
-  { sr: 3, category: "Boys & Girls - Dress", location: "WABI SABI SUSTAINABILITY LLP", qty: 340,   taxable: 55390.43,  tax: 2769.57,  total: 58160.00 },
-  { sr: 4, category: "Boys & Girls - Pant",  location: "WABI SABI SUSTAINABILITY LLP", qty: 114,   taxable: 18304.75,  tax: 915.25,   total: 19220.00 },
-  { sr: 5, category: "Boys & Girls - Shirt", location: "WABI SABI SUSTAINABILITY LLP", qty: 48,    taxable: 5733.33,   tax: 286.67,   total: 6020.00  },
-  { sr: 6, category: "Boys & Girls - Shorts",location: "WABI SABI SUSTAINABILITY LLP", qty: 180,   taxable: 13295.82,  tax: 664.78,   total: 13960.60 },
+  { sr: 1, category: "Accessories",           location: "WABI SABI SUSTAINABILITY LLP", qty: 770,   taxable: 86193.01,  tax: 4309.64,  total: 90502.65 },
+  { sr: 2, category: "Boys & Girls - Blouse", location: "WABI SABI SUSTAINABILITY LLP", qty: 77,    taxable: 6914.29,   tax: 345.72,   total: 7260.00  },
+  { sr: 3, category: "Boys & Girls - Dress",  location: "WABI SABI SUSTAINABILITY LLP", qty: 340,   taxable: 55390.43,  tax: 2769.57,  total: 58160.00 },
+  { sr: 4, category: "Boys & Girls - Pant",   location: "WABI SABI SUSTAINABILITY LLP", qty: 114,   taxable: 18304.75,  tax: 915.25,   total: 19220.00 },
+  { sr: 5, category: "Boys & Girls - Shirt",  location: "WABI SABI SUSTAINABILITY LLP", qty: 48,    taxable: 5733.33,   tax: 286.67,   total: 6020.00  },
+  { sr: 6, category: "Boys & Girls - Shorts", location: "WABI SABI SUSTAINABILITY LLP", qty: 180,   taxable: 13295.82,  tax: 664.78,   total: 13960.60 },
   { sr: 7, category: "Boys & Girls - T-Shirt",location:"WABI SABI SUSTAINABILITY LLP", qty: 310,   taxable: 20039.81,  tax: 1001.96,  total: 21041.77 },
-  { sr: 8, category: "Children - Mix",       location: "WABI SABI SUSTAINABILITY LLP", qty: 40,    taxable: 3866.67,   tax: 193.33,   total: 4060.00  },
-  { sr: 9, category: "Clothing",             location: "WABI SABI SUSTAINABILITY LLP", qty: 51197, taxable: 8582479.41, tax: 445332.08,total: 9027811.49 },
-  { sr:10, category: "Footwear",             location: "WABI SABI SUSTAINABILITY LLP", qty: 943,   taxable: 545353.20, tax: 44167.65, total: 589520.85 },
+  { sr: 8, category: "Children - Mix",        location: "WABI SABI SUSTAINABILITY LLP", qty: 40,    taxable: 3866.67,   tax: 193.33,   total: 4060.00  },
+  { sr: 9, category: "Clothing",              location: "WABI SABI SUSTAINABILITY LLP", qty: 51197, taxable: 8582479.41, tax: 445332.08,total: 9027811.49 },
+  { sr:10, category: "Footwear",              location: "WABI SABI SUSTAINABILITY LLP", qty: 943,   taxable: 545353.20, tax: 44167.65, total: 589520.85 },
 ];
 
 /* Default visible columns (blue in popup) */
@@ -52,14 +53,13 @@ const COL_META = [
   { key: "sr",       label: "Sr No",           align: "left",  width: 70 },
   { key: "category", label: "Category Name",   align: "left",  width: 240 },
   { key: "location", label: "Location",        align: "left",  width: 320 },
-  { key: "qty",      label: "Qty",             align: "right", width: 120, format: (v)=>v.toLocaleString() },
-  { key: "taxable",  label: "Taxable Amount",  align: "right", width: 170, format: (v)=>v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "tax",      label: "Tax Amount",      align: "right", width: 150, format: (v)=>v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "total",    label: "Total Amount",    align: "right", width: 170, format: (v)=>v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  /* Optional (white in popup initially) */
-  { key: "cgst",     label: "CGST",            align: "right", width: 140, format: (v)=>v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "sgst",     label: "SGST",            align: "right", width: 140, format: (v)=>v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "igst",     label: "IGST",            align: "right", width: 140, format: (v)=>v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "qty",      label: "Qty",             align: "right", width: 120, format: v => v.toLocaleString() },
+  { key: "taxable",  label: "Taxable Amount",  align: "right", width: 170, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "tax",      label: "Tax Amount",      align: "right", width: 150, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "total",    label: "Total Amount",    align: "right", width: 170, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "cgst",     label: "CGST",            align: "right", width: 140, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "sgst",     label: "SGST",            align: "right", width: 140, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "igst",     label: "IGST",            align: "right", width: 140, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
 ];
 
 export default function ReportCategoryWiseSales() {
@@ -69,15 +69,18 @@ export default function ReportCategoryWiseSales() {
   const [fromDate, setFromDate] = useState("2025-04-01");
   const [toDate, setToDate] = useState("2026-03-31");
 
-  const [locOpen, setLocOpen] = useState(false);
+  /* Which popover is open: 'loc' | 'cat' | 'sub' | null */
+  const [openKey, setOpenKey] = useState(null);
+
+  /* Location */
   const [locQ, setLocQ] = useState("");
   const [selectedLocs, setSelectedLocs] = useState(["WABI SABI SUSTAINABILITY LLP"]);
 
-  /* Simple single Select Category */
-  const [catSelOpen, setCatSelOpen] = useState(false);
+  /* Category */
   const [catSelected, setCatSelected] = useState("");
+  const [catQ, setCatQ] = useState("");
 
-  const [subOpen, setSubOpen] = useState(false);
+  /* Sub Category */
   const [subQ, setSubQ] = useState("");
   const [selectedSub, setSelectedSub] = useState("");
 
@@ -89,13 +92,21 @@ export default function ReportCategoryWiseSales() {
   const [colOpen, setColOpen] = useState(false);
   const [visibleCols, setVisibleCols] = useState(DEFAULT_VISIBLE);
 
-  const tableWrapRef = useRef(null);
+  const locRef = useRef(null);
+  const catRef = useRef(null);
+  const subRef = useRef(null);
 
   /* Derived lists */
   const filteredLocs = useMemo(
     () => ALL_LOCATIONS.filter(l => l.toLowerCase().includes(locQ.trim().toLowerCase())),
     [locQ]
   );
+
+  const filteredCats = useMemo(
+    () => ALL_CATEGORIES.filter(c => c.toLowerCase().includes(catQ.trim().toLowerCase())),
+    [catQ]
+  );
+
   const availableSubcats = useMemo(() => {
     const hit = SUBCAT_MAP[catSelected];
     return hit ? hit.filter(s => s.toLowerCase().includes(subQ.trim().toLowerCase())) : [];
@@ -104,11 +115,32 @@ export default function ReportCategoryWiseSales() {
   const appliedRows = useMemo(() => {
     const s = search.trim().toLowerCase();
     return RAW_ROWS.filter(r => {
-      const matchText =
-        `${r.category} ${r.location} ${r.qty} ${r.taxable} ${r.tax} ${r.total}`.toLowerCase();
+      const matchText = `${r.category} ${r.location} ${r.qty} ${r.taxable} ${r.tax} ${r.total}`.toLowerCase();
       return s ? matchText.includes(s) : true;
     });
   }, [search]);
+
+  /* Open one popover at a time */
+  const toggleOpen = (key) => setOpenKey(prev => (prev === key ? null : key));
+
+  /* Click-outside + ESC close */
+  useEffect(() => {
+    const onDoc = (e) => {
+      const t = e.target;
+      const inside =
+        (locRef.current && locRef.current.contains(t)) ||
+        (catRef.current && catRef.current.contains(t)) ||
+        (subRef.current && subRef.current.contains(t));
+      if (!inside) setOpenKey(null);
+    };
+    const onEsc = (e) => { if (e.key === "Escape") setOpenKey(null); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, []);
 
   /* Actions */
   const toggleLoc = (loc) => {
@@ -134,7 +166,7 @@ export default function ReportCategoryWiseSales() {
     setVisibleCols((p) => (p.includes(key) ? p.filter((k) => k !== key) : [...p, key]));
   const restoreCols = () => setVisibleCols(DEFAULT_VISIBLE.slice());
 
-  /* Single page (10 demo rows) */
+  /* Single page (demo) */
   const pageRows = appliedRows.slice(0, pageSize);
 
   const keyLink = (fn) => (e) => {
@@ -169,12 +201,13 @@ export default function ReportCategoryWiseSales() {
 
       {/* Filter panel */}
       <div className="cws-panel">
-        {/* Location */}
-        <div className="cws-field">
+        {/* Select Location */}
+        <div className="cws-field" ref={locRef}>
           <label>Select Location</label>
-          <div className="cws-select" onClick={() => setLocOpen((s) => !s)}>
-            <span className="cws-select-text">
-              {selectedLocs.length ? "Select Location 1" : "Select Location"}
+          <div className="cws-select" onClick={() => toggleOpen("loc")}>
+            <span className="cws-select-text">Select Location</span>
+            <span className={`cws-badge ${selectedLocs.length ? "on" : ""}`}>
+              {selectedLocs.length || 0}
             </span>
             <button
               type="button"
@@ -182,7 +215,8 @@ export default function ReportCategoryWiseSales() {
               onClick={(e) => { e.stopPropagation(); setSelectedLocs([]); }}
               aria-label="Clear"
             >×</button>
-            {locOpen && (
+
+            {openKey === "loc" && (
               <div className="cws-popover cws-popover-loc" onClick={(e)=>e.stopPropagation()}>
                 <label className="cws-check">
                   <input
@@ -218,50 +252,60 @@ export default function ReportCategoryWiseSales() {
           </div>
         </div>
 
-        {/* Select Category – simple dropdown */}
-        <div className="cws-field">
+        {/* Select Category (search + scroll like image) */}
+        <div className="cws-field" ref={catRef}>
           <label>Select Category</label>
           <div
             className="cws-select cws-select--menu"
-            onClick={() => setCatSelOpen((s) => !s)}
+            onClick={() => toggleOpen("cat")}
           >
             <span className="cws-select-text">
               {catSelected || "Select Category"}
             </span>
             <span className="material-icons-outlined cws-caret">expand_more</span>
 
-            {catSelOpen && (
+            {openKey === "cat" && (
               <div
                 className="cws-popover cws-popover--menu"
                 role="listbox"
                 onClick={(e) => e.stopPropagation()}
               >
-                {ALL_CATEGORIES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    role="option"
-                    className={`cws-item ${catSelected === c ? "selected" : ""}`}
-                    onClick={() => {
-                      setCatSelected(c);
-                      setCatSelOpen(false);
-                    }}
-                  >
-                    {c}
-                  </button>
-                ))}
+                <div className="cws-popover-search cws-cat-search">
+                  <input
+                    placeholder="Select Category"
+                    value={catQ}
+                    onChange={(e)=>setCatQ(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="cws-popover-list cws-cat-list">
+                  {filteredCats.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      role="option"
+                      className={`cws-item ${catSelected === c ? "selected" : ""}`}
+                      onClick={() => {
+                        setCatSelected(c);
+                        setOpenKey(null);
+                      }}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Sub Category */}
-        <div className="cws-field">
+        {/* Select Sub Category */}
+        <div className="cws-field" ref={subRef}>
           <label>Select Sub Category</label>
-          <div className="cws-select" onClick={() => setSubOpen((s)=>!s)}>
+          <div className="cws-select" onClick={() => toggleOpen("sub")}>
             <span className="cws-select-text">{selectedSub || "Select Sub Category"}</span>
             <span className="material-icons-outlined cws-caret">expand_more</span>
-            {subOpen && (
+            {openKey === "sub" && (
               <div className="cws-popover" onClick={(e)=>e.stopPropagation()}>
                 <div className="cws-popover-search">
                   <input placeholder="" value={subQ} onChange={(e)=>setSubQ(e.target.value)} />
@@ -275,7 +319,7 @@ export default function ReportCategoryWiseSales() {
                         key={sc}
                         type="button"
                         className={`cws-item ${selectedSub===sc ? "selected":""}`}
-                        onClick={()=>setSelectedSub(sc)}
+                        onClick={()=>{ setSelectedSub(sc); setOpenKey(null); }}
                       >{sc}</button>
                     ))}
                   </div>
@@ -302,10 +346,9 @@ export default function ReportCategoryWiseSales() {
         </div>
       </div>
 
-      {/* ===== Toolbar (image 2) ===== */}
+      {/* ===== Toolbar (left: export + size + search | right: columns) ===== */}
       <div className="cws-tbar">
         <div className="cws-left">
-          {/* Export */}
           <div className="cws-export">
             <div className="cws-dd">
               <button type="button" className="cws-dd-btn" aria-label="Download">
@@ -325,7 +368,6 @@ export default function ReportCategoryWiseSales() {
             </div>
           </div>
 
-          {/* Page size */}
           <select
             className="cws-pagesize"
             value={pageSize}
@@ -335,7 +377,6 @@ export default function ReportCategoryWiseSales() {
             {[10,50,100,500,1000].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
 
-          {/* Search */}
           <div className="cws-search">
             <input
               placeholder="Search List..."
@@ -346,7 +387,6 @@ export default function ReportCategoryWiseSales() {
           </div>
         </div>
 
-        {/* Columns (right) – solid blue button; opens centered modal */}
         <div className="cws-columns">
           <button
             type="button"
@@ -359,7 +399,7 @@ export default function ReportCategoryWiseSales() {
         </div>
       </div>
 
-      {/* Columns Upgradation popup (image 3) */}
+      {/* Columns popup */}
       {colOpen && (
         <>
           <div className="cws-col-overlay" onClick={() => setColOpen(false)} />
@@ -403,7 +443,7 @@ export default function ReportCategoryWiseSales() {
       )}
 
       {/* Table */}
-      <div className="cws-table-wrap" ref={tableWrapRef}>
+      <div className="cws-table-wrap">
         <table className="cws-table">
           <thead>
             <tr>
