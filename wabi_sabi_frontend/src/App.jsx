@@ -70,7 +70,7 @@ import NewInventoryProductPage from "./components/NewInventoryProductPage";
 
 // Stock Transfer
 import StockTransferPage from "./components/StockTransferPage";
-
+import MasterPackagingPage from "./components/MasterPackagingPage";
 import "./App.css";
 
 /* ---------- Layouts ---------- */
@@ -214,7 +214,10 @@ export default function App() {
         path="/inventory/products/:id"
         element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>}
       />
-
+      <Route
+  path="/inventory/master-packaging"
+  element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>}
+/>
       {/* Multiple Pay */}
       <Route
         path="/multiple-pay"
