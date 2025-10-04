@@ -47,12 +47,13 @@ import InventoryProductDetailPage from "./components/InventoryProductDetailPage"
 
 // Reports
 import ReportsPage, {
-  DayWiseSalesSummaryPage, CreditNoteItemRegisterPage,
+  DayWiseSalesSummaryPage,
   ProductWiseSalesSummaryPage,
 } from "./components/ReportsPage";
 import ReportSalesRegister from "./components/ReportSalesRegister"; // 👈 Sales Register (mini sidebar)
 import ReportCategoryWiseSales from "./components/ReportCategoryWiseSales";
 import ReportSalesMan from "./components/ReportSalesMan";
+import ReportCreditNoteItemRegister from "./components/ReportCreditNoteItemRegister";
 
 
 // Settings pages
@@ -170,7 +171,11 @@ export default function App() {
 
       <Route
         path="/reports/credit-note-item-register"
-        element={<SidebarLayout><CreditNoteItemRegisterPage /></SidebarLayout>}
+        element={
+          <MiniSidebarLayout>
+            <ReportCreditNoteItemRegister />
+          </MiniSidebarLayout>
+        }
       />
       <Route
         path="/reports/product-wise-sales-summary"

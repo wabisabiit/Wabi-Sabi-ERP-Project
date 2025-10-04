@@ -303,37 +303,6 @@ export function DayWiseSalesSummaryPage() {
   );
 }
 
-/* ---------- NEW: Credit Note Item Register (placeholder) ---------- */
-export function CreditNoteItemRegisterPage() {
-  const navigate = useNavigate();
-  return (
-    <div className="rp-wrap">
-      <div className="rp-top">
-        <div className="rp-title">Credit Note Item Register</div>
-        <div className="rp-crumb" aria-label="breadcrumb">
-          <span
-            className="material-icons-outlined rp-crumb-link"
-            role="link" tabIndex={0}
-            aria-label="Go to Home"
-            onClick={() => navigate("/")}
-          >
-            home
-          </span>
-          <span className="rp-crumb-sep">›</span>
-          <span className="rp-crumb-link" role="link" tabIndex={0} onClick={() => navigate("/reports")}>
-            Reports
-          </span>
-          <span className="rp-crumb-sep">›</span>
-        </div>
-      </div>
-
-      {/* Simple blank surface — upgrade later */}
-      <div className="rp-surface" style={{ minHeight: 240, display: "grid", placeItems: "center" }}>
-        <div className="rp-empty">Setup coming soon…</div>
-      </div>
-    </div>
-  );
-}
 
 /* ---------- NEW: Product Wise Sales Summary (placeholder) ---------- */
 export function ProductWiseSalesSummaryPage() {

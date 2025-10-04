@@ -17,14 +17,24 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
 
+  // ── Mini-hover: force icons-only on Credit Note Item Register route ──
+  const ICONS_ONLY_ROUTES = [
+    "/reports/credit-note-item-register",
+    "/reports/credit-note-tem-register", // safeguard for typo
+  ];
+  const forceMini = ICONS_ONLY_ROUTES.some((p) => isPath(p));
+  // Respect incoming prop OR force on the target route
+  const mini = miniHover || forceMini;
+
   // mini-hover collapse/expand width
   const COLLAPSED_W = 56;
   const EXPANDED_W = 260;
-  const [collapsed, setCollapsed] = useState(!!miniHover);
+  const [collapsed, setCollapsed] = useState(!!mini);
 
   useEffect(() => {
-    if (miniHover) setCollapsed(true);
-  }, [miniHover, location.pathname]);
+    if (mini) setCollapsed(true);
+    else setCollapsed(false);
+  }, [mini, location.pathname]);
 
   // Close on ESC (when not persistent)
   useEffect(() => {
@@ -71,15 +81,15 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
       {/* panel */}
       <aside
         ref={panelRef}
-        className={`sb-panel ${open ? "open" : ""} ${persistent ? "persistent" : ""} ${miniHover ? "mini-hover" : ""}`}
+        className={`sb-panel ${open ? "open" : ""} ${persistent ? "persistent" : ""} ${mini ? "mini-hover" : ""}`}
         role="navigation"
         aria-label="Main menu"
         style={{
-          width: miniHover ? (collapsed ? COLLAPSED_W : EXPANDED_W) : undefined,
+          width: mini ? (collapsed ? COLLAPSED_W : EXPANDED_W) : undefined,
           transition: "width 160ms ease"
         }}
-        onMouseEnter={() => miniHover && setCollapsed(false)}
-        onMouseLeave={() => miniHover && setCollapsed(true)}
+        onMouseEnter={() => mini && setCollapsed(false)}
+        onMouseLeave={() => mini && setCollapsed(true)}
       >
         {/* header */}
         <div className="sb-top">
