@@ -153,6 +153,9 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
             <div id="sb-inventory-sub" className={`sb-sub ${expandInventory ? "show" : ""}`} style={textStyle}>
               <NavLink to="/inventory/products" className={linkClass} onClick={handleNav}>Products</NavLink>
               <NavLink to="/inventory/stock-transfer" className={linkClass} onClick={handleNav}>Stock Transfer</NavLink>
+              <NavLink to="/inventory/master-packaging" className={linkClass} onClick={handleNav}>
+                Master Packaging
+              </NavLink>
             </div>
           </div>
 
