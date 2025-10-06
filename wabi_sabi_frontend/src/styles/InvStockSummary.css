@@ -1,0 +1,143 @@
+/* ---------- Page scaffold ---------- */
+.ss-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:14px 16px 28px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px;
+  color:#1f2937;
+}
+.ss-top{display:flex;align-items:center;gap:8px;margin:0 4px 8px}
+.ss-title{font-size:20px;font-weight:700}
+.ss-dot{color:#9aa3af}
+.ss-sub{color:#6b7280}
+.ss-card{
+  background:#fff;border:1px solid #e8edf4;border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+}
+
+/* ---------- Filters (exact layout & 60% field width) ---------- */
+.ss-card-filters{padding:16px;margin-bottom:16px}
+.ss-fgrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(280px,1fr));
+  gap:18px;
+}
+.ss-field{display:flex;flex-direction:column;gap:6px}
+.ss-label{color:#6b7280;font-size:12px;margin-left:2px}
+.ss-combo{position:relative; width:60%}
+.ss-combo-btn{
+  width:60%;height:36px;border:1px solid #e6ebf3;border-radius:8px;
+  background:#fff;display:flex;align-items:center;justify-content:space-between;
+  padding:0 10px;cursor:pointer
+}
+.ss-combo-btn.has .ss-combo-val{color:#111827}
+.ss-combo-val{color:#9aa3af;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ss-caret{display:inline-flex;margin-left:6px;color:#6b7280}
+
+.ss-pop{
+  position:absolute;top:40px;left:0;width:100%;
+  background:#fff;border:1px solid #e6ebf3;border-radius:10px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08);z-index:40
+}
+.ss-pop-search{
+  width:100%;border:0;border-bottom:1px solid #eef2f7;padding:8px 10px;outline:none
+}
+.ss-pop-list{max-height:220px;overflow:auto}
+.ss-pop-item{padding:10px 12px;cursor:pointer}
+.ss-pop-item:hover{background:#e8f3ff}
+.ss-pop-empty{padding:10px;color:#9aa3af}
+
+.ss-range{position:relative; width:60%}
+.ss-range-input{
+  width:60%;height:36px;border:1px solid #e6ebf3;border-radius:8px;
+  padding:0 36px 0 12px;outline:none;background:#fff;color:#111827
+}
+.ss-range-ic{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#6b7280}
+.ss-searchbox{position:relative; width:60%}
+.ss-searchbox input{
+  width:100%;height:36px;border:1px solid #e6ebf3;border-radius:8px;
+  padding:0 36px 0 12px;outline:none;background:#fff;color:#111827
+}
+.ss-sel-caret{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#6b7280}
+
+/* ---------- Table toolbar (right side) ---------- */
+.ss-toolbar{padding:12px}
+.ss-toolbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.ss-search{position:relative;width:260px}
+.ss-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9aa3af}
+.ss-search input{
+  width:100%;height:36px;border:1px solid #e6ebf3;border-radius:8px;
+  padding:0 12px 0 32px;outline:none
+}
+.ss-pp{position:relative}
+.ss-pp-btn{
+  height:32px;padding:0 10px;border:1px solid #e6ebf3;border-radius:8px;
+  background:#fff;color:#374151;display:flex;align-items:center;gap:6px
+}
+.ss-pp-menu{
+  position:absolute;top:36px;left:0;background:#fff;border:1px solid #e6ebf3;border-radius:8px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08);overflow:hidden;z-index:30
+}
+.ss-pp-item{padding:8px 12px;width:100%;text-align:left;border:0;background:#fff;cursor:pointer}
+.ss-pp-item:hover{background:#f5f7fb}
+
+.ss-export{position:relative}
+.ss-export-btn{
+  height:32px;display:flex;align-items:center;gap:6px;background:#0ea5e9;color:#fff;
+  border:0;border-radius:8px;padding:0 10px;cursor:pointer
+}
+.ss-drop-caret{display:inline-flex;margin-left:2px}
+.ss-export-menu{
+  position:absolute;top:36px;left:0;width:140px;background:#fff;border:1px solid #e6ebf3;border-radius:10px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08);overflow:hidden;z-index:35
+}
+.ss-export-item{width:100%;padding:10px;border:0;background:#fff;cursor:pointer;text-align:left}
+.ss-export-item:hover{background:#f3f8ff}
+
+/* ---------- Table (no horizontal scroll; condensed widths) ---------- */
+.ss-thead,
+.ss-rowline,
+.ss-total{
+  display:grid;
+  grid-template-columns:
+    59px   /* # */
+    96px  /* Branch */
+    90px  /* Code */
+    105px  /* Product */
+    89px  /* Category */
+    68px  /* Variant */
+    50px   /* UOM */
+    50px   /* MRP */
+    90px  /* Selling */
+    60px  /* Discount */
+    95px  /* Purchase */
+    60px  /* Opening */
+    36px;  /* InQty */
+  align-items:center;
+}
+.ss-thead{
+  background:#f6f8fc;border-top:1px solid #e6ebf3;border-bottom:1px solid #e6ebf3;
+  padding:10px 12px;font-weight:700;color:#1f2937
+}
+.ss-rowline{border-bottom:1px solid #eef2f7;padding:12px}
+.ss-plus{
+  display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+  background:#0ea5e9;color:#fff;margin-right:10px
+}
+.ss-cell-hybrid{display:flex;align-items:center;gap:8px}
+.ss-branch{line-height:1.1}
+.ss-link{color:#0b7cda;text-decoration:none}
+.ss-link:hover{text-decoration:underline}
+
+/* ---------- Footer / pager (right) ---------- */
+.ss-foot{display:flex;align-items:center;justify-content:space-between;padding:12px}
+.ss-foot .info{color:#6b7280}
+.ss-pager{display:flex;align-items:center;gap:8px}
+.ss-page-btn{
+  height:30px;width:30px;border:1px solid #e6ebf3;border-radius:8px;background:#fff;color:#6b7280
+}
+.ss-page-num{
+  height:30px;min-width:30px;border-radius:8px;display:grid;place-items:center;background:#06c;color:#fff;border:1px solid #06c
+}
+

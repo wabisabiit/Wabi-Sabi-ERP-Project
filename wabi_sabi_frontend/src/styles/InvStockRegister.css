@@ -1,0 +1,100 @@
+/* page */
+.sr-wrap{background:#eef2f7;min-height:100vh;padding:14px 16px 28px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:13px;color:#1f2937}
+.sr-head{display:flex;align-items:center;gap:8px;margin:0 4px 8px}
+.sr-title{margin:0;font-size:16px;font-weight:600;color:#1f2937}
+.sr-home{color:#9aa3af;display:inline-flex}
+.sr-card{background:#fff;border:1px solid #e8edf4;border-radius:10px;box-shadow:0 6px 18px rgba(25,42,70,.06)}
+
+/* toolbar */
+.sr-toolbar{padding:12px}
+.sr-row1{display:flex;align-items:center;gap:10px}
+.sr-field{display:flex;flex-direction:column;gap:6px}
+.sr-field label{color:#6b7280;font-size:12px;margin-left:2px}
+.sr-input{position:relative}
+.sr-input input{height:32px;border:1px solid #e6ebf3;border-radius:8px;padding:0 32px 0 10px;outline:none}
+.sr-input.with-icon .sr-ic{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#6b7280}
+
+.sr-pp{position:relative;margin-top: 20px;}
+.sr-pp-btn{height:32px;padding:0 10px;border:1px solid #e6ebf3;border-radius:8px;background:#fff;color:#374151;display:flex;align-items:center;gap:6px}
+.sr-pp-menu{position:absolute;top:36px;left:0;background:#fff;border:1px solid #e6ebf3;border-radius:8px;box-shadow:0 10px 24px rgba(16,24,40,.08);overflow:hidden}
+.sr-pp-item{padding:8px 12px;width:100%;text-align:left;border:0;background:#fff;cursor:pointer}
+.sr-pp-item:hover{background:#f5f7fb}
+
+.sr-export{position:relative;margin-top: 20px;}
+.sr-export-btn{height:32px;display:flex;align-items:center;gap:6px;background:#0ea5e9;color:#fff;border:0;border-radius:8px;padding:0 10px}
+.sr-drop-caret{display:inline-flex;margin-left:2px}
+.sr-export-menu{position:absolute;top:36px;left:0;width:140px;background:#fff;border:1px solid #e6ebf3;border-radius:10px;box-shadow:0 10px 24px rgba(16,24,40,.08);overflow:hidden;z-index:20}
+.sr-export-item{width:100%;padding:10px;border:0;background:#fff;cursor:pointer;text-align:left}
+.sr-export-item:hover{background:#f3f8ff}
+
+.sr-filter{height:32px;display:flex;align-items:center;gap:6px;border:0;border-radius:8px;background:#0ea5e9;color:#fff;padding:0 10px;cursor:pointer; margin-top: 20px;}
+.sr-filter.active{filter:brightness(.9)}
+.sr-search{position:relative;width:280px;margin-top: 20px;}
+.sr-search input{width:100%;height:32px;border:1px solid #e6ebf3;border-radius:8px;padding:0 32px 0 28px;outline:none}
+.sr-sic{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#9aa3af;}
+.sr-spacer{flex:1}
+
+.sr-columns{position:relative; margin-top: 20px;}
+.sr-columns-btn{height:32px;display:flex;align-items:center;gap:6px;background-color:#0ea5e9;color :#e6ebf3 ;border:1px solid #e6ebf3;border-radius:8px;padding:0 10px;cursor:pointer}
+.sr-columns-pop{position:absolute;right:0;top:38px;background:#fff;border:1px solid #e6ebf3;border-radius:12px;box-shadow:0 20px 34px rgba(16,24,40,.12);padding:14px;z-index:40;min-width:720px}
+.sr-columns-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.sr-col-chip{padding:10px 12px;background:#fff;border:1px solid #e6ebf3;border-radius:8px;text-align:left;cursor:pointer}
+.sr-col-chip.on{background:#09c; color:#fff; border-color:#09c}
+.sr-col-restore{grid-column:span 1; padding:10px 12px; background:#f6f7f9; border:1px solid #e6ebf3; border-radius:8px; cursor:pointer}
+
+/* filters area */
+.sr-filters{padding:10px 6px 2px ; margin-top: 20px;}
+.sr-grid{display:grid;grid-template-columns:repeat(4,260px);gap:12px 16px}
+.sr-fcol label{color:#6b7280;font-size:12px;margin-left:2px}
+.sr-combo{position:relative}
+.sr-combo-btn{width:100%;height:32px;border:1px solid #e6ebf3;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 8px;cursor:pointer}
+.sr-combo-btn.has .sr-combo-val{color:#111827}
+.sr-combo-val{color:#9aa3af;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sr-caret{display:inline-flex;margin-left:6px;color:#6b7280}
+.sr-pop{position:absolute;top:36px;left:0;width:100%;background:#fff;border:1px solid #e6ebf3;border-radius:10px;box-shadow:0 10px 24px rgba(16,24,40,.08);z-index:30}
+.sr-pop-search{width:100%;border:0;border-bottom:1px solid #eef2f7;padding:8px 10px;outline:none}
+.sr-pop-list{max-height:220px;overflow:auto}
+.sr-pop-item{padding:8px 10px;cursor:pointer}
+.sr-pop-item:hover{background:#f5f7fb}
+.sr-pop-empty{padding:10px;color:#9aa3af}
+
+/* table */
+.sr-table{padding:0 10px 8px}
+.sr-group-head{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(120px,auto);background:transparent;border-left:1px solid #e6ebf3;border-right:1px solid #e6ebf3}
+.sr-group-head .grp{font-weight:700;color:#1f2937;background:#f6f8fc;border-top:1px solid #e6ebf3;border-left:1px solid #e6ebf3;border-right:1px solid #e6ebf3;border-bottom:0;padding:8px 6px;text-align:center}
+.sr-thead{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(120px,auto);background:#f6f8fc;border:1px solid #e6ebf3;border-top:0}
+.sr-thead .c{padding:8px 6px;font-weight:700;color:#1f2937}
+.sr-thead .num{text-align:right}
+
+.sr-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(120px,auto);align-items:center;border-left:1px solid #eef2f7;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;min-height:38px}
+.sr-row .c{padding:8px 6px}
+.sr-row .id{text-align:center}
+.sr-row .num{text-align:right}
+.sr-row .link a{color:#0b7cda;text-decoration:none}
+.sr-row .link a:hover{text-decoration:underline}
+
+/* footer */
+.sr-foot{display:flex;align-items:center;justify-content:space-between;padding:10px}
+.sr-showing{color:#6b7280}
+.sr-pager{display:flex;align-items:center;gap:8px}
+.sr-page-btn{height:30px;width:30px;border:1px solid #e6ebf3;border-radius:8px;background:#fff;color:#6b7280}
+.sr-page-num{height:30px;min-width:30px;border-radius:8px;display:grid;place-items:center;background:#f0f2f7;border:1px solid #e6ebf3;color:#6b7280}
+.sr-page-num.active{background:#06c;color:#fff;border-color:#06c}
+
+.sr-note{color:#d22;margin:0 12px 12px;text-align:center}
+
+/* general */
+a{color:inherit}
+
+/* Filter button */
+.sr-filter{
+  height:32px;display:flex;align-items:center;gap:6px;border:0;border-radius:8px;
+  background:#0ea5e9;color:#fff;padding:0 10px;cursor:pointer;margin-top:20px;
+}
+
+/* when active: white background + black icon/text */
+.sr-filter.active{
+  background:#fff;
+  color:#111827;           /* makes the SVG turn black (uses currentColor) */
+  border:1px solid #e6ebf3;
+}

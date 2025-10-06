@@ -68,6 +68,13 @@ import IntegrationPage from "./components/IntegrationPage";
 import ProductsPage from "./components/InventoryProductsPage";
 import NewInventoryProductPage from "./components/NewInventoryProductPage";
 
+// Inventory->report
+import InvMasterPackingItemWiseSummary from "./components/InvMasterPackingItemWiseSummary";
+import InvSalesRegister from "./components/InvSalesRegister";
+import InvInventoryReport from "./components/InvInventoryReport";
+import InvStockSummary from "./components/InvStockSummary";
+
+
 // Stock Transfer
 import StockTransferPage from "./components/StockTransferPage";
 import MasterPackagingPage from "./components/MasterPackagingPage";
@@ -183,6 +190,25 @@ export default function App() {
       />
 
       <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
+
+      {/* Inventory Reports (new) */}
+<Route
+  path="/inventory/master-packing-itemwise-summary"
+  element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>}
+/>
+<Route
+  path="/inventory/sales-register"
+  element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>}
+/>
+<Route
+  path="/inventory/inventory-report"
+  element={<SidebarLayout><InvInventoryReport /></SidebarLayout>}
+/>
+<Route
+  path="/inventory/stock-summary"
+  element={<SidebarLayout><InvStockSummary /></SidebarLayout>}
+/>
+
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
