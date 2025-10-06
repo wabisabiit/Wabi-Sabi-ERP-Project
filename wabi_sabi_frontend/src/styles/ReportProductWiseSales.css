@@ -1,0 +1,329 @@
+/* Material Icons */
+@import url("https://fonts.googleapis.com/css2?family=Material+Icons&family=Material+Icons+Outlined");
+
+/* Page skin */
+.pwss-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:18px 16px 24px;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color:#0f172a;
+  font-size:14px;
+}
+
+/* Top & breadcrumb */
+.pwss-top{ display:flex; align-items:center; gap:12px; margin:2px 4px 12px; }
+.pwss-title{ font-size:22px; font-weight:700; color:#293241; letter-spacing:.2px; }
+.pwss-crumb{ display:flex; align-items:center; gap:8px; color:#94a3b8; }
+.pwss-crumb-link{ color:#0aa3da; cursor:pointer; }
+.pwss-crumb-sep{ color:#cbd5e1; }
+.pwss-crumb-dim{ color:#94a3b8; }
+
+/* Card container */
+.pwss-card{
+  background:#fff;
+  border:1px solid #e7eaef;
+  border-radius:12px;
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+  padding:16px;
+}
+
+/* Toolbar grid to match screenshot (4 + 4 + 3 cols) */
+.pwss-toolbar{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr) repeat(4, 1fr) 1fr 1fr max-content;
+  grid-auto-rows:auto;
+  gap:14px 12px;
+  align-items:end;
+}
+
+/* Field shells */
+.pwss-field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.pwss-field label{ font-size:13px; color:#475569; font-weight:700; }
+
+/* Select/look */
+.select{
+  position:relative; height:38px; display:flex; align-items:center;
+  border:1px solid #dfe8f0; border-radius:8px; background:#f8fafc; padding:0 10px;
+}
+.select select{
+  appearance:none; background:transparent; border:0; outline:0;
+  width:100%; height:32px; color:#0f172a; font-size:14px;
+}
+.select .caret{
+  position:absolute; right:8px; font-size:18px; color:#94a3b8;
+}
+
+/* Date input with icon */
+.with-icon{ position:relative; }
+.with-icon input[type="date"]{
+  width:100%; height:38px; padding:0 36px 0 10px;
+  border:1px solid #dfe8f0; border-radius:8px; background:#f8fafc;
+}
+.with-icon .material-icons-outlined{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:18px; color:#94a3b8;
+}
+
+/* Search (Select Product) */
+.search{
+  height:38px; width:100%; padding:0 10px; border-radius:8px;
+  border:1px solid #dfe8f0; background:#f8fafc;
+}
+
+/* Multi-select pill (Location, Department) */
+.pill{
+  position:relative; display:flex; align-items:center; gap:6px;
+  height:38px; border:1px solid #dfe8f0; border-radius:8px; background:#f8fafc; padding:0 10px; cursor:pointer;
+}
+.pill-text{ color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pill-badge{
+  background:#0aa3da; color:#fff; font-weight:700; padding:0 6px; border-radius:6px;
+  height:20px; display:flex; align-items:center; font-size:12px;
+}
+.pill-x{
+  margin-left:auto; width:22px; height:22px; border-radius:50%;
+  border:0; background:#e5e7eb; color:#475569; display:grid; place-items:center;
+  cursor:pointer; font-family:"Material Icons Outlined";
+}
+.pill-x::before{ content:"close"; font-size:16px; }
+.pill:focus .pill-pop, .pill:hover .pill-pop{ display:block; }
+.pill-pop{
+  display:none; position:absolute; left:0; right:0; top:100%; margin-top:6px;
+  background:#fff; border:1px solid #e7eaef; border-radius:10px;
+  box-shadow:0 8px 24px rgba(15,23,42,.12); z-index:20; padding:6px;
+  max-height:220px; overflow:auto;
+}
+.check{ display:flex; align-items:center; gap:8px; padding:8px; border-radius:6px; }
+.check:hover{ background:#f1f5f9; }
+
+/* Actions: split download + page-size */
+.pwss-actions{
+  justify-self:end; display:flex; align-items:center; gap:10px; position:relative;
+}
+.split-main, .split-caret{
+  height:38px; display:grid; place-items:center; border:1px solid #0aa3da;
+  background:#0aa3da; color:#fff; cursor:pointer;
+}
+.split-main{ width:44px; border-radius:8px 0 0 8px; }
+.split-caret{ width:36px; border-left:0; border-radius:0 8px 8px 0; }
+.menu{
+  position:absolute; right:0; top:calc(100% + 6px);
+  background:#fff; border:1px solid #e7eaef; border-radius:10px;
+  box-shadow:0 8px 24px rgba(15,23,42,.12); min-width:210px; display:none; z-index:30;
+}
+.menu.show{ display:block; }
+.menu button{
+  width:100%; background:#fff; border:0; text-align:left; padding:10px 12px;
+  display:flex; align-items:center; gap:8px; cursor:pointer; color:#0f172a;
+}
+.menu button:hover{ background:#f1f5f9; }
+
+.psize{ position:relative; height:38px; display:flex; align-items:center; border:1px solid #dfe8f0; border-radius:8px; background:#f8fafc; padding:0 8px; }
+.psize select{ appearance:none; border:0; outline:0; background:transparent; height:28px; }
+.psize .material-icons-outlined{ font-size:18px; color:#94a3b8; margin-left:4px; }
+
+/* Table & horizontal scroll (match screenshot) */
+.pwss-table-outer{ position:relative; margin-top:12px; }
+.pwss-table-scroll{
+  overflow-x:auto; overflow-y:hidden;
+  border:1px solid #e4e9f2; border-radius:12px; background:#fff;
+}
+.pwss-table{
+  border-collapse:separate; border-spacing:0;
+  min-width:1680px; width:100%;
+}
+.pwss-table thead th{
+  position:sticky; top:0; z-index:2;
+  background:#edf2f7; color:#334155;
+  border:1px solid #e4e9f2; border-bottom-color:#d8dee9;
+  font-weight:700; font-size:14px; padding:14px 12px; text-align:left;
+}
+.pwss-table thead th:first-child{ border-top-left-radius:12px; }
+.pwss-table thead th:last-child{ border-top-right-radius:12px; }
+.pwss-table tbody td{
+  background:#fff; color:#0f172a;
+  border:1px solid #edf1f6; padding:14px 12px; line-height:1.35;
+}
+.pwss-table tbody tr:nth-child(even) td{ background:#fafbfe; }
+.pwss-table tbody tr:hover td{ background:#f3f6fb; }
+.pwss-table tfoot td{
+  background:#edf2f7; border:1px solid #e4e9f2; padding:14px 12px; font-weight:600;
+}
+.pwss-table tfoot td:first-child{ border-bottom-left-radius:12px; }
+.pwss-table tfoot td:last-child{ border-bottom-right-radius:12px; }
+.total-label{ font-weight:700; }
+
+/* Horizontal nudgers */
+.hbtn{
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:36px; height:36px; display:grid; place-items:center;
+  background:#fff; border:1px solid #e4e9f2; border-radius:50%;
+  box-shadow:0 2px 10px rgba(15,23,42,.10); z-index:5; cursor:pointer;
+}
+.hbtn.left{ left:6px; }
+.hbtn.right{ right:6px; }
+.hbtn .material-icons-outlined{ font-size:22px; color:#475569; }
+
+/* Meta line */
+.pwss-meta{ margin:12px 2px; color:#475569; font-size:13px; }
+
+/* Force toolbar into 3 stacked rows */
+.pwss-toolbar{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+/* Each row: 4 equal columns (like the screenshot) */
+.pwss-row{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:14px 19px;
+  align-items:end;
+}
+
+/* Third row: 2 fields + spacer + right-aligned actions */
+.pwss-row.third{
+  grid-template-columns: 1fr 1fr 1fr auto; /* last cell auto width for actions */
+}
+.pwss-row.third .pwss-spacer{ /* fills middle column so actions push right */
+  align-self:stretch;
+}
+.pwss-row.third .pwss-actions{
+  justify-self:end;
+}
+
+/* Keep action buttons height consistent in the new grid */
+.pwss-actions .split-main,
+.pwss-actions .split-caret,
+.psize{ height:38px; }
+
+/* --- Normalize control sizes so everything aligns --- */
+:root{
+  --ctrl-h: 40px;
+}
+.select, .with-icon input[type="date"], .search,
+.split-main, .split-caret, .psize{ height: var(--ctrl-h); }
+.select select{ height: calc(var(--ctrl-h) - 8px); }
+.with-icon input[type="date"]{ padding:0 36px 0 10px; }
+
+/* --- 3-row toolbar layout with equal columns --- */
+.pwss-toolbar{ display:flex; flex-direction:column; gap:16px; }
+.pwss-row{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap:14px 19px;
+  align-items:end;
+}
+.pwss-row.third{ grid-template-columns: 1fr 1fr 1fr auto; }
+.pwss-row.third .pwss-spacer{ align-self:stretch; }
+.pwss-row.third .pwss-actions{ justify-self:end; }
+
+/* --- Tighten labels so rows visually snap to grid --- */
+.pwss-field label{
+  font-size:13px; color:#475569; font-weight:700;
+  margin-left:2px;
+}
+
+/* --- Control shells (consistent look) --- */
+.select,
+.with-icon input[type="date"],
+.search,
+.psize{
+  border-radius: 10px;
+}
+
+/* Dropdown caret tone */
+.select .caret{ right:10px; color:#8fa3b6; }
+
+/* Action split group spacing kept compact */
+.pwss-actions{ display:flex; align-items:center; gap:10px; position:relative; }
+.split-main{ width:44px; border:1px solid #0aa3da; background:#0aa3da; color:#fff; border-radius:10px 0 0 10px; }
+.split-caret{ width:36px; border:1px solid #0aa3da; border-left:0; background:#0aa3da; color:#fff; border-radius:0 10px 10px 0; }
+.menu{ right:0; top:calc(100% + 6px); }
+
+/* Table (kept same look you approved) */
+.pwss-table-scroll{ border:1px solid #e4e9f2; border-radius:12px; }
+.pwss-table thead th{ background:#edf2f7; }
+
+/* Make the four columns per row behave on very wide screens too */
+@media (min-width: 1440px){
+  .pwss-row{ grid-template-columns: repeat(4, minmax(260px, 1fr)); }
+}
+@media (max-width: 1100px){
+  .pwss-row{ grid-template-columns: repeat(2, 1fr); }
+  .pwss-row.third{ grid-template-columns: 1fr 1fr; }
+  .pwss-row.third .pwss-actions{ justify-self:start; }
+}
+
+/* === Common head button (looks like the blue/rounded inputs) === */
+.ss-head, .ms-head{
+  height:40px; width:100%;
+  display:flex; align-items:center; gap:8px;
+  border:1px solid #dfe8f0; background:#f8fafc; border-radius:8px;
+  padding:0 10px; cursor:pointer;
+}
+.ss-head .material-icons-outlined, .ms-head .material-icons-outlined{ margin-left:auto; color:#94a3b8; font-size:18px; }
+.ss-head.open, .ms-head.open{ border-color:#b9c9d8; box-shadow:0 0 0 2px rgba(13,148,199,.08); }
+.ss-head .ss-head-text.dim, .ms-head .ms-text.dim{ color:#94a3b8; }
+
+/* === Popover shell === */
+.ss-pop, .ms-pop{
+  display:none; position:absolute; z-index:30; margin-top:21px;
+  background:#fff; border:1px solid #e7eaef; border-radius:10px;
+  box-shadow:0 8px 24px rgba(15,23,42,.12); width:100%;
+}
+.ss-pop.show, .ms-pop.show{ display:block; }
+
+/* Keep popovers positioned relative to field */
+.pwss-field{ position:relative; }
+
+/* Search box at top of dropdown */
+.ss-search{
+  width:93%; height:38px; border:1px solid #e6edf5; border-radius:8px;
+  margin:8px; padding:0 10px; background:#f8fafc;
+}
+
+/* List + items */
+.ss-list, .ms-list{ max-height:230px; overflow:auto; padding:0 8px 8px; }
+.ss-item{
+  padding:10px 8px; border-radius:6px; cursor:pointer;
+}
+.ss-item:hover{ background:#f1f5f9; }
+.ss-item.active{ background:#0aa3da; color:#fff; }
+
+.ss-empty{
+  padding:12px; color:#64748b;
+}
+
+/* === Multi-select (Location) specifics === */
+.ms-text{ color:#0f172a; }
+.ms-badge{
+  background:#0aa3da; color:#fff; font-weight:700; padding:0 6px; border-radius:6px; height:20px; display:flex; align-items:center; font-size:12px;
+}
+.ms-close{
+  margin-left:6px; width:22px; height:22px; border-radius:50%; background:#e5e7eb; flex:0 0 22px; cursor:pointer;
+  position:relative;
+}
+.ms-close::before{
+  content:"close"; font-family:"Material Icons Outlined"; font-size:16px; color:#475569; position:absolute; inset:0; display:grid; place-items:center;
+}
+.ms-row{
+  display:flex; align-items:center; gap:10px; padding:8px; border-radius:6px;
+}
+.ms-row:hover{ background:#f1f5f9; }
+.ms-row input{ width:16px; height:16px; }
+
+/* Date inputs + existing inputs already styled in your file */
+
+/* Single download button */
+.dl-btn{
+  height:38px; width:44px;
+  display:grid; place-items:center;
+  border:1px solid #0aa3da; background:#0aa3da; color:#fff;
+  border-radius:10px; cursor:pointer;
+}
+
+/* Optional: remove old split styles if unused */
+.split-main, .split-caret{ display:none; }

@@ -48,12 +48,12 @@ import InventoryProductDetailPage from "./components/InventoryProductDetailPage"
 // Reports
 import ReportsPage, {
   DayWiseSalesSummaryPage,
-  ProductWiseSalesSummaryPage,
 } from "./components/ReportsPage";
 import ReportSalesRegister from "./components/ReportSalesRegister"; // 👈 Sales Register (mini sidebar)
 import ReportCategoryWiseSales from "./components/ReportCategoryWiseSales";
 import ReportSalesMan from "./components/ReportSalesMan";
 import ReportCreditNoteItemRegister from "./components/ReportCreditNoteItemRegister";
+import ReportProductWiseSales from "./components/ReportProductWiseSales";
 
 
 // Settings pages
@@ -179,7 +179,7 @@ export default function App() {
       />
       <Route
         path="/reports/product-wise-sales-summary"
-        element={<SidebarLayout><ProductWiseSalesSummaryPage /></SidebarLayout>}
+        element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>}
       />
 
       <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
@@ -215,9 +215,9 @@ export default function App() {
         element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>}
       />
       <Route
-  path="/inventory/master-packaging"
-  element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>}
-/>
+        path="/inventory/master-packaging"
+        element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>}
+      />
       {/* Multiple Pay */}
       <Route
         path="/multiple-pay"
