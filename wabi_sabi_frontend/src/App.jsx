@@ -10,12 +10,6 @@ import RightPanel from "./components/RightPanel";
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
 
-// Inventory -> report (imports — single copy only)
-import InvMasterPackingItemWiseSummary from "./components/InvMasterPackingItemWiseSummary";
-import InvSalesRegister from "./components/InvSalesRegister";
-import InvInventoryReport from "./components/InvInventoryReport";
-import InvStockSummary from "./components/InvStockSummary";
-
 import CampaignCreatePage from "./components/CampaignCreatePage";
 import MultiplePay from "./components/MultiplePay";
 import CreditNotePage from "./components/CreditNotePage";
@@ -50,7 +44,6 @@ import ExpensePage from "./components/ExpensePage";
 import NewBankPage from "./components/NewBankPage";
 import PaymentCreatePage from "./components/PaymentCreatePage";
 import InventoryProductDetailPage from "./components/InventoryProductDetailPage";
-import OpeningBalancePage from "./components/OpeningBalancePage";
 
 // Reports
 import ReportsPage, { DayWiseSalesSummaryPage } from "./components/ReportsPage";
@@ -77,11 +70,20 @@ import StockTransferPage from "./components/StockTransferPage";
 import MasterPackagingPage from "./components/MasterPackagingPage";
 import "./App.css";
 
-// Accounting
+// 🔹 NEW from file 2: Accounting → Account page
 import AccountPage from "./components/AccountPage";
 
-// Sales → Invoice
+// 🔹 NEW from file 2: Sales → Invoice
 import InvoicePage from "./components/InvoicePage";
+
+// 🔹 NEW from file 2: Inventory -> report (imports)
+import InvMasterPackingItemWiseSummary from "./components/InvMasterPackingItemWiseSummary";
+import InvSalesRegister from "./components/InvSalesRegister";
+import InvInventoryReport from "./components/InvInventoryReport";
+import InvStockSummary from "./components/InvStockSummary";
+
+// 🔹 NEW from file 2: Opening Balance
+import OpeningBalancePage from "./components/OpeningBalancePage";
 
 /* ---------- Layouts ---------- */
 function POSLayout() {
@@ -105,7 +107,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -116,7 +118,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -147,6 +149,24 @@ export default function App() {
       <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
       <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
 
+      {/* 🔹 Inventory -> report routes (added) */}
+      <Route
+        path="/inventory/master-packing-itemwise-summary"
+        element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>}
+      />
+      <Route
+        path="/inventory/sales-register"
+        element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>}
+      />
+      <Route
+        path="/inventory/inventory-report"
+        element={<SidebarLayout><InvInventoryReport /></SidebarLayout>}
+      />
+      <Route
+        path="/inventory/stock-summary"
+        element={<SidebarLayout><InvStockSummary /></SidebarLayout>}
+      />
+
       {/* Bank / Cash */}
       <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
       <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
@@ -156,10 +176,9 @@ export default function App() {
       <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
       <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
 
-      {/* Sales (existing POS bits) */}
+      {/* Sales */}
       <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
-
-      {/* Sales → Invoice */}
+      {/* 🔹 Sales → Invoice (added) */}
       <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
 
       {/* Utilities */}
@@ -170,12 +189,39 @@ export default function App() {
 
       {/* Reports */}
       <Route path="/reports" element={<SidebarLayout><ReportsPage /></SidebarLayout>} />
-      <Route path="/reports/day-wise-sales-summary" element={<SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>} />
-      <Route path="/reports/sales-register" element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>} />
-      <Route path="/reports/category-wise-sales-summary" element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>} />
-      <Route path="/reports/credit-note-item-register" element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>} />
-      <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
+      <Route
+        path="/reports/day-wise-sales-summary"
+        element={<SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>}
+      />
+      <Route
+        path="/reports/sales-register"
+        element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>}
+      />
+      <Route
+        path="/reports/category-wise-sales-summary"
+        element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>}
+      />
+      <Route
+        path="/reports/credit-note-item-register"
+        element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>}
+      />
+      <Route
+        path="/reports/product-wise-sales-summary"
+        element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>}
+      />
       <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
+
+      {/* 🔹 NEW: Accounting → Account */}
+      <Route
+        path="/accounting/account"
+        element={<SidebarLayout><AccountPage /></SidebarLayout>}
+      />
+
+      {/* 🔹 NEW: Opening Balance (imported in file 2; add route if needed) */}
+      <Route
+        path="/accounting/opening-balance"
+        element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>}
+      />
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
@@ -198,24 +244,6 @@ export default function App() {
       <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
       <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
       <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
-
-      {/* Inventory -> report routes */}
-      <Route
-        path="/inventory/master-packing-itemwise-summary"
-        element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>}
-      />
-      <Route
-        path="/inventory/sales-register"
-        element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>}
-      />
-      <Route
-        path="/inventory/inventory-report"
-        element={<SidebarLayout><InvInventoryReport /></SidebarLayout>}
-      />
-      <Route
-        path="/inventory/stock-summary"
-        element={<SidebarLayout><InvStockSummary /></SidebarLayout>}
-      />
 
       {/* Multiple Pay */}
       <Route

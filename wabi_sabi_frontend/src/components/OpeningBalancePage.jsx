@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/OpeningBalancePage.css";
 
-/** ---- Demo masters (same values as screenshot) ---- */
+const ACCOUNT_PAGE_PATH = "/accounting/account";
+
 const FY_LIST = ["2025–2026", "2024–2025", "2023–2024"];
 const ACCOUNT_GROUPS = ["Sundry Debtors", "Sundry Creditors", "Cash in Hand", "Current Assets"];
 const LOCATIONS = [
@@ -17,7 +19,6 @@ const NAMES = [
   "KARTIK","MONIKA","HEENA","JYOTI","NIKHIL","AMIT","RANJIT","PALLAVI","DHEERAJ","CHANDER"
 ];
 
-/* ---------- helpers ---------- */
 function makeRows(count = 10) {
   const rows = [];
   for (let i = 0; i < count; i++) {
@@ -36,6 +37,7 @@ function makeRows(count = 10) {
 const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function OpeningBalancePage() {
+  const navigate = useNavigate();
   const [fy, setFy] = useState(FY_LIST[0]);
   const [accGroup, setAccGroup] = useState("");
   const [accGroupOpen, setAccGroupOpen] = useState(false);
@@ -77,21 +79,31 @@ export default function OpeningBalancePage() {
 
   return (
     <div className="ob-page">
-      {/* Top bar */}
+      {/* Breadcrumb / Top bar */}
       <div className="ob-topbar">
-        <div className="ob-title">
-          <span className="material-icons-outlined home-ic" aria-hidden>home</span>
-          <span> - Chart of Account</span>
-        </div>
+        <button
+          type="button"
+          className="home-link"
+          onClick={() => navigate(ACCOUNT_PAGE_PATH)}
+          aria-label="Go to Accounts"
+          title="Accounts"
+        >
+          <span className="material-icons-outlined" aria-hidden>home</span>
+        </button>
+        <span className="crumb-sep">-</span>
+        <span className="crumb-title">Chart of Account</span>
       </div>
 
       <div className="ob-card">
-        {/* Filter row like screenshot */}
         <div className="ob-filters">
           <label className="fld">
             <span className="lbl">Select Year</span>
             <div className="sel">
-              <select value={fy} onChange={(e) => setFy(e.target.value)}>
+              <select
+                className="year-native"
+                value={fy}
+                onChange={(e) => setFy(e.target.value)}
+              >
                 {FY_LIST.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
               <span className="material-icons-outlined caret">expand_more</span>
@@ -100,8 +112,6 @@ export default function OpeningBalancePage() {
 
           <label className="fld" ref={accGroupWrapRef}>
             <span className="lbl">Select Account Group</span>
-
-            {/* anchored custom dropdown */}
             <div className="sel-anchor">
               <button
                 type="button"

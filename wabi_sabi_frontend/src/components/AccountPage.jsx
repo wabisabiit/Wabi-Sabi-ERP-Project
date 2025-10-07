@@ -16,18 +16,10 @@ const LOCATIONS = [
 ];
 
 const ACCOUNT_GROUPS = [
-  "Current Assets (Assets)",
-  "Fixed Assets (Assets)",
-  "Branch & Division (Assets)",
-  "Cash in Hand (Assets)",
-  "Stock in Hand (Assets)",
-  "Sundry Debtors (Assets)",
-  "Sundry Creditors (Liabilities)",
-  "Current Liabilities (Liabilities)",
-  "Loans (Liabilities)",
-  "Indirect Expenses (Expenses)",
-  "Direct Expenses (Expenses)",
-  "Income (Income)"
+  "Current Assets (Assets)","Fixed Assets (Assets)","Branch & Division (Assets)",
+  "Cash in Hand (Assets)","Stock in Hand (Assets)","Sundry Debtors (Assets)",
+  "Sundry Creditors (Liabilities)","Current Liabilities (Liabilities)","Loans (Liabilities)",
+  "Indirect Expenses (Expenses)","Direct Expenses (Expenses)","Income (Income)"
 ];
 
 function makeRows(count = 120) {
@@ -54,7 +46,7 @@ const PAGE_SIZES = [15, 20, 50, 100, 200, 500, 1000];
 export default function AccountPage() {
   const [rows, setRows] = useState(() => makeRows());
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
   /* Download dropdown */
@@ -88,6 +80,7 @@ export default function AccountPage() {
     return () => document.removeEventListener("pointerdown", onDocDown, true);
   }, []);
 
+  /* modal + dropdown outside/escape handling */
   useEffect(() => {
     if (!modalOpen) return;
     const onKey = (e) => {
@@ -147,25 +140,9 @@ export default function AccountPage() {
   };
 
   const downloadBlob = (blob, filename) => {
-    if (window.navigator && "msSaveOrOpenBlob" in window.navigator) {
-      // @ts-ignore
-      window.navigator.msSaveOrOpenBlob(blob, filename);
-      return;
-    }
     const url = URL.createObjectURL(blob);
     clickHiddenA(url, filename);
     setTimeout(() => URL.revokeObjectURL(url), 1200);
-  };
-
-  const exportToExcel = () => {
-    const headers = ["#", "Account Name", "Group name", "Group Nature", "Account Type", "Created On", "Created By", "Location"];
-    const ro = filtered.map(r => [r.id, r.accountName, r.groupName, r.groupNature, r.accountType, r.createdOn, r.createdBy, r.location]);
-    const th = headers.map(h => `<th style="font-weight:bold;border:1px solid #d9dde3;padding:6px 8px;background:#f1f5f9;color:#334155;text-align:left;white-space:nowrap;">${h}</th>`).join("");
-    const trs = ro.map(r => `<tr>${r.map(c => `<td style="border:1px solid #e5e7eb;padding:6px 8px;white-space:nowrap;">${String(c).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td>`).join("")}</tr>`).join("");
-    const tableHTML = `<table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>`;
-    const xlsHTML = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8" /></head><body>${tableHTML}</body></html>`;
-    downloadBlob(new Blob([xlsHTML], { type: "application/vnd.ms-excel;charset=utf-8" }), "chart-of-account.xls");
-    setDownloadOpen(false);
   };
 
   const ensureJsPDF = () =>
@@ -179,20 +156,32 @@ export default function AccountPage() {
       document.body.appendChild(s);
     });
 
+  const exportToExcel = () => {
+    const headers = ["#", "Account Name", "Group name", "Group Nature", "Account Type", "Created On", "Created By", "Location"];
+    const ro = filtered.map(r => [r.id, r.accountName, r.groupName, r.groupNature, r.accountType, r.createdOn, r.createdBy, r.location]);
+    const th = headers.map(h => `<th style="font-weight:bold;border:1px solid #d9dde3;padding:6px 8px;background:#f1f5f9;color:#334155;text-align:left;white-space:nowrap;">${h}</th>`).join("");
+    const trs = ro.map(r => `<tr>${r.map(c => `<td style="border:1px solid #e5e7eb;padding:6px 8px;white-space:nowrap;">${String(c).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td>`).join("")}</tr>`).join("");
+    const tableHTML = `<table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>`;
+    const xlsHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${tableHTML}</body></html>`;
+    downloadBlob(new Blob([xlsHTML], { type: "application/vnd.ms-excel;charset=utf-8" }), "chart-of-account.xls");
+    setDownloadOpen(false);
+  };
+
   const exportToPDF = async () => {
     try {
       await ensureJsPDF();
       const { jsPDF } = window.jspdf || window;
       const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-      const marginX = 36, marginY = 40, lineH = 16;
+      const marginX = 36, marginY = 42, lineH = 16;
       let y = marginY;
 
       doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-      doc.text("Chart of Account", marginX, y); y += 18;
+      doc.text("Chart of Account", marginX, y);
+      y += 18;
 
       const headers = ["#", "Account Name", "Group name", "Group Nature", "Account Type", "Created On", "Created By", "Location"];
-      const widths  = [20, 110, 90, 70, 80, 110, 90, 120];
+      const widths  = [20, 120, 95, 70, 80, 120, 90, 120];
       doc.setFontSize(10); doc.setFont("helvetica","bold");
       let x = marginX; headers.forEach((h,i)=>{ doc.text(h,x,y); x+=widths[i]; });
       y += lineH; doc.setDrawColor(220); doc.line(marginX, y-12, marginX + widths.reduce((a,b)=>a+b,0), y-12);
@@ -201,19 +190,15 @@ export default function AccountPage() {
       filtered.forEach(r=>{
         x=marginX;
         const vals=[r.id,r.accountName,r.groupName,r.groupNature,r.accountType,r.createdOn,r.createdBy,r.location].map(String);
-        if (y > 790) { doc.addPage(); y = marginY; }
-        vals.forEach((v,i)=>{ const t=v.length>28? v.slice(0,27)+"…":v; doc.text(t,x,y); x+=widths[i]; });
+        if (y > 800) { doc.addPage(); y = marginY + 6; }
+        vals.forEach((v,i)=>{ const t=v.length>24? v.slice(0,23)+"…":v; doc.text(t,x,y); x+=widths[i]; });
         y+=lineH;
       });
 
-      const blob = doc.output("blob");
-      downloadBlob(blob, "chart-of-account.pdf");
+      downloadBlob(doc.output("blob"), "chart-of-account.pdf");
       setDownloadOpen(false);
     } catch {
-      const base64 = "JVBERi0xLjQKMSAwIG9iago8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+CmVuZG9iagoyIDAgb2JqCjw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlIC9QYWdlIC9NZWRpYUJveCBbMCAwIDU5NSA4NDJdIC9QYXJlbnQgMiAwIFIgL1Jlc291cmNlcyA8PC9Gb250IDw8Pj4+PiA+PiA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDk2IDAwMDAwIG4gCjAwMDAwMDAxNzQgMDAwMDAgbiAKMDAwMDAwMDI4MyAwMDAwMCBuIAp0cmFpbGVyCjw8L1Jvb3QgMSAwIFIgL1NpemUgND4+CnN0YXJ0eHJlZgoKJSVlbyoKZW5kc3RyZWFtCmVuZG9mCmVuZGZpbg==".replace(/\s+/g,"");
-      const bin = atob(base64); const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      downloadBlob(new Blob([bytes], { type: "application/pdf" }), "chart-of-account.pdf");
+      downloadBlob(new Blob(["%PDF-1.4\n"], { type: "application/pdf" }), "chart-of-account.pdf");
       setDownloadOpen(false);
     }
   };
@@ -245,13 +230,13 @@ export default function AccountPage() {
     <div className="coa-page">
       <a ref={hiddenARef} style={{ display: "none" }} aria-hidden />
 
+      {/* Top bar */}
       <div className="coa-topbar">
         <div className="coa-title">
           <span>Chart of Account</span>
           <span className="material-icons-outlined home-ic" aria-hidden>home</span>
         </div>
 
-        {/* Navigate to Opening Balance page with sidebar */}
         <button
           type="button"
           className="coa-opening-link"
@@ -262,24 +247,27 @@ export default function AccountPage() {
       </div>
 
       <div className="coa-card">
+        {/* Toolbar */}
         <div className="coa-toolbar">
           <div className="coa-left">
-            <div className="dl-wrap" ref={dlWrapRef}>
+            {/* Download split button (SCOPED classes; no global .menu conflict) */}
+            <div className="coa-dl-wrap" ref={dlWrapRef}>
               <button
-                className="btn icon solid"
+                className="btn icon solid coa-dl-btn"
                 title="Download"
                 onClick={() => setDownloadOpen(v => !v)}
                 aria-haspopup="menu"
                 aria-expanded={downloadOpen}
                 type="button"
               >
-                <span className="material-icons-outlined">download</span>
+                <span className="material-icons-outlined">file_download</span>
+                <span className="caret material-icons-outlined" aria-hidden>expand_more</span>
               </button>
 
               {downloadOpen && (
-                <div className="menu" role="menu" onMouseDown={(e)=>e.stopPropagation()}>
+                <div className="coa-dl-menu" role="menu" onMouseDown={(e)=>e.stopPropagation()}>
                   <button onClick={exportToExcel} role="menuitem" type="button">
-                    <span className="material-icons-outlined">grid_on</span> Excel
+                    <span className="material-icons-outlined">description</span> Excel
                   </button>
                   <button onClick={exportToPDF} role="menuitem" type="button">
                     <span className="material-icons-outlined">picture_as_pdf</span> PDF
@@ -315,6 +303,7 @@ export default function AccountPage() {
           </div>
         </div>
 
+        {/* Table */}
         <div className="table-wrap">
           <table className="coa-table">
             <thead>
@@ -358,6 +347,7 @@ export default function AccountPage() {
           </table>
         </div>
 
+        {/* Pager */}
         <div className="coa-pager">
           <div className="pager-left">
             Showing <strong>{visible.length}</strong> of <strong>{filtered.length}</strong>
@@ -373,10 +363,11 @@ export default function AccountPage() {
 
             {Array.from({ length: Math.max(1, Math.ceil(filtered.length / pageSize)) }, (_, i) => i + 1)
               .filter(n => {
-                if (n === 1 || n === Math.ceil(filtered.length / pageSize)) return true;
+                const last = Math.ceil(filtered.length / pageSize);
+                if (n === 1 || n === last) return true;
                 if (Math.abs(n - pageSafe) <= 1) return true;
                 if (pageSafe <= 3 && n <= 4) return true;
-                if (pageSafe >= Math.ceil(filtered.length / pageSize) - 2 && n >= Math.ceil(filtered.length / pageSize) - 3) return true;
+                if (pageSafe >= last - 2 && n >= last - 3) return true;
                 return false;
               })
               .reduce((acc, n, idx, arr) => {
@@ -430,11 +421,9 @@ export default function AccountPage() {
                 />
               </label>
 
-              {/* —— Account Group (anchored dropdown) —— */}
+              {/* Account Group (anchored dropdown) */}
               <label className="fld select-wrap" ref={accGroupWrapRef}>
                 <span>Account Group<span className="req">*</span></span>
-
-                {/* anchor wrapper so menu positions under the input */}
                 <div className="sel-anchor">
                   <button
                     type="button"
