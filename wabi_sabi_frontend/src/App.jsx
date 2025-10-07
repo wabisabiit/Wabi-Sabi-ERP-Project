@@ -59,6 +59,7 @@ import ReportCategoryWiseSales from "./components/ReportCategoryWiseSales";
 import ReportSalesMan from "./components/ReportSalesMan";
 import ReportCreditNoteItemRegister from "./components/ReportCreditNoteItemRegister";
 import ReportProductWiseSales from "./components/ReportProductWiseSales";
+import WowBillReport from "./components/WowBillReport";
 
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
@@ -105,7 +106,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -116,7 +117,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -176,6 +177,11 @@ export default function App() {
       <Route path="/reports/credit-note-item-register" element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>} />
       <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
       <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
+      <Route
+        path="/reports/wow-bill-report"
+        element={<SidebarLayout><WowBillReport /></SidebarLayout>}
+      />
+
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
