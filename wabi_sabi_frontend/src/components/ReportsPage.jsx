@@ -20,6 +20,8 @@ const SALES_ITEMS = [
   { key: "salesman", title: "Sales Man Report" },
   { key: "creditNoteItemReg", title: "Credit Note Item Register" },
   { key: "productWise", title: "Product Wise Sales Summary" },
+  // NEW
+  { key: "wowbill", title: "Wow Bill Report" },
 ];
 
 const INVENTORY_ITEMS = [
@@ -45,6 +47,8 @@ export default function ReportsPage() {
     else if (key === "salesman") navigate("/reports/salesman");
     else if (key === "creditNoteItemReg") navigate("/reports/credit-note-item-register");
     else if (key === "productWise") navigate("/reports/product-wise-sales-summary");
+    // NEW
+    else if (key === "wowbill") navigate("/reports/wow-bill-report");
   };
 
   const onInventoryNavigate = (key) => {
@@ -300,16 +304,33 @@ export function DayWiseSalesSummaryPage() {
               <div className="rp-popover rp-popover-loc" onClick={(e) => e.stopPropagation()}>
                 <div className="rp-popover-search"><input placeholder="Search..." /></div>
                 <div className="rp-popover-list">
-                  {LOCATIONS.map((l) => (
+                  {[
+                    "All",
+                    "WABI SABI SUSTAINABILITY",
+                    "Brands 4 less – Ansal Plaza",
+                    "Brands 4 less – Rajouri Garden",
+                    "Brand4Less – Tilak Nagar",
+                    "Brands 4 less – M3M Urbana",
+                    "Brands 4 less – IFFCO Chowk",
+                    "Brands Loot – Udyog Vihar",
+                    "Brands loot – Krishna Nagar",
+                  ].map((l) => (
                     <label key={l} className="rp-check">
                       <input
                         type="checkbox"
-                        checked={l === "All" ? selectedLocs.length === LOCATIONS.length - 1 : selectedLocs.includes(l)}
+                        checked={l === "All" ? selectedLocs.length === 8 : selectedLocs.includes(l)}
                         onChange={() => {
                           if (l === "All") {
-                            setSelectedLocs((p) =>
-                              p.length === LOCATIONS.length - 1 ? [] : LOCATIONS.filter((x) => x !== "All")
-                            );
+                            setSelectedLocs((p) => (p.length === 8 ? [] : [
+                              "WABI SABI SUSTAINABILITY",
+                              "Brands 4 less – Ansal Plaza",
+                              "Brands 4 less – Rajouri Garden",
+                              "Brand4Less – Tilak Nagar",
+                              "Brands 4 less – M3M Urbana",
+                              "Brands 4 less – IFFCO Chowk",
+                              "Brands Loot – Udyog Vihar",
+                              "Brands loot – Krishna Nagar",
+                            ]));
                           } else {
                             setSelectedLocs((p) =>
                               p.includes(l) ? p.filter((x) => x !== l) : [...p, l]

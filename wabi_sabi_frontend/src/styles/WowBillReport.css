@@ -1,0 +1,190 @@
+/* ---------- Tokens (primary matches your earlier blue) ---------- */
+:root{
+  --primary: #0db3f0;   /* your blue */
+
+  --bg: #eef2f7;
+  --card: #FFFFFF;
+  --text: #1f2937;
+
+  --muted: #6b7280;
+  --border: #e8edf4;
+  --border-2: #e6ebf3;
+
+  --radius: 10px;
+  --shadow: 0 6px 18px rgba(25,42,70,.06);
+  --shadow-sm: 0 1px 2px rgba(16,24,40,.08);
+  --head-bg: #f6f8fc;
+}
+
+/* ---------- Page shell ---------- */
+.wbrc-root{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* top bar */
+.wbrc-appbar{
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.wbrc-container{ max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+.wbrc-appbar-row{ display:flex; align-items:center; justify-content:space-between; padding:12px 0; }
+.wbrc-titlewrap{ display:flex; align-items:center; gap:12px; }
+.wbrc-title{ margin:0; font-size:20px; font-weight:700; }
+.wbrc-home{ color:#9aa3af; font-size:22px; cursor:pointer; }
+
+/* content cards */
+.wbrc-main{ padding: 16px; }
+.wbrc-card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
+/* actions row */
+.wbrc-actions{ display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-bottom: 8px; }
+.wbrc-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  height:34px; padding:0 12px; border-radius:8px;
+  border:1px solid #0db3f0; background:#fff; color:#0db3f0; cursor:pointer;
+}
+.wbrc-btn-primary{ background:#0db3f0; color:#fff; border-color:#0db3f0; }
+.wbrc-btn:hover{ filter:brightness(.98); }
+.wbrc-btn-label{ font-weight:500; }
+
+/* filter icon becomes BLACK when active, button stays blue */
+.wbrc-filter-btn.active .material-icons{ color:#111827; }
+.wbrc-filter-btn .material-icons{ color:#fff; }
+
+/* header filter strip (one row) */
+.wbrc-filter-strip{
+  display:grid;
+  grid-template-columns: 240px 200px 200px;
+  gap:12px;
+  padding: 8px 10px 12px;
+  border:1px solid var(--border-2);
+  border-radius:8px;
+  background:#fff;
+  margin-bottom: 12px;
+}
+.wbrc-field{ display:flex; flex-direction:column; gap:6px; }
+.wbrc-field label{ color:#374151; font-size:12px; }
+
+/* custom select */
+.wbrc-combo{ position:relative;width:30%; height:36px; border:1px solid var(--border-2); border-radius:8px; display:flex; align-items:center; padding:0 10px; background:#fff; cursor:pointer; }
+.wbrc-combo-val{ color:#9aa3af; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wbrc-combo-val.picked{ color:#111827; }
+.wbrc-caret{ margin-left:auto; color:#6b7280; }
+.wbrc-pop{
+  position:absolute; top:40px; left:0; width:100%; background:#fff;
+  border:1px solid var(--border-2); border-radius:10px; box-shadow:0 10px 24px rgba(16,24,40,.08); z-index:30;
+}
+.wbrc-pop-search{ width:100%; border:0; border-bottom:1px solid #eef2f7; padding:8px 10px; outline:none; }
+.wbrc-pop-list{ max-height:240px; overflow:auto; }
+.wbrc-pop-item{ padding:10px 12px; cursor:pointer; }
+.wbrc-pop-item:hover{ background:#f3f8ff; }
+.wbrc-pop-empty{ padding:10px; color:#9aa3af; }
+
+/* inputs/selects */
+.wbrc-input, .wbrc-select{
+  height:36px; border:1px solid var(--border-2); border-radius:8px; background:#fff;
+  display:flex; align-items:center; position:relative;
+}
+.wbrc-input input{ width:100%; height:100%; border:0; outline:0; font-size:14px; background:transparent; color:#111827; }
+.wbrc-input.with-icon input{ padding-right:28px; }
+.wbrc-input .material-icons{ position:absolute; right:8px; color:#6b7280; }
+.wbrc-select select{
+  appearance:none; -webkit-appearance:none; border:0; outline:0; background:transparent; width:100%; font-size:14px; color:#111827;
+}
+.wbrc-select .material-icons{ position:absolute; right:8px; color:#6b7280; }
+.wbrc-check{ display:flex; align-items:center; gap:10px; margin-top:26px; }
+
+/* inner cards (controls/summary) */
+.wbrc-card.inner{ margin-top:10px; padding:14px; }
+.wbrc-section-title{
+  font-weight:700; font-size:18px; margin-bottom:12px;
+}
+
+/* controls grid (like your image) */
+.wbrc-controls-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap:14px 22px;
+}
+
+/* table-like grid for summary (no <table>) */
+.wbrc-grid-table{ display:block; }
+.wbrc-row{
+  display:grid;
+  grid-template-columns: 1.2fr 0.8fr 1fr 1fr;
+  padding:12px 10px;
+  border-bottom:1px solid #eef2f7;
+  align-items:center;
+}
+.wbrc-head{
+  background:var(--head-bg);
+  border:1px solid var(--border-2);
+  border-left:0; border-right:0;
+  font-weight:700;
+}
+.wbrc-grand{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 10px; font-weight:800; font-size:18px;
+}
+.wbrc-grand-value{ font-weight:800; }
+
+
+/* ...existing styles above... */
+
+/* download dropdown */
+.wbrc-download{ position:relative; }
+.wbrc-dd{
+  position:absolute; top:38px; right:0; width:160px;
+  background:#fff; border:1px solid var(--border-2); border-radius:10px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08); z-index:40;
+  overflow:hidden;
+}
+.wbrc-dd-item{
+  width:100%; display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border:0; background:#fff; cursor:pointer;
+  font: inherit; color: inherit; text-align:left;
+}
+.wbrc-dd-item:hover{ background:#f3f8ff; }
+
+/* ...rest of your file remains unchanged... */
+
+/* (keep all your existing tokens and styles) */
+
+/* --- Checkbox list inside Location popover --- */
+.wbrc-checkrow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  cursor:pointer;
+  user-select:none;
+}
+.wbrc-checkrow:hover{ background:#f5f7fb; }
+.wbrc-checkrow input{
+  width:16px;
+  height:16px;
+}
+
+/* make the combo value look 'picked' when there are selections */
+.wbrc-combo-val.picked{ color:#111827; }
+
+/* Filter strip grid stays compact (only the Location field now) */
+.wbrc-filter-strip{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap:14px 22px;
+  padding:8px 12px 14px;
+  border-top:1px solid var(--border-2);
+}
+
+/* Download dropdown (already present earlier) remains the same */
