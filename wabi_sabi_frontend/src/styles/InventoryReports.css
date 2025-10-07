@@ -1,0 +1,41 @@
+/* Fullscreen dim */
+.dl-overlay{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15,23,42,0.35);
+  z-index: 1000;
+}
+
+/* Popup card */
+.dl-box{
+  width: min(560px, 92vw);
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.15);
+  padding: 22px 26px;
+  text-align: center;
+}
+
+/* Title */
+.dl-title{
+  font-weight: 700;
+  font-size: 18px;
+  color: #374151;
+  margin-bottom: 14px;
+}
+
+/* Progress bar */
+.dl-bar{
+  height: 16px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.dl-fill{
+  height: 100%;
+  background: #7ddc8c;       /* green like your screenshot */
+  transition: width .22s ease;
+}
