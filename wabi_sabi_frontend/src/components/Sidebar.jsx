@@ -13,6 +13,10 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
   const [expandSettings, setExpandSettings] = useState(false);
   const [expandCRM, setExpandCRM] = useState(false);
   const [expandBankCash, setExpandBankCash] = useState(false);
+  // 🔹 NEW: Accounting group expand state
+  const [expandAccounting, setExpandAccounting] = useState(false);
+  // 🔹 NEW: Sales group expand state
+  const [expandSales, setExpandSales] = useState(false);
 
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
@@ -23,10 +27,8 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
     "/reports/credit-note-tem-register", // safeguard for typo
   ];
   const forceMini = ICONS_ONLY_ROUTES.some((p) => isPath(p));
-  // Respect incoming prop OR force on the target route
   const mini = miniHover || forceMini;
 
-  // mini-hover collapse/expand width
   const COLLAPSED_W = 56;
   const EXPANDED_W = 260;
   const [collapsed, setCollapsed] = useState(!!mini);
@@ -60,6 +62,10 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
     if (isPath("/utilities")) setExpandUtilities(true);
     if (isPath("/settings")) setExpandSettings(true);
     if (isPath("/inventory")) setExpandInventory(true);
+    // 🔹 NEW: Auto expand Accounting if route matches
+    if (isPath("/accounting")) setExpandAccounting(true);
+    // 🔹 NEW: Auto expand Sales if route matches
+    if (isPath("/sales")) setExpandSales(true);
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
@@ -217,6 +223,27 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
             </div>
           </div>
 
+          {/* 🔹 NEW: Sales */}
+          <div className="sb-group">
+            <button
+              className="sb-item"
+              onClick={() => setExpandSales((v) => !v)}
+              aria-expanded={expandSales}
+              aria-controls="sb-sales-sub"
+              type="button"
+            >
+              <span className="material-icons sb-ic">receipt_long</span>
+              <span className="sb-text" style={textStyle}>Sales</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
+                {expandSales ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+
+            <div id="sb-sales-sub" className={`sb-sub ${expandSales ? "show" : ""}`} style={textStyle}>
+              <NavLink to="/sales/invoice" className={linkClass} onClick={handleNav}>Invoice</NavLink>
+            </div>
+          </div>
+
           {/* CRM */}
           <div className="sb-group">
             <button
@@ -268,6 +295,27 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
             <span className="material-icons sb-ic">insights</span>
             <span className="sb-text" style={textStyle}>Report</span>
           </NavLink>
+
+          {/* 🔹 Accounting */}
+          <div className="sb-group">
+            <button
+              className="sb-item"
+              onClick={() => setExpandAccounting((v) => !v)}
+              aria-expanded={expandAccounting}
+              aria-controls="sb-accounting-sub"
+              type="button"
+            >
+              <span className="material-icons sb-ic">calculate</span>
+              <span className="sb-text" style={textStyle}>Accounting</span>
+              <span className="material-icons sb-caret" style={caretStyle}>
+                {expandAccounting ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+
+            <div id="sb-accounting-sub" className={`sb-sub ${expandAccounting ? "show" : ""}`} style={textStyle}>
+              <NavLink to="/accounting/account" className={linkClass} onClick={handleNav}>Account</NavLink>
+            </div>
+          </div>
 
           {/* Settings */}
           <div className="sb-group">

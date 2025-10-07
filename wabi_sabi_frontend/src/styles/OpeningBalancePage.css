@@ -1,0 +1,136 @@
+:root{
+  --bg:#eef2f7; --card:#fff; --text:#1f2937; --muted:#64748b;
+  --line:#e5e7eb; --line-strong:#dbe1e8; --head:#f1f5f9;
+  --radius:12px; --shadow:0 2px 6px rgba(16,24,40,.08);
+  --font:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans";
+}
+
+/* Page base */
+.ob-page{ background:var(--bg); min-height:100vh; padding:14px 16px 24px; color:var(--text); font:12px var(--font); }
+.ob-page *, .ob-page *::before, .ob-page *::after{ box-sizing:border-box; }
+
+/* Breadcrumb (screenshot-style) */
+.ob-breadcrumb{ background:linear-gradient(#f7f9fc,#f3f6fb); border:1px solid #e7ecf3; border-radius:14px; padding:10px 14px; margin-bottom:10px; }
+.ob-breadcrumb .trail{ display:flex; align-items:center; gap:10px; }
+.ob-breadcrumb .title{ font-weight:700; }
+.ob-breadcrumb .home{ font-size:18px; color:#9aa9bb; }
+.ob-breadcrumb .crumb{ color:#6b7280; }
+
+/* Card */
+.ob-card{ background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:14px; }
+
+/* ───────────────── Filters (NO OVERLAP) ───────────────── */
+.ob-filters{
+  display:grid;
+  /* Year | Account Group | Page size + Search  */
+  grid-template-columns: minmax(200px,260px) minmax(260px,380px) minmax(260px,1fr);
+  gap:16px; align-items:end; margin-bottom:10px;
+}
+.fld{ display:flex; flex-direction:column; gap:6px; min-width:0; width:100%; }
+.lbl{ font:600 12px/1 var(--font); color:#334155; }
+
+/* Native select (Select Year) — fully sanitized & no overlap */
+.sel{ position:relative; width:100%; min-width:0; }
+.sel select{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background:#fff !important; background-image:none !important;
+
+  height:36px; width:100%; max-width:100%;
+  border:1px solid var(--line); border-radius:8px;
+
+  /* extra right padding so text never hits the caret */
+  padding:0 44px 0 10px;
+
+  /* keep single line to avoid caret overlap */
+  white-space:nowrap;
+
+  line-height:1; font:inherit; color:var(--text);
+  outline:none; box-shadow:none;
+}
+.sel select::-ms-expand{ display:none; } /* Old Edge/IE arrow */
+
+/* caret with a tiny fade shield to avoid visual collision */
+.sel .caret{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  color:#6b7280; font-size:18px; pointer-events:none;
+  padding-left:6px;
+  /* shields underlying text if font renders wide */
+  background:linear-gradient(90deg, rgba(255,255,255,0) 0%, #ffffff 35%);
+}
+
+/* Custom dropdown (Select Account Group) */
+.select-wrap{ position:relative; }
+.sel-anchor{ position:relative; width:100%; }
+.fake-select{
+  height:36px; line-height:36px; width:100%;
+  border:1px solid var(--line); border-radius:8px; background:#fff;
+  padding:0 28px 0 10px; text-align:left; display:flex; align-items:center; justify-content:space-between;
+}
+.fake-select .caret{ color:#6b7280; font-size:18px; }
+
+.md-opts{
+  position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:30;
+  background:#fff; border:1px solid var(--line-strong); border-radius:10px; box-shadow:0 12px 28px rgba(2,8,23,.12);
+  overflow:auto; max-height:260px;
+}
+.opt-hd{ padding:8px 10px; background:var(--head); color:#334155; font-weight:700; font-size:12px; border-bottom:1px solid var(--line); }
+.md-opts .opt{ display:block; width:100%; text-align:left; padding:8px 10px; background:#fff; border-bottom:1px solid #f1f5f9; }
+.md-opts .opt:last-child{ border-bottom:0; }
+.md-opts .opt:hover{ background:#f8fafc; }
+.md-opts .opt.sel{ background:#eef6ff; }
+
+/* Tools (page size + search) */
+.ob-tools{ display:flex; align-items:center; gap:10px; justify-self:end; min-width:0; }
+.size{ height:36px; border:1px solid var(--line); border-radius:8px; padding:0 10px; background:#fff; }
+
+/* Scoped search (no global bleed) */
+.ob-tools .search{
+  position:relative; display:flex; align-items:center;
+  height:36px; min-width:240px; width:100%;
+  border:1px solid var(--line) !important; border-radius:8px !important;
+  background:#fff !important; padding:0 !important; box-shadow:none !important; overflow:hidden;
+}
+.ob-tools .search::before,.ob-tools .search::after{ content:none !important; display:none !important; }
+.ob-tools .search *{ background-image:none !important; }
+.ob-tools .search .material-icons-outlined{
+  position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:18px;
+}
+.ob-tools .search input{
+  -webkit-appearance:none; appearance:none; border:none !important; outline:none !important; background:transparent !important;
+  box-shadow:none !important; width:100%; height:100%; padding:0 10px 0 30px; font:inherit; color:var(--text);
+}
+.ob-tools .search input::-webkit-search-decoration,
+.ob-tools .search input::-webkit-search-cancel-button,
+.ob-tools .search input::-webkit-search-results-button,
+.ob-tools .search input::-webkit-search-results-decoration{ display:none !important; }
+
+/* Table */
+.table-wrap{ border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.ob-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+.ob-table thead th{
+  position:sticky; top:0; background:var(--head); z-index:1;
+  color:#334155; font-weight:700; text-align:left; padding:10px; border-bottom:1px solid var(--line);
+}
+.ob-table td{ padding:10px; border-bottom:1px solid var(--line); background:#fff; }
+.ob-table .col-n{ width:44px; text-align:center; }
+.ob-table .col-num{ width:180px; }
+
+/* Amount inputs – fill cell, never overlap */
+.amt{
+  display:block; width:100%; height:32px; line-height:32px;
+  border:1px solid var(--line); border-radius:8px; padding:0 10px; background:#fff; color:var(--text);
+}
+
+/* Pager */
+.ob-pager{ display:flex; align-items:center; justify-content:space-between; margin-top:10px; gap:10px; flex-wrap:wrap; }
+.pager-right{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.pg-btn{ min-width:28px; height:28px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+.pg-btn.active{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+.pg-ellipsis{ color:#94a3b8; }
+
+/* Responsive */
+@media (max-width: 980px){
+  .ob-filters{ grid-template-columns: 1fr; }
+  .ob-tools{ justify-self:start; width:100%; }
+  .ob-tools .search{ min-width:0; }
+}

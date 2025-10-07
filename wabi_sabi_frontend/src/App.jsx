@@ -9,7 +9,10 @@ import CartTable from "./components/CartTable";
 import RightPanel from "./components/RightPanel";
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
-
+import InvMasterPackingItemWiseSummary from "./components/InvMasterPackingItemWiseSummary";
+import InvSalesRegister from "./components/InvSalesRegister";
+import InvInventoryReport from "./components/InvInventoryReport";
+import InvStockSummary from "./components/InvStockSummary";
 import CampaignCreatePage from "./components/CampaignCreatePage";
 import MultiplePay from "./components/MultiplePay";
 import CreditNotePage from "./components/CreditNotePage";
@@ -44,17 +47,14 @@ import ExpensePage from "./components/ExpensePage";
 import NewBankPage from "./components/NewBankPage";
 import PaymentCreatePage from "./components/PaymentCreatePage";
 import InventoryProductDetailPage from "./components/InventoryProductDetailPage";
-
+import OpeningBalancePage from "./components/OpeningBalancePage";
 // Reports
-import ReportsPage, {
-  DayWiseSalesSummaryPage,
-} from "./components/ReportsPage";
-import ReportSalesRegister from "./components/ReportSalesRegister"; // 👈 Sales Register (mini sidebar)
+import ReportsPage, { DayWiseSalesSummaryPage } from "./components/ReportsPage";
+import ReportSalesRegister from "./components/ReportSalesRegister";
 import ReportCategoryWiseSales from "./components/ReportCategoryWiseSales";
 import ReportSalesMan from "./components/ReportSalesMan";
 import ReportCreditNoteItemRegister from "./components/ReportCreditNoteItemRegister";
 import ReportProductWiseSales from "./components/ReportProductWiseSales";
-
 
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
@@ -72,6 +72,12 @@ import NewInventoryProductPage from "./components/NewInventoryProductPage";
 import StockTransferPage from "./components/StockTransferPage";
 import MasterPackagingPage from "./components/MasterPackagingPage";
 import "./App.css";
+
+// 🔹 Accounting
+import AccountPage from "./components/AccountPage";
+
+// 🔹 NEW: Sales → Invoice page (create ./components/InvoicePage.jsx if not present)
+import InvoicePage from "./components/InvoicePage";
 
 /* ---------- Layouts ---------- */
 function POSLayout() {
@@ -103,7 +109,6 @@ function SidebarLayout({ children }) {
 
 /** Mini sidebar (icons-only) that expands on hover — only for Sales Register */
 function MiniSidebarLayout({ children }) {
-  // Content ko full width dene ke liye fix margin (icon rail ~56px)
   const ICON_RAIL = 56;
   return (
     <>
@@ -144,8 +149,11 @@ export default function App() {
       <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
       <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
 
-      {/* Sales */}
+      {/* Sales (existing POS bits) */}
       <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
+
+      {/* 🔹 NEW: Sales → Invoice */}
+      <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
 
       {/* Utilities */}
       <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
@@ -163,26 +171,30 @@ export default function App() {
         path="/reports/sales-register"
         element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>}
       />
-
       <Route
         path="/reports/category-wise-sales-summary"
         element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>}
       />
-
       <Route
         path="/reports/credit-note-item-register"
-        element={
-          <MiniSidebarLayout>
-            <ReportCreditNoteItemRegister />
-          </MiniSidebarLayout>
-        }
+        element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>}
       />
       <Route
         path="/reports/product-wise-sales-summary"
         element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>}
       />
-
       <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
+
+      {/* 🔹 Accounting */}
+      <Route
+        path="/accounting/account"
+        element={<SidebarLayout><AccountPage /></SidebarLayout>}
+      />
+      {/* 🔹 Accounting → Opening Balance */}
+      <Route
+        path="/accounting/opening-balance"
+        element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>}
+      />
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
@@ -206,18 +218,27 @@ export default function App() {
       <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
       <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
-      <Route
-        path="/inventory/stock-transfer"
-        element={<SidebarLayout><StockTransferPage /></SidebarLayout>}
-      />
-      <Route
-        path="/inventory/products/:id"
-        element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>}
-      />
-      <Route
-        path="/inventory/master-packaging"
-        element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>}
-      />
+      {/* Stock / Details */}
+      <Route path="/inventory/stock-transfer" element={<SidebarLayout><StockTransferPage /></SidebarLayout>} />
+      <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
+      <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
+
+<Route
+  path="/inventory/master-packing-itemwise-summary"
+  element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>}
+/>
+<Route
+  path="/inventory/sales-register"
+  element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>}
+/>
+<Route
+  path="/inventory/inventory-report"
+  element={<SidebarLayout><InvInventoryReport /></SidebarLayout>}
+/>
+<Route
+  path="/inventory/stock-summary"
+  element={<SidebarLayout><InvStockSummary /></SidebarLayout>}
+/>
       {/* Multiple Pay */}
       <Route
         path="/multiple-pay"
