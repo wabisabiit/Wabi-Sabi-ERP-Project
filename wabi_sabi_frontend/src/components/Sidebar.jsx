@@ -17,8 +17,6 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
   const [expandAccounting, setExpandAccounting] = useState(false);
   // 🔹 NEW: Sales group expand state
   const [expandSales, setExpandSales] = useState(false);
-  const [expandReports, setExpandReports] = useState(true); // NEW: Reports group
-
 
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
@@ -68,7 +66,6 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
     if (isPath("/accounting")) setExpandAccounting(true);
     // 🔹 NEW: Auto expand Sales if route matches
     if (isPath("/sales")) setExpandSales(true);
-    if (isPath("/reports")) setExpandReports(true);
   }, [location]);
 
   const linkClass = ({ isActive }) => `sb-subitem${isActive ? " active" : ""}`;
@@ -293,33 +290,11 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
             </div>
           </div>
 
-          {/* Reports (now a group with sub items) */}
-          <div className="sb-group">
-            <button
-              className="sb-item"
-              onClick={() => setExpandReports(v => !v)}
-              aria-expanded={expandReports}
-              aria-controls="sb-reports-sub"
-              type="button"
-            >
-              <span className="material-icons sb-ic">insights</span>
-              <span className="sb-text" style={textStyle}>Report</span>
-              <span className="material-icons sb-caret" style={caretStyle}>
-                {expandReports ? "expand_less" : "expand_more"}
-              </span>
-            </button>
-
-            <div id="sb-reports-sub" className={`sb-sub ${expandReports ? "show" : ""}`} style={textStyle}>
-              <NavLink to="/reports" end className={linkClass} onClick={handleNav}>
-                All Reports
-              </NavLink>
-              {/* NEW sub tab */}
-              <NavLink to="/reports/wow-bill-report" className={linkClass} onClick={handleNav}>
-                Wow Bill Report
-              </NavLink>
-            </div>
-          </div>
-
+          {/* Reports */}
+          <NavLink to="/reports" className="sb-item" onClick={handleNav}>
+            <span className="material-icons sb-ic">insights</span>
+            <span className="sb-text" style={textStyle}>Report</span>
+          </NavLink>
 
           {/* 🔹 Accounting */}
           <div className="sb-group">
