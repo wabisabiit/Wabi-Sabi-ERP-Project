@@ -52,6 +52,7 @@ import ReportCategoryWiseSales from "./components/ReportCategoryWiseSales";
 import ReportSalesMan from "./components/ReportSalesMan";
 import ReportCreditNoteItemRegister from "./components/ReportCreditNoteItemRegister";
 import ReportProductWiseSales from "./components/ReportProductWiseSales";
+import WowBillReport from "./components/WowBillReport";
 
 // Settings pages
 import SettingsHome from "./components/SettingsHome";
@@ -210,6 +211,11 @@ export default function App() {
         element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>}
       />
       <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
+      <Route
+        path="/reports/wow-bill-report"
+        element={<SidebarLayout><WowBillReport /></SidebarLayout>}
+      />
+
 
       {/* 🔹 NEW: Accounting → Account */}
       <Route
