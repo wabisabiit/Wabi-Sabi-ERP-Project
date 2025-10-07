@@ -18,9 +18,15 @@ const SALES_ITEMS = [
   { key: "register", title: "Sales Register" },
   { key: "category", title: "Category Wise Sales Summary" },
   { key: "salesman", title: "Sales Man Report" },
-  // ⬇️ NEW
   { key: "creditNoteItemReg", title: "Credit Note Item Register" },
   { key: "productWise", title: "Product Wise Sales Summary" },
+];
+
+const INVENTORY_ITEMS = [
+  { key: "mpItemwise", title: "Master Packing - Item wise Summary" },
+  { key: "invSalesReg", title: "Stock Register" },
+  { key: "invReport", title: "Inventory Report" },
+  { key: "stockSummary", title: "Stock Summary" },
 ];
 
 export default function ReportsPage() {
@@ -30,6 +36,59 @@ export default function ReportsPage() {
 
   const asLinkKeys = (fn) => (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+  };
+
+  const onSalesNavigate = (key) => {
+    if (key === "daywise") navigate("/reports/day-wise-sales-summary");
+    else if (key === "register") navigate("/reports/sales-register");
+    else if (key === "category") navigate("/reports/category-wise-sales-summary");
+    else if (key === "salesman") navigate("/reports/salesman");
+    else if (key === "creditNoteItemReg") navigate("/reports/credit-note-item-register");
+    else if (key === "productWise") navigate("/reports/product-wise-sales-summary");
+  };
+
+  const onInventoryNavigate = (key) => {
+    if (key === "mpItemwise") navigate("/inventory/master-packing-itemwise-summary");
+    else if (key === "invSalesReg") navigate("/inventory/sales-register");
+    else if (key === "invReport") navigate("/inventory/inventory-report");
+    else if (key === "stockSummary") navigate("/inventory/stock-summary");
+  };
+
+  const ItemButton = ({ it, onClick }) => {
+    const isFav = !!fav[it.key];
+    return (
+      <button
+        key={it.key}
+        className="rp-item"
+        type="button"
+        onClick={onClick}
+      >
+        <span className="rp-item-left">
+          <span className="material-icons-outlined rp-item-icon" aria-hidden="true">
+            stacked_line_chart
+          </span>
+          <span className="rp-item-title">{it.title}</span>
+        </span>
+        <span
+          className={`rp-item-star ${isFav ? "active" : ""}`}
+          onClick={(e) => { e.stopPropagation(); setFav((p) => ({ ...p, [it.key]: !p[it.key] })); }}
+          role="checkbox"
+          aria-checked={isFav}
+          aria-label="Toggle favourite"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setFav((p) => ({ ...p, [it.key]: !p[it.key] }));
+            }
+          }}
+        >
+          <span className="material-icons-outlined">
+            {isFav ? "star" : "star_border"}
+          </span>
+        </span>
+      </button>
+    );
   };
 
   return (
@@ -84,56 +143,39 @@ export default function ReportsPage() {
       <div id={`panel-${active}`} className="rp-surface" role="tabpanel">
         {active === "sales" && (
           <div className="rp-list">
-            {SALES_ITEMS.map((it) => {
-              const isFav = !!fav[it.key];
-              return (
-                <button
+            {SALES_ITEMS.map((it) => (
+              <ItemButton key={it.key} it={it} onClick={() => onSalesNavigate(it.key)} />
+            ))}
+          </div>
+        )}
+
+        {active === "inventory" && (
+          <div className="rp-list">
+            {INVENTORY_ITEMS.map((it) => (
+              <ItemButton key={it.key} it={it} onClick={() => onInventoryNavigate(it.key)} />
+            ))}
+          </div>
+        )}
+
+        {/* Favourites tab shows starred items from both groups */}
+        {active === "fav" && (
+          <div className="rp-list">
+            {[...SALES_ITEMS, ...INVENTORY_ITEMS]
+              .filter((it) => fav[it.key])
+              .map((it) => (
+                <ItemButton
                   key={it.key}
-                  className="rp-item"
-                  type="button"
-                  onClick={() => {
-                    if (it.key === "daywise") {
-                      navigate("/reports/day-wise-sales-summary");
-                    } else if (it.key === "register") {
-                      navigate("/reports/sales-register");
-                    } else if (it.key === "category") {
-                      navigate("/reports/category-wise-sales-summary");
-                    } else if (it.key === "salesman") {
-                      navigate("/reports/salesman");
-                    } else if (it.key === "creditNoteItemReg") {
-                      navigate("/reports/credit-note-item-register"); // NEW
-                    } else if (it.key === "productWise") {
-                      navigate("/reports/product-wise-sales-summary"); // NEW
-                    }
-                  }}
-                >
-                  <span className="rp-item-left">
-                    <span className="material-icons-outlined rp-item-icon" aria-hidden="true">
-                      stacked_line_chart
-                    </span>
-                    <span className="rp-item-title">{it.title}</span>
-                  </span>
-                  <span
-                    className={`rp-item-star ${isFav ? "active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); setFav((p) => ({ ...p, [it.key]: !p[it.key] })); }}
-                    role="checkbox"
-                    aria-checked={isFav}
-                    aria-label="Toggle favourite"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setFav((p) => ({ ...p, [it.key]: !p[it.key] }));
-                      }
-                    }}
-                  >
-                    <span className="material-icons-outlined">
-                      {isFav ? "star" : "star_border"}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+                  it={it}
+                  onClick={() =>
+                    SALES_ITEMS.some((s) => s.key === it.key)
+                      ? onSalesNavigate(it.key)
+                      : onInventoryNavigate(it.key)
+                  }
+                />
+              ))}
+            {!Object.values(fav).some(Boolean) && (
+              <div className="rp-empty">Mark any report as ★ to see it here.</div>
+            )}
           </div>
         )}
       </div>
@@ -170,17 +212,6 @@ export function DayWiseSalesSummaryPage() {
   const toggleVoucher = (v) => {
     setVoucherTypes((prev) =>
       prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
-    );
-  };
-  const toggleLoc = (l) => {
-    if (l === "All") {
-      setSelectedLocs((p) =>
-        p.length === LOCATIONS.length - 1 ? [] : LOCATIONS.filter((x) => x !== "All")
-      );
-      return;
-    }
-    setSelectedLocs((prev) =>
-      prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]
     );
   };
 
@@ -276,9 +307,13 @@ export function DayWiseSalesSummaryPage() {
                         checked={l === "All" ? selectedLocs.length === LOCATIONS.length - 1 : selectedLocs.includes(l)}
                         onChange={() => {
                           if (l === "All") {
-                            setSelectedLocs((p) => p.length === LOCATIONS.length - 1 ? [] : LOCATIONS.filter((x) => x !== "All"));
+                            setSelectedLocs((p) =>
+                              p.length === LOCATIONS.length - 1 ? [] : LOCATIONS.filter((x) => x !== "All")
+                            );
                           } else {
-                            setSelectedLocs((p) => p.includes(l) ? p.filter((x) => x !== l) : [...p, l]);
+                            setSelectedLocs((p) =>
+                              p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
+                            );
                           }
                         }}
                       />
@@ -303,8 +338,7 @@ export function DayWiseSalesSummaryPage() {
   );
 }
 
-
-/* ---------- NEW: Product Wise Sales Summary (placeholder) ---------- */
+/* ---------- Product Wise Sales Summary (placeholder) ---------- */
 export function ProductWiseSalesSummaryPage() {
   const navigate = useNavigate();
   return (
@@ -328,7 +362,6 @@ export function ProductWiseSalesSummaryPage() {
         </div>
       </div>
 
-      {/* Simple blank surface — upgrade later */}
       <div className="rp-surface" style={{ minHeight: 240, display: "grid", placeItems: "center" }}>
         <div className="rp-empty">Setup coming soon…</div>
       </div>

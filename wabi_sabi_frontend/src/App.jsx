@@ -68,6 +68,13 @@ import IntegrationPage from "./components/IntegrationPage";
 import ProductsPage from "./components/InventoryProductsPage";
 import NewInventoryProductPage from "./components/NewInventoryProductPage";
 
+// Inventory->report
+import InvMasterPackingItemWiseSummary from "./components/InvMasterPackingItemWiseSummary";
+import InvSalesRegister from "./components/InvSalesRegister";
+import InvInventoryReport from "./components/InvInventoryReport";
+import InvStockSummary from "./components/InvStockSummary";
+
+
 // Stock Transfer
 import StockTransferPage from "./components/StockTransferPage";
 import MasterPackagingPage from "./components/MasterPackagingPage";
@@ -184,17 +191,6 @@ export default function App() {
         element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>}
       />
       <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
-
-      {/* 🔹 Accounting */}
-      <Route
-        path="/accounting/account"
-        element={<SidebarLayout><AccountPage /></SidebarLayout>}
-      />
-      {/* 🔹 Accounting → Opening Balance */}
-      <Route
-        path="/accounting/opening-balance"
-        element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>}
-      />
 
       {/* Settings */}
       <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
