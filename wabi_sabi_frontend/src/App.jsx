@@ -13,7 +13,9 @@ import Sidebar from "./components/Sidebar";
 /* Keep base styles LAST so they win the cascade */
 import "./App.css";
 
-/* ---------- Lazy pages (prevent global CSS leaks at boot) ---------- */
+
+
+/* ---------- Lazy pages ---------- */
 // CRM
 const NewDiscountPage = lazy(() => import("./components/NewDiscountPage"));
 const CampaignCreatePage = lazy(() => import("./components/CampaignCreatePage"));
@@ -29,6 +31,7 @@ const MultiplePay = lazy(() => import("./components/MultiplePay"));
 const CreditNotePage = lazy(() => import("./components/CreditNotePage"));
 const OrderList = lazy(() => import("./components/OrderListPage"));
 const InvoicePage = lazy(() => import("./components/InvoicePage"));
+const NewInvoicePage = lazy(() => import("./components/NewInvoicePage")); // 👈 added
 
 // Admin
 const EmployeePage = lazy(() => import("./components/EmployeePage"));
@@ -37,7 +40,7 @@ const OutletPage = lazy(() => import("./components/OutletPage"));
 const OutletCreatePage = lazy(() => import("./components/OutletCreatePage"));
 
 // Utilities
-const BarcodeUtilityPage = lazy(() => import("./components/BarcodeUtilityPage"));
+// const BarcodeUtilityPage = lazy(() => import("./components/BarcodeUtilityPage"));
 const BarcodeUtility2Page = lazy(() => import("./components/BarcodeUtility2Page"));
 const BarcodePrintConfirmPage = lazy(() => import("./components/BarcodePrintConfirmPage"));
 const ExpandedLabelsPage = lazy(() => import("./components/ExpandedLabelsPage"));
@@ -63,16 +66,16 @@ const InventoryProductDetailPage = lazy(() => import("./components/InventoryProd
 const StockTransferPage = lazy(() => import("./components/StockTransferPage"));
 const MasterPackagingPage = lazy(() => import("./components/MasterPackagingPage"));
 
-// Inventory -> report (these often bring global CSS)
+// Inventory -> report
 const InvMasterPackingItemWiseSummary = lazy(() => import("./components/InvMasterPackingItemWiseSummary"));
 const InvSalesRegister = lazy(() => import("./components/InvSalesRegister"));
 const InvInventoryReport = lazy(() => import("./components/InvInventoryReport"));
 const InvStockSummary = lazy(() => import("./components/InvStockSummary"));
 
-// Reports (and a named export)
+// Reports
 const ReportsPage = lazy(() => import("./components/ReportsPage"));
 const DayWiseSalesSummaryPage = lazy(() =>
-  import("./components/ReportsPage").then(m => ({ default: m.DayWiseSalesSummaryPage }))
+  import("./components/ReportsPage").then((m) => ({ default: m.DayWiseSalesSummaryPage }))
 );
 const ReportSalesRegister = lazy(() => import("./components/ReportSalesRegister"));
 const ReportCategoryWiseSales = lazy(() => import("./components/ReportCategoryWiseSales"));
@@ -80,9 +83,7 @@ const ReportSalesMan = lazy(() => import("./components/ReportSalesMan"));
 const ReportCreditNoteItemRegister = lazy(() => import("./components/ReportCreditNoteItemRegister"));
 const ReportProductWiseSales = lazy(() => import("./components/ReportProductWiseSales"));
 const WowBillReport = lazy(() => import("./components/WowBillReport"));
-// ⬇️ Add this near your other lazy report imports
 const TaxWiseSalesSummaryPage = lazy(() => import("./components/TaxWiseSalesSummaryPage"));
-
 
 // Settings
 const SettingsHome = lazy(() => import("./components/SettingsHome"));
@@ -119,7 +120,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -130,7 +131,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => { }} />
+      <Sidebar open={true} persistent miniHover onClose={() => {}} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -162,7 +163,7 @@ export default function App() {
         <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
         <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
 
-        {/* 🔹 Inventory -> report routes */}
+        {/* Inventory -> report routes */}
         <Route path="/inventory/master-packing-itemwise-summary" element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>} />
         <Route path="/inventory/sales-register" element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>} />
         <Route path="/inventory/inventory-report" element={<SidebarLayout><InvInventoryReport /></SidebarLayout>} />
@@ -179,11 +180,13 @@ export default function App() {
 
         {/* Sales */}
         <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
-        {/* 🔹 Sales → Invoice */}
+        {/* 🔹 Sales → Invoice (List) */}
         <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
+        {/* 🔹 Sales → New Invoice (Form screen) */}
+        <Route path="/sales/invoice/new" element={<SidebarLayout><NewInvoicePage /></SidebarLayout>} />
 
         {/* Utilities */}
-        <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} />
+        {/* <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} /> */}
         <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
         <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
         <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
@@ -196,15 +199,11 @@ export default function App() {
         <Route path="/reports/credit-note-item-register" element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>} />
         <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
         <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
+        {/* ⬇️ Added with JSX-safe comments */}
         <Route path="/reports/wow-bill-report" element={<SidebarLayout><WowBillReport /></SidebarLayout>} />
-        // ⬇️ Add this route alongside the other /reports routes
-        <Route
-          path="/reports/tax-wise-sales-summary"
-          element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>}
-        />
+        <Route path="/reports/tax-wise-sales-summary" element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>} />
 
-
-        {/* 🔹 Accounting */}
+        {/* Accounting */}
         <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
         <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
 
@@ -221,6 +220,15 @@ export default function App() {
         <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
         <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
+
+{/* Settings */}
+        <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
+        <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
+        <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
+        <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
+        <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
+        <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
+        <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
         {/* Multiple Pay */}
         <Route
           path="/multiple-pay"

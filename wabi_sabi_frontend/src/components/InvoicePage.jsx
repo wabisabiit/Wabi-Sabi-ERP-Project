@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import "../styles/InvoicePage.css";
 
 /* ───────────────── Demo data ───────────────── */
@@ -10,11 +11,10 @@ const YEAR_RANGES = [
   "Last Week",
   "This Week",
   "Today",
-  "2025–2026", // FY example; any "YYYY–YYYY" string will work
+  "2025–2026",
 ];
 const PAGE_SIZES = [10, 25, 50, 100, 200, 500, "All"];
 
-/* Customers for the typeahead */
 const CUSTOMERS = [
   "Brands loot – Krishna Nagar –",
   "Brands 4 less – Rajouri Garden – Inside –",
@@ -23,7 +23,6 @@ const CUSTOMERS = [
   "Brands 4 less – Rajouri Garden – Outside –",
 ];
 
-/* Locations for multiselect */
 const LOCATIONS = [
   "WABI SABI SUSTAINABILITY LLP",
   "Brands 4 less – IFFCO Chowk",
@@ -32,7 +31,6 @@ const LOCATIONS = [
   "Brand4Less – Tilak Nagar",
 ];
 
-/* Demo rows */
 const ROWS = [
   { no:"INV898", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands loot – Krishna Nagar –", net:4479.98, paid:0, due:4479.98, status:"INVOICED", payStatus:"DUE", tax:213.34, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
   { no:"INV897", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands 4 less – Rajouri Garden – Inside –", net:14799.99, paid:0, due:14799.99, status:"INVOICED", payStatus:"DUE", tax:704.76, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
@@ -46,7 +44,6 @@ const ROWS = [
   { no:"INV889", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brand4Less– Tilak Nagar –", net:5500.01,  paid:0, due:5500.01,  status:"INVOICED", payStatus:"DUE", tax:261.90, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
 ];
 
-/* helpers */
 const sum = (arr, key) => arr.reduce((a, r) => a + Number(r[key] || 0), 0);
 const formatMoney = (n) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n || 0);
@@ -68,23 +65,20 @@ const parseDMY = (s) => {
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 const endOfDay   = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
-// ✔ Calendar + FY support (e.g. "2025–2026")
+// FY / ranges
 const rangeFor = (label) => {
   if (!label) return null;
-
   const fy = /^(\d{4})\s*[–-]\s*(\d{4})$/.exec(label);
   if (fy) {
     const y1 = Number(fy[1]);
-    const from = new Date(y1, 3, 1);                 // 1 Apr y1
-    const to   = endOfDay(new Date(y1 + 1, 2, 31));  // 31 Mar (y1+1)
+    const from = new Date(y1, 3, 1);
+    const to   = endOfDay(new Date(y1 + 1, 2, 31));
     return { from, to };
   }
-
   const today = startOfDay(new Date());
-
   if (label === "Today")      return { from: today, to: endOfDay(today) };
   if (label === "This Week")  {
-    const day = today.getDay();               // 0=Sun
+    const day = today.getDay();
     const monOffset = day === 0 ? -6 : 1 - day;
     const from = startOfDay(new Date(today));
     from.setDate(from.getDate() + monOffset);
@@ -110,19 +104,18 @@ const rangeFor = (label) => {
     const to   = endOfDay(new Date(today.getFullYear(), today.getMonth(), 0));
     return { from, to };
   }
-  // Current Year (calendar)
   const from = new Date(today.getFullYear(), 0, 1);
   const to   = endOfDay(new Date(today.getFullYear(), 11, 31));
   return { from, to };
 };
 
-/* Popover (portal) */
+/* Popover */
 function Popover({ open, anchorRef, onClose, width, align="left", children }) {
   const [style, setStyle] = useState({ top:0, left:0, width:width||undefined });
   useLayoutEffect(() => {
     if(!open || !anchorRef?.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
-    const popW = width || rect.width;
+    const popW = width || rect.width;                     // 👈 anchor width
     const left = align==="right" ? rect.right - popW : rect.left;
     const top = rect.bottom + 6;
     setStyle({ top:Math.round(top), left:Math.round(left), width:Math.round(popW) });
@@ -141,7 +134,7 @@ function Popover({ open, anchorRef, onClose, width, align="left", children }) {
   return createPortal(<div className="pop" style={style} role="dialog" aria-modal="true">{children}</div>, document.body);
 }
 
-/* Download helpers */
+/* download helpers */
 function downloadBlob(name, mime, content) {
   const blob = content instanceof Blob ? content : new Blob([content],{type:mime});
   const url = URL.createObjectURL(blob); const a = document.createElement("a");
@@ -156,6 +149,8 @@ function rowsToCSV(rows){
 }
 
 export default function InvoicePage(){
+  const navigate = useNavigate();
+
   const [year,setYear]=useState("Current Year");
   const [yearQuery,setYearQuery]=useState("");
   const yearBtnRef=useRef(null); const [openYear,setOpenYear]=useState(false);
@@ -178,18 +173,16 @@ export default function InvoicePage(){
 
   const [expanded,setExpanded]=useState({}); const [checked,setChecked]=useState({});
 
-  /* ===== Filtering ===== */
+  /* filtering */
   const filteredRows = useMemo(()=>{
     let rows=[...ROWS];
-
     const r = rangeFor(year);
     if (r?.from && r?.to) {
       rows = rows.filter(one => {
         const d = parseDMY(one.invDate);
         return d && d >= r.from && d <= r.to;
-        });
+      });
     }
-
     const q=query.trim().toLowerCase();
     if(q) rows=rows.filter(r=>[r.no,r.customer,r.createdBy,r.location].some(v=>String(v).toLowerCase().includes(q)));
     if(customerValue) rows=rows.filter(r=>r.customer===customerValue);
@@ -205,31 +198,30 @@ export default function InvoicePage(){
     return rows;
   },[year,query,customerValue,locValues,status,pstatus]);
 
-  /* Pagination */
+  /* pagination */
   const itemsPerPage = pageSize==="All" ? filteredRows.length : pageSize;
   const [page,setPage]=useState(1);
   useEffect(()=>setPage(1),[year,query,customerValue,locValues,status,pstatus,pageSize]);
   const totalPages = Math.max(1, Math.ceil((filteredRows.length||1)/(itemsPerPage||1)));
   const pageRows = filteredRows.slice((page-1)*itemsPerPage, (page-1)*itemsPerPage + itemsPerPage);
 
-  /* Bulk select */
+  /* bulk select */
   const allChecked = pageRows.length>0 && pageRows.every(r=>checked[r.no]);
   const someChecked = pageRows.some(r=>checked[r.no]);
   const toggleAll = (val)=>{ const next={...checked}; pageRows.forEach(r=>next[r.no]=val); setChecked(next); };
 
-  /* Totals (page-wise for footer; for metrics we use all filteredRows) */
+  /* totals */
   const totals = useMemo(()=>({ net:sum(pageRows,"net"), paid:sum(pageRows,"paid"), due:sum(pageRows,"due"), tax:sum(pageRows,"tax") }),[pageRows]);
 
   const filterIsApplied = !!(customerValue || locValues.length || status || pstatus || query);
 
-  /* Export */
   const exportCurrentExcel=()=>{ const csv=rowsToCSV(pageRows); downloadBlob("invoices_page.csv","text/csv;charset=utf-8",csv); };
   const exportAllExcel=()=>{ const csv=rowsToCSV(filteredRows); downloadBlob("invoices_all.csv","text/csv;charset=utf-8",csv); };
   const exportPDF=()=>{ const lines=pageRows.map(r=>`${r.no}\t${r.invDate}\t${r.customer}\t₹${r.net.toFixed(2)}`); const content=`Invoices\n\n${lines.join("\n")}\n\nTotal: ₹${totals.net.toFixed(2)}`; downloadBlob("invoices.pdf","application/pdf",content); };
 
   const closeAll=()=>{ setOpenYear(false); setOpenExport(false); setOpenPage(false); setOpenCust(false); setLocOpen(false); };
 
-  /* Metrics (based on filtered rows) */
+  /* metrics (filtered) */
   const mAll = filteredRows.length;
   const mInvoiced = filteredRows.filter(r => r.status === "INVOICED").length;
   const mCancelled = filteredRows.filter(r => r.status === "CANCELLED").length;
@@ -243,10 +235,14 @@ export default function InvoicePage(){
       <div className="inv-breadcrumb" onClick={(e)=>e.stopPropagation()}>
         <span className="mi">home</span><span>Sales</span><span className="active">Invoice</span>
         <div className="year-wrap">
-          <button ref={yearBtnRef} className="year-btn" onClick={(e)=>{e.stopPropagation(); setOpenYear(v=>!v); setOpenExport(false); setOpenPage(false);}}>
+          <button
+            ref={yearBtnRef}
+            className="year-btn"
+            onClick={(e)=>{e.stopPropagation(); setOpenYear(v=>!v); setOpenExport(false); setOpenPage(false);}}
+          >
             {year} <span className="mi">expand_more</span>
           </button>
-          <Popover open={openYear} anchorRef={yearBtnRef} onClose={()=>setOpenYear(false)} width={220} align="right">
+          <Popover open={openYear} anchorRef={yearBtnRef} onClose={()=>setOpenYear(false)} align="right">
             <div className="menu-search"><input placeholder="Search…" value={yearQuery} onChange={(e)=>setYearQuery(e.target.value)} /></div>
             <div className="menu-list">
               {YEAR_RANGES.filter(y=>y.toLowerCase().includes(yearQuery.toLowerCase())).map(opt=>(
@@ -292,7 +288,7 @@ export default function InvoicePage(){
           <button ref={pageBtnRef} className="select-btn" onClick={()=>{setOpenPage(v=>!v); setOpenYear(false); setOpenExport(false);}} title="Rows per page">
             {pageSize} <span className="mi">expand_more</span>
           </button>
-          <Popover open={openPage} anchorRef={pageBtnRef} onClose={()=>setOpenPage(false)} width={140} align="left">
+          <Popover open={openPage} anchorRef={pageBtnRef} onClose={()=>setOpenPage(false)} align="left">
             <div className="menu-list">
               {PAGE_SIZES.map(p=>(
                 <div key={p} className={`menu-item ${String(p)===String(pageSize) ? "sel":""}`} onClick={()=>{setPageSize(p); setOpenPage(false);}}>{p}</div>
@@ -310,13 +306,14 @@ export default function InvoicePage(){
           <span className="mi">search</span>
         </div>
 
-        <button className="create-btn">Create New</button>
+        <button className="create-btn" onClick={() => navigate("/sales/invoice/new")}>Create New</button>
       </div>
 
       {/* Filter strip */}
       {filterOpen && (
         <div className="filter-bar" onClick={(e)=>e.stopPropagation()}>
-          <div className="field">
+          {/* 1. Customer (Typeahead) */}
+          <div className="flt">
             <label>Select Customer</label>
             <div className="typeahead">
               <input
@@ -341,7 +338,8 @@ export default function InvoicePage(){
             </div>
           </div>
 
-          <div className="field">
+          {/* 2. Location (Multi) */}
+          <div className="flt">
             <label>Location</label>
             <div ref={locBtnRef} className={`loc-select ${locOpen ? "open":""}`} onClick={()=>setLocOpen(v=>!v)}>
               <span className="placeholder">
@@ -368,7 +366,8 @@ export default function InvoicePage(){
             </Popover>
           </div>
 
-          <div className="field">
+          {/* 3. Status */}
+          <div className="flt">
             <label>Select Status</label>
             <div className="simple-select">
               <select value={status} onChange={(e)=>setStatus(e.target.value)}>
@@ -383,7 +382,8 @@ export default function InvoicePage(){
             </div>
           </div>
 
-          <div className="field">
+          {/* 4. Payment Status */}
+          <div className="flt">
             <label>Select Payment Status</label>
             <div className="simple-select">
               <select value={pstatus} onChange={(e)=>setPstatus(e.target.value)}>
@@ -468,7 +468,7 @@ export default function InvoicePage(){
             {pageRows.map((r, idx) => {
               const isOpen = !!expanded[r.no];
               const isChecked = !!checked[r.no];
-              const sr = (page - 1) * (itemsPerPage || 1) + idx + 1; // Sr No.
+              const sr = (page - 1) * (itemsPerPage || 1) + idx + 1;
 
               return (
                 <React.Fragment key={r.no}>

@@ -285,7 +285,7 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
             </button>
 
             <div id="sb-utils-sub" className={`sb-sub ${expandUtilities ? "show" : ""}`} style={textStyle}>
-              <NavLink to="/utilities/barcode" className={linkClass} onClick={handleNav}>Barcode Utility</NavLink>
+              {/* <NavLink to="/utilities/barcode" className={linkClass} onClick={handleNav}>Barcode Utility</NavLink> */}
               <NavLink to="/utilities/barcode2" className={linkClass} onClick={handleNav}>Barcode Utility 2</NavLink>
             </div>
           </div>

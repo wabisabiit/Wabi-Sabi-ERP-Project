@@ -1,0 +1,131 @@
+:root{
+  --sb-w:260px; --page-bg:#f2f5fb; --card-bg:#fff; --line:#e6ebf2;
+  --line-strong:#d8e0ea; --text:#1e293b; --muted:#8aa0b8; --primary:#1e7bd7;
+  --darkbar:#161a24; --h:34px; --fs:12px;   /* font-size थोड़ा कम */
+}
+
+/* kill horizontal scroll */
+*,*::before,*::after{ box-sizing:border-box }
+html,body{ width:100%; overflow-x:hidden }
+.with-sb,.ni-page{ max-width:100%; overflow-x:clip }
+
+/* page */
+.ni-page{ padding:12px 12px 84px; background:var(--page-bg); min-height:100%; font-size:var(--fs) }
+.ni-bc{ display:flex; gap:10px; align-items:center; margin-bottom:10px; color:#6b7c93 }
+.ni-bc .mi{ font-family:"Material Icons"; font-size:18px }
+.ni-bc .active{ color:#0f1f4d; font-weight:700 }
+
+/* cards */
+.box{ background:var(--card-bg); border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px }
+
+/* compact grid */
+.fg{ display:grid; grid-template-columns:repeat(4, minmax(220px,1fr)); gap:12px }
+.fld label{ display:block; font-weight:700; color:var(--text); margin:2px 0 6px }
+.req{ color:#e11d48; font-weight:800 }
+.inp{ height:var(--h); width:100%; border:1px solid var(--line); border-radius:10px; padding:0 10px; background:#fff; font-size:var(--fs) }
+.fld .row{ display:flex; gap:8px }
+.muted{ height:var(--h); display:flex; align-items:center; padding:0 10px; border:1px dashed var(--line-strong); border-radius:10px; color:#8aa0b8; background:#fafcff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.fld.chk{ display:flex; align-items:flex-end; padding-top:24px }
+.fld.chk label{ font-weight:600; color:#22324d }
+
+/* address blocks */
+.addr{ border:1px dashed var(--line-strong); background:#fafcff; border-radius:10px; padding:8px 10px; min-height:var(--h) }
+.addr-row{ display:flex; align-items:center; gap:6px; color:#4b5563; margin-top:4px }
+.addr-link{ border:none; background:transparent; color:#0f67d2; padding:0; margin-top:6px; cursor:pointer }
+.addr-actions{ display:flex; gap:14px; margin-top:6px }
+
+/* selects + dates */
+.select{ position:relative }
+.select select{ height:var(--h); width:100%; border:1px solid var(--line); border-radius:10px; padding:0 34px 0 10px; appearance:none; background:#fff; color:#1e293b; font-size:var(--fs) }
+.select .mi{ position:absolute; right:8px; top:5px; color:var(--muted); font-family:"Material Icons" }
+.date{ position:relative }
+.date input{ height:var(--h); width:100%; border:1px solid var(--line); border-radius:10px; padding:0 34px 0 10px; background:#fff; font-size:var(--fs) }
+.date .mi{ position:absolute; right:8px; top:5px; color:#8aa0b8; font-family:"Material Icons" }
+
+/* button-like select + popover menus */
+.btn-sel.w{ width:100%; height:var(--h); border:1px solid var(--line); border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#1e293b; font-size:var(--fs) }
+.btn-sel .mi{ font-family:"Material Icons"; color:#8aa0b8 }
+.pop{ position:fixed; z-index:50; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.08); min-width:220px }
+.menu{ max-height:300px; overflow:auto; padding:6px }
+.mi-item{ padding:8px 10px; border-radius:8px; cursor:pointer }
+.mi-item:hover{ background:#f3f6ff }
+.mi-item.sel{ background:#eaf1ff; border:1px solid #d7e5ff; font-weight:700 }
+
+/* customer dropdown */
+.cust-select{ position:relative }
+.inp-wrap{ position:relative }
+.inp-wrap .mi{ position:absolute; right:8px; top:5px; color:#8aa0b8; font-family:"Material Icons" }
+.cust-dd{ position:absolute; left:0; right:0; top:40px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,.08); z-index:40 }
+.cust-item{ padding:8px 10px; border-radius:8px; cursor:pointer }
+.cust-item:hover{ background:#f3f6ff }
+.hint{ color:#8aa0b8; padding:6px 10px }
+
+/* tabs + upload */
+.tabs{ display:flex; align-items:center; gap:8px; margin:10px 0 }
+.tabs button{ border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:8px; font-weight:600 }
+.tabs button.on{ background:#eaf1ff; border-color:#d1e0ff; color:#0f1f4d }
+.tabs .sp{ flex:1 }
+.upload{ display:inline-flex; gap:6px; align-items:center; border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:8px }
+.upload .mi{ font-family:"Material Icons" }
+
+/* product table */
+.table-card .grid{ width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; font-size:var(--fs) }
+.grid thead th{ background:#f2f6ff; color:#22324d; text-align:left; padding:10px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); white-space:nowrap }
+.grid td{ padding:10px; border-bottom:1px solid var(--line); overflow:hidden; white-space:nowrap; text-overflow:ellipsis }
+.grid th.w40, .grid td.w40{ width:40px }
+.grid .num{ text-align:right }
+.center{ text-align:center; color:#6b7c93 }
+.tfoot td{ font-weight:700; background:#fafcff }
+.table-card .inp, .num-in{ height:30px; border:1px solid var(--line-strong); border-radius:8px; padding:0 8px }
+.num-in{ width:100%; text-align:right }
+.pct-cell{ margin-left:4px; color:#6b7280 }
+
+/* row add/remove circles */
+.circle{ width:22px; height:22px; border-radius:50%; border:1px solid #d7e5ff; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:700 }
+.circle.add{ background:#eaf1ff }
+.circle.remove{ background:#ffecec; border-color:#ffd0d0 }
+
+/* ===== Bottom area: AC left + Totals right ===== */
+.bottom-two{ display:grid; grid-template-columns: 1fr 340px; gap:12px }
+
+/* Additional charges */
+.ac-card{ padding:0 }
+.ac-head-dark{
+  display:flex; align-items:center; justify-content:space-between;
+  background:#4b5563; color:#fff; padding:10px 12px; border-radius:12px 12px 0 0;
+}
+.icon-btn{ background:transparent; border:none; color:#fff; font-size:16px; cursor:pointer }
+.ac-card .grid thead th{ background:#e9edf5 }
+.sel-input{ position:relative }
+.sel-input .mi{ position:absolute; right:8px; top:5px; color:#8aa0b8; font-family:"Material Icons" }
+.foot-label{ color:#9aa3b2 }
+
+/* Totals card (right) */
+.sum{ }
+.sum.side{ height:fit-content }
+.sum .row{ display:flex; justify-content:space-between; align-items:center; padding:9px 6px; border-bottom:1px solid var(--line) }
+.sum .row:last-child{ border-bottom:none }
+.sum .row.net{ font-weight:800; font-size:13px }
+.fd-inputs{ display:flex; gap:6px; align-items:center }
+.fd-inputs input{ width:80px; height:30px; border:1px solid var(--line); border-radius:8px; padding:0 8px; text-align:right }
+.pct{ border:1px solid var(--line); background:#fff; border-radius:8px; padding:4px 8px }
+
+/* sticky footer */
+.sticky-actions{
+  position:fixed; left:var(--sb-w); right:0; bottom:0; background:var(--darkbar); color:#fff;
+  padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  box-shadow:0 -2px 14px rgba(0,0,0,.25); z-index:60; max-width:calc(100vw - var(--sb-w));
+}
+.sticky-actions .btn{ border:1px solid #2a3142; background:#fff; color:#111827; padding:8px 12px; border-radius:8px; font-weight:600; white-space:nowrap }
+.sticky-actions .btn.primary{ background:#1e7bd7; color:#fff; border-color:#1e7bd7 }
+.sticky-actions .btn.dark{ background:#111827; color:#fff; border-color:#111827 }
+.sticky-actions .btn.warn{ background:#ffb300; color:#1b1b1b; border-color:#e5a200 }
+.sticky-actions .btn.danger{ background:#ef476f; color:#fff; border-color:#e23a62 }
+.ni-page{ padding-bottom:84px }
+
+/* responsive */
+@media (max-width:1280px){
+  .fg{ grid-template-columns:repeat(2, minmax(220px,1fr)) }
+  .bottom-two{ grid-template-columns:1fr }
+  .sticky-actions{ left:0; max-width:100vw }
+}
