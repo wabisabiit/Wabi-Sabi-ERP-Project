@@ -80,6 +80,9 @@ const ReportSalesMan = lazy(() => import("./components/ReportSalesMan"));
 const ReportCreditNoteItemRegister = lazy(() => import("./components/ReportCreditNoteItemRegister"));
 const ReportProductWiseSales = lazy(() => import("./components/ReportProductWiseSales"));
 const WowBillReport = lazy(() => import("./components/WowBillReport"));
+// ⬇️ Add this near your other lazy report imports
+const TaxWiseSalesSummaryPage = lazy(() => import("./components/TaxWiseSalesSummaryPage"));
+
 
 // Settings
 const SettingsHome = lazy(() => import("./components/SettingsHome"));
@@ -116,7 +119,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -127,7 +130,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -194,6 +197,12 @@ export default function App() {
         <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
         <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
         <Route path="/reports/wow-bill-report" element={<SidebarLayout><WowBillReport /></SidebarLayout>} />
+        // ⬇️ Add this route alongside the other /reports routes
+        <Route
+          path="/reports/tax-wise-sales-summary"
+          element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>}
+        />
+
 
         {/* 🔹 Accounting */}
         <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />

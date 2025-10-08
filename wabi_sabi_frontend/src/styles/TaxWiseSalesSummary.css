@@ -1,0 +1,192 @@
+/* Google Material Symbols (outlined) — load globally in index.html if not already */
+/* @import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined"); */
+
+:root{
+  --bg:#f3f6fb;
+  --card:#fff;
+  --ink:#111827;
+  --muted:#6b7280;
+  --line:#e6ecf4;
+  --shadow:0 6px 18px rgba(25,42,70,.06);
+  --radius:12px;
+
+  /* brand-ish colors matching screenshot */
+  --blue:#1976d2;    /* Search */
+  --teal:#1abc9c;    /* PDF (turquoise/teal) */
+  --amber:#ffb300;   /* Excel */
+}
+
+.tws-wrap{
+  background:var(--bg);
+  min-height:100vh;
+  padding:18px 20px 28px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ink);
+  font-size:13px;
+}
+
+/* ---------- Top row ---------- */
+.tws-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:6px 4px 12px;
+}
+.tws-title{
+  font-size:22px;
+  font-weight:700;
+  color:#2b3442;
+}
+.tws-crumb{
+  display:flex; align-items:center; gap:10px;
+  color:#98a2b3;
+  user-select:none;
+}
+.tws-home{ color:#9aa3af; font-size:18px; }
+.tws-crumb-dash{ color:#c3cad5; }
+.tws-crumb-muted{ color:#b2bac6; }
+
+/* ---------- Card ---------- */
+.tws-card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:var(--shadow);
+}
+
+/* ---------- Toolbar ---------- */
+.tws-toolbar{
+  display:grid;
+  grid-template-columns: 200px 206px 206px auto;
+  gap:18px;
+  padding:16px 18px;
+  align-items:end;
+  margin-bottom:16px;
+}
+
+.tws-field{ display:flex; flex-direction:column; gap:6px; position:relative; }
+.tws-field-loc{ min-width:320px; }
+.tws-label{ font-weight:700; color:#394150; }
+
+.tws-select{
+  height:38px;
+  background:#eef2f7;
+  border:1px solid #d9e1ec;
+  border-radius:10px;
+  display:flex; align-items:center;
+  padding:0 38px 0 12px;
+  gap:8px;
+  position:relative;
+  cursor:pointer;
+  text-align:left;
+  width:60%;
+}
+.tws-select:focus{ outline:2px solid #cfe3ff; }
+
+.tws-select-text{ color:#6b7280; }
+.tws-badge{
+  display:none;
+  position:absolute;
+  right:36px; top:8px;
+  background:#3b3f46;
+  color:#fff; font-size:11px; font-weight:700;
+  border-radius:6px; padding:0 6px; height:18px; line-height:18px;
+}
+.tws-badge.show{ display:inline-block; }
+
+.tws-clear{
+  position:absolute; right:10px; font-size:18px; color:#5b6472;
+  display:none; cursor:pointer;
+}
+.tws-clear.show{ display:inline-block; }
+
+/* Popover */
+.tws-popover{
+  position:absolute;
+  z-index:50;
+  margin-top:6px;
+  width:360px;
+  background:#fff;
+  border:1px solid #e5e9f2;
+  border-radius:12px;
+  box-shadow:0 12px 28px rgba(16,24,40,.12);
+  padding:10px;
+}
+.tws-pop-search{
+  display:flex; align-items:center; gap:8px;
+  border:1px solid #e7edf6; background:#f7f9fc;
+  border-radius:8px; padding:6px 8px; margin-bottom:8px;
+}
+.tws-pop-search input{
+  border:none; outline:none; background:transparent; flex:1; font-size:12px;
+}
+.tws-checks{ max-height:220px; overflow:auto; padding-right:4px; }
+.tws-check{
+  display:flex; align-items:center; gap:10px;
+  padding:6px 4px; border-radius:8px; cursor:pointer;
+}
+.tws-check:hover{ background:#f6f8fb; }
+.tws-check input{ transform:scale(1.05); }
+
+/* Date inputs (visual like screenshot) */
+.tws-input{
+  position:relative;
+  height:38px;
+  background:#eef2f7;
+  border:1px solid #d9e1ec;
+  border-radius:10px;
+  display:flex; align-items:center; padding:0 12px; gap:8px;
+}
+.tws-input input[type="text"]{
+  border:none; background:transparent; outline:none; flex:1; font-size:13px; color:#1f2937;
+}
+.tws-input .material-icons-outlined{ font-size:18px; color:#5b6472; }
+
+/* Hidden native date stacked on top (full click/tap support) */
+.tws-native-date{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+
+/* Actions */
+.tws-actions{
+  display:flex; align-items:center; gap:10px; margin-left:auto; padding-bottom:2px;
+}
+.tws-btn{
+  height:38px; padding:0 16px; border:none; border-radius:10px;
+  font-weight:700; color:#fff; cursor:pointer;
+}
+.tws-btn.primary{ background:var(--blue); }
+.tws-btn.teal{ background:var(--teal); color:#fff; }
+.tws-btn.amber{ background:var(--amber); color:#111; }
+
+/* ---------- Results ---------- */
+.tws-result{ min-height:360px; }
+.tws-placeholder{
+  display:grid; place-items:center; color:#9aa3af; height:240px;
+  font-weight:600;
+}
+
+/* Table */
+.tws-table-scroll{ overflow:auto; border-radius:10px; }
+.tws-table{
+  width:100%; border-collapse:collapse; background:#fff; font-size:12px;
+  border:1px solid #d9dee8;
+}
+.tws-table th, .tws-table td{
+  border:1px solid #cfd6e2; padding:10px 8px; text-align:left; white-space:nowrap;
+}
+.tws-table th{
+  background:#f1f5fb; color:#374151; font-weight:800; text-align:center;
+}
+.tws-col-date{ min-width:160px; font-weight:700; }
+.tws-subtag{ color:#6b7280; font-weight:600; margin-top:6px; }
+
+.tws-num{ text-align:right; min-width:120px; }
+
+/* Responsive tweak */
+@media (max-width: 1024px){
+  .tws-toolbar{
+    grid-template-columns: 1fr 1fr;
+  }
+  .tws-actions{ justify-content:flex-start; }
+}
