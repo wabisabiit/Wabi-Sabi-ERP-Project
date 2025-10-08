@@ -58,15 +58,12 @@ export default function MasterPackagingPage() {
     setDefaultLoc(loc);
     setHeadLocOpen(false);
     setHeadLocQuery("");
-    // अगर चाहें तो खाली rows में default भरना:
     setRows((prev) => prev.map((r) => (r.location ? r : { ...r, location: loc })));
   };
 
-  // dropdown बाहर क्लिक पर बंद
   const headPanelRef = useRef(null);
   useClickOutside([headPanelRef, headBtnRef], () => setHeadLocOpen(false));
 
-  // resize/scroll पर panel reposition
   useEffect(() => {
     const cb = () => {
       if (!headBtnRef.current || !headLocOpen) return;
@@ -88,6 +85,10 @@ export default function MasterPackagingPage() {
     () => rows.reduce((t, r) => t + (Number(r.qty) || 0), 0),
     [rows]
   );
+  const priceTotal = useMemo(
+    () => rows.reduce((t, r) => t + (Number(r.price) || 0) * (Number(r.qty) || 0), 0),
+    [rows]
+  );
 
   /* ───── Add row ───── */
   const addScanned = () => {
@@ -99,7 +100,7 @@ export default function MasterPackagingPage() {
         itemCode: scan.trim().toUpperCase(),
         name: "Sample Product",
         size: "M",
-        price: 0,
+        price: 0, // per-unit price
         qty: 1,
         brand: "Brand",
         color: "—",
@@ -216,7 +217,7 @@ export default function MasterPackagingPage() {
                       <td>{r.itemCode}</td>
                       <td className="mp-ellipsis">{r.name}</td>
                       <td>{r.size}</td>
-                      <td className="mp-num">{r.price.toFixed(2)}</td>
+                      <td className="mp-num">{Number(r.price).toFixed(2)}</td>
                       <td className="mp-qty">
                         <input
                           type="number"
@@ -290,7 +291,8 @@ export default function MasterPackagingPage() {
           <div className="mp-bottom">
             <div className="mp-totals">
               <div className="mp-total-row"><span>Items</span><b>{itemsCount}</b></div>
-              <div className="mp-total-row"><span>Total Qty</span><b>{qtyTotal}</b></div>
+              {/* CHANGED: Total Price instead of Total Qty */}
+              <div className="mp-total-row"><span>Total Price</span><b>₹{priceTotal.toFixed(2)}</b></div>
             </div>
 
             <div className="mp-actions">
@@ -313,10 +315,11 @@ export default function MasterPackagingPage() {
               <div className="mp-preview-kv"><span className="mp-k">Qty</span><span className="mp-v">{qtyTotal}</span></div>
             </div>
 
-            <div className="mp-preview-note">Nothing scanned yet.</div>
+            <div className="mp-preview-note">{rows.length ? "" : "Nothing scanned yet."}</div>
 
             <div className="mp-preview-sum">
-              <div className="mp-preview-row"><span>Total Qty</span><b>{qtyTotal}</b></div>
+              {/* CHANGED: Total Price instead of Total Qty */}
+              <div className="mp-preview-row"><span>Total Price</span><b>₹{priceTotal.toFixed(2)}</b></div>
               <div className="mp-preview-row"><span>Open</span><span>{new Date().toLocaleString()}</span></div>
             </div>
           </div>

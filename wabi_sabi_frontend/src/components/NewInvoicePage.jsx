@@ -124,8 +124,8 @@ function CustomerSelect({ value, onSelect }) {
 /* ---------------- Main Page ---------------- */
 export default function NewInvoicePage() {
   const [customer, setCustomer] = useState(null);
-  const [invoiceDate, setInvoiceDate] = useState(todayISO());   // HTML date picker compatible
-  const [dueDate, setDueDate]       = useState(todayISO());     // HTML date picker compatible
+  const [invoiceDate, setInvoiceDate] = useState(todayISO());
+  const [dueDate, setDueDate]       = useState(todayISO());
   const [reverseCharge, setReverseCharge] = useState("No");
   const [invoicePrefix, setInvoicePrefix] = useState("INV");
   const [invoiceNo, setInvoiceNo]         = useState("960");
@@ -157,22 +157,22 @@ export default function NewInvoicePage() {
   const updateRow = (id, patch) => setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   /* --------- Additional charges --------- */
-  const [acOpen, setAcOpen] = useState(false); // start collapsed like screenshot
   const [acRows, setAcRows] = useState([]);
   const addACRow = () =>
     setAcRows((r) => [...r, { id: r.length ? r[r.length - 1].id + 1 : 1, name: "", value: 0, taxKey: "gst15" }]);
   const updateAC = (id, patch) => setAcRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   const acTotals = useMemo(() => {
-    let sum = 0;
+    let sum = 0, valSum = 0;
     const rows = acRows.map((r) => {
       const taxPct = AC_TAXES.find((t) => t.key === r.taxKey)?.pct ?? 0;
       const val = Number(r.value) || 0;
-      const total = val + val * (taxPct / 100);
-      sum += total;
-      return { ...r, total };
+      const taxAmt = val * (taxPct / 100);
+      const total = val + taxAmt;
+      valSum += val; sum += total;
+      return { ...r, taxAmt, total };
     });
-    return { rows, grand: sum };
+    return { rows, valueSum: valSum, grand: sum };
   }, [acRows]);
 
   /* --------- Totals from product rows --------- */
@@ -224,7 +224,7 @@ export default function NewInvoicePage() {
     setCustomer(null); setInvoicePrefix("INV"); setInvoiceNo("960"); setPaymentTerm("");
     setCreateFrom("Select"); setSalesman("IT Account"); setReverseCharge("No"); setTaxType("Default");
     setExportSEZ(false); setPaymentReminder(false); setLedger("Sales");
-    setRows([]); setAcOpen(false); setAcRows([]);
+    setRows([]); setAcRows([]);
     setInvoiceDate(todayISO()); setDueDate(todayISO());
   };
 
@@ -257,7 +257,7 @@ export default function NewInvoicePage() {
             <CustomerSelect value={customer} onSelect={setCustomer} />
           </div>
 
-          {/* Invoice Date (HTML date picker) */}
+          {/* Invoice Date */}
           <div className="fld">
             <label> Invoice Date <span className="req">*</span> </label>
             <div className="date">
@@ -307,7 +307,7 @@ export default function NewInvoicePage() {
             </Popover>
           </div>
 
-          {/* Due Date (HTML date picker) */}
+          {/* Due Date */}
           <div className="fld">
             <label> Due Date <span className="req">*</span> </label>
             <div className="date">
@@ -426,7 +426,7 @@ export default function NewInvoicePage() {
         <button className="upload"><span className="mi">upload</span> Upload Products</button>
       </div>
 
-      {/* ===== Product table (alone) ===== */}
+      {/* ===== Product table ===== */}
       <div className="box table-card">
         <table className="grid">
           <thead>
@@ -482,7 +482,6 @@ export default function NewInvoicePage() {
                 <td className="num">0</td>
                 <td className="num">—</td>
                 <td className="num">—</td>
-                <td className="num">—</td>
                 <td className="num">{computed.totals.taxable.toFixed(2)}</td>
                 <td className="num">{computed.totals.tax.toFixed(2)}</td>
                 <td className="num">{computed.totals.net.toFixed(2)}</td>
@@ -492,50 +491,59 @@ export default function NewInvoicePage() {
         </table>
       </div>
 
-      {/* ===== Bottom area: Additional charges (left) + Totals card (right) ===== */}
+      {/* ===== Bottom area: Additional charges (left) + Totals (right) ===== */}
       <div className="bottom-two">
         {/* Additional Charges */}
         <div className="box ac-card">
-          {!acOpen ? (
-            <button className="link" onClick={() => { setAcOpen(true); if (acRows.length === 0) addACRow(); }}>
-              <span className="mi">add</span> Add Additional Charges
+          <div className="ac-top">
+            <button
+              type="button"
+              className="ac-add"
+              onClick={() => addACRow()}
+            >
+              <span className="mi">add_circle</span> Add Additional Charges
             </button>
-          ) : (
-            <>
-              <div className="ac-head-dark">
-                <b>Additional Charge</b>
-                <button className="icon-btn" title="Collapse" onClick={() => setAcOpen(false)}>✕</button>
-              </div>
+          </div>
 
-              <table className="grid">
+          <div className="ac-body">
+            {acTotals.rows.length > 0 && (
+              <table className="ac-grid">
                 <thead>
                   <tr>
-                    <th className="w40"></th>
-                    <th className="w40">#</th>
+                    <th className="w60"></th>
+                    <th className="w60">#</th>
                     <th>Additional Charge <span className="req">*</span></th>
-                    <th className="num">Value <span className="req">*</span></th>
+                    <th className="right">Value <span className="req">*</span></th>
                     <th>Tax</th>
-                    <th className="num">Total</th>
+                    <th className="right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {acTotals.rows.map((r, idx) => (
                     <tr key={r.id}>
-                      <td className="w40">
+                      <td className="w60">
                         {idx === 0 ? (
                           <button className="circle add" onClick={addACRow}>+</button>
                         ) : (
-                          <button className="circle remove" onClick={() => setAcRows(rows => rows.filter(x => x.id !== r.id))}>–</button>
+                          <button className="circle remove" onClick={() => setAcRows(list => list.filter(x => x.id !== r.id))}>–</button>
                         )}
                       </td>
-                      <td className="w40">{idx + 1}</td>
+                      <td className="w60">{idx + 1}</td>
                       <td>
                         <div className="sel-input">
-                          <input className="inp" placeholder="Search Additional" value={r.name} onChange={(e)=>updateAC(r.id,{name:e.target.value})} />
-                          <span className="mi">arrow_drop_down</span>
+                          <input
+                            className="inp"
+                            placeholder="Search Additional"
+                            value={r.name}
+                            onChange={(e)=>updateAC(r.id,{name:e.target.value})}
+                          />
+                          {/* FIX: icon font + absolute centering */}
+                          <span className="mi">expand_more</span>
                         </div>
                       </td>
-                      <td className="num"><input className="num-in" value={r.value} onChange={(e)=>updateAC(r.id,{value:e.target.value})} /></td>
+                      <td className="right">
+                        <input className="num-in" value={r.value} onChange={(e)=>updateAC(r.id,{value:e.target.value})} />
+                      </td>
                       <td>
                         <div className="select">
                           <select value={r.taxKey} onChange={(e)=>updateAC(r.id,{taxKey:e.target.value})}>
@@ -544,22 +552,24 @@ export default function NewInvoicePage() {
                           <span className="mi">expand_more</span>
                         </div>
                       </td>
-                      <td className="num">{r.total.toFixed(2)}</td>
+                      <td className="right">{r.total.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={5} className="num foot-label">0.00</td>
-                    <td className="num">{acTotals.grand.toFixed(2)}</td>
+                    <td colSpan={3}></td>
+                    <td className="right">{acTotals.valueSum.toFixed(2)}</td>
+                    <td className="right">—</td>
+                    <td className="right">{acTotals.grand.toFixed(2)}</td>
                   </tr>
                 </tfoot>
               </table>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Totals Card (moved right per screenshot) */}
+        {/* Totals Card (right) */}
         <div className="box sum side">
           <div className="row">
             <span>Flat Discount</span>

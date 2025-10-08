@@ -1,18 +1,34 @@
+/* ---- Load Material Symbols (outlined) so icons don't show as raw text ---- */
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0");
+
+/* Generic icon class (use everywhere) */
+.mi{
+  font-family:"Material Symbols Outlined";
+  font-weight:400;
+  font-style:normal;
+  font-size:18px;
+  line-height:1;
+  display:inline-block;
+  -webkit-font-feature-settings:'liga';
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Root theme */
 :root{
   --sb-w:260px; --page-bg:#f2f5fb; --card-bg:#fff; --line:#e6ebf2;
   --line-strong:#d8e0ea; --text:#1e293b; --muted:#8aa0b8; --primary:#1e7bd7;
-  --darkbar:#161a24; --h:34px; --fs:12px;   /* font-size थोड़ा कम */
+  --darkbar:#161a24; --h:34px; --fs:12px;
 }
 
-/* kill horizontal scroll */
+/* reset / layout */
 *,*::before,*::after{ box-sizing:border-box }
 html,body{ width:100%; overflow-x:hidden }
 .with-sb,.ni-page{ max-width:100%; overflow-x:clip }
-
-/* page */
 .ni-page{ padding:12px 12px 84px; background:var(--page-bg); min-height:100%; font-size:var(--fs) }
+
+/* crumbs */
 .ni-bc{ display:flex; gap:10px; align-items:center; margin-bottom:10px; color:#6b7c93 }
-.ni-bc .mi{ font-family:"Material Icons"; font-size:18px }
+.ni-bc .mi{ font-size:18px }       /* uses generic .mi font */
 .ni-bc .active{ color:#0f1f4d; font-weight:700 }
 
 /* cards */
@@ -28,7 +44,7 @@ html,body{ width:100%; overflow-x:hidden }
 .fld.chk{ display:flex; align-items:flex-end; padding-top:24px }
 .fld.chk label{ font-weight:600; color:#22324d }
 
-/* address blocks */
+/* address */
 .addr{ border:1px dashed var(--line-strong); background:#fafcff; border-radius:10px; padding:8px 10px; min-height:var(--h) }
 .addr-row{ display:flex; align-items:center; gap:6px; color:#4b5563; margin-top:4px }
 .addr-link{ border:none; background:transparent; color:#0f67d2; padding:0; margin-top:6px; cursor:pointer }
@@ -36,15 +52,27 @@ html,body{ width:100%; overflow-x:hidden }
 
 /* selects + dates */
 .select{ position:relative }
-.select select{ height:var(--h); width:100%; border:1px solid var(--line); border-radius:10px; padding:0 34px 0 10px; appearance:none; background:#fff; color:#1e293b; font-size:var(--fs) }
-.select .mi{ position:absolute; right:8px; top:5px; color:var(--muted); font-family:"Material Icons" }
+.select select{
+  height:var(--h); width:100%; border:1px solid var(--line); border-radius:10px;
+  padding:0 34px 0 10px; appearance:none; background:#fff; color:#1e293b; font-size:var(--fs)
+}
+.select .mi{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  color:var(--muted); pointer-events:none;
+}
 .date{ position:relative }
-.date input{ height:var(--h); width:100%; border:1px solid var(--line); border-radius:10px; padding:0 34px 0 10px; background:#fff; font-size:var(--fs) }
-.date .mi{ position:absolute; right:8px; top:5px; color:#8aa0b8; font-family:"Material Icons" }
+.date input{
+  height:var(--h); width:100%; border:1px solid var(--line); border-radius:10px;
+  padding:0 34px 0 10px; background:#fff; font-size:var(--fs)
+}
+.date .mi{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  color:#8aa0b8; pointer-events:none;
+}
 
-/* button-like select + popover menus */
+/* button-like select + popover */
 .btn-sel.w{ width:100%; height:var(--h); border:1px solid var(--line); border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#1e293b; font-size:var(--fs) }
-.btn-sel .mi{ font-family:"Material Icons"; color:#8aa0b8 }
+.btn-sel .mi{ color:#8aa0b8 }
 .pop{ position:fixed; z-index:50; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.08); min-width:220px }
 .menu{ max-height:300px; overflow:auto; padding:6px }
 .mi-item{ padding:8px 10px; border-radius:8px; cursor:pointer }
@@ -54,7 +82,10 @@ html,body{ width:100%; overflow-x:hidden }
 /* customer dropdown */
 .cust-select{ position:relative }
 .inp-wrap{ position:relative }
-.inp-wrap .mi{ position:absolute; right:8px; top:5px; color:#8aa0b8; font-family:"Material Icons" }
+.inp-wrap .mi{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  color:#8aa0b8; pointer-events:none;
+}
 .cust-dd{ position:absolute; left:0; right:0; top:40px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,.08); z-index:40 }
 .cust-item{ padding:8px 10px; border-radius:8px; cursor:pointer }
 .cust-item:hover{ background:#f3f6ff }
@@ -66,7 +97,7 @@ html,body{ width:100%; overflow-x:hidden }
 .tabs button.on{ background:#eaf1ff; border-color:#d1e0ff; color:#0f1f4d }
 .tabs .sp{ flex:1 }
 .upload{ display:inline-flex; gap:6px; align-items:center; border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:8px }
-.upload .mi{ font-family:"Material Icons" }
+.upload .mi{}
 
 /* product table */
 .table-card .grid{ width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; font-size:var(--fs) }
@@ -85,23 +116,44 @@ html,body{ width:100%; overflow-x:hidden }
 .circle.add{ background:#eaf1ff }
 .circle.remove{ background:#ffecec; border-color:#ffd0d0 }
 
-/* ===== Bottom area: AC left + Totals right ===== */
+/* =========================
+   BOTTOM AREA (AC + TOTALS)
+   ========================= */
 .bottom-two{ display:grid; grid-template-columns: 1fr 340px; gap:12px }
 
-/* Additional charges */
-.ac-card{ padding:0 }
-.ac-head-dark{
-  display:flex; align-items:center; justify-content:space-between;
-  background:#4b5563; color:#fff; padding:10px 12px; border-radius:12px 12px 0 0;
-}
-.icon-btn{ background:transparent; border:none; color:#fff; font-size:16px; cursor:pointer }
-.ac-card .grid thead th{ background:#e9edf5 }
-.sel-input{ position:relative }
-.sel-input .mi{ position:absolute; right:8px; top:5px; color:#8aa0b8; font-family:"Material Icons" }
-.foot-label{ color:#9aa3b2 }
+/* ---------- Additional Charges (left) ---------- */
+.ac-card{ padding:0; border:1px solid var(--line); border-radius:12px; background:#fff }
+.ac-top{ display:flex; align-items:center; gap:8px; padding:12px 12px 8px; border-bottom:1px solid transparent; }
+.ac-add{ display:inline-flex; align-items:center; gap:6px; color:#1280df; font-weight:600; cursor:pointer; user-select:none; }
+.ac-add .mi{ font-size:16px }
+.ac-add:hover{ text-decoration:underline }
 
-/* Totals card (right) */
-.sum{ }
+.ac-body{ min-height:220px; padding:6px 12px 12px; }
+
+.ac-grid{
+  width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:var(--fs);
+}
+.ac-grid thead th{
+  background:#f7f9fe; color:#334155; font-weight:700; padding:8px 10px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+}
+.ac-grid td{ padding:8px 10px; border-bottom:1px solid var(--line); }
+.ac-grid .w60{ width:60px }
+.ac-grid .right{ text-align:right }
+
+.ac-grid input, .ac-grid select{
+  height:30px; width:100%;
+  border:1px solid var(--line-strong); border-radius:8px; padding:0 8px; background:#fff; font-size:var(--fs);
+}
+
+/* caret inside AC name input */
+.sel-input{ position:relative; }
+.sel-input .mi{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  color:#8aa0b8; pointer-events:none;
+}
+
+/* ---------- Totals (right) ---------- */
+.sum{}
 .sum.side{ height:fit-content }
 .sum .row{ display:flex; justify-content:space-between; align-items:center; padding:9px 6px; border-bottom:1px solid var(--line) }
 .sum .row:last-child{ border-bottom:none }
