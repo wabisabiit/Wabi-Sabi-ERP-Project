@@ -30,6 +30,8 @@ const SALES_ITEMS = [
   { key: "productWise", title: "Product Wise Sales Summary" },
   { key: "wowbill", title: "Wow Bill Report" },
   { key: "taxwise", title: "Tax Wise Sales Summary" },
+  { key: "salesSummary", title: "Sales Summary" },
+  { key: "customerWiseOrder", title: "Customer Wise Sales Order Report" },
 ];
 
 /**
@@ -118,6 +120,9 @@ export default function ReportsPage() {
       case "taxwise":
         navigate("/reports/tax-wise-sales-summary");
         break;
+
+      case "salesSummary": navigate("/reports/sales-summary"); break;
+      case "customerWiseOrder": navigate("/reports/customer-wise-sales-order-report"); break;
       default:
         console.warn("Unknown sales report key:", key);
     }

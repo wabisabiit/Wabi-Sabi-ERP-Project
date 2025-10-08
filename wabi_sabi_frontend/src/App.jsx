@@ -84,6 +84,8 @@ const ReportCreditNoteItemRegister = lazy(() => import("./components/ReportCredi
 const ReportProductWiseSales = lazy(() => import("./components/ReportProductWiseSales"));
 const WowBillReport = lazy(() => import("./components/WowBillReport"));
 const TaxWiseSalesSummaryPage = lazy(() => import("./components/TaxWiseSalesSummaryPage"));
+const ReportSalesSummary = lazy(() => import("./components/ReportSalesSummary"));
+const ReportCustomerWiseSalesOrder = lazy(() => import("./components/ReportCustomerWiseSalesOrder"));
 
 // Settings
 const SettingsHome = lazy(() => import("./components/SettingsHome"));
@@ -120,7 +122,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -131,7 +133,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -212,6 +214,10 @@ export default function App() {
         {/* ⬇️ Added with JSX-safe comments */}
         <Route path="/reports/wow-bill-report" element={<SidebarLayout><WowBillReport /></SidebarLayout>} />
         <Route path="/reports/tax-wise-sales-summary" element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>} />
+        <Route path="/reports/sales-summary" element={<SidebarLayout><ReportSalesSummary /></SidebarLayout>} />
+        <Route path="/reports/customer-wise-sales-order-report" element={<MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>} />
+
+
 
         {/* Accounting */}
         <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
@@ -231,7 +237,7 @@ export default function App() {
         <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
 
-{/* Settings */}
+        {/* Settings */}
         <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
         <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
         <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
