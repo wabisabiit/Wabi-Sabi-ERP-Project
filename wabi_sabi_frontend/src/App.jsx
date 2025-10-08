@@ -177,6 +177,16 @@ export default function App() {
         <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
         <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
 
+
+        {/* Settings */}
+        <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
+        <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
+        <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
+        <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
+        <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
+        <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
+        <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
+
         {/* Sales */}
         <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
         {/* 🔹 Sales → Invoice */}
