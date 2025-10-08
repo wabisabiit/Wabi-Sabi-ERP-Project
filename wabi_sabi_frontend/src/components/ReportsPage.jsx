@@ -3,7 +3,11 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportsPage.css";
 
-/* ───────────────── Tabs + Items ───────────────── */
+/* ───────────────── Report Data Constants ───────────────── */
+
+/**
+ * Main Report Tabs
+ */
 const TABS = [
   { key: "fav", label: "Favourite", icon: "grade" },
   { key: "sales", label: "Sales", icon: "shopping_cart" },
@@ -14,6 +18,9 @@ const TABS = [
   { key: "other", label: "Other", icon: "show_chart" },
 ];
 
+/**
+ * Sales Report Items
+ */
 const SALES_ITEMS = [
   { key: "daywise", title: "Day wise Sales Summary" },
   { key: "register", title: "Sales Register" },
@@ -22,15 +29,12 @@ const SALES_ITEMS = [
   { key: "creditNoteItemReg", title: "Credit Note Item Register" },
   { key: "productWise", title: "Product Wise Sales Summary" },
   { key: "wowbill", title: "Wow Bill Report" },
-  // NEW: will show in Tax sub-tab
   { key: "taxwise", title: "Tax Wise Sales Summary" },
 ];
 
-const SALES_SUBTABS = [
-  { key: "all", label: "All" },
-  { key: "tax", label: "Tax Wise" },
-];
-
+/**
+ * Inventory Report Items
+ */
 const INVENTORY_ITEMS = [
   { key: "mpItemwise", title: "Master Packing - Item wise Summary" },
   { key: "invSalesReg", title: "Stock Register" },
@@ -38,76 +42,105 @@ const INVENTORY_ITEMS = [
   { key: "stockSummary", title: "Stock Summary" },
 ];
 
-/* ───────────────── Main: Reports Page ───────────────── */
+/* ───────────────── Helper Components ───────────────── */
+
+const asLinkKeys = (fn) => (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+};
+
+const ItemButton = ({ it, onClick, fav, setFav }) => {
+  const isFav = !!fav[it.key];
+  return (
+    <button
+      key={it.key}
+      className="rp-item"
+      type="button"
+      onClick={onClick}
+    >
+      <span className="rp-item-left">
+        <span className="material-icons-outlined rp-item-icon" aria-hidden="true">
+          stacked_line_chart
+        </span>
+        <span className="rp-item-title">{it.title}</span>
+      </span>
+      <span
+        className={`rp-item-star ${isFav ? "active" : ""}`}
+        onClick={(e) => { e.stopPropagation(); setFav((p) => ({ ...p, [it.key]: !p[it.key] })); }}
+        role="checkbox"
+        aria-checked={isFav}
+        aria-label={`Toggle favourite for ${it.title}`}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setFav((p) => ({ ...p, [it.key]: !p[it.key] }));
+          }
+        }}
+      >
+        <span className="material-icons-outlined">
+          {isFav ? "star" : "star_border"}
+        </span>
+      </span>
+    </button>
+  );
+};
+
+/* ───────────────── Main Report Listing Page ───────────────── */
+
 export default function ReportsPage() {
   const [active, setActive] = useState("fav");
-  const [activeSalesTab, setActiveSalesTab] = useState("all");
   const [fav, setFav] = useState({});
   const navigate = useNavigate();
 
-  const asLinkKeys = (fn) => (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
-  };
-
   const onSalesNavigate = (key) => {
-    if (key === "daywise") navigate("/reports/day-wise-sales-summary");
-    else if (key === "register") navigate("/reports/sales-register");
-    else if (key === "category") navigate("/reports/category-wise-sales-summary");
-    else if (key === "salesman") navigate("/reports/salesman");
-    else if (key === "creditNoteItemReg") navigate("/reports/credit-note-item-register");
-    else if (key === "productWise") navigate("/reports/product-wise-sales-summary");
-    else if (key === "wowbill") navigate("/reports/wow-bill-report");
-    else if (key === "taxwise") navigate("/reports/tax-wise-sales-summary"); // 🔹 new route
+    switch (key) {
+      case "daywise":
+        navigate("/reports/day-wise-sales-summary");
+        break;
+      case "register":
+        navigate("/reports/sales-register");
+        break;
+      case "category":
+        navigate("/reports/category-wise-sales-summary");
+        break;
+      case "salesman":
+        navigate("/reports/salesman");
+        break;
+      case "creditNoteItemReg":
+        navigate("/reports/credit-note-item-register");
+        break;
+      case "productWise":
+        navigate("/reports/product-wise-sales-summary");
+        break;
+      case "wowbill":
+        navigate("/reports/wow-bill-report");
+        break;
+      case "taxwise":
+        navigate("/reports/tax-wise-sales-summary");
+        break;
+      default:
+        console.warn("Unknown sales report key:", key);
+    }
   };
 
   const onInventoryNavigate = (key) => {
-    if (key === "mpItemwise") navigate("/inventory/master-packing-itemwise-summary");
-    else if (key === "invSalesReg") navigate("/inventory/sales-register");
-    else if (key === "invReport") navigate("/inventory/inventory-report");
-    else if (key === "stockSummary") navigate("/inventory/stock-summary");
+    switch (key) {
+      case "mpItemwise":
+        navigate("/inventory/master-packing-itemwise-summary");
+        break;
+      case "invSalesReg":
+        navigate("/inventory/sales-register");
+        break;
+      case "invReport":
+        navigate("/inventory/inventory-report");
+        break;
+      case "stockSummary":
+        navigate("/inventory/stock-summary");
+        break;
+      default:
+        console.warn("Unknown inventory report key:", key);
+    }
   };
-
-  const ItemButton = ({ it, onClick }) => {
-    const isFav = !!fav[it.key];
-    return (
-      <button
-        key={it.key}
-        className="rp-item"
-        type="button"
-        onClick={onClick}
-      >
-        <span className="rp-item-left">
-          <span className="material-icons-outlined rp-item-icon" aria-hidden="true">
-            stacked_line_chart
-          </span>
-          <span className="rp-item-title">{it.title}</span>
-        </span>
-        <span
-          className={`rp-item-star ${isFav ? "active" : ""}`}
-          onClick={(e) => { e.stopPropagation(); setFav((p) => ({ ...p, [it.key]: !p[it.key] })); }}
-          role="checkbox"
-          aria-checked={isFav}
-          aria-label="Toggle favourite"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setFav((p) => ({ ...p, [it.key]: !p[it.key] }));
-            }
-          }}
-        >
-          <span className="material-icons-outlined">
-            {isFav ? "star" : "star_border"}
-          </span>
-        </span>
-      </button>
-    );
-  };
-
-  const filteredSales =
-    activeSalesTab === "tax"
-      ? SALES_ITEMS.filter((it) => it.key === "taxwise")
-      : SALES_ITEMS;
 
   return (
     <div className="rp-wrap">
@@ -159,32 +192,18 @@ export default function ReportsPage() {
 
       {/* Content surface */}
       <div id={`panel-${active}`} className="rp-surface" role="tabpanel">
-        {/* 🔹 SALES with sub-tabs */}
+        {/* SALES (no subtabs) */}
         {active === "sales" && (
-          <div>
-            <div className="rp-subtabs" role="tablist" aria-label="Sales subtabs">
-              {SALES_SUBTABS.map((st) => {
-                const on = activeSalesTab === st.key;
-                return (
-                  <button
-                    key={st.key}
-                    className={`rp-subtab ${on ? "active" : ""}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => setActiveSalesTab(st.key)}
-                  >
-                    {st.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="rp-list">
-              {filteredSales.map((it) => (
-                <ItemButton key={it.key} it={it} onClick={() => onSalesNavigate(it.key)} />
-              ))}
-            </div>
+          <div className="rp-list">
+            {SALES_ITEMS.map((it) => (
+              <ItemButton
+                key={it.key}
+                it={it}
+                onClick={() => onSalesNavigate(it.key)}
+                fav={fav}
+                setFav={setFav}
+              />
+            ))}
           </div>
         )}
 
@@ -192,12 +211,18 @@ export default function ReportsPage() {
         {active === "inventory" && (
           <div className="rp-list">
             {INVENTORY_ITEMS.map((it) => (
-              <ItemButton key={it.key} it={it} onClick={() => onInventoryNavigate(it.key)} />
+              <ItemButton
+                key={it.key}
+                it={it}
+                onClick={() => onInventoryNavigate(it.key)}
+                fav={fav}
+                setFav={setFav}
+              />
             ))}
           </div>
         )}
 
-        {/* FAVOURITES: shows starred from both groups */}
+        {/* FAVOURITES: shows starred from all groups */}
         {active === "fav" && (
           <div className="rp-list">
             {[...SALES_ITEMS, ...INVENTORY_ITEMS]
@@ -206,6 +231,8 @@ export default function ReportsPage() {
                 <ItemButton
                   key={it.key}
                   it={it}
+                  fav={fav}
+                  setFav={setFav}
                   onClick={() =>
                     SALES_ITEMS.some((s) => s.key === it.key)
                       ? onSalesNavigate(it.key)
@@ -218,12 +245,33 @@ export default function ReportsPage() {
             )}
           </div>
         )}
+
+        {/* Placeholder for other tabs (purchase, accounts, gst, other) */}
+        {["purchase", "accounts", "gst", "other"].includes(active) && (
+          <div className="rp-surface" style={{ minHeight: 240, display: "grid", placeItems: "center" }}>
+            <div className="rp-empty">
+              {TABS.find((x) => x.key === active)?.label} reports coming soon…
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ───────────────── Additional Pages (named exports) ───────────────── */
+/* ───────────────── Individual Report Pages (named exports) ───────────────── */
+
+const LOCATIONS = [
+  "WABI SABI SUSTAINABILITY",
+  "Brands 4 less – Ansal Plaza",
+  "Brands 4 less – Rajouri Garden",
+  "Brand4Less – Tilak Nagar",
+  "Brands 4 less – M3M Urbana",
+  "Brands 4 less – IFFCO Chowk",
+  "Brands Loot – Udyog Vihar",
+  "Brands loot – Krishna Nagar",
+];
+const ALL_LOCATIONS_COUNT = LOCATIONS.length;
 
 export function DayWiseSalesSummaryPage() {
   const [fromDate, setFromDate] = useState("");
@@ -235,14 +283,21 @@ export function DayWiseSalesSummaryPage() {
   const [selectedLocs, setSelectedLocs] = useState([]);
 
   const navigate = useNavigate();
-  const asLinkKeys = (fn) => (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
-  };
 
   const toggleVoucher = (v) => {
     setVoucherTypes((prev) =>
       prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
     );
+  };
+
+  const toggleLocation = (l) => {
+    if (l === "All") {
+      setSelectedLocs((p) => (p.length === ALL_LOCATIONS_COUNT ? [] : [...LOCATIONS]));
+    } else {
+      setSelectedLocs((p) =>
+        p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
+      );
+    }
   };
 
   return (
@@ -278,7 +333,7 @@ export function DayWiseSalesSummaryPage() {
           <label>From Date</label>
           <div className="rp-input with-icon">
             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-            <span className="material-icons-outlined">calendar_month</span>
+            <span className="material-icons-outlined" aria-hidden="true">calendar_month</span>
           </div>
         </div>
 
@@ -286,21 +341,21 @@ export function DayWiseSalesSummaryPage() {
           <label>To Date</label>
           <div className="rp-input with-icon">
             <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-            <span className="material-icons-outlined">calendar_month</span>
+            <span className="material-icons-outlined" aria-hidden="true">calendar_month</span>
           </div>
         </div>
 
         <div className="rp-field rp-field-grow">
           <label>Select Voucher Type</label>
-          <div className="rp-multiselect" onClick={() => setVoucherOpen((s) => !s)}>
+          <div className="rp-multiselect" onClick={() => setVoucherOpen((s) => !s)} tabIndex={0}>
             <div className="rp-chips">
               {voucherTypes.map((v) => (
                 <span className="rp-chip" key={v}>
                   {v}
-                  <button className="rp-chip-x" type="button" onClick={(e) => { e.stopPropagation(); toggleVoucher(v); }}>×</button>
+                  <button className="rp-chip-x" type="button" aria-label={`Remove ${v}`} onClick={(e) => { e.stopPropagation(); toggleVoucher(v); }}>×</button>
                 </span>
               ))}
-              <input className="rp-chip-input" readOnly placeholder="" />
+              <input className="rp-chip-input" readOnly placeholder="" aria-label="Selected Voucher Types" />
             </div>
             {voucherOpen && (
               <div className="rp-popover">
@@ -321,48 +376,21 @@ export function DayWiseSalesSummaryPage() {
 
         <div className="rp-field rp-field-loc">
           <label>Location</label>
-          <div className="rp-select" onClick={() => setLocOpen((s) => !s)}>
+          <div className="rp-select" onClick={() => setLocOpen((s) => !s)} tabIndex={0}>
             <span className="rp-select-text">
               {selectedLocs.length ? `${selectedLocs.length} selected` : "Select Location"}
             </span>
-            <span className="material-icons-outlined rp-clear" onClick={(e) => { e.stopPropagation(); setSelectedLocs([]); }}>close</span>
+            <span className="material-icons-outlined rp-clear" aria-label="Clear selected locations" onClick={(e) => { e.stopPropagation(); setSelectedLocs([]); }}>close</span>
             {locOpen && (
               <div className="rp-popover rp-popover-loc" onClick={(e) => e.stopPropagation()}>
-                <div className="rp-popover-search"><input placeholder="Search..." /></div>
+                <div className="rp-popover-search"><input placeholder="Search..." aria-label="Search Locations" /></div>
                 <div className="rp-popover-list">
-                  {[
-                    "All",
-                    "WABI SABI SUSTAINABILITY",
-                    "Brands 4 less – Ansal Plaza",
-                    "Brands 4 less – Rajouri Garden",
-                    "Brand4Less – Tilak Nagar",
-                    "Brands 4 less – M3M Urbana",
-                    "Brands 4 less – IFFCO Chowk",
-                    "Brands Loot – Udyog Vihar",
-                    "Brands loot – Krishna Nagar",
-                  ].map((l) => (
+                  {["All", ...LOCATIONS].map((l) => (
                     <label key={l} className="rp-check">
                       <input
                         type="checkbox"
-                        checked={l === "All" ? selectedLocs.length === 8 : selectedLocs.includes(l)}
-                        onChange={() => {
-                          if (l === "All") {
-                            setSelectedLocs((p) => (p.length === 8 ? [] : [
-                              "WABI SABI SUSTAINABILITY",
-                              "Brands 4 less – Ansal Plaza",
-                              "Brands 4 less – Rajouri Garden",
-                              "Brand4Less – Tilak Nagar",
-                              "Brands 4 less – M3M Urbana",
-                              "Brands 4 less – IFFCO Chowk",
-                              "Brands Loot – Udyog Vihar",
-                              "Brands loot – Krishna Nagar",
-                            ]));
-                          } else {
-                            setSelectedLocs((p) =>
-                              p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
-                            );
-                          }
-                        }}
+                        checked={l === "All" ? selectedLocs.length === ALL_LOCATIONS_COUNT : selectedLocs.includes(l)}
+                        onChange={() => toggleLocation(l)}
                       />
                       <span>{l}</span>
                     </label>
@@ -415,7 +443,7 @@ export function ProductWiseSalesSummaryPage() {
   );
 }
 
-/* 🔹 NEW: Tax Wise Sales Summary page (route target) */
+/* ───────────────── NEW: Tax Wise Sales Summary page ───────────────── */
 export function TaxWiseSalesSummaryPage() {
   const navigate = useNavigate();
 
@@ -430,15 +458,21 @@ export function TaxWiseSalesSummaryPage() {
   const [locOpen, setLocOpen] = useState(false);
   const [selectedLocs, setSelectedLocs] = useState([]);
 
+  const toggleLocation = (l) => {
+    if (l === "All") {
+      setSelectedLocs((p) => (p.length === ALL_LOCATIONS_COUNT ? [] : [...LOCATIONS]));
+    } else {
+      setSelectedLocs((p) =>
+        p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
+      );
+    }
+  };
+
   const [taxOpen, setTaxOpen] = useState(false);
   const TAX_SLABS = ["0%", "5%", "12%", "18%", "28%"];
   const [selectedSlabs, setSelectedSlabs] = useState(["5%", "12%", "18%"]);
   const toggleSlab = (s) =>
     setSelectedSlabs((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
-
-  const asLinkKeys = (fn) => (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
-  };
 
   return (
     <div className="rp-wrap">
@@ -469,7 +503,7 @@ export function TaxWiseSalesSummaryPage() {
           <label>From Date</label>
           <div className="rp-input with-icon">
             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-            <span className="material-icons-outlined">calendar_month</span>
+            <span className="material-icons-outlined" aria-hidden="true">calendar_month</span>
           </div>
         </div>
 
@@ -477,21 +511,21 @@ export function TaxWiseSalesSummaryPage() {
           <label>To Date</label>
           <div className="rp-input with-icon">
             <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-            <span className="material-icons-outlined">calendar_month</span>
+            <span className="material-icons-outlined" aria-hidden="true">calendar_month</span>
           </div>
         </div>
 
         <div className="rp-field rp-field-grow">
           <label>Select Voucher Type</label>
-          <div className="rp-multiselect" onClick={() => setVoucherOpen((s) => !s)}>
+          <div className="rp-multiselect" onClick={() => setVoucherOpen((s) => !s)} tabIndex={0}>
             <div className="rp-chips">
               {voucherTypes.map((v) => (
                 <span className="rp-chip" key={v}>
                   {v}
-                  <button className="rp-chip-x" type="button" onClick={(e) => { e.stopPropagation(); toggleVoucher(v); }}>×</button>
+                  <button className="rp-chip-x" type="button" aria-label={`Remove ${v}`} onClick={(e) => { e.stopPropagation(); toggleVoucher(v); }}>×</button>
                 </span>
               ))}
-              <input className="rp-chip-input" readOnly placeholder="" />
+              <input className="rp-chip-input" readOnly placeholder="" aria-label="Selected Voucher Types" />
             </div>
             {voucherOpen && (
               <div className="rp-popover">
@@ -512,48 +546,21 @@ export function TaxWiseSalesSummaryPage() {
 
         <div className="rp-field rp-field-loc">
           <label>Location</label>
-          <div className="rp-select" onClick={() => setLocOpen((s) => !s)}>
+          <div className="rp-select" onClick={() => setLocOpen((s) => !s)} tabIndex={0}>
             <span className="rp-select-text">
               {selectedLocs.length ? `${selectedLocs.length} selected` : "Select Location"}
             </span>
-            <span className="material-icons-outlined rp-clear" onClick={(e) => { e.stopPropagation(); setSelectedLocs([]); }}>close</span>
+            <span className="material-icons-outlined rp-clear" aria-label="Clear selected locations" onClick={(e) => { e.stopPropagation(); setSelectedLocs([]); }}>close</span>
             {locOpen && (
               <div className="rp-popover rp-popover-loc" onClick={(e) => e.stopPropagation()}>
-                <div className="rp-popover-search"><input placeholder="Search..." /></div>
+                <div className="rp-popover-search"><input placeholder="Search..." aria-label="Search Locations" /></div>
                 <div className="rp-popover-list">
-                  {[
-                    "All",
-                    "WABI SABI SUSTAINABILITY",
-                    "Brands 4 less – Ansal Plaza",
-                    "Brands 4 less – Rajouri Garden",
-                    "Brand4Less – Tilak Nagar",
-                    "Brands 4 less – M3M Urbana",
-                    "Brands 4 less – IFFCO Chowk",
-                    "Brands Loot – Udyog Vihar",
-                    "Brands loot – Krishna Nagar",
-                  ].map((l) => (
+                  {["All", ...LOCATIONS].map((l) => (
                     <label key={l} className="rp-check">
                       <input
                         type="checkbox"
-                        checked={l === "All" ? selectedLocs.length === 8 : selectedLocs.includes(l)}
-                        onChange={() => {
-                          if (l === "All") {
-                            setSelectedLocs((p) => (p.length === 8 ? [] : [
-                              "WABI SABI SUSTAINABILITY",
-                              "Brands 4 less – Ansal Plaza",
-                              "Brands 4 less – Rajouri Garden",
-                              "Brand4Less – Tilak Nagar",
-                              "Brands 4 less – M3M Urbana",
-                              "Brands 4 less – IFFCO Chowk",
-                              "Brands Loot – Udyog Vihar",
-                              "Brands loot – Krishna Nagar",
-                            ]));
-                          } else {
-                            setSelectedLocs((p) =>
-                              p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
-                            );
-                          }
-                        }}
+                        checked={l === "All" ? selectedLocs.length === ALL_LOCATIONS_COUNT : selectedLocs.includes(l)}
+                        onChange={() => toggleLocation(l)}
                       />
                       <span>{l}</span>
                     </label>
@@ -567,15 +574,15 @@ export function TaxWiseSalesSummaryPage() {
         {/* Tax slab multiselect */}
         <div className="rp-field rp-field-grow">
           <label>Tax Slab</label>
-          <div className="rp-multiselect" onClick={() => setTaxOpen((s) => !s)}>
+          <div className="rp-multiselect" onClick={() => setTaxOpen((s) => !s)} tabIndex={0}>
             <div className="rp-chips">
               {selectedSlabs.map((s) => (
                 <span className="rp-chip" key={s}>
                   {s}
-                  <button className="rp-chip-x" type="button" onClick={(e) => { e.stopPropagation(); toggleSlab(s); }}>×</button>
+                  <button className="rp-chip-x" type="button" aria-label={`Remove ${s}`} onClick={(e) => { e.stopPropagation(); toggleSlab(s); }}>×</button>
                 </span>
               ))}
-              <input className="rp-chip-input" readOnly placeholder="" />
+              <input className="rp-chip-input" readOnly placeholder="" aria-label="Selected Tax Slabs" />
             </div>
             {taxOpen && (
               <div className="rp-popover">
