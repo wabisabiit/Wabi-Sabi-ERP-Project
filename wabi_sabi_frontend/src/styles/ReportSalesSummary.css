@@ -1,25 +1,424 @@
-/* Reuse your rp-* base from ReportsPage.css; add only component-specific bits */
+/* ---------- Page scaffold ---------- */
+.ss-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:14px 16px 28px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px;
+  color:#1f2937;
+}
+.ss-top{display:flex;align-items:center;gap:8px;margin:0 4px 8px}
+.ss-title{font-size:20px;font-weight:700}
+.ss-dot{color:#9aa3af}
+.ss-sub{color:#6b7280}
+.ss-card{
+  background:#fff;border:1px solid #e8edf4;border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+}
 
-.rss-cards{
+/* ---------- Filters (exact layout & 60% field width) ---------- */
+.ss-card-filters{padding:16px;margin-bottom:16px}
+.ss-fgrid{
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap:12px;
-  margin:8px 8px 14px;
+  grid-template-columns:repeat(3,minmax(280px,1fr));
+  gap:18px;
 }
-.rss-card{
-  background:#fff;
-  border:1px solid var(--line, #e8edf4);
-  border-radius:12px;
-  padding:14px 16px;
-  box-shadow: var(--shadow, 0 6px 18px rgba(25,42,70,.06));
-}
-.rss-card-label{ font-size:12px; color:var(--muted,#6b7280); margin-bottom:6px; }
-.rss-card-val{ font-size:18px; font-weight:700; color:var(--ink,#1f2937); }
+.ss-field{display:flex;flex-direction:column;gap:6px}
+.ss-label{color:#6b7280;font-size:12px;margin-left:2px}
 
-.rss-table-wrap{ overflow:auto; border:1px solid var(--line,#e8edf4); border-radius:10px; }
-.rss-table{ width:100%; border-collapse:separate; border-spacing:0; font-size:12px; }
-.rss-table th, .rss-table td{ padding:10px 12px; text-align:left; border-bottom:1px solid var(--line,#eef2f7); }
-.rss-table th{ background:var(--head,#f1f5f9); font-weight:600; color:var(--ink,#1f2937); }
-.rss-table td.num{ text-align:right; }
-.rss-table tr:last-child td{ border-bottom:none; }
-.rss-total td{ font-weight:700; background:#fafbff; }
+/* combo/select */
+.ss-combo{position:relative;width:60%}
+.ss-combo-btn{
+  width:100%;height:36px;border:1px solid #e6ebf3;border-radius:8px;
+  background:#fff;display:flex;align-items:center;justify-content:space-between;
+  padding:0 10px;cursor:pointer
+}
+.ss-combo-btn.has .ss-combo-val{color:#111827}
+.ss-combo-val{color:#9aa3af;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ss-caret{display:inline-flex;margin-left:6px;color:#6b7280}
+
+.ss-pop{
+  position:absolute;top:40px;left:0;width:100%;
+  background:#fff;border:1px solid #e6ebf3;border-radius:10px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08);z-index:40
+}
+.ss-pop-search{
+  width:100%;border:0;border-bottom:1px solid #eef2f7;padding:8px 10px;outline:none
+}
+.ss-pop-list{max-height:220px;overflow:auto}
+.ss-pop-item{padding:10px 12px;cursor:pointer}
+.ss-pop-item:hover{background:#e8f3ff}
+.ss-pop-empty{padding:10px;color:#9aa3af}
+
+/* date range & plain inputs */
+.ss-range{position:relative;width:60%}
+.ss-range-input{
+  width:100%;height:36px;border:1px solid #e6ebf3;border-radius:8px;
+  padding:0 36px 0 12px;outline:none;background:#fff;color:#111827
+}
+.ss-range-ic{position:absolute;right:5px;top:50%;transform:translateY(-50%);color:#6b7280}
+
+/* inline search field inside filters (if used) */
+.ss-searchbox{position:relative;width:60%;padding : 0;}
+.ss-searchbox input{
+  width:100%;height:36px;border:1px solid #e6ebf3;border-radius:8px;
+  padding:0 36px 0 12px;outline:none;background:#fff;color:#111827;box-sizing:border-box;
+}
+.ss-sel-caret{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#6b7280}
+
+/* ---------- Table toolbar (right side) ---------- */
+.ss-toolbar{padding:12px}
+.ss-toolbar-right{
+  margin-left:auto;display:flex;align-items:center;gap:10px;justify-content:flex-end
+}
+
+/* Search (fixed & working) */
+.ss-toolbar-right .ss-search{
+  position:relative;
+  width:240px; /* change to 20% if you prefer percentage */
+  height:36px;
+}
+.ss-toolbar-right .ss-search svg{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9aa3af;pointer-events:none
+}
+.ss-toolbar-right .ss-search input{
+  width:100%;height:100%;
+  border:1px solid #e6ebf3;border-radius:8px;
+  padding:0 12px 0 32px;outline:none;background:#f8fafc;color:#111827;box-sizing:border-box;
+}
+.ss-toolbar-right .ss-search input:focus{
+  border-color:#cfd8e3;box-shadow:0 0 0 3px rgba(14,165,233,.15)
+}
+
+/* Per-page selector */
+.ss-pp{position:relative}
+.ss-pp-btn{
+  height:32px;padding:0 10px;border:1px solid #e6ebf3;border-radius:8px;
+  background:#fff;color:#374151;display:flex;align-items:center;gap:6px;cursor:pointer
+}
+.ss-pp-menu{
+  position:absolute;top:36px;left:0;background:#fff;border:1px solid #e6ebf3;border-radius:8px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08);overflow:hidden;z-index:30
+}
+.ss-pp-item{padding:8px 12px;width:100%;text-align:left;border:0;background:#fff;cursor:pointer}
+.ss-pp-item:hover{background:#f5f7fb}
+
+/* Export dropdown */
+.ss-export{position:relative}
+.ss-export-btn{
+  height:32px;display:flex;align-items:center;gap:6px;background:#0ea5e9;color:#fff;
+  border:0;border-radius:8px;padding:0 10px;cursor:pointer
+}
+.ss-drop-caret{display:inline-flex;margin-left:2px}
+.ss-export-menu{
+  position:absolute;top:36px;left:0;width:140px;background:#fff;border:1px solid #e6ebf3;border-radius:10px;
+  box-shadow:0 10px 24px rgba(16,24,40,.08);overflow:hidden;z-index:35
+}
+.ss-export-item{width:100%;padding:10px;border:0;background:#fff;cursor:pointer;text-align:left}
+.ss-export-item:hover{background:#f3f8ff}
+
+/* ---------- Table (no horizontal scroll; condensed widths) ---------- */
+.ss-thead,
+.ss-rowline,
+.ss-total{
+  display:grid;
+  grid-template-columns:
+    59px   /* # */
+    96px   /* Branch */
+    90px   /* Code */
+    105px  /* Product */
+    89px   /* Category */
+    68px   /* Variant */
+    70px   /* UOM */
+    50px   /* MRP */
+    90px   /* Selling */
+    60px   /* Discount */
+    95px   /* Purchase */
+    60px   /* Opening */
+    36px;  /* InQty */
+  align-items:center;
+}
+.ss-thead{
+  background:#f6f8fc;border-top:1px solid #e6ebf3;border-bottom:1px solid #e6ebf3;
+  padding:10px 12px;font-weight:700;color:#1f2937
+}
+.ss-rowline{border-bottom:1px solid #eef2f7;padding:12px}
+.ss-plus{
+  display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+  background:#0ea5e9;color:#fff;margin-right:10px
+}
+.ss-cell-hybrid{display:flex;align-items:center;gap:8px}
+.ss-branch{line-height:1.1}
+.ss-link{color:#0b7cda;text-decoration:none}
+.ss-link:hover{text-decoration:underline}
+
+/* Totals row (if used) */
+.ss-total{background:#fbfdff;border-top:1px solid #e6ebf3;border-bottom:1px solid #e6ebf3;padding:10px 12px;font-weight:600}
+
+/* ---------- Footer / pager (right) ---------- */
+.ss-foot{display:flex;align-items:center;justify-content:space-between;padding:12px}
+.ss-foot .info{color:#6b7280}
+.ss-pager{display:flex;align-items:center;gap:8px}
+.ss-page-btn{
+  height:30px;width:30px;border:1px solid #e6ebf3;border-radius:8px;background:#fff;color:#6b7280;cursor:pointer
+}
+.ss-page-btn:disabled{opacity:.5;cursor:not-allowed}
+.ss-page-num{
+  height:30px;min-width:30px;border-radius:8px;display:grid;place-items:center;background:#06c;color:#fff;border:1px solid #06c
+}
+
+/* ---------- Utility (optional) ---------- */
+.ss-hide{display:none!important}
+.ss-toolbar-right .ss-search{ padding:0; box-sizing:border-box; }
+
+/* ---- base ---- */
+.ss-wrap{ background:#eef2f7; min-height:100vh; padding:14px 16px 28px; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; font-size:13px; color:#1f2937;}
+.ss-top{display:flex;align-items:center;gap:8px;margin:0 4px 8px}
+.ss-title{font-size:20px;font-weight:700}
+.ss-dot{color:#9aa3af}
+.ss-sub{color:#6b7280}
+
+/* ---- filter card ---- */
+.filters-card{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(280px, 1fr));
+  gap:18px;
+  background:#fff;
+  border:1px solid #e8edf4;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(25,42,70,.06);
+  padding:16px;
+}
+.fs-field{display:flex;flex-direction:column;gap:6px}
+.fs-label{color:#6b7280;font-size:12px;margin-left:2px}
+
+/* ---------- MultiSelect (Location) ---------- */
+.msel{position:relative;width:60%}
+.msel-btn{
+  width:100%; height:36px; border:1px solid #cfe0fb; border-radius:8px; background:#f9fbff;
+  display:flex; align-items:center; gap:8px; padding:0 10px; justify-content:flex-start; position:relative;
+}
+.msel-ph{color:#9aa3af}
+.msel-ph.picked{color:#1f2937}
+.msel-badge{
+  background:#263b63; color:#fff; font-weight:700; font-size:12px; min-width:18px; height:18px;
+  display:grid; place-items:center; border-radius:4px; padding:0 4px;
+}
+.msel-clear{margin-left:auto; display:inline-flex; width:22px; height:22px; align-items:center; justify-content:center; border-radius:999px; border:1px solid #c2cbe0; color:#1f2937; background:#fff;}
+.msel-clear:hover{background:#f3f6ff}
+.msel-caret{margin-left:6px; color:#67748b}
+.msel.open .msel-btn{background:#fff}
+
+.msel-pop{
+  position:absolute; top:40px; left:0; width:100%;
+  background:#fff; border:1px solid #cfe0fb; border-radius:12px; box-shadow:0 18px 40px rgba(16,24,40,.16); z-index:40;
+}
+.msel-search{
+  width:100%; height:38px; border:0; border-bottom:1px solid #eef2f7; outline:none; padding:0 10px; border-radius:12px 12px 0 0;
+}
+.msel-list{max-height:260px; overflow:auto; padding:6px 10px;}
+.msel-item{display:flex; align-items:center; gap:10px; padding:8px 6px; border-radius:6px; cursor:pointer;}
+.msel-item:hover{background:#edf6ff;}
+.msel-item input{width:16px; height:16px}
+
+/* ---------- SingleSelect ---------- */
+.ssel{position:relative;width:60%}
+.ssel-btn{
+  width:100%; height:36px; border:1px solid #cfe0fb; border-radius:8px; background:#fff;
+  display:flex; align-items:center; justify-content:space-between; padding:0 10px;
+}
+.ssel-val{color:#9aa3af}
+.ssel-val.picked{color:#1f2937}
+.ssel-caret{color:#67748b}
+
+.ssel-pop{
+  position:absolute; top:40px; left:0; width:100%;
+  background:#fff; border:1px solid #cfe0fb; border-radius:12px; box-shadow:0 18px 40px rgba(16,24,40,.16); z-index:40;
+}
+.ssel-search{width:100%; height:38px; border:0; border-bottom:1px solid #eef2f7; outline:none; padding:0 10px; border-radius:12px 12px 0 0;}
+.ssel-list{max-height:260px; overflow:auto;}
+.ssel-item{padding:10px 12px; cursor:pointer;}
+.ssel-item:hover{background:#e8f3ff;}
+.ssel-empty{padding:12px; color:#9aa3af}
+
+/* ---------- Product search ---------- */
+.psel{position:relative;width:60%}
+.psel-btn{
+  width:100%; height:36px; border:1px solid #cfe0fb; border-radius:8px; background:#fff;
+  display:flex; align-items:center; justify-content:space-between; padding:0 10px;
+}
+.psel-ph{color:#9aa3af}
+.psel-caret{color:#67748b}
+.psel-pop{
+  position:absolute; top:40px; left:0; width:100%; background:#fff; border:1px solid #cfe0fb; border-radius:12px; box-shadow:0 18px 40px rgba(16,24,40,.16); z-index:40;
+}
+.psel-search{width:100%; height:38px; border:0; border-bottom:1px solid #eef2f7; outline:none; padding:0 10px; border-radius:12px 12px 0 0;}
+.psel-hint{padding:12px; color:#9aa3af}
+.psel-list{max-height:240px; overflow:auto}
+.psel-item{padding:10px 12px; cursor:pointer}
+.psel-item:hover{background:#e8f3ff}
+.psel-empty{padding:12px; color:#9aa3af}
+
+/* ---------- Date range ---------- */
+.drp{position:relative; width:60%}
+.drp-btn{
+  width:100%; height:36px; border:1px solid #cfe0fb; border-radius:8px; background:#fff;
+  display:flex; align-items:center; justify-content:space-between; padding:0 10px;
+}
+.drp-ic{color:#6b7280; display:inline-flex}
+
+.drp-pop{
+  position:absolute; top:42px; left:-275px; width:660px; background:#fff; border:1px solid #d5e3fb;
+  border-radius:12px; box-shadow:0 18px 40px rgba(16,24,40,.16); z-index:50; display:flex;
+}
+.drp-side{
+  width:200px; border-right:1px solid #eef2f7; padding:6px;
+}
+.drp-preset{padding:10px 12px; border-radius:8px; cursor:default; color:#344256}
+.drp-preset.active{background:#05a6ee; color:#fff; font-weight:600}
+.drp-actions{display:flex; gap:10px; padding:10px 8px}
+.drp-apply{background:#05a6ee; color:#fff; border:0; border-radius:6px; padding:8px 14px; cursor:pointer}
+.drp-cancel{background:#eaeef5; color:#111; border:0; border-radius:6px; padding:8px 14px; cursor:pointer}
+
+.drp-body{flex:1; padding:10px}
+.drp-inputs{display:flex; gap:12px; margin-bottom:10px}
+.drp-in{display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e7eef9; border-radius:8px; padding:6px 10px}
+.drp-in input{border:0; outline:none; width:110px; font-size:12px}
+
+.drp-title{display:flex; justify-content:space-between; font-weight:600; margin:4px 2px 8px}
+.drp-two{display:flex; gap:24px}
+
+.drp-month{display:flex; gap:6px}
+.drp-grid{display:grid; grid-template-columns:repeat(7,28px); gap:6px}
+.drp-dow{font-size:12px; color:#6b7280; text-align:center}
+.drp-cell{
+  width:28px; height:28px; border-radius:6px; background:#f1f5fb; display:grid; place-items:center; cursor:pointer; font-size:12px;
+}
+.drp-cell.sel{background:#08c; color:#fff}
+.drp-cell.empty{background:transparent; cursor:default}
+.drp-weeknums{display:grid; grid-template-rows:repeat(6,28px); gap:6px; margin-left:6px}
+.drp-wn{width:28px; height:28px; display:grid; place-items:center; color:#6b7280; font-size:12px}
+
+/* width alignment identical to screenshots */
+.msel, .ssel, .psel, .drp { width: 60%; }
+
+/* ---------- MultiSelect (Location) — EXACT look like image 2 ---------- */
+.msel{ position:relative; width:60%; }
+
+/* pill container */
+.msel-btn{
+  width:100%;
+  height:36px;
+  border:1px solid #cfd8e3;           /* soft blue-grey border */
+  border-radius:8px;
+  background:#eef2f7;                  /* light grey pill background */
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 10px;
+  justify-content:flex-start;
+  position:relative;
+}
+
+/* placeholder / label inside pill */
+.msel-ph{ color:#9aa3af; font-weight:500; }
+.msel-ph.picked{ color:#1f2937; }
+
+/* dark badge with white number (e.g., 1) */
+.msel-badge{
+  background:#111827;                  /* near-black like screenshot */
+  color:#fff;
+  font-weight:700;
+  font-size:12px;
+  min-width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  border-radius:3px;                    /* small radius like the image */
+  padding:0 4px;
+}
+
+/* circular "x" chip (white with dark outline) */
+.msel-clear{
+  margin-left:auto;
+  display:inline-flex;
+  width:20px;
+  height:20px;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  border:1.2px solid #111827;          /* dark ring */
+  color:#111827;                        /* dark icon */
+  background:#fff;
+}
+.msel-clear svg{ width:10px; height:10px; }
+.msel-clear:hover{ background:#f5f7fb; }
+
+/* caret color */
+.msel-caret{ margin-left:6px; color:#6b7280; }
+
+/* open state keeps pill white (optional) */
+.msel.open .msel-btn{ background:#fff; }
+
+/* dropdown panel */
+.msel-pop{
+  position:absolute;
+  top:40px; left:0; width:100%;
+  background:#fff;
+  border:1px solid #cfe0fb;
+  border-radius:12px;
+  box-shadow:0 18px 40px rgba(16,24,40,.16);
+  z-index:40;
+}
+
+/* search field inside panel */
+.msel-search{
+  width:100%;
+  height:38px;
+  border:0;
+  border-bottom:1px solid #eef2f7;
+  outline:none;
+  padding:0 10px;
+  border-radius:12px 12px 0 0;
+}
+
+/* list & items */
+.msel-list{ max-height:260px; overflow:auto; padding:6px 10px; }
+.msel-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 6px;
+  border-radius:6px;
+  cursor:pointer;
+}
+.msel-item:hover{ background:#edf6ff; }
+.msel-item input{ width:16px; height:16px; }
+
+/* Toggle pill turns RED and shows minus when open */
+.ss-plus.open{
+  background:#e11d48;        /* red background like screenshot */
+  color:#fff;
+}
+
+/* Expanded detail row under a grid row */
+.ss-expand{
+  grid-column: 1 / -1;        /* stretch across the full table width */
+  background:#f3f6fb;         /* soft grey like the screenshot */
+  border-top:1px solid #eef2f7;
+  padding:12px 16px;
+  display:block;
+}
+
+.ss-exp-line{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#374151;
+  padding:6px 0;
+}
+ 
+.ss-exp-line span:first-child{
+  min-width:110px;            /* aligns the labels */
+  color:#6b7280;
+}
