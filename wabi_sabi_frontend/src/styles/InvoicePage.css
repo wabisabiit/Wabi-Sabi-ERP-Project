@@ -18,13 +18,14 @@
   --fs-pill:  clamp(10px,  0.72vw, 11.5px);
 }
 
-html, body { overflow-x: hidden; }
+/* ❌ पुराने overflow-x:hidden को हटाएँ (कटने की समस्या) */
+/* html, body { overflow-x: hidden; } */
+
 .mi{ font-family:"Material Symbols Outlined"; font-weight:400; font-style:normal; font-size:18px; line-height:1; display:inline-flex; vertical-align:middle; }
 
 .inv-page{
   background:var(--bg); min-height:100vh; padding:18px 18px 36px;
   color:var(--ink); font-family:var(--font); font-size:var(--fs-base);
-  overflow-x:hidden;
 }
 
 /* ===== Breadcrumb + FY ===== */
@@ -35,20 +36,18 @@ html, body { overflow-x: hidden; }
 .year-wrap{ margin-left:auto; }
 .year-btn{ display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line); padding:6px 10px; border-radius:10px; cursor:pointer; }
 
-/* ===== Popover (width = anchor width) ===== */
+/* ===== Popover ===== */
 .pop{
   position:fixed; background:#fff; border:1px solid var(--line); border-radius:10px;
   box-shadow:0 8px 28px rgba(16,24,40,.12);
-  /* key: dropdown should match trigger width → no fixed/min width */
-  width:auto !important;
-  min-width:unset !important;
-  max-width:none;
+  width:auto !important; min-width:unset !important; max-width:none;
   overflow:hidden; z-index:9999;
 }
 .pop .menu-search{ padding:8px; border-bottom:1px solid var(--line); background:#fbfdff; }
 .pop .menu-search input{ width:100%; border:1px solid var(--line); border-radius:8px; padding:6px 8px; background:#fff; outline:0; font-size:var(--fs-input); }
 .pop .menu-list{ max-height:280px; overflow:auto; }
 .pop .menu-item{ padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+.pop .menu-item .mi{ font-size:18px; color:#7b8ea6; }
 .pop .menu-item:hover{ background:#f6f9ff; }
 .pop .menu-item.sel{ background:#e9f0ff; font-weight:600; }
 
@@ -73,21 +72,16 @@ html, body { overflow-x: hidden; }
 .search-wrap .mi{ position:absolute; right:8px; top:7px; color:#8ca0b8; font-size:16px; }
 .create-btn{ margin-left:auto; background:#1e7bd7; color:#fff; border:none; padding:7px 10px; border-radius:8px; cursor:pointer; }
 
-/* ===== Filter bar (aligned) ===== */
+/* ===== Filter bar ===== */
 .filter-bar{
   margin-top:8px; margin-bottom:12px; background:#fff; border:1px solid var(--line);
   border-radius:12px; padding:12px;
   display:grid; grid-template-columns:repeat(4, minmax(220px,1fr)); gap:12px;
   align-items:end; animation: filterIn .18s ease-out;
 }
-
-/* external `.field` neutralize */
 .inv-page .filter-bar .field{ all:unset; display:contents !important; }
 .filter-bar .flt{ display:flex; flex-direction:column; gap:6px; min-width:0; }
-
 .filter-bar label{ display:block; font-weight:600; color:#1f2937; margin:0 0 6px 0; font-size:var(--fs-label); }
-
-/* unified input look */
 .filter-bar input,
 .filter-bar select,
 .typeahead input,
@@ -99,7 +93,6 @@ html, body { overflow-x: hidden; }
 }
 .filter-bar input::placeholder,
 .typeahead input::placeholder{ color:#9aa6b2; }
-
 .filter-bar input:focus,
 .filter-bar select:focus,
 .typeahead input:focus,
@@ -135,29 +128,36 @@ html, body { overflow-x: hidden; }
 }
 .simple-select .mi{ position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none; color:#8ba0b8; font-size:18px; }
 
-/* popover fine-tuning */
-.pop .menu-list .menu-item{ font-size:var(--fs-input); color:#1f2937; }
-.pop .menu-list label.menu-item{ gap:10px; }
-.pop .menu-list input[type="checkbox"]{ accent-color:#1976d2; }
-
 /* animation */
 @keyframes filterIn{
   from{ opacity:0; transform:translateY(-4px); }
   to{ opacity:1; transform:translateY(0); }
 }
 
-/* =================== TABLE (ONE-PAGE-FIT) =================== */
-.table-wrap{ background:#fff; border:1px solid var(--line-strong); border-radius:14px; box-shadow:var(--shadow); overflow:visible; }
-table.grid{ width:100%; border-collapse:separate; border-spacing:0; table-layout:auto; font-size:var(--fs-table); line-height:1.25; }
+/* =================== TABLE =================== */
+/* ✅ container scroll so data कभी कटे नहीं */
+.table-wrap{
+  background:#fff; border:1px solid var(--line-strong); border-radius:14px; box-shadow:var(--shadow);
+  overflow:auto;  /* <-- horizontal + vertical scroll */
+}
+
+/* ✅ table को min-width ताकि squeeze न हो; container scroll करेगा */
+table.grid{
+  width:100%; min-width:1200px;   /* आप चाहें तो 1400px कर सकते हैं */
+  border-collapse:separate; border-spacing:0;
+  table-layout:auto; font-size:var(--fs-table); line-height:1.25;
+}
+
 .grid th, .grid td{
   padding:6px 7px; color:#1e293b; background:#fff;
-  white-space:normal; overflow:hidden; text-overflow:ellipsis;
-  word-break:normal; overflow-wrap:break-word; hyphens:auto;
   border-bottom:1px solid var(--line-strong); border-right:1px solid var(--line-strong);
+  /* ✅ long names safe wrap */
+  white-space:normal; overflow-wrap:anywhere; word-break:break-word; hyphens:auto;
 }
 .grid th:last-child, .grid td:last-child{ border-right:none; }
 .grid thead th{ position:sticky; top:0; background:var(--head); z-index:1; font-weight:600; color:#4b5f78; }
 
+/* col widths */
 col[class^="c-"]{ width:auto !important; }
 col.c-exp{ width:26px !important; }
 col.c-check{ width:34px !important; }
@@ -166,19 +166,38 @@ col.c-idx{ width:34px !important; }
 .grid .num, .grid .right{ text-align:right; }
 .grid .strong{ font-weight:700; }
 .grid .muted{ color:#8aa0b8; }
-.grid .link{ color:#1570ef; cursor:pointer; text-decoration:none; }
-.clip{ white-space:normal; overflow:hidden; text-overflow:ellipsis; }
+
+/* ---- Clickable cells (Invoice No. & Customer) ---- */
+.grid td.link{
+  color:#1570ef; cursor:pointer; font-weight:600; user-select:none;
+  -webkit-tap-highlight-color: transparent;
+}
+.grid td.link:hover{ text-decoration:underline; background:#f5f9ff; }
+.grid td.link:active{ background:#eaf2ff; }
+.grid td.link:focus-visible{ outline:2px solid rgba(21,112,239,.5); outline-offset:-2px; border-radius:6px; }
 
 /* Badges */
 .badge{ display:inline-block; padding:2px 7px; border-radius:999px; font-weight:700; color:#fff; font-size:var(--fs-badge); }
 .badge.green{ background:#2bb24c; }
 .badge.amber{ background:#ffac0a; color:#1b1b1b; }
 
-/* Expand / Checkbox / Actions */
-.circle{ width:18px; height:18px; border-radius:50%; border:none; cursor:pointer; display:inline-block; background:#1e7bd7; position:relative; }
-.circle.plus::before, .circle.minus::before, .circle.minus::after{ content:""; position:absolute; background:#fff; left:4px; right:4px; top:8px; height:2px; border-radius:1px; }
-.circle.plus::after{ content:""; position:absolute; top:4px; bottom:4px; left:8px; width:2px; border-radius:1px; background:#fff; }
+/* Expand button (✅ plus/minus fix) */
+.circle{
+  width:18px; height:18px; border-radius:50%; border:none; cursor:pointer;
+  display:inline-block; position:relative; background:#1e7bd7;
+}
+.circle.plus::before{
+  content:""; position:absolute; left:4px; right:4px; top:8px; height:2px; background:#fff; border-radius:1px;
+}
+.circle.plus::after{
+  content:""; position:absolute; top:4px; bottom:4px; left:8px; width:2px; background:#fff; border-radius:1px;
+}
 .circle.minus{ background:#d7263d; }
+.circle.minus::before{
+  content:""; position:absolute; left:4px; right:4px; top:8px; height:2px; background:#fff; border-radius:1px;
+}
+/* minus पर vertical stroke नहीं होगा */
+.circle.minus::after{ content:none; }
 
 .chk{ position:relative; display:inline-block; width:16px; height:16px; }
 .chk input{ position:absolute; inset:0; opacity:0; }
@@ -209,10 +228,7 @@ col.c-idx{ width:34px !important; }
 .pager .pages button:disabled{ opacity:.5; cursor:not-allowed; }
 
 /* Responsive */
-@media (max-width:1600px){ .grid th, .grid td{ padding:5px 6px; } }
-@media (max-width:1366px){ .grid th, .grid td{ padding:4.5px 5.5px; } }
 @media (max-width:1280px){
-  .grid th, .grid td{ padding:4px 5px; }
   .metrics{ grid-template-columns:repeat(4,1fr); }
   .metrics-bottom{ grid-template-columns:repeat(2,1fr); }
   .filter-bar{ grid-template-columns:repeat(2,minmax(220px,1fr)); }
@@ -221,4 +237,5 @@ col.c-idx{ width:34px !important; }
 @media (max-width:640px){
   .create-btn{ margin-left:0; }
   .tbl-toolbar{ justify-content:space-between; }
+  table.grid{ min-width:900px; } /* छोटे व्यू में भी scroll रहे */
 }

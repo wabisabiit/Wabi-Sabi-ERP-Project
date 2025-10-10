@@ -32,6 +32,8 @@ const CreditNotePage = lazy(() => import("./components/CreditNotePage"));
 const OrderList = lazy(() => import("./components/OrderListPage"));
 const InvoicePage = lazy(() => import("./components/InvoicePage"));
 const NewInvoicePage = lazy(() => import("./components/NewInvoicePage")); // 👈 added
+const InvoiceDetailPage = lazy(() => import("./components/InvoiceDetailPage"));
+
 
 // Admin
 const EmployeePage = lazy(() => import("./components/EmployeePage"));
@@ -99,6 +101,9 @@ const IntegrationPage = lazy(() => import("./components/IntegrationPage"));
 // Accounting
 const AccountPage = lazy(() => import("./components/AccountPage"));
 const OpeningBalancePage = lazy(() => import("./components/OpeningBalancePage"));
+
+const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceCustomerDetailPage"));
+
 
 /* ---------- Layouts ---------- */
 function POSLayout() {
@@ -196,6 +201,11 @@ export default function App() {
         <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
         {/* 🔹 Sales → New Invoice (Form screen) */}
         <Route path="/sales/invoice/new" element={<SidebarLayout><NewInvoicePage /></SidebarLayout>} />
+        {/* 🔹 Sales → Invoice Detail */}
+<Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
+<Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
+
+
 
         {/* Utilities */}
         {/* <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} /> */}

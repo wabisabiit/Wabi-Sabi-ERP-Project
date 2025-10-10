@@ -1,67 +1,23 @@
+// src/components/InvoicePage.jsx
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import "../styles/InvoicePage.css";
 
-/* ───────────────── Demo data ───────────────── */
-const YEAR_RANGES = [
-  "Current Year",
-  "Last Month",
-  "This Month",
-  "Last Week",
-  "This Week",
-  "Today",
-  "2025–2026",
-];
+/* ⬇️ central data */
+import { INVOICE_ROWS as ROWS, buildInvoiceDetail } from "../data/invoices"; // ⬅️ buildInvoiceDetail जोड़ा
+
+/* ───────────────── Demo settings ───────────────── */
+const YEAR_RANGES = ["Current Year","Last Month","This Month","Last Week","This Week","Today","2025–2026"];
 const PAGE_SIZES = [10, 25, 50, 100, 200, 500, "All"];
-
-const CUSTOMERS = [
-  "Brands loot – Krishna Nagar –",
-  "Brands 4 less – Rajouri Garden – Inside –",
-  "Brand4Less– Tilak Nagar –",
-  "Brands 4 less – Ansal Plaza –",
-  "Brands 4 less – Rajouri Garden – Outside –",
-];
-
-const LOCATIONS = [
-  "WABI SABI SUSTAINABILITY LLP",
-  "Brands 4 less – IFFCO Chowk",
-  "Brands 4 less – Ansal Plaza",
-  "Brands 4 less – Rajouri Garden",
-  "Brand4Less – Tilak Nagar",
-];
-
-const ROWS = [
-  { no:"INV898", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands loot – Krishna Nagar –", net:4479.98, paid:0, due:4479.98, status:"INVOICED", payStatus:"DUE", tax:213.34, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV897", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands 4 less – Rajouri Garden – Inside –", net:14799.99, paid:0, due:14799.99, status:"INVOICED", payStatus:"DUE", tax:704.76, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV896", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brand4Less– Tilak Nagar –", net:15599.98, paid:0, due:15599.98, status:"INVOICED", payStatus:"DUE", tax:742.85, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV895", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands 4 less – Ansal Plaza –", net:12799.99, paid:0, due:12799.99, status:"INVOICED", payStatus:"DUE", tax:609.52, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV894", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands 4 less – Ansal Plaza –", net:2540.0,  paid:0, due:2540.0,  status:"INVOICED", payStatus:"DUE", tax:120.95, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV893", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brand4Less– Tilak Nagar –", net:2500.0,  paid:0, due:2500.0,  status:"INVOICED", payStatus:"DUE", tax:119.05, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV892", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands 4 less – Rajouri Garden – Inside –", net:13839.99, paid:0, due:13839.99, status:"INVOICED", payStatus:"DUE", tax:787.61, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV891", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brands 4 less – Rajouri Garden – Outside –", net:2460.0,  paid:0, due:2460.0,  status:"INVOICED", payStatus:"DUE", tax:117.14, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV890", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brand4Less– Tilak Nagar –", net:16039.99, paid:0, due:16039.99, status:"INVOICED", payStatus:"DUE", tax:956.66, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-  { no:"INV889", invDate:"06/10/2025", dueDate:"06/10/2025", customer:"Brand4Less– Tilak Nagar –", net:5500.01,  paid:0, due:5500.01,  status:"INVOICED", payStatus:"DUE", tax:261.90, createdBy:"WABI SABI SUSTAINABILITY LLP", location:"WABI SABI SUSTAINABILITY LLP" },
-];
 
 const sum = (arr, key) => arr.reduce((a, r) => a + Number(r[key] || 0), 0);
 const formatMoney = (n) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n || 0);
-
-const shortINR = (n = 0) => {
-  const abs = Math.abs(n);
-  if (abs >= 1e7) return `${(n / 1e7).toFixed(2)}C`;
-  if (abs >= 1e5) return `${(n / 1e5).toFixed(2)}L`;
-  if (abs >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
-  return Math.round(n).toString();
-};
+const shortINR = (n = 0) => { const abs=Math.abs(n); if(abs>=1e7)return`${(n/1e7).toFixed(2)}C`; if(abs>=1e5)return`${(n/1e5).toFixed(2)}L`; if(abs>=1e3)return`${(n/1e3).toFixed(2)}K`; return Math.round(n).toString(); };
 
 // Date helpers (DD/MM/YYYY)
-const parseDMY = (s) => {
-  if (!s) return null;
-  const [dd, mm, yyyy] = s.split("/").map(Number);
-  return new Date(yyyy, (mm || 1) - 1, dd || 1);
-};
+const parseDMY = (s) => { if (!s) return null; const [dd, mm, yyyy] = s.split("/").map(Number); return new Date(yyyy, (mm || 1) - 1, dd || 1); };
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 const endOfDay   = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
@@ -69,53 +25,23 @@ const endOfDay   = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 2
 const rangeFor = (label) => {
   if (!label) return null;
   const fy = /^(\d{4})\s*[–-]\s*(\d{4})$/.exec(label);
-  if (fy) {
-    const y1 = Number(fy[1]);
-    const from = new Date(y1, 3, 1);
-    const to   = endOfDay(new Date(y1 + 1, 2, 31));
-    return { from, to };
-  }
+  if (fy) { const y1 = Number(fy[1]); const from = new Date(y1, 3, 1); const to = endOfDay(new Date(y1 + 1, 2, 31)); return { from, to }; }
   const today = startOfDay(new Date());
-  if (label === "Today")      return { from: today, to: endOfDay(today) };
-  if (label === "This Week")  {
-    const day = today.getDay();
-    const monOffset = day === 0 ? -6 : 1 - day;
-    const from = startOfDay(new Date(today));
-    from.setDate(from.getDate() + monOffset);
-    const to = endOfDay(new Date(from));
-    to.setDate(to.getDate() + 6);
-    return { from, to };
-  }
-  if (label === "Last Week")  {
-    const { from: thisMon } = rangeFor("This Week");
-    const from = new Date(thisMon);
-    from.setDate(from.getDate() - 7);
-    const to = endOfDay(new Date(from));
-    to.setDate(to.getDate() + 6);
-    return { from, to };
-  }
-  if (label === "This Month") {
-    const from = new Date(today.getFullYear(), today.getMonth(), 1);
-    const to   = endOfDay(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-    return { from, to };
-  }
-  if (label === "Last Month") {
-    const from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const to   = endOfDay(new Date(today.getFullYear(), today.getMonth(), 0));
-    return { from, to };
-  }
-  const from = new Date(today.getFullYear(), 0, 1);
-  const to   = endOfDay(new Date(today.getFullYear(), 11, 31));
-  return { from, to };
+  if (label === "Today") return { from: today, to: endOfDay(today) };
+  if (label === "This Week") { const day = today.getDay(); const monOffset = day === 0 ? -6 : 1 - day; const from = startOfDay(new Date(today)); from.setDate(from.getDate() + monOffset); const to = endOfDay(new Date(from)); to.setDate(to.getDate() + 6); return { from, to }; }
+  if (label === "Last Week") { const { from: thisMon } = rangeFor("This Week"); const from = new Date(thisMon); from.setDate(from.getDate() - 7); const to = endOfDay(new Date(from)); to.setDate(to.getDate() + 6); return { from, to }; }
+  if (label === "This Month") { const from = new Date(today.getFullYear(), today.getMonth(), 1); const to = endOfDay(new Date(today.getFullYear(), today.getMonth() + 1, 0)); return { from, to }; }
+  if (label === "Last Month") { const from = new Date(today.getFullYear(), today.getMonth() - 1, 1); const to = endOfDay(new Date(today.getFullYear(), today.getMonth(), 0)); return { from, to }; }
+  const from = new Date(today.getFullYear(), 0, 1); const to = endOfDay(new Date(today.getFullYear(), 11, 31)); return { from, to };
 };
 
-/* Popover */
+/* Popover (unchanged) */
 function Popover({ open, anchorRef, onClose, width, align="left", children }) {
   const [style, setStyle] = useState({ top:0, left:0, width:width||undefined });
   useLayoutEffect(() => {
     if(!open || !anchorRef?.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
-    const popW = width || rect.width;                     // 👈 anchor width
+    const popW = width || rect.width;
     const left = align==="right" ? rect.right - popW : rect.left;
     const top = rect.bottom + 6;
     setStyle({ top:Math.round(top), left:Math.round(left), width:Math.round(popW) });
@@ -150,6 +76,10 @@ function rowsToCSV(rows){
 
 export default function InvoicePage(){
   const navigate = useNavigate();
+
+  /* ⬇️ customers & locations are derived from data (future-proof) */
+  const ALL_CUSTOMERS = useMemo(() => [...new Set(ROWS.map(r => r.customer))], []);
+  const ALL_LOCATIONS = useMemo(() => [...new Set(ROWS.map(r => r.location))], []);
 
   const [year,setYear]=useState("Current Year");
   const [yearQuery,setYearQuery]=useState("");
@@ -229,11 +159,26 @@ export default function InvoicePage(){
   const mUnPaid = sum(filteredRows, "due");
   const mTotalSales = sum(filteredRows, "net");
 
+  /* ⬇️ NEW: customer name click -> CustomerDetail with invoice context */
+  const handleOpenCustomer = (row) => {
+    try {
+      const built = buildInvoiceDetail(row); // invoice का पूरा context तैयार
+      const slug = encodeURIComponent(built.party.slug || built.party.name || row.customer || "customer");
+      navigate(`/customer/${slug}?inv=${encodeURIComponent(built.meta.invoiceNo)}`, {
+        state: { fromInvoice: built },
+      });
+    } catch {
+      // fallback: कम से कम slug & inv पास करें
+      const slug = encodeURIComponent(row.customer || "customer");
+      navigate(`/customer/${slug}?inv=${encodeURIComponent(row.no)}`);
+    }
+  };
+
   return (
     <div className="inv-page" onClick={closeAll}>
       {/* Breadcrumb + FY selector */}
       <div className="inv-breadcrumb" onClick={(e)=>e.stopPropagation()}>
-        <span className="mi">home</span><span>Sales</span><span className="active">Invoice</span>
+        <span className="mi">home</span><span className="active">Invoice</span>
         <div className="year-wrap">
           <button
             ref={yearBtnRef}
@@ -329,7 +274,7 @@ export default function InvoicePage(){
                   {!customerInput || customerInput.trim().length<1 ? (
                     <div className="ta-empty">Please enter 1 or more characters</div>
                   ) : (
-                    CUSTOMERS.filter(c=>c.toLowerCase().includes(customerInput.toLowerCase())).map(c=>(
+                    ALL_CUSTOMERS.filter(c=>c.toLowerCase().includes(customerInput.toLowerCase())).map(c=>(
                       <div key={c} className="menu-item" onClick={()=>{ setCustomerValue(c); setCustomerInput(""); setOpenCust(false); }}>{c}</div>
                     ))
                   )}
@@ -353,7 +298,7 @@ export default function InvoicePage(){
             <Popover open={locOpen} anchorRef={locBtnRef} onClose={()=>setLocOpen(false)} align="left">
               <div className="menu-search"><input placeholder="Search location" value={locQuery} onChange={(e)=>setLocQuery(e.target.value)} /></div>
               <div className="menu-list">
-                {LOCATIONS.filter(l=>l.toLowerCase().includes(locQuery.toLowerCase())).map(loc=>{
+                {ALL_LOCATIONS.filter(l=>l.toLowerCase().includes(locQuery.toLowerCase())).map(loc=>{
                   const on = locValues.includes(loc);
                   return (
                     <label key={loc} className="menu-item" style={{cursor:"pointer"}}>
@@ -490,10 +435,29 @@ export default function InvoicePage(){
 
                     <td className="w40">{sr}</td>
 
-                    <td className="link">{r.no}</td>
+                    {/* 🔹 Clickable Invoice No. -> Detail page */}
+                    <td
+                      className="link"
+                      onClick={() => navigate(`/sales/invoice/${r.no}`)}
+                      title="Open Invoice"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {r.no}
+                    </td>
+
                     <td>{r.invDate}</td>
                     <td>{r.dueDate}</td>
-                    <td className="link">{r.customer}</td>
+
+                    {/* 🔹 NEW: Customer name -> Customer Detail with context */}
+                    <td
+                      className="link"
+                      onClick={() => handleOpenCustomer(r)}
+                      title="Open Customer"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {r.customer}
+                    </td>
+
                     <td className="num">{r.net.toFixed(2)}</td>
                     <td className="num">{r.paid.toFixed(2)}</td>
                     <td className="num">{r.due.toFixed(2)}</td>
@@ -546,10 +510,7 @@ export default function InvoicePage(){
         <div className="muted">Showing {pageRows.length} of {filteredRows.length} entries</div>
         <div className="pages">
           <button disabled={page===1} onClick={()=>setPage(p=>Math.max(1,p-1))}><span className="mi">chevron_left</span></button>
-          {Array.from({length:Math.min(totalPages,6)}).map((_,i)=>{
-            const n=i+1;
-            return <button key={n} className={page===n ? "on":""} onClick={()=>setPage(n)}>{n}</button>;
-          })}
+          {Array.from({length:Math.min(totalPages,6)}).map((_,i)=>{ const n=i+1; return <button key={n} className={page===n ? "on":""} onClick={()=>setPage(n)}>{n}</button>; })}
           {totalPages>6 && <button className="muted" disabled>…</button>}
           <button disabled={page===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}><span className="mi">chevron_right</span></button>
         </div>
