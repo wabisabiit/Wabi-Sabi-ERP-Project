@@ -122,8 +122,21 @@
   padding:10px; border-bottom:1px solid #eef2f7; color:#111827; font-size:13px;
 }
 .bank-table tbody tr:hover td{ background:#fafbfe; }
-.linkish{ color:#0ea5e9; font-weight:800; cursor:pointer; }
 
+/* ✅ Bank Name (2nd column) blue — AXIS BANK dikhte hi blue hoga */
+.bank-table tbody td:nth-child(2),
+.linkish{
+  color:var(--primary);
+  font-weight:800;
+  cursor:pointer;
+}
+.bank-table tbody td:nth-child(2):hover,
+.linkish:hover{
+  color:#0369a1;              /* darker blue on hover */
+  text-decoration:underline;
+}
+
+/* empty state */
 .not-found{ text-align:center; color:#6b7280; font-style:italic; padding:18px 0; }
 
 /* footer */
@@ -145,3 +158,71 @@
 /* footer brand (optional) */
 .bank-footerbrand{ color:#6b7280; margin-top:12px; font-size:14px; }
 .bank-footerbrand a{ color:#0ea5e9; text-decoration:none; }
+
+/* ===== Delete Confirm Modal (centered, like screenshot) ===== */
+.del-overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.55);
+  display:flex; align-items:center; justify-content:center;
+  z-index:999;
+}
+.del-modal{
+  width:520px; max-width:92%;
+  background:#fff;
+  border-radius:8px;
+  box-shadow:0 15px 40px rgba(0,0,0,.25);
+  padding:18px 20px 16px;
+  text-align:center;
+}
+.del-icon{
+  width:42px; height:42px; border-radius:50%;
+  margin:0 auto 10px;
+  border:3px solid #fbbf24; /* amber */
+  color:#f59e0b; font-weight:800; font-size:22px;
+  display:grid; place-items:center;
+}
+.del-title{
+  margin:0 0 6px; font-size:18px; color:#111827; font-weight:700;
+}
+.del-sub{
+  margin:0 0 16px; color:#6b7280; font-size:13px;
+}
+.del-actions{
+  display:flex; gap:10px; align-items:center; justify-content:center;
+}
+.btn{
+  height:36px; padding:0 16px; border-radius:6px; border:0;
+  color:#fff; font-weight:700; cursor:pointer;
+}
+.btn-green{ background:#16a34a; }
+.btn-green:hover{ background:#15803d; }
+.btn-red{ background:#ef4444; }
+.btn-red:hover{ background:#dc2626; }
+/* === Actions column: blue icons === */
+.icon-btn{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  color:var(--primary);              /* 🔵 make icon blue */
+  border-radius:6px;
+  transition:color .15s ease, background .15s ease;
+}
+
+.icon-btn .material-icons{
+  font-size:20px;
+  line-height:1;
+  color:inherit;                     /* inherit blue */
+}
+
+.icon-btn:hover{
+  color:#0369a1;                     /* darker blue on hover */
+  background:rgba(14,165,233,.08);   /* subtle hover bg */
+}
+
+.icon-btn:active{
+  transform:translateY(0.5px);
+}

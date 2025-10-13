@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import "../styles/GeneralSettingsPage.css";
 
 export default function GeneralSettingsPage() {
-  const [tab, setTab] = useState("profile"); // 'profile' | 'taxes' | 'roles'
+  const [tab, setTab] = useState("profile"); // profile | taxes | roles | report
   const navigate = useNavigate();
 
-  /* ======================= TAXES (as-is) ======================= */
+  /* ======================= TAXES ======================= */
   const defaultTaxes = useMemo(
     () => [
       { id: 1, name: "Gst 15", rate: 15, createdBy: "Krishna Pandit" },
@@ -21,7 +21,7 @@ export default function GeneralSettingsPage() {
     ],
     []
   );
-  const [taxes, setTaxes] = useState(() => defaultTaxes);
+  const [taxes, setTaxes] = useState(defaultTaxes);
   const [taxSearch, setTaxSearch] = useState("");
   const [taxPage, setTaxPage] = useState(1);
   const [taxPageSize, setTaxPageSize] = useState(10);
@@ -53,19 +53,11 @@ export default function GeneralSettingsPage() {
   const taxEnd = Math.min(taxStart + taxPageSize, filteredTaxes.length);
   const taxRows = filteredTaxes.slice(taxStart, taxEnd);
 
-  /* ======================= USER ROLES (new) ======================= */
+  /* ======================= USER ROLES ======================= */
   const defaultRoles = useMemo(
     () => [
-      "Tagging 2",
-      "Head Manager",
-      "IT",
-      "Accountant Admin",
-      "Tagging Accountant",
-      "Accounts Manager",
-      "Billing",
-      "Default Admin",
-      "Purchase Manager",
-      "Cashier",
+      "Tagging 2","Head Manager","IT","Accountant Admin","Tagging Accountant",
+      "Accounts Manager","Billing","Default Admin","Purchase Manager","Cashier",
     ].map((name, i) => ({ id: i + 1, name })),
     []
   );
@@ -99,9 +91,47 @@ export default function GeneralSettingsPage() {
     setRoleModalOpen(false);
   };
 
+  /* ======================= REPORT FORMATS (only POS Offline & POS(B2C)) ======================= */
+  const RF_TABS = ["POS Offline", "POS(B2C)"];
+  const [rfTab, setRfTab] = useState("POS(B2C)");
+  const [rfType, setRfType] = useState("All"); // All | 80MM | A5
+
+  const RF_TEMPLATES = {
+    "POS(B2C)": [
+      { id:"pos80-3",  name:"Thermal_80mm-3(jasper)", size:"80MM" },
+      { id:"pos80-1",  name:"Thermal_80mm-1(jasper)", size:"80MM" },
+      { id:"a5-2",     name:"A5-2(jasper)",           size:"A5"    },
+      { id:"pos80-17", name:"Thermal_80mm-17(jasper)",size:"80MM"  },
+    ],
+    "POS Offline": [
+      { id:"off80-1", name:"Thermal_80mm-1(jasper)", size:"80MM" },
+      { id:"offa5-1", name:"A5-1(jasper)",           size:"A5"   },
+    ],
+  };
+
+  const [rfSelected, setRfSelected] = useState({});
+  const [rfDefault80, setRfDefault80] = useState({});
+  const [rfDefaultA5, setRfDefaultA5] = useState({});
+
+  const rfList = (RF_TEMPLATES[rfTab] || []).filter(t => rfType === "All" ? true : t.size === rfType);
+
+  const chooseTemplate = (tplId) => setRfSelected((s) => ({ ...s, [rfTab]: tplId }));
+  const toggle80 = () => setRfDefault80((s) => ({ ...s, [rfTab]: !s[rfTab] }));
+  const toggleA5 = () => setRfDefaultA5((s) => ({ ...s, [rfTab]: !s[rfTab] }));
+
+  const saveReportFormats = () => {
+    const payload = {
+      category: rfTab,
+      selectedTemplate: rfSelected[rfTab] || null,
+      default80: !!rfDefault80[rfTab],
+      defaultA5: !!rfDefaultA5[rfTab],
+    };
+    alert(`Saved (demo):\n${JSON.stringify(payload, null, 2)}`);
+  };
+
   return (
     <div className="gs-wrap">
-      {/* Page header */}
+      {/* Header */}
       <div className="gs-header">
         <div className="gs-title">
           <span className="material-icons">settings</span>
@@ -112,7 +142,7 @@ export default function GeneralSettingsPage() {
         </div>
       </div>
 
-      {/* Body */}
+      {/* Layout */}
       <div className="gs-body">
         {/* LEFT tabs */}
         <div className="gs-tabs">
@@ -122,15 +152,17 @@ export default function GeneralSettingsPage() {
           <button className={`gs-tab ${tab === "taxes" ? "active" : ""}`} onClick={() => setTab("taxes")} type="button">
             <span className="material-icons">request_quote</span><span>Taxes</span>
           </button>
-          {/* NEW tab */}
           <button className={`gs-tab ${tab === "roles" ? "active" : ""}`} onClick={() => setTab("roles")} type="button">
             <span className="material-icons">groups</span><span>User Roles</span>
+          </button>
+          <button className={`gs-tab ${tab === "report" ? "active" : ""}`} onClick={() => setTab("report")} type="button">
+            <span className="material-icons">description</span><span>Report Formats</span>
           </button>
         </div>
 
         {/* RIGHT content */}
         <div className="gs-content">
-          {/* ===== PROFILE (unchanged) ===== */}
+          {/* ===== PROFILE ===== */}
           {tab === "profile" && (
             <>
               <div className="gs-panel-head">
@@ -144,13 +176,13 @@ export default function GeneralSettingsPage() {
               </div>
 
               <div className="gs-card">
+                {/* (content as before) */}
                 {/* Basic Details */}
                 <div className="gs-section">
                   <div className="gs-section-head">
                     <span className="material-icons">settings</span>
                     <h3>Basic Details</h3>
                   </div>
-
                   <div className="gs-kv grid-2-2">
                     <div className="kv"><div className="k">Accounting Type</div><div className="v clamp-2">Ho - branch centralized &amp; decentralised franchise</div></div>
                     <div className="kv muted-col"></div>
@@ -195,7 +227,7 @@ export default function GeneralSettingsPage() {
                   </div>
                 </div>
 
-                {/* Additional Details */}
+                {/* Additional + Other sections remain same as before */}
                 <div className="gs-section">
                   <div className="gs-section-head"><span className="material-icons">settings</span><h3>Additional Details</h3></div>
                   <div className="gs-kv grid-2">
@@ -205,7 +237,6 @@ export default function GeneralSettingsPage() {
                   </div>
                 </div>
 
-                {/* Other Details */}
                 <div className="gs-section">
                   <div className="gs-section-head"><span className="material-icons">settings</span><h3>Other Details</h3></div>
                   <div className="gs-kv grid-1">
@@ -219,7 +250,7 @@ export default function GeneralSettingsPage() {
             </>
           )}
 
-          {/* ===== TAXES (unchanged UI) ===== */}
+          {/* ===== TAXES ===== */}
           {tab === "taxes" && (
             <>
               <div className="gs-card">
@@ -280,7 +311,6 @@ export default function GeneralSettingsPage() {
                 </div>
               </div>
 
-              {/* Create New Tax Modal */}
               {taxModalOpen && (
                 <>
                   <div className="gs-modal-overlay" onClick={closeTaxModal} />
@@ -311,7 +341,7 @@ export default function GeneralSettingsPage() {
             </>
           )}
 
-          {/* ===== USER ROLES (new UI) ===== */}
+          {/* ===== USER ROLES ===== */}
           {tab === "roles" && (
             <div className="gs-card">
               <div className="roles-head">
@@ -348,7 +378,7 @@ export default function GeneralSettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {roleRows.length === 0 ? (
+                    {filteredRoles.length === 0 ? (
                       <tr><td className="empty" colSpan={3}>Result not found</td></tr>
                     ) : (
                       roleRows.map((r) => (
@@ -381,7 +411,6 @@ export default function GeneralSettingsPage() {
                 </div>
               </div>
 
-              {/* Create New Role modal */}
               {roleModalOpen && (
                 <>
                   <div className="gs-modal-overlay" onClick={closeRoleModal} />
@@ -405,6 +434,81 @@ export default function GeneralSettingsPage() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* ===== REPORT FORMATS ===== */}
+          {tab === "report" && (
+            <div className="gs-card">
+              <div className="rf-head">
+                <div className="rf-title">
+                  <span className="material-icons">description</span>
+                  <span>Report Formats</span>
+                </div>
+                <div className="rf-tools">
+                  <label className="rf-type-label">Format Type</label>
+                  <select className="rf-type" value={rfType} onChange={(e)=>setRfType(e.target.value)}>
+                    <option>All</option>
+                    <option>80MM</option>
+                    <option>A5</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="rf-pills" role="tablist">
+                {RF_TABS.map((t)=>(
+                  <button
+                    key={t}
+                    role="tab"
+                    aria-selected={rfTab===t}
+                    className={`rf-pill ${rfTab===t ? "active":""}`}
+                    onClick={()=>setRfTab(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              <div className="rf-grid">
+                {rfList.map((tpl)=>(
+                  <div key={tpl.id} className="rf-card">
+                    <label className="rf-row">
+                      <input
+                        type="radio"
+                        name={`tpl-${rfTab}`}
+                        checked={rfSelected[rfTab] === tpl.id}
+                        onChange={()=>chooseTemplate(tpl.id)}
+                      />
+                      <span className="rf-name">{tpl.name}</span>
+                    </label>
+
+                    <label className="rf-row small">
+                      <input
+                        type="checkbox"
+                        checked={tpl.size==="80MM" ? !!rfDefault80[rfTab] : !!rfDefaultA5[rfTab]}
+                        onChange={tpl.size==="80MM" ? toggle80 : toggleA5}
+                      />
+                      <span>Mark as default {tpl.size} Page</span>
+                    </label>
+
+                    <div className={`rf-thumb ${tpl.size==="A5" ? "a5":"mm80"}`}>
+                      <div className="line t" />
+                      <div className="box" />
+                      <div className="line" />
+                      <div className="line" />
+                      <div className="line s" />
+                      <div className="tbl"><span /><span /><span /></div>
+                      <div className="foot" />
+                    </div>
+                  </div>
+                ))}
+                {rfList.length === 0 && <div className="rf-empty">No templates for this filter.</div>}
+              </div>
+
+              <div className="rf-actions">
+                <button type="button" className="btn outline" onClick={()=>setRfType("All")}>Reset</button>
+                <button type="button" className="btn primary" onClick={saveReportFormats}>Save</button>
+              </div>
             </div>
           )}
         </div>

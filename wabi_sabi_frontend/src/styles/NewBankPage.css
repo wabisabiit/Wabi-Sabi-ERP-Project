@@ -1,167 +1,165 @@
-/* Overall typography + spacing */
-.nb-wrap {
-  background: #eef2f7;
-  min-height: 100vh;
-  padding: 16px 20px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  font-size: 13px; /* requested */
-  overflow: hidden; /* avoid page scroll */
+/* ===== Global & Page shell ===== */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+.nb-wrap{
+  background:#eef2f7;
+  min-height:100vh;
+  padding:16px 20px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px;
+  /* bottom scrollbar ko roko */
+  overflow-x:hidden;
 }
 
-/* Header / breadcrumb row */
-.nb-topbar { display:flex; align-items:center; justify-content:space-between; margin: 4px 0 10px; }
-.nb-left { display:flex; align-items:center; gap:10px; color:#6b7280; }
-.nb-back { border:0; background:transparent; padding:4px; cursor:pointer; }
-.nb-home { font-size:18px; color:#9aa3af; }
-.nb-dash { color:#9aa3af; }
-.nb-bc { color:#6b7280; }
-.nb-title { margin:0; font-size:22px; font-weight:700; color:#1f2937; }
+.nb-topbar{ display:flex; align-items:center; justify-content:space-between; margin:4px 0 10px; }
+.nb-left{ display:flex; align-items:center; gap:10px; color:#6b7280; }
+.nb-back{ border:0; background:transparent; padding:4px; cursor:pointer; }
+.nb-home{ font-size:18px; color:#9aa3af; }
+.nb-dash{ color:#9aa3af; }
+.nb-bc{ color:#6b7280; }
+.nb-title{ margin:0; font-size:22px; font-weight:700; color:#1f2937; }
 
-/* Card */
+/* ===== Card + Grid ===== */
 .nb-card{
   background:#fff; border:1px solid #e6e9f0; border-radius:12px;
   box-shadow:0 1px 2px rgba(16,24,40,.03);
-  padding: 12px 14px 14px;
-  max-width: 1180px; margin: 0 auto;
+  padding:12px 14px 14px;
+  max-width:1180px; margin:0 auto;
+  /* dropdown ko overflow se bahar dikhane do */
+  overflow:visible;
 }
+.nb-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px 16px; }
 
-/* Grid: 5 equal columns like the screenshot; compact rows */
-.nb-grid{
-  display:grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px 16px;
-}
-
-/* Fields */
-.nb-field { display:flex; flex-direction:column; }
-.nb-lbl { font-weight:600; color:#1f2937; margin-bottom:6px; }
+.nb-field{ display:flex; flex-direction:column; position:relative; } /* anchor for dropdown */
+.nb-lbl{ font-weight:600; color:#1f2937; margin-bottom:6px; }
 .nb-lbl.req::after{ content:" *"; color:#ef4444; }
 
-.nb-inp, .nb-select select {
-  height: 34px;
-  border:1px solid #dfe3ea;
-  background:#fff;
-  border-radius:8px;
-  padding: 0 10px;
-  font-size:13px;
-  outline:none;
-  width: 175px;
+/* --- Compact field widths (page se bahar na jaye) --- */
+:root{ --nb-field-w: 160px; }  /* 175px se chhota */
+
+.nb-inp{
+  height:34px; border:1px solid #dfe3ea; background:#fff; border-radius:8px;
+  padding:0 10px; font-size:13px; width:var(--nb-field-w);
 }
 .nb-inp::placeholder{ color:#9aa3af; }
-
-.nb-select{ position:relative; }
-.nb-select select{ appearance:none; width:100%; }
-.nb-caret{
-  position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:18px; color:#94a3b8;
-  pointer-events:none;
-}
 
 .nb-openbal .nb-bals{ display:flex; gap:10px; }
 .nb-openbal .nb-bals .nb-inp{ width:100%; }
 .nb-upi .nb-check{ display:flex; align-items:center; gap:8px; height:34px; }
 
-/* Address Line 2 wider like screenshot */
-.nb-colspan2 { grid-column: span 2; }
+.nb-colspan2{ grid-column:span 2; }
+.nb-branches{ grid-column:5/6; grid-row:3/span 2; }
 
-/* Branches block sits on the right, tall; matches screenshot layout */
-.nb-branches{ grid-column: 5 / 6; grid-row: 3 / span 2; }
-
-/* Branches dropdown */
-.nb-branch { position:relative; }
+/* ===== Searchable Select / Dropdown (compact) ===== */
+.nb-sel{ width:var(--nb-field-w); position:relative; }
 .nb-dd-btn{
   display:flex; align-items:center; justify-content:space-between;
   width:100%; height:34px; padding:0 10px; border:1px solid #dfe3ea;
   border-radius:8px; background:#fff; cursor:pointer; font-weight:500;
 }
+.nb-sel-value.placeholder{ color:#9aa3af; }
+.nb-caret{ font-size:18px; color:#94a3b8; }
 
-/* Dropdown container: limit height so inner list can scroll */
+/* Panel: input ke bilkul niche, aur width = trigger ke barabar */
 .nb-dd{
-  position:absolute; z-index:20; top:64px; right:0; width:420px;
-  background:#fff; border:1px solid #e6e9f0; border-radius:10px;
+  position:absolute;
+  top:100%;               /* exactly below */
+  left:0;
+  margin-top:6px;
+  z-index:1000;
+  background:#fff;
+  border:1px solid #e6e9f0;
+  border-radius:10px;
   box-shadow:0 8px 30px rgba(25,42,70,.08);
-  display:flex;               /* stack header + list */
+  display:flex;
   flex-direction:column;
-  height:420px;               /* fixed cap helps scrolling work */
-  overflow:hidden;            /* confine inner scroll */
+  width:100%;             /* trigger ke barabar */
+  overflow:hidden;        /* outer clean; list scroll */
 }
 
-/* keep the header from shrinking */
+/* Branches ke liye wide panel (design match) */
+.nb-branch .nb-dd{
+  width:420px;            /* agar input-width chahiye ho to 100% kar dein */
+  right:0; left:auto;     /* right aligned large box */
+}
+
+/* Dropdown header (compact search box) */
 .nb-dd-top{
-  display:flex; gap:8px; padding:10px; border-bottom:1px solid #eef2f7;
-  flex:0 0 auto;
+  display:flex; gap:6px; padding:6px 8px; border-bottom:1px solid #eef2f7;
+  flex:0 0 auto; width:100%;
 }
 .nb-dd-search{
-  flex:1; height:32px; border:1px solid #dfe3ea; border-radius:8px; padding:0 10px; font-size:13px;
+  flex:1 1 auto; min-width:0; max-width:100%; width:100%;
+  height:26px;                 /* compact */
+  border:1px solid #dfe3ea;
+  border-radius:8px;
+  padding:0 8px;               /* compact */
+  font-size:12px;              /* compact */
+  line-height:26px;
 }
 .nb-dd-all{
-  height:32px; padding:0 10px; border-radius:8px; border:1px solid #dfe3ea; background:#f9fafb; font-weight:600;
+  flex:0 0 auto;
+  height:26px; padding:0 10px;
+  border-radius:8px; border:1px solid #dfe3ea; background:#f9fafb;
+  font-weight:600; font-size:12px;
 }
 
-/* Make ONLY the options list scroll */
+/* list + item */
+:root{ --nb-item-h: 36px; }     /* thoda compact row height */
+
 .nb-dd-list{
-  padding:6px 10px 10px;
-  flex:1 1 auto;              /* take remaining space */
-  min-height:0;               /* allow shrink so overflow works */
-  overflow-y:auto;            /* vertical scrollbar */
+  padding:6px 8px 8px;
+  flex:1 1 auto;
+  min-height:0;
+  max-height:260px;             /* sensible cap */
+  overflow-y:auto;
   overflow-x:hidden;
-  overscroll-behavior:contain;
 }
+.nb-dd-list--5{ max-height:calc(var(--nb-item-h) * 5); }
 
-.nb-dd-row{ display:flex; align-items:center; gap:10px; padding:6px 4px; }
+.nb-dd-row{
+  display:flex; align-items:center; gap:10px;
+  min-height:var(--nb-item-h);
+  padding:0 4px;
+  border-radius:6px;
+}
+.nb-dd-row:hover{ background:#f3f4f6; }
+.nb-sel-item.active{ background:#e8f4ff; border:1px solid #bfe0ff; }
+.nb-sel-item.hover{ background:#f3f4f6; }
 .nb-dd-text{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nb-dd-empty{ padding:10px; color:#6b7280; }
 
-/* Footer buttons row */
-.nb-actions{
-  display:flex; align-items:center; justify-content:flex-end;
-  gap:10px; margin-top:14px;
-}
-.nb-btn{
-  height: 34px; padding: 0 14px; border-radius:8px; font-weight:700; border:1px solid #dfe3ea; background:#f9fafb;
-}
+/* ===== Footer buttons ===== */
+.nb-actions{ display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:14px; }
+.nb-btn{ height:34px; padding:0 14px; border-radius:8px; font-weight:700; border:1px solid #dfe3ea; background:#f9fafb; }
 .nb-btn.primary{ background:#0ea5e9; color:#fff; border-color:#0ea5e9; }
 .nb-btn.outline{ background:#fff; border-color:#0ea5e9; color:#0ea5e9; }
 .nb-btn.ghost{ background:#eef2f7; }
 
-/* Keep the whole page compact (no scroll) on common laptop widths */
-@media (max-width: 1260px){
-  .nb-card{ transform: scale(.97); transform-origin: top center; }
-}
-
-/* optional: tidy scrollbar styling for the list */
+/* Scrollbar (sirf list ke andar) */
 .nb-dd-list::-webkit-scrollbar{ width:8px; }
 .nb-dd-list::-webkit-scrollbar-thumb{ background:#d6dbe3; border-radius:8px; }
 .nb-dd-list::-webkit-scrollbar-track{ background:transparent; }
 
-/* Tune item height once here */
-:root { --nb-dd-item-h: 40px; }  /* ~40px per option looks like your UI */
-
-/* Dropdown container can auto-size; the LIST controls the visible count */
-.nb-dd{
-  position:absolute; z-index:20; top:64px; right:0; width:420px;
-  background:#fff; border:1px solid #e6e9f0; border-radius:10px;
-  box-shadow:0 8px 30px rgba(25,42,70,.08);
-  display:flex; flex-direction:column;
-  overflow:hidden;    
-  height: 250px;             /* keep scroll inside list */
+/* Slight scale on narrower screens to avoid overflow */
+@media (max-width: 1260px){
+  .nb-card{ transform:scale(.98); transform-origin:top center; }
+}
+/* Error styling */
+.nb-field.has-err .nb-inp,
+.nb-field.has-err .nb-dd-btn {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.08);
 }
 
-/* header stays fixed */
-.nb-dd-top{ display:flex; gap:8px; padding:10px; border-bottom:1px solid #eef2f7; flex:0 0 auto; }
-
-/* >>> Show five rows and scroll for others <<< */
-.nb-dd-list{
-  padding:6px 10px 10px;
-  flex:1 1 auto;
-  min-height:0;
-  max-height: calc(var(--nb-dd-item-h) * 5);  /* 5 visible items */
-  overflow-y:auto;
-  overflow-x:hidden;
-  overscroll-behavior:contain;
+.nb-err{
+  margin-top:6px;
+  color:#dc2626;
+  font-size:12px;
+  font-weight:600;
 }
 
-/* keep each row at a consistent height so the math holds */
-.nb-dd-row{
-  display:flex; align-items:center; gap:10px;
-  min-height: var(--nb-dd-item-h);
-  padding: 0 4px;                  /* vertical height controlled by min-height */
-}
+/* Keep compact dropdown search width tidy even when errors */
+.nb-field.has-err .nb-dd { width:100%; }

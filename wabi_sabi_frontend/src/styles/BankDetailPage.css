@@ -1,0 +1,89 @@
+/* Header / breadcrumb */
+.bd-wrap { padding: 14px 16px 28px; }
+.bd-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.bd-crumb { display:flex; align-items:center; gap:8px; color:#6b7280; }
+.bd-home { font-size:18px; color:#9aa3af; cursor:pointer; }
+.bd-back { border:0; background:transparent; color:#6b7280; cursor:pointer; }
+.bd-sep { color:#9aa3af; }
+.bd-name { color:#1f2937; font-weight:500; }
+
+/* Card */
+.bd-card {
+  position: relative;
+  background:#fff; border:1px solid #e6e9f0; border-radius:12px; overflow:hidden;
+}
+.bd-card-head { display:flex; align-items:center; gap:8px; padding:12px 16px; background:#f9fafb; border-bottom:1px solid #eef2f7; color:#0ea5e9; font-weight:500; }
+.bd-gear { font-size:18px; color:#94a3b8; }
+
+/* Edit button */
+.bd-edit{
+  position:absolute; top:10px; right:10px;
+  width:28px; height:28px; border-radius:6px; border:1px solid #d1d5db;
+  background:#ffffff; display:grid; place-items:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.06); cursor:pointer;
+  transition:background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+  color:#0ea5e9;
+}
+.bd-edit .material-icons{ font-size:18px; line-height:1; }
+.bd-edit:hover{ background:#0ea5e9; border-color:#0ea5e9; color:#fff; box-shadow:0 3px 10px rgba(14,165,233,.25); }
+.bd-edit:focus{ outline:none; box-shadow:0 0 0 3px rgba(14,165,233,.25); }
+
+/* Grid */
+.bd-grid { display:grid; grid-template-columns: 1fr 1fr; gap:0; }
+.bd-col { border-right:1px solid #eef2f7; }
+.bd-col:last-child { border-right:0; }
+
+/* Rows (table look) */
+.bd-row { display:grid; grid-template-columns: 220px 1fr; }
+.bd-label { background:#f3f4f6; border-bottom:1px solid #eef2f7; padding:10px 12px; color:#374151; font-size:13px; }
+.bd-value { background:#fff; border-bottom:1px solid #eef2f7; padding:10px 12px; color:#111827; font-size:13px; }
+
+/* ------- Assignee Branches section ------- */
+.bd-col-branches{
+  grid-column: 1;               /* left column */
+  padding:0;                    /* align with table look */
+  border-right:1px solid #eef2f7; /* keep vertical divider */
+  border-top:1px solid #eef2f7;   /* subtle line above section */
+  background:#fff;
+}
+
+.bd-branches-head{
+  padding:10px 12px;
+  font-size:13px; font-weight:600; color:#111827;
+  background:#f9fafb;            /* light head feel */
+  border-bottom:1px solid #eef2f7;
+}
+.bd-req{ color:#ef4444; margin-left:3px; }
+
+.bd-branches-list{
+  max-height:260px;
+  overflow:auto;
+  padding:8px 12px 12px;
+}
+
+.bd-branch{
+  display:flex; align-items:center; gap:10px;
+  padding:6px 4px; border-radius:6px;
+}
+.bd-square{
+  width:14px; height:14px; border-radius:3px; background:#38bdf8; /* cyan box like screenshot */
+  flex:0 0 14px;
+}
+.bd-branch input{
+  width:16px; height:16px;
+}
+.bd-branch-text{
+  color:#111827; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width:100%;
+}
+
+/* Right blank filler under right column to continue the grid lines */
+.bd-col-empty{
+  grid-column: 2;
+  border-top:1px solid #eef2f7;
+  background:#fff;
+  min-height:50px;   /* just to show area like screenshot */
+}
+
+/* Footer (optional) */
+.bd-footer { margin-top:18px; font-size:12px; color:#9ca3af; }

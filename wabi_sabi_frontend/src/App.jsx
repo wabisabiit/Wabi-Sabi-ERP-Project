@@ -13,8 +13,6 @@ import Sidebar from "./components/Sidebar";
 /* Keep base styles LAST so they win the cascade */
 import "./App.css";
 
-
-
 /* ---------- Lazy pages ---------- */
 // CRM
 const NewDiscountPage = lazy(() => import("./components/NewDiscountPage"));
@@ -31,9 +29,8 @@ const MultiplePay = lazy(() => import("./components/MultiplePay"));
 const CreditNotePage = lazy(() => import("./components/CreditNotePage"));
 const OrderList = lazy(() => import("./components/OrderListPage"));
 const InvoicePage = lazy(() => import("./components/InvoicePage"));
-const NewInvoicePage = lazy(() => import("./components/NewInvoicePage")); // 👈 added
+const NewInvoicePage = lazy(() => import("./components/NewInvoicePage"));
 const InvoiceDetailPage = lazy(() => import("./components/InvoiceDetailPage"));
-
 
 // Admin
 const EmployeePage = lazy(() => import("./components/EmployeePage"));
@@ -58,6 +55,7 @@ const ReceiptPage = lazy(() => import("./components/ReceiptPage"));
 const ExpensePage = lazy(() => import("./components/ExpensePage"));
 const NewBankPage = lazy(() => import("./components/NewBankPage"));
 const PaymentCreatePage = lazy(() => import("./components/PaymentCreatePage"));
+const BankDetailPage = lazy(() => import("./components/BankDetailPage")); // ⬅️ NEW
 
 // Inventory core
 const ProductsPage = lazy(() => import("./components/InventoryProductsPage"));
@@ -103,7 +101,7 @@ const AccountPage = lazy(() => import("./components/AccountPage"));
 const OpeningBalancePage = lazy(() => import("./components/OpeningBalancePage"));
 
 const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceCustomerDetailPage"));
-
+const BankEditPage = lazy(() => import("./components/BankEditPage"));
 
 /* ---------- Layouts ---------- */
 function POSLayout() {
@@ -127,7 +125,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -138,7 +136,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => { }} />
+      <Sidebar open={true} persistent miniHover onClose={() => {}} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -178,13 +176,14 @@ export default function App() {
 
         {/* Bank / Cash */}
         <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
+        <Route path="/bank/:slug" element={<SidebarLayout><BankDetailPage /></SidebarLayout>} /> {/* ⬅️ NEW */}
+       <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />  {/* NEW */}
         <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
         <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
         <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
         <Route path="/bank/expense" element={<SidebarLayout><ExpensePage /></SidebarLayout>} />
         <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
         <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
-
 
         {/* Settings */}
         <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
@@ -202,10 +201,8 @@ export default function App() {
         {/* 🔹 Sales → New Invoice (Form screen) */}
         <Route path="/sales/invoice/new" element={<SidebarLayout><NewInvoicePage /></SidebarLayout>} />
         {/* 🔹 Sales → Invoice Detail */}
-<Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
-<Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
-
-
+        <Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
+        <Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
 
         {/* Utilities */}
         {/* <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} /> */}
@@ -227,8 +224,6 @@ export default function App() {
         <Route path="/reports/sales-summary" element={<SidebarLayout><ReportSalesSummary /></SidebarLayout>} />
         <Route path="/reports/customer-wise-sales-order-report" element={<MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>} />
 
-
-
         {/* Accounting */}
         <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
         <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
@@ -246,8 +241,7 @@ export default function App() {
         <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
         <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
-
-        {/* Settings */}
+        {/* Settings (duplicate set kept to match your file) */}
         <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
         <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
         <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
@@ -255,6 +249,7 @@ export default function App() {
         <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
         <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
         <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
+
         {/* Multiple Pay */}
         <Route
           path="/multiple-pay"
