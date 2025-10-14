@@ -8,7 +8,7 @@ __pycache__/
 .venv/
 
 # Env & local artifacts
-.env
+.venv
 *.sqlite3
 .DS_Store
 
