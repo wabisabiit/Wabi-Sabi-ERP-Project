@@ -11,9 +11,14 @@ class TaskItemViewSet(viewsets.ModelViewSet):
     serializer_class = TaskItemSerializer
     permission_classes = [AllowAny]
 
-    # Filters you can use from Postman/query string
+    # 👉 use item_code in URLs (not pk)
+    lookup_field = "item_code"
+    # allow codes like 100-W (hyphen), underscores, letters, digits; or just use r"[^/]+"
+    lookup_value_regex = r"[-\w]+"
+
+    # Filters/search/order (unchanged)
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ["category", "department", "item_active", "gst"]  # exact match filters
-    search_fields = ["item_code", "item_full_name", "item_vasy_name", "item_print_friendly_name"]  # icontains
+    filterset_fields = ["category", "department", "item_active", "gst"]
+    search_fields = ["item_code", "item_full_name", "item_vasy_name", "item_print_friendly_name"]
     ordering_fields = ["item_code", "category", "department", "gst", "created_at"]
     ordering = ["item_code"]
