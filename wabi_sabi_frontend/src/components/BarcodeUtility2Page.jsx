@@ -170,8 +170,8 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
       size: r.size,
       location: r.location,
       discount: Number.isFinite(r.discount) ? r.discount : 0,
-      salesPrice: Number.isFinite(r.sp) ? r.sp : 0,
-      mrp: Number.isFinite(r.mrp) ? r.mrp : 0,
+      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0,
+      mrp: Number.isFinite(r.sp) ? r.sp : 0,
       qty: Number.isFinite(r.qty) ? r.qty : 0,
       barcodeNumber: r.itemCode ? `WS-${r.itemCode}-01` : "",
     }));

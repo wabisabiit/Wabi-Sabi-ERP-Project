@@ -1,6 +1,8 @@
+// src/components/BarcodePrintConfirmPage.jsx
 import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/BarcodePrintConfirmPage.css";
+import { upsertProductsFromBarcodes } from "../api/client"; // ⬅️ NEW: import
 
 /* Allowed short locations (case-insensitive match on paste) */
 const LOCATIONS = ["IC", "RJR", "RJO", "TN", "UP-AP", "M3M", "UV", "KN"];
@@ -236,45 +238,92 @@ export default function BarcodePrintConfirmPage() {
   };
 
   /* ===== Expand → third page ===== */
-  const expandAndNavigate = () => {
-    const expanded = [];
-    let sNo = 1;
+  // inside BarcodePrintConfirmPage.jsx
+const expandAndNavigate = async () => {
+  const expanded = [];
+  let sNo = 1;
 
-    const pad2 = (n) => String(n).padStart(2, "0");
-    const makeBarcode = (code, idx) => `WS-${code}-${pad2(idx)}`;
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const makeBarcode = (code, idx) => `WS-${code}-${pad2(idx)}`;
 
-    excelRows.forEach((r) => {
-      const q = Math.max(0, Math.floor(Number(r.qty) || 0));
-      const code = (r.itemCode || "").trim();
+  excelRows.forEach((r) => {
+    const q = Math.max(0, Math.floor(Number(r.qty) || 0));
+    const code = (r.itemCode || "").trim();
 
-      for (let i = 1; i <= q; i++) {
-        const shouldBarcode = code !== "" && code !== "0";
-        const barcode = shouldBarcode ? makeBarcode(code, i) : "";
+    for (let i = 1; i <= q; i++) {
+      const shouldBarcode = code !== "" && code !== "0";
+      const barcode = shouldBarcode ? makeBarcode(code, i) : "";
 
-        expanded.push({
-          sNo: sNo++,
-          itemCode: r.itemCode,
-          product: r.product,
-          size: r.size,
-          location: r.location,
-          discount: Number(r.discount) || 0,
-          salesPrice: Number(r.salesPrice) || 0,
-          mrp: Number(r.mrp) || 0,
-          barcodeNumber: barcode,   // only for non-zero, non-empty item codes
-          barcodeName: barcode,
-        });
+      expanded.push({
+        sNo: sNo++,
+        itemCode: r.itemCode,
+        product: r.product,
+        size: r.size,
+        location: r.location,
+        discount: Number(r.discount) || 0,
+        // keep these as raw numbers (no currency formatting)
+        salesPrice: Number(r.salesPrice) || 0,   // discounted
+        mrp: Number(r.mrp) || 0,                 // original price from Image-1
+        barcodeNumber: barcode,
+        barcodeName: barcode,
+      });
+    }
+  });
+
+  // ====== SAVE ALL expanded labels to DB ======
+  try {
+    const payload = expanded
+      .filter((r) => r.itemCode && r.itemCode !== "0" && r.barcodeNumber)
+      .map((r) => ({
+        itemCode: String(r.itemCode).trim(),
+        barcodeNumber: String(r.barcodeNumber).trim(),
+        salesPrice: Number(r.salesPrice) || 0,
+        mrp: Number(r.mrp) || 0,
+        size: (r.size || "").trim(),
+        imageUrl: r.imageUrl || "",
+        qty: 1,                                  // ✅ one per physical barcode
+        discountPercent: Number(r.discount) || 0 // ✅ same discount as Image-1
+      }));
+
+    if (payload.length) {
+      const res = await upsertProductsFromBarcodes(payload);
+      const created = res?.created ?? 0;
+      const updated = res?.updated ?? 0;
+      const errs = Array.isArray(res?.errors) ? res.errors : [];
+      if (errs.length) {
+        // show first few error lines to debug quickly
+        const first = errs.slice(0, 5).join("\n - ");
+        alert(`Saved with issues:
+Created: ${created}
+Updated: ${updated}
+Errors: ${errs.length}
+ - ${first}`);
+        console.warn("bulk-upsert errors:", errs);
+      } else {
+        alert(`Saved to database successfully.
+Created: ${created}
+Updated: ${updated}`);
       }
-    });
+    } else {
+      alert("No rows with Item Code + Barcode to save. Proceeding to expand.");
+    }
+  } catch (e) {
+    console.error("Bulk upsert failed:", e);
+    alert(`Failed to save to database: ${e.message}`);
+    // continue navigation even if save fails
+  }
 
-    navigate("/utilities/barcode2/expanded", {
-      state: {
-        expanded,
-        fromRows: excelRows,
-        stored: initialRows,
-        totals: { qty: totals.qty },
-      },
-    });
-  };
+  // ====== proceed to expanded page (unchanged) ======
+  navigate("/utilities/barcode2/expanded", {
+    state: {
+      expanded,
+      fromRows: excelRows,
+      stored: initialRows,
+      totals: { qty: expanded.length },
+    },
+  });
+};
+
 
   return (
     <div className="sit-wrap confirm-page">
@@ -377,16 +426,16 @@ export default function BarcodePrintConfirmPage() {
                                 key === "itemCode"
                                   ? "Code"
                                   : key === "product"
-                                  ? "Product"
-                                  : key === "size"
-                                  ? "Size"
-                                  : key === "location"
-                                  ? "Location"
-                                  : key === "discount" || key === "salesPrice" || key === "mrp"
-                                  ? "0.00"
-                                  : key === "qty"
-                                  ? "0"
-                                  : "Barcode Number"
+                                    ? "Product"
+                                    : key === "size"
+                                      ? "Size"
+                                      : key === "location"
+                                        ? "Location"
+                                        : key === "discount" || key === "salesPrice" || key === "mrp"
+                                          ? "0.00"
+                                          : key === "qty"
+                                            ? "0"
+                                            : "Barcode Number"
                               }
                               inputMode={isNumber ? "decimal" : isCode ? "numeric" : "text"}
                             />
