@@ -1,5 +1,4 @@
-// src/components/BarcodePrintConfirmPage.jsx
-import React, { useMemo, useState, useCallback, useRef } from "react";
+import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/BarcodePrintConfirmPage.css";
 
@@ -22,6 +21,14 @@ const COLS = [
 const NUM_FIELDS = new Set(["discount", "salesPrice", "mrp", "qty"]);
 const asNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
+/* Keep uppercase A–Z, 0–9 and single hyphens, trim edge hyphens */
+const sanitizeCode = (v) =>
+  (v || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
 const makeRow = (id) => ({
   _id: id,
   itemCode: "",
@@ -39,10 +46,20 @@ export default function BarcodePrintConfirmPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // Only stored for reference (we keep the editor blank by default)
+  // If Image-1 passed prefilled rows, use them; otherwise start blank
   const initialRows = Array.isArray(state?.initialRows) ? state.initialRows : [];
 
-  const [excelRows, setExcelRows] = useState([]);
+  const [excelRows, setExcelRows] = useState(() =>
+    initialRows.length ? initialRows.map((r, i) => ({ _id: r._id ?? i + 1, ...r })) : [makeRow(1)]
+  );
+
+  useEffect(() => {
+    if (initialRows.length) {
+      setExcelRows(initialRows.map((r, i) => ({ _id: r._id ?? i + 1, ...r })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once to respect prefill while keeping rest of behavior intact
+
   const totals = useMemo(
     () => ({ qty: excelRows.reduce((s, r) => s + (Number(r.qty) || 0), 0) }),
     [excelRows]
@@ -79,7 +96,7 @@ export default function BarcodePrintConfirmPage() {
   const addRow = () => {
     setExcelRows((prev) => [...prev, makeRow((prev.at(-1)?._id || 0) + 1)]);
   };
-  const clearAll = () => setExcelRows([]);
+  const clearAll = () => setExcelRows([makeRow(1)]);
 
   const updateCell = (rowId, key, val) => {
     setExcelRows((prev) =>
@@ -127,7 +144,7 @@ export default function BarcodePrintConfirmPage() {
           let val = cells[c];
 
           if (key === "itemCode" || key === "barcodeNumber") {
-            val = (val || "").replace(/\D+/g, "");
+            val = sanitizeCode(val);
           } else if (key === "location") {
             const match = LOCATIONS.find((L) => L.toLowerCase() === String(val).toLowerCase());
             val = match || val;
@@ -223,9 +240,17 @@ export default function BarcodePrintConfirmPage() {
     const expanded = [];
     let sNo = 1;
 
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const makeBarcode = (code, idx) => `WS-${code}-${pad2(idx)}`;
+
     excelRows.forEach((r) => {
       const q = Math.max(0, Math.floor(Number(r.qty) || 0));
-      for (let i = 0; i < q; i++) {
+      const code = (r.itemCode || "").trim();
+
+      for (let i = 1; i <= q; i++) {
+        const shouldBarcode = code !== "" && code !== "0";
+        const barcode = shouldBarcode ? makeBarcode(code, i) : "";
+
         expanded.push({
           sNo: sNo++,
           itemCode: r.itemCode,
@@ -235,14 +260,19 @@ export default function BarcodePrintConfirmPage() {
           discount: Number(r.discount) || 0,
           salesPrice: Number(r.salesPrice) || 0,
           mrp: Number(r.mrp) || 0,
-          barcodeNumber: r.barcodeNumber || r.itemCode || "",
-          barcodeName: r.barcodeNumber || r.itemCode || "",
+          barcodeNumber: barcode,   // only for non-zero, non-empty item codes
+          barcodeName: barcode,
         });
       }
     });
 
     navigate("/utilities/barcode2/expanded", {
-      state: { expanded, fromRows: excelRows, stored: initialRows, totals: { qty: totals.qty } },
+      state: {
+        expanded,
+        fromRows: excelRows,
+        stored: initialRows,
+        totals: { qty: totals.qty },
+      },
     });
   };
 
@@ -252,8 +282,6 @@ export default function BarcodePrintConfirmPage() {
       <div className="sit-bc">
         <div className="sit-bc-left">
           <span className="sit-title">Barcode Print – Excel Mode</span>
-          {/* <span className="sit-sep">|</span> */}
-          {/* <span className="t-dim">Paste from Excel • Use arrows / Tab / Enter</span> */}
         </div>
         <div className="sit-home" aria-label="Home">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
@@ -283,10 +311,9 @@ export default function BarcodePrintConfirmPage() {
 
           <div
             className="sit-table-wrap confirm-narrow"
-            onPaste={onTablePaste}     // <— paste works even if wrapper is focused
+            onPaste={onTablePaste}     // paste works even if wrapper is focused
             tabIndex={0}               // allow wrapper to receive focus/paste
             onFocus={() => {
-              // If nothing focused yet, keep start at (0,0)
               if (excelRows.length === 0) ensureRows(1);
             }}
           >
@@ -309,9 +336,7 @@ export default function BarcodePrintConfirmPage() {
               <tbody>
                 {excelRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="t-dim" style={{ padding: "12px 8px" }}>
-                      {/* Click any cell or the table and press <b>Ctrl/Cmd+V</b> to paste a grid from Excel/Sheets. */}
-                    </td>
+                    <td colSpan={10} className="t-dim" style={{ padding: "12px 8px" }} />
                   </tr>
                 ) : (
                   excelRows.map((r, rowIdx) => (
@@ -321,8 +346,6 @@ export default function BarcodePrintConfirmPage() {
                       {COLS.map((key, colIdx) => {
                         const isCode = key === "itemCode" || key === "barcodeNumber";
                         const isNumber = NUM_FIELDS.has(key);
-
-                        // Location uses datalist (bulk paste friendly)
                         const isLocation = key === "location";
 
                         return (
@@ -335,8 +358,8 @@ export default function BarcodePrintConfirmPage() {
                               onFocus={() => setFocusPos({ row: rowIdx, col: colIdx })}
                               onChange={(e) => {
                                 let v = e.target.value;
-                                if (isCode) v = v.replace(/\D+/g, "");
-                                if (isNumber) v = v === "" ? "" : String(v); // let user type, conversion on blur
+                                if (isCode) v = sanitizeCode(v);
+                                if (isNumber) v = v === "" ? "" : String(v);
                                 updateCell(r._id, key, isNumber ? v : v);
                               }}
                               onBlur={(e) => {
