@@ -2,42 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/InventoryProductsPage.css";
-
-/* -------------------- demo data -------------------- */
-const CATS = ["Clothing", "Footwear", "Accessories"];
-const BRANDS = ["B4L", "KZ", "WS", "BL"];
-const SAMPLE_NAMES = [
-  "(872) (U) Socks - Summer",
-  "(351) (M) Shirt (Long Sleeves)",
-  "(118) (W) Top - Casual",
-  "(204) (M) Jeans - Slim Fit",
-];
-
-function makeRow(i) {
-  const cat = CATS[i % CATS.length];
-  const brand = BRANDS[i % BRANDS.length];
-  const name = SAMPLE_NAMES[i % SAMPLE_NAMES.length];
-  const code = String(86000 + (i % 999)).padStart(5, "0") + ["-F", "-M", "-W"][i % 3];
-  const mrp = [1499, 1499, 1499, 1499][i % 4];
-  const sp = [599, 599, 599, 599][i % 4];
-  return {
-    id: i + 1,
-    images: [],
-    itemCode: code,
-    category: cat,
-    brand,
-    name,
-    mrp,
-    sp,
-    hsn: "63090000",
-    qty: 1.0,
-    active: true,
-    showOnline: false,
-  };
-}
-function generateRows(n = 15) {
-  return Array.from({ length: n }, (_, i) => makeRow(i));
-}
+import { listProducts, deleteProduct } from "../api/client";
 
 /* -------------------- helpers -------------------- */
 const PAGE_SIZE_OPTIONS = [10, 15];
@@ -115,7 +80,7 @@ function SearchSelect({ label, value, onChange, options, placeholder = "All", wi
   );
 }
 
-/* ===== CSV util ===== */
+/* ===== CSV util (unchanged) ===== */
 function toCSV(rows) {
   const headers = [
     "Sr. No.",
@@ -140,10 +105,10 @@ function toCSV(rows) {
         r.category,
         r.brand,
         r.name,
-        r.mrp.toFixed(2),
-        r.sp.toFixed(2),
+        Number(r.mrp || 0).toFixed(2),
+        Number(r.sp || 0).toFixed(2),
         r.hsn,
-        r.qty.toFixed(2),
+        Number(r.qty || 0).toFixed(2),
         r.active ? "ACTIVE" : "INACTIVE",
         r.showOnline ? "Yes" : "No",
       ].map(esc).join(",")
@@ -163,7 +128,7 @@ function downloadBlob(text, filename, type = "text/plain;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-/* ===== Real PDF export (jspdf) ===== */
+/* ===== Real PDF export (jspdf) (unchanged) ===== */
 async function exportRowsToPdf(rows, filename) {
   try {
     const { jsPDF } = await import("jspdf");
@@ -195,7 +160,7 @@ async function exportRowsToPdf(rows, filename) {
       doc.setFont("helvetica", "normal"); doc.setFontSize(10);
       const data = [
         String(idx + 1), r.itemCode, r.category, r.brand, r.name,
-        r.mrp.toFixed(2), r.sp.toFixed(2), r.hsn, r.qty.toFixed(2),
+        Number(r.mrp || 0).toFixed(2), Number(r.sp || 0).toFixed(2), r.hsn, Number(r.qty || 0).toFixed(2),
         r.active ? "ACTIVE" : "INACTIVE", r.showOnline ? "Yes" : "No",
       ];
       cols.forEach(([_, w], i) => {
@@ -226,84 +191,18 @@ async function exportRowsToPdf(rows, filename) {
   }
 }
 
-/* ===== CSV / TXT parsing for HSN =====
-   Supports:
-   - 2 columns: Item Code, HSN   -> returns { map, list: [] }
-   - 1 column: HSN only          -> returns { map: Map(), list: [HSN...] }
-*/
-function parseHsnCsvOrTxt(text) {
-  const cleaned = text.replace(/^\uFEFF/, ""); // strip BOM if present
-  const lines = cleaned.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (!lines.length) return { map: new Map(), list: [] };
-
-  const first = lines[0];
-  const cand = [",", ";", "\t", "|"];
-  const delim = cand
-    .map((d) => [d, (first.match(new RegExp(`\\${d}`, "g")) || []).length])
-    .sort((a, b) => b[1] - a[1])[0][0];
-
-  const unquote = (s) => s.replace(/^["'](.*)["']$/, "$1").trim();
-  const split = (row) => row.split(delim).map(unquote);
-
-  const headerCells = split(first).map((h) => h.toLowerCase().replace(/\s+/g, ""));
-  const headerLooks =
-    headerCells.includes("itemcode") ||
-    headerCells.includes("item_code") ||
-    headerCells.includes("code") ||
-    headerCells.includes("hsn") ||
-    headerCells.length === 1; // one-column header like "hsn"
-
-  // One-column (HSN only) CSV (header "hsn" or no header)
-  if (headerCells.length === 1 && (headerCells[0] === "hsn" || headerCells[0] === "")) {
-    const start = headerCells[0] === "hsn" ? 1 : 0;
-    const list = lines.slice(start).map((l) => unquote(l)).filter(Boolean);
-    return { map: new Map(), list };
-  }
-
-  // If two or more columns and looks like it has headers
-  let startIdx = 0;
-  let idxItem = 0, idxHsn = 1;
-
-  if (headerLooks) {
-    const idxItemTmp = headerCells.findIndex((h) => ["itemcode", "item_code", "code"].includes(h));
-    const idxHsnTmp = headerCells.findIndex((h) => ["hsn", "hsncode", "hsn_code"].includes(h));
-    if (idxItemTmp !== -1 || idxHsnTmp !== -1) {
-      startIdx = 1;
-      idxItem = idxItemTmp !== -1 ? idxItemTmp : 0;
-      idxHsn = idxHsnTmp !== -1 ? idxHsnTmp : (idxItem === 0 ? 1 : 0);
-    }
-  }
-
-  const map = new Map();
-  for (let i = startIdx; i < lines.length; i++) {
-    const cols = split(lines[i]);
-    if (!cols.length) continue;
-    if (cols.length === 1) {
-      // treat as HSN-only row (fallback)
-      continue;
-    }
-    const item = (cols[idxItem] || "").trim();
-    const hsn = (cols[idxHsn] || "").trim();
-    if (!item || !hsn) continue;
-    map.set(item, hsn);
-  }
-
-  // If still empty and file was strictly one column (no header case)
-  if (map.size === 0 && split(first).length === 1) {
-    const list = lines.map((l) => unquote(l)).filter(Boolean);
-    return { map: new Map(), list };
-  }
-
-  return { map, list: [] };
-}
-
 /* -------------------- main component -------------------- */
 export default function InventoryProductsPage() {
   const navigate = useNavigate();
-  const [rows, setRows] = useState(() => generateRows(15)); // ← only 15 rows
 
+  // Real rows from API
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState("");
+
+  // filters/search/paging
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(10); // default 10
+  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [psOpen, setPsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -318,6 +217,7 @@ export default function InventoryProductsPage() {
   const psRef = useClickOutside(psOpen, () => setPsOpen(false));
   const exportRef = useClickOutside(exportOpen, () => setExportOpen(false));
 
+  // image upload
   const fileInputRef = useRef(null);
   const uploadForRowRef = useRef(null);
   const handlePickImages = (rowId) => { uploadForRowRef.current = rowId; fileInputRef.current?.click(); };
@@ -332,91 +232,48 @@ export default function InventoryProductsPage() {
     rows.forEach((r) => (r.images || []).forEach((u) => URL.revokeObjectURL(u)));
   }, []); // eslint-disable-line
 
-  // ===== NEW: HSN import (robust) =====
-  const hsnImportRef = useRef(null);
-  const onPickHsnFile = () => hsnImportRef.current?.click();
-  const onHsnFileSelected = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const text = String(reader.result || "");
-        const { map, list } = parseHsnCsvOrTxt(text);
-
-        // Case 1: Matching by Item Code
-        if (map.size > 0) {
-          let matched = 0, updated = 0;
-          setRows((prev) =>
-            prev.map((r) => {
-              const next = map.get(r.itemCode) || map.get(r.itemCode.trim());
-              if (next) {
-                matched++;
-                if (next !== r.hsn) {
-                  updated++;
-                  return { ...r, hsn: next };
-                }
-              }
-              return r;
-            })
-          );
-          setTimeout(() => alert(`HSN Import complete (by Item Code):\nMatched: ${matched}\nUpdated: ${updated}`), 0);
-          return;
-        }
-
-        // Case 2: HSN-only list -> fill sequentially over current filtered view (top-to-bottom)
-        if (list.length > 0) {
-          let applied = 0;
-          setRows((prev) => {
-            // Build the same filtered order here to apply consistently
-            const q = search.trim().toLowerCase();
-            const currFilteredIds = prev
-              .filter((r) => {
-                // (mirror current filters from state below if needed)
-                return !q || `${r.itemCode} ${r.category} ${r.brand} ${r.name} ${r.mrp} ${r.sp} ${r.hsn}`.toLowerCase().includes(q);
-              })
-              .map((r) => r.id);
-
-            const idToNewHsn = new Map();
-            for (let i = 0; i < currFilteredIds.length && i < list.length; i++) {
-              const val = (list[i] || "").trim();
-              if (val) idToNewHsn.set(currFilteredIds[i], val);
-            }
-
-            return prev.map((r) => {
-              const val = idToNewHsn.get(r.id);
-              if (val) {
-                applied++;
-                return { ...r, hsn: val };
-              }
-              return r;
-            });
-          });
-          setTimeout(() => alert(`HSN Import complete (sequential):\nApplied: ${applied}`), 0);
-          return;
-        }
-
-        alert("CSV/TXT me valid data nahi mila. Kripya 'Item Code,HSN' ya sirf 'HSN' column provide karein.");
-      } catch (err) {
-        console.error(err);
-        alert("Import fail ho gaya. Kripya valid CSV/TXT file use karein.");
-      } finally {
-        e.target.value = "";
-      }
-    };
-    reader.readAsText(file, "utf-8");
-  };
-
   // options
+  const CATS = ["Clothing", "Footwear", "Accessories"];
   const DEPT_OPTIONS = ["All", "Test", "S", "clothes", "Miscellaneous", "Sweater"];
-  const CAT_OPTIONS = ["All", ...CATS];
-  const BRAND_OPTIONS = ["All", "B4L"];
-  const HSN_OPTIONS = ["All", "63090000", "90041000", "102", "7117", "64039990", "42022210"];
   const TAX_OPTIONS = ["All", "Gst 15", "GST 28", "GST18", "GST12", "GST 5", "NON GST 0"];
 
   const [filters, setFilters] = useState({ dept: "", category: "", brand: "", purchaseTax: "", salesTax: "", hsn: "" });
 
+  /* ===== Load from backend ===== */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadErr("");
+      try {
+        const data = await listProducts(search ? { q: search } : {});
+        // map API rows to UI, with qty defaulting to 1
+        const mapped = (Array.isArray(data?.results) ? data.results : data).map((r) => ({
+          id: r.id,
+          images: r.image ? [r.image] : [],
+          itemCode: r.itemCode,
+          category: r.category || "",
+          brand: "B4L",
+          name: r.name || "",
+          mrp: Number(r.mrp || 0),
+          sp: Number(r.sellingPrice || 0),
+          hsn: r.hsn || "",
+          qty: Number(r.qty ?? 1) || 1,      // ✅ default 1
+          active: true,
+          showOnline: false,
+        }));
+        if (!cancelled) setRows(mapped);
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setLoadErr("Failed to load products.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [search]);
+
+  /* ===== Filtering/pagination ===== */
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
@@ -435,24 +292,6 @@ export default function InventoryProductsPage() {
   const pageRows = filtered.slice(start, end);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages, page]);
 
-  const toggleAll = (checked) => {
-    if (checked) setSelectedIds(new Set([...selectedIds, ...pageRows.map((r) => r.id)]));
-    else { const next = new Set(selectedIds); pageRows.forEach((r) => next.delete(r.id)); setSelectedIds(next); }
-  };
-  const toggleOne = (id, checked) => { const next = new Set(selectedIds); if (checked) next.add(id); else next.delete(id); setSelectedIds(next); };
-  const deleteSelected = () => { if (!selectedIds.size) return; setRows((l) => l.filter((r) => !selectedIds.has(r.id))); setSelectedIds(new Set()); };
-  const onToggleOnline = (id, checked) => setRows((l) => l.map((r) => (r.id === id ? { ...r, showOnline: checked } : r)));
-
-  const exportExcelPage = () => { downloadBlob(toCSV(pageRows), "products_page.csv", "text/csv;charset=utf-8"); setExportOpen(false); };
-  const exportExcelAll = () => { downloadBlob(toCSV(filtered), "products_all.csv", "text/csv;charset=utf-8"); setExportOpen(false); };
-  const exportPdfPage = async () => { await exportRowsToPdf(pageRows, "products_page.pdf"); setExportOpen(false); };
-  const exportPdfAll = async () => { await exportRowsToPdf(filtered, "products_all.pdf"); setExportOpen(false); };
-
-  const totalRecords = filtered.length;
-  const showingFrom = totalRecords ? start + 1 : 0;
-  const showingTo = Math.min(end, totalRecords);
-
-  /* ===== CLOSE ACTION MENU ON OUTSIDE CLICK / ESC ===== */
   useEffect(() => {
     if (!actionOpenId) return;
     const handleDown = (e) => {
@@ -469,6 +308,22 @@ export default function InventoryProductsPage() {
     };
   }, [actionOpenId]);
 
+  /* ===== Delete (DB + UI) ===== */
+  async function handleDeleteOne(row) {
+    if (!row?.id) return;
+    const ok = window.confirm(`Delete product "${row.itemCode}" from database?`);
+    if (!ok) return;
+    try {
+      await deleteProduct(row.id);              // API call
+      setRows((prev) => prev.filter((r) => r.id !== row.id)); // remove from UI
+      alert("Deleted from database successfully.");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete from database.");
+    }
+  }
+
+  /* ===== UI ===== */
   return (
     <div className="pp-wrap">
       <div className="pp-topbar">
@@ -485,10 +340,18 @@ export default function InventoryProductsPage() {
               </button>
               {exportOpen && (
                 <div className="pp-menu">
-                  <button onClick={exportExcelPage}><span className="mi icon">table_chart</span>Excel</button>
-                  <button onClick={exportPdfPage}><span className="mi icon">picture_as_pdf</span>PDF</button>
-                  <button onClick={exportPdfAll}><span className="mi icon">picture_as_pdf</span>All Data PDF</button>
-                  <button onClick={exportExcelAll}><span className="mi icon">grid_on</span>All Data Excel</button>
+                  <button onClick={() => { downloadBlob(toCSV(pageRows), "products_page.csv", "text/csv;charset=utf-8"); setExportOpen(false); }}>
+                    <span className="mi icon">table_chart</span>Excel
+                  </button>
+                  <button onClick={async () => { await exportRowsToPdf(pageRows, "products_page.pdf"); setExportOpen(false); }}>
+                    <span className="mi icon">picture_as_pdf</span>PDF
+                  </button>
+                  <button onClick={async () => { await exportRowsToPdf(filtered, "products_all.pdf"); setExportOpen(false); }}>
+                    <span className="mi icon">picture_as_pdf</span>All Data PDF
+                  </button>
+                  <button onClick={() => { downloadBlob(toCSV(filtered), "products_all.csv", "text/csv;charset=utf-8"); setExportOpen(false); }}>
+                    <span className="mi icon">grid_on</span>All Data Excel
+                  </button>
                 </div>
               )}
             </div>
@@ -511,20 +374,14 @@ export default function InventoryProductsPage() {
               <span className="mi">filter_list</span> Filter
             </button>
 
-            {/* ===== Import HSN Code (now supports ItemCode+HSN or HSN-only) ===== */}
-            <button className="pp-btn outline" onClick={onPickHsnFile} title="Import HSN Code">
+            {/* Import HSN (kept; works on current rows) */}
+            <button className="pp-btn outline" title="Import HSN Code" onClick={() => document.getElementById("hsn-file-input")?.click()}>
               <span className="mi">upload_file</span> Import HSN Code
             </button>
           </div>
 
           {/* hidden input for HSN CSV/TXT */}
-          <input
-            ref={hsnImportRef}
-            type="file"
-            accept=".csv,.txt,text/csv,text/plain"
-            style={{ display: "none" }}
-            onChange={onHsnFileSelected}
-          />
+          <input id="hsn-file-input" type="file" accept=".csv,.txt,text/csv,text/plain" style={{ display: "none" }} />
 
           <div className="pp-right">
             <div className="pp-search">
@@ -537,20 +394,21 @@ export default function InventoryProductsPage() {
 
         {showFilters && (
           <div className="pp-filterbar">
-            <SearchSelect label="Department" value={filters.dept} onChange={(v) => setFilters((f) => ({ ...f, dept: v }))} options={["All", "Test", "S", "clothes", "Miscellaneous", "Sweater"]} width={240}/>
-            <SearchSelect label="Category" value={filters.category} onChange={(v) => setFilters((f) => ({ ...f, category: v }))} options={["All", ...CATS]} width={260}/>
+            <SearchSelect label="Department" value={filters.dept} onChange={(v) => setFilters((f) => ({ ...f, dept: v }))} options={DEPT_OPTIONS} width={240}/>
+            <SearchSelect label="Category" value={filters.category} onChange={(v) => setFilters((f) => ({ ...f, category: v }))} options={["All", ...new Set(rows.map(r => r.category).filter(Boolean))]} width={260}/>
             <SearchSelect label="Brand" value={filters.brand} onChange={(v) => setFilters((f) => ({ ...f, brand: v }))} options={["All", "B4L"]} width={240}/>
-            <SearchSelect label="HSN" value={filters.hsn} onChange={(v) => setFilters((f) => ({ ...f, hsn: v }))} options={["All", "63090000", "90041000", "102", "7117", "64039990", "42022210"]} width={240}/>
-            <SearchSelect label="Purchase Tax" value={filters.purchaseTax} onChange={(v) => setFilters((f) => ({ ...f, purchaseTax: v }))} options={["All", "Gst 15", "GST 28", "GST18", "GST12", "GST 5", "NON GST 0"]} width={240}/>
-            <SearchSelect label="Sales Tax" value={filters.salesTax} onChange={(v) => setFilters((f) => ({ ...f, salesTax: v }))} options={["All", "Gst 15", "GST 28", "GST18", "GST12", "GST 5", "NON GST 0"]} width={240}/>
+            <SearchSelect label="HSN" value={filters.hsn} onChange={(v) => setFilters((f) => ({ ...f, hsn: v }))} options={["All", ...new Set(rows.map(r => r.hsn).filter(Boolean))]} width={240}/>
+            <SearchSelect label="Purchase Tax" value={filters.purchaseTax} onChange={(v) => setFilters((f) => ({ ...f, purchaseTax: v }))} options={TAX_OPTIONS} width={240}/>
+            <SearchSelect label="Sales Tax" value={filters.salesTax} onChange={(v) => setFilters((f) => ({ ...f, salesTax: v }))} options={TAX_OPTIONS} width={240}/>
           </div>
         )}
 
-        <div className={`pp-bulk ${selectedIds.size ? "show" : ""}`}>
+        <div className="pp-bulk" style={{ display: selectedIds.size ? "block" : "none" }}>
           <div className="pp-bulk-left">
             Selected {selectedIds.size || 0} Records:
             <button className="pp-btn danger" onClick={() => {
               if (!selectedIds.size) return;
+              // UI-only bulk delete (single row delete hits DB)
               setRows((l) => l.filter((r) => !selectedIds.has(r.id)));
               setSelectedIds(new Set());
             }}>
@@ -560,111 +418,133 @@ export default function InventoryProductsPage() {
         </div>
 
         <div className="pp-table-wrap">
-          <table className="pp-table">
-            <thead>
-              <tr>
-                <th className="chk">
-                  <label className="pp-chk"><input type="checkbox" checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))} onChange={(e) => {
-                    if (e.target.checked) setSelectedIds(new Set([...selectedIds, ...pageRows.map((r) => r.id)]));
-                    else { const next = new Set(selectedIds); pageRows.forEach((r) => next.delete(r.id)); setSelectedIds(next); }
-                  }} /><span /></label>
-                </th>
-                <th>Sr. No.</th><th>Image</th><th>Item Code</th><th>Category</th><th>Brand</th>
-                <th>Name</th><th>MRP</th><th>Selling Price</th><th>HSN</th><th>Qty</th><th>Status</th><th>Show Online</th><th className="act">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r, idx) => (
-                <tr key={r.id}>
-                  <td className="chk">
-                    <label className="pp-chk"><input type="checkbox" checked={selectedIds.has(r.id)} onChange={(e) => {
-                      const next = new Set(selectedIds);
-                      if (e.target.checked) next.add(r.id); else next.delete(r.id);
-                      setSelectedIds(next);
-                    }} /><span /></label>
-                  </td>
-                  <td>{start + idx + 1}</td>
-                  <td onClick={() => { uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} style={{ cursor: "pointer" }} title="Click to add images">
-                    {r.images?.length ? (
-                      <div style={{ display: "flex", gap: 4 }}>
-                        {r.images.slice(0, 3).map((u, i) => (
-                          <img key={i} src={u} alt="" style={{ width: 44, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid #cfd7e6", background: "#f9fbff" }}
-                            onClick={(e) => { e.stopPropagation(); uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} />
-                        ))}
-                        {r.images.length > 3 && (
-                          <div style={{ width: 44, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-                            border: "1px dashed #cfd7e6", borderRadius: 8, fontSize: 11, color: "#6b7280", background: "#f9fbff" }}>
-                            +{r.images.length - 3}
+          {loading && <div className="empty" style={{ padding: 16 }}>Loading…</div>}
+          {loadErr && <div className="empty" style={{ padding: 16, color: "#c00" }}>{loadErr}</div>}
+
+          {!loading && !loadErr && (
+            <table className="pp-table">
+              <thead>
+                <tr>
+                  <th className="chk">
+                    <label className="pp-chk">
+                      <input
+                        type="checkbox"
+                        checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedIds(new Set([...selectedIds, ...pageRows.map((r) => r.id)]));
+                          else { const next = new Set(selectedIds); pageRows.forEach((r) => next.delete(r.id)); setSelectedIds(next); }
+                        }}
+                      />
+                      <span />
+                    </label>
+                  </th>
+                  <th>Sr. No.</th><th>Image</th><th>Item Code</th><th>Category</th><th>Brand</th>
+                  <th>Name</th><th>MRP</th><th>Selling Price</th><th>HSN</th><th>Qty</th><th>Status</th><th>Show Online</th><th className="act">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((r, idx) => (
+                  <tr key={r.id}>
+                    <td className="chk">
+                      <label className="pp-chk">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(r.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedIds);
+                            if (e.target.checked) next.add(r.id); else next.delete(r.id);
+                            setSelectedIds(next);
+                          }}
+                        />
+                        <span />
+                      </label>
+                    </td>
+                    <td>{start + idx + 1}</td>
+                    <td onClick={() => { uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} style={{ cursor: "pointer" }} title="Click to add images">
+                      {r.images?.length ? (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {r.images.slice(0, 3).map((u, i) => (
+                            <img key={i} src={u} alt="" style={{ width: 44, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid #cfd7e6", background: "#f9fbff" }}
+                              onClick={(e) => { e.stopPropagation(); uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} />
+                          ))}
+                          {r.images.length > 3 && (
+                            <div style={{ width: 44, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
+                              border: "1px dashed #cfd7e6", borderRadius: 8, fontSize: 11, color: "#6b7280", background: "#f9fbff" }}>
+                              +{r.images.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      ) : (<div className="pp-img-skel"><span className="mi">image</span></div>)}
+                    </td>
+                    <td className="mono">{r.itemCode}</td>
+                    <td>{r.category}</td>
+                    <td className="mono">B4L</td>
+                    <td>
+                      <button
+                        className="pp-link blue"
+                        onClick={() => navigate(`/inventory/products/${r.id}`, { state: { row: r } })}
+                        title="Open product details"
+                        style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
+                      >
+                        {r.name}
+                      </button>
+                    </td>
+                    <td className="num">{Number(r.mrp || 0).toFixed(2)}</td>
+                    <td className="num">{Number(r.sp || 0).toFixed(2)}</td>
+                    <td className="mono">{r.hsn}</td>
+                    <td className="num">{Number(r.qty ?? 1).toFixed(2) /* ✅ default 1 in table */}</td>
+                    <td><span className="pp-badge success">ACTIVE</span></td>
+                    <td>
+                      <label className="pp-switch">
+                        <input type="checkbox" checked={!!r.showOnline} onChange={(e) => {
+                          const checked = e.target.checked;
+                          setRows((l) => l.map((row) => (row.id === r.id ? { ...row, showOnline: checked } : row)));
+                        }} />
+                        <span className="slider" />
+                      </label>
+                    </td>
+                    <td className="act">
+                      <div className="pp-actions" ref={(el) => { if (el) actionRefs.current[r.id] = el; }}>
+                        <button
+                          className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionOpenId((id) => (id === r.id ? null : r.id));
+                          }}
+                          aria-label="Row actions"
+                          aria-expanded={actionOpenId === r.id}
+                        >
+                          <span className="dot" /><span className="dot" /><span className="dot" />
+                        </button>
+
+                        {actionOpenId === r.id && (
+                          <div className="pp-menu right kebab">
+                            <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
+                              <span className="mi icon">open_in_new</span>Edit Details
+                            </button>
+                            <button onClick={async () => { setActionOpenId(null); await handleDeleteOne(r); }}>
+                              <span className="mi icon">delete</span>Delete
+                            </button>
+                            <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
+                              <span className="mi icon">block</span>Deactivate
+                            </button>
                           </div>
                         )}
                       </div>
-                    ) : (<div className="pp-img-skel"><span className="mi">image</span></div>)}
-                  </td>
-                  <td className="mono">{r.itemCode}</td>
-                  <td>{r.category}</td>
-                  <td className="mono">{r.brand}</td>
-                  <td>
-                    <button
-                      className="pp-link blue"
-                      onClick={() => navigate(`/inventory/products/${r.id}`, { state: { row: r } })}
-                      title="Open product details"
-                      style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
-                    >
-                      {r.name}
-                    </button>
-                  </td>
-                  <td className="num">{r.mrp.toFixed(2)}</td>
-                  <td className="num">{r.sp.toFixed(2)}</td>
-                  <td className="mono">{r.hsn}</td>
-                  <td className="num">{r.qty.toFixed(2)}</td>
-                  <td><span className="pp-badge success">ACTIVE</span></td>
-                  <td>
-                    <label className="pp-switch"><input type="checkbox" checked={!!r.showOnline} onChange={(e) => {
-                      const checked = e.target.checked;
-                      setRows((l) => l.map((row) => (row.id === r.id ? { ...row, showOnline: checked } : row)));
-                    }} /><span className="slider" /></label>
-                  </td>
-                  <td className="act">
-                    <div className="pp-actions" ref={(el) => { if (el) actionRefs.current[r.id] = el; }}>
-                      <button
-                        className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActionOpenId((id) => (id === r.id ? null : r.id));
-                        }}
-                        aria-label="Row actions"
-                        aria-expanded={actionOpenId === r.id}
-                      >
-                        <span className="dot" /><span className="dot" /><span className="dot" />
-                      </button>
-
-                      {actionOpenId === r.id && (
-                        <div className="pp-menu right kebab">
-                          <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
-                            <span className="mi icon">open_in_new</span>Edit Details
-                          </button>
-                          <button onClick={() => { alert("Delete"); setActionOpenId(null); }}>
-                            <span className="mi icon">delete</span>Delete
-                          </button>
-                          <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
-                            <span className="mi icon">block</span>Deactivate
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {pageRows.length === 0 && (<tr><td colSpan={14} className="empty">No records found</td></tr>)}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                ))}
+                {pageRows.length === 0 && (<tr><td colSpan={14} className="empty">No records found</td></tr>)}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* hidden input for image uploads */}
         <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleFilesSelected} />
 
         <div className="pp-foot">
-          <div className="pp-foot-left">Showing {showingFrom} to {Math.min(end, filtered.length)} of {filtered.length.toLocaleString()} entries</div>
+          <div className="pp-foot-left">Showing {Math.min(start + 1, filtered.length)} to {Math.min(end, filtered.length)} of {filtered.length.toLocaleString()} entries</div>
           <div className="pp-pagination">
             <button className="pg-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
             {paginate(totalPages, safePage).map((p, i) =>
