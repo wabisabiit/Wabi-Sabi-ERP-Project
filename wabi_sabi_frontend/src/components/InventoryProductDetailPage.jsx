@@ -1,4 +1,3 @@
-// src/components/ProductDetailPage.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import "../styles/InventoryProductDetailPage.css";
@@ -64,12 +63,13 @@ function useProductSeed() {
       ...fallback,
       id: r.id,
       itemCode: r.itemCode,
-      name: r.name,
+      name: r.name,                // ← from list row (Product.name or computed)
       brand: r.brand,
-      category: r.category,
+      category: r.category,        // ← from TaskMaster via mapper
       mrp: r.mrp,
       hsn: r.hsn,
-      // let pricing/other fallback fields keep their demo values
+      createdOn: r.createdOn || fallback.createdOn, // ← from Product table
+      // keep fallback pricing/other fields
     };
   }
   return fallback;
@@ -140,7 +140,6 @@ export default function ProductDetailPage() {
   const goToProducts = () => navigate("/inventory/products");
 
   const handleEdit = () => {
-    // Send current product forward to the merged Edit screen
     navigate(`/inventory/products/${seed.id || id}/edit`, {
       state: {
         row: {
@@ -152,7 +151,6 @@ export default function ProductDetailPage() {
           mrp: seed.pricing?.mrp ?? seed.mrp,
           hsn: seed.hsn,
         },
-        // a simple flag if your Edit page needs to show merged General+Pricing
         merged: true,
       },
       replace: false,
@@ -199,7 +197,6 @@ export default function ProductDetailPage() {
           <button className={tab === "barcode" ? "active" : ""} onClick={() => setTab("barcode")}>Multi Barcode</button>
 
           <div className="pd-actions">
-            {/* Removed Grid button as requested */}
             <button className="edit" title="Edit" onClick={handleEdit}>
               <span className="mi">edit</span>
             </button>
@@ -519,7 +516,7 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Product Delete Confirmation (top-right Delete) */}
+      {/* Product Delete Confirmation */}
       {productConfirmOpen && (
         <div className="confirm-overlay" role="dialog" aria-modal="true">
           <div className="confirm-card">

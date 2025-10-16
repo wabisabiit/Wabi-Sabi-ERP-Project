@@ -85,3 +85,7 @@
     border: 0;
   }
 }
+
+.num input{
+  width: 100px;
+}

@@ -37,9 +37,19 @@ export default function CartTable({ items = [] }) {
                   <td className="prod">{row.product}</td>
                   <td className="num">{qty}</td>
                   <td className="num">{money(row.mrp)}</td>
-                  <td className="num">{money(row.discount)}</td>
-                  <td className="num">{money(row.addDisc)}</td>
-                  <td className="num">{money(row.unitCost)}</td>
+
+                  {/* ── ONLY CHANGE: show a simple search input instead of '---' ── */}
+                  <td className="num">
+                    <input type="text" placeholder="..." />
+                  </td>
+                  <td className="num">
+                    <input type="text" placeholder="..." />
+                  </td>
+                  <td className="num">
+                    <input type="text" placeholder="..." />
+                  </td>
+                  {/* ────────────────────────────────────────────────────────────── */}
+
                   <td className="num">{money(lineAmount)}</td>
                 </tr>
               );

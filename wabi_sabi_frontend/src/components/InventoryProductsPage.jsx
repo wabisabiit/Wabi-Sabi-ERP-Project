@@ -1,4 +1,3 @@
-// src/components/InventoryProductsPage.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/InventoryProductsPage.css";
@@ -80,7 +79,7 @@ function SearchSelect({ label, value, onChange, options, placeholder = "All", wi
   );
 }
 
-/* ===== CSV util (unchanged) ===== */
+/* ===== CSV util ===== */
 function toCSV(rows) {
   const headers = [
     "Sr. No.",
@@ -128,7 +127,7 @@ function downloadBlob(text, filename, type = "text/plain;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-/* ===== Real PDF export (jspdf) (unchanged) ===== */
+/* ===== Real PDF export (jspdf) ===== */
 async function exportRowsToPdf(rows, filename) {
   try {
     const { jsPDF } = await import("jspdf");
@@ -233,7 +232,6 @@ export default function InventoryProductsPage() {
   }, []); // eslint-disable-line
 
   // options
-  const CATS = ["Clothing", "Footwear", "Accessories"];
   const DEPT_OPTIONS = ["All", "Test", "S", "clothes", "Miscellaneous", "Sweater"];
   const TAX_OPTIONS = ["All", "Gst 15", "GST 28", "GST18", "GST12", "GST 5", "NON GST 0"];
 
@@ -248,19 +246,29 @@ export default function InventoryProductsPage() {
       try {
         const data = await listProducts(search ? { q: search } : {});
         // map API rows to UI, with qty defaulting to 1
-        const mapped = (Array.isArray(data?.results) ? data.results : data).map((r) => ({
+        const list = Array.isArray(data?.results) ? data.results : data;
+        const mapped = list.map((r) => ({
           id: r.id,
           images: r.image ? [r.image] : [],
-          itemCode: r.itemCode,
-          category: r.category || "",
+          itemCode: r.itemCode || r.item_code || r.barcode || "",
+          // prefer TaskMaster category if available
+          category: r.task_item?.category || r.category || "",
           brand: "B4L",
-          name: r.name || "",
+          // prefer Product.name, else TaskItem names
+          name:
+            r.name ||
+            r.task_item?.item_print_friendly_name ||
+            r.task_item?.item_vasy_name ||
+            r.task_item?.item_full_name ||
+            "",
           mrp: Number(r.mrp || 0),
-          sp: Number(r.sellingPrice || 0),
-          hsn: r.hsn || "",
+          sp: Number(r.sellingPrice || r.selling_price || 0),
+          hsn: r.hsn || r.hsn_code || "",
           qty: Number(r.qty ?? 1) || 1,      // ✅ default 1
           active: true,
           showOnline: false,
+          // normalize created date coming from Product table
+          createdOn: r.created_on || r.created_at || r.createdOn || r.created || "",
         }));
         if (!cancelled) setRows(mapped);
       } catch (e) {
@@ -374,7 +382,6 @@ export default function InventoryProductsPage() {
               <span className="mi">filter_list</span> Filter
             </button>
 
-            {/* Import HSN (kept; works on current rows) */}
             <button className="pp-btn outline" title="Import HSN Code" onClick={() => document.getElementById("hsn-file-input")?.click()}>
               <span className="mi">upload_file</span> Import HSN Code
             </button>
@@ -492,7 +499,7 @@ export default function InventoryProductsPage() {
                     <td className="num">{Number(r.mrp || 0).toFixed(2)}</td>
                     <td className="num">{Number(r.sp || 0).toFixed(2)}</td>
                     <td className="mono">{r.hsn}</td>
-                    <td className="num">{Number(r.qty ?? 1).toFixed(2) /* ✅ default 1 in table */}</td>
+                    <td className="num">{Number(r.qty ?? 1).toFixed(2)}</td>
                     <td><span className="pp-badge success">ACTIVE</span></td>
                     <td>
                       <label className="pp-switch">
