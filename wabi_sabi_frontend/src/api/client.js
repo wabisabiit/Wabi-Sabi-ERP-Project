@@ -96,4 +96,34 @@ export default {
   getProduct,
   deleteProduct,
   upsertProductsFromBarcodes,
+  getProductByBarcode,
 };
+
+// src/api/client.js  (add this below the existing helpers/exports)
+
+/* ========= Product lookup by barcode (used by SearchBar) ========= */
+export async function getProductByBarcode(barcode) {
+  const url = `/products/by-barcode/${encodeURIComponent(barcode)}/`;
+  const data = await http(url);
+
+  // Map DRF response -> POS row needs
+  // DRF returns strings for decimals; convert to numbers safely
+  const mrpNum = Number(data?.mrp ?? 0);
+  const spNum  = Number(data?.selling_price ?? 0);
+
+  // Prefer print-friendly -> vasy -> full name
+  const vasyName =
+    data?.task_item?.item_print_friendly_name ||
+    data?.task_item?.item_vasy_name ||
+    data?.task_item?.item_full_name ||
+    "";
+
+  return {
+    id: data?.id,
+    barcode: data?.barcode || "",
+    mrp: Number.isFinite(mrpNum) ? mrpNum : 0,
+    sellingPrice: Number.isFinite(spNum) ? spNum : 0,
+    vasyName,
+  };
+}
+

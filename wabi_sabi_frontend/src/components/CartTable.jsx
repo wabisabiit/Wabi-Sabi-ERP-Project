@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import "../styles/CartTable.css";
 
+const money = (v) =>
+  typeof v === "number" && isFinite(v) ? `₹${v.toFixed(2)}` : "---";
+
 export default function CartTable({ items = [] }) {
   const [remarks, setRemarks] = useState("");
 
@@ -23,21 +26,26 @@ export default function CartTable({ items = [] }) {
 
         <tbody>
           {items.length > 0 ? (
-            items.map((row, idx) => (
-              <tr key={row.id || idx}>
-                <td>{idx + 1}</td>
-                <td>{row.itemcode}</td>
-                <td className="prod">{row.product}</td>
-                <td className="num">{row.qty}</td>
-                <td className="num">₹{row.mrp?.toFixed?.(2) ?? row.mrp}</td>
-                <td className="num">₹{row.discount?.toFixed?.(2) ?? row.discount}</td>
-                <td className="num">₹{row.addDisc?.toFixed?.(2) ?? row.addDisc}</td>
-                <td className="num">₹{row.unitCost?.toFixed?.(2) ?? row.unitCost}</td>
-                <td className="num">₹{row.netAmount?.toFixed?.(2) ?? row.netAmount}</td>
-              </tr>
-            ))
+            items.map((row, idx) => {
+              const qty = Number.isFinite(Number(row.qty)) ? Number(row.qty) : 1;
+              const lineAmount = (Number(row.netAmount) || 0) * qty;
+
+              return (
+                <tr key={row.id || idx}>
+                  <td>{idx + 1}</td>
+                  <td>{row.itemcode}</td>
+                  <td className="prod">{row.product}</td>
+                  <td className="num">{qty}</td>
+                  <td className="num">{money(row.mrp)}</td>
+                  <td className="num">{money(row.discount)}</td>
+                  <td className="num">{money(row.addDisc)}</td>
+                  <td className="num">{money(row.unitCost)}</td>
+                  <td className="num">{money(lineAmount)}</td>
+                </tr>
+              );
+            })
           ) : (
-            // ❗ second screenshot jaisa blank white area (no message)
+            // Empty white area (no text), like your reference screenshot
             <tr className="empty-spacer">
               <td colSpan={9} />
             </tr>
@@ -45,7 +53,7 @@ export default function CartTable({ items = [] }) {
         </tbody>
       </table>
 
-      {/* Remarks — bright blue border exactly like 2nd screenshot */}
+      {/* Remarks box with bright blue border */}
       <div className="remarks-wrap">
         <textarea
           className="remarks-input"

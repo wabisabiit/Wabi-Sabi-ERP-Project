@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import "../styles/SearchBar.css";
+import { getProductByBarcode } from "../api/client";
 
 const MOCK_CUSTOMERS = [
   { id: 1, name: "ishika", phone: "9131054736", address: "", verified: false },
@@ -8,7 +9,6 @@ const MOCK_CUSTOMERS = [
 ];
 
 function NewCustomerModal({ open, onClose, prefillName = "" }) {
-  // Prevent body scroll when modal is open
   useEffect(() => {
     if (open) document.body.classList.add("modal-open");
     else document.body.classList.remove("modal-open");
@@ -16,7 +16,6 @@ function NewCustomerModal({ open, onClose, prefillName = "" }) {
   }, [open]);
 
   if (!open) return null;
-
   const stop = (e) => e.stopPropagation();
 
   return (
@@ -60,7 +59,6 @@ function NewCustomerModal({ open, onClose, prefillName = "" }) {
           {/* Row 2 */}
           <div className="form-row">
             <div className="label-row"><label>Date Of Birth</label></div>
-            {/* text type keeps placeholder style like your target */}
             <input className="field" type="text" placeholder="Date Of Birth" />
           </div>
 
@@ -138,8 +136,9 @@ function NewCustomerModal({ open, onClose, prefillName = "" }) {
   );
 }
 
-export default function SearchBar() {
-  const [query, setQuery] = useState("");
+export default function SearchBar({ onAddItem }) {
+  const [scan, setScan] = useState("");          // <-- barcode input (left box)
+  const [query, setQuery] = useState("");        // walk-in customer box
   const [openDrop, setOpenDrop] = useState(false);
   const [matches, setMatches] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -173,10 +172,39 @@ export default function SearchBar() {
     setOpenDrop(false);
   };
 
+  const handleScanSubmit = useCallback(async () => {
+    const code = scan.trim();
+    if (!code) return;
+
+    try {
+      const p = await getProductByBarcode(code);
+      onAddItem?.(p);       // append to table
+      setScan("");          // clear field for next barcode
+    } catch (err) {
+      console.error(err);
+      // Optional: toast/snackbar
+      alert(`Not found: ${code}`);
+    }
+  }, [scan, onAddItem]);
+
   return (
     <div className="search-row">
       <div className="container search-bar">
-        <input className="scan" type="text" placeholder="Scan Barcode/Enter Product Name"/>
+        {/* LEFT: scan barcode / product name */}
+        <input
+          className="scan"
+          type="text"
+          placeholder="Scan Barcode/Enter Product Name"
+          value={scan}
+          onChange={(e) => setScan(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleScanSubmit();
+          }}
+          onBlur={(e) => {
+            // If users paste and click away, still try to add
+            if (e.target.value.trim()) handleScanSubmit();
+          }}
+        />
 
         {/* Walk in Customer */}
         <div className="customer-input" ref={wrapRef}>

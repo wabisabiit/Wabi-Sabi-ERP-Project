@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useMemo, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 /* ---------- Eager core (POS shell + sidebar) ---------- */
@@ -9,6 +9,7 @@ import CartTable from "./components/CartTable";
 import RightPanel from "./components/RightPanel";
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
+import PosPage from "./components/PosPage";
 
 /* Keep base styles LAST so they win the cascade */
 import "./App.css";
@@ -104,20 +105,48 @@ const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceC
 const BankEditPage = lazy(() => import("./components/BankEditPage"));
 
 /* ---------- Layouts ---------- */
+// ✅ REWIRED: POSLayout now manages cart state and passes props
 function POSLayout() {
+  const [items, setItems] = useState([]);
+
+  const handleAddItem = (p) => {
+    // p => { id, barcode, mrp, sellingPrice, vasyName }
+    const row = {
+      id: crypto.randomUUID?.() || `${p.id}-${Date.now()}`,
+      itemcode: p.barcode,            // itemcode IS barcode (from Product)
+      product: p.vasyName || "",      // vasy easy name (from TaskMaster)
+      qty: 1,                         // default 1
+      mrp: p.mrp,                     // price from products
+      discount: undefined,            // show as '---'
+      addDisc: undefined,             // show as '---'
+      unitCost: undefined,            // show as '---'
+      netAmount: p.sellingPrice ?? 0, // selling price from products
+    };
+    setItems((prev) => [...prev, row]);
+  };
+
+  const totals = useMemo(() => {
+    const totalQty = items.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const amount = items.reduce(
+      (s, r) => s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0),
+      0
+    );
+    return { totalQty, amount };
+  }, [items]);
+
   return (
     <div className="app">
       <Header />
-      <SearchBar />
+      <SearchBar onAddItem={handleAddItem} />
       <main className="main">
         <div className="left-section">
           <div className="table-wrap">
-            <CartTable />
+            <CartTable items={items} />
           </div>
         </div>
         <RightPanel />
       </main>
-      <Footer />
+      <Footer totalQty={totals.totalQty} amount={totals.amount} />
     </div>
   );
 }
@@ -151,6 +180,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/new" replace />} />
         <Route path="/new" element={<POSLayout />} />
+        <Route path="/pos" element={<PosPage />} />
 
         {/* Contact */}
         <Route path="/contact" element={<SidebarLayout><ContactPage /></SidebarLayout>} />
@@ -177,7 +207,7 @@ export default function App() {
         {/* Bank / Cash */}
         <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
         <Route path="/bank/:slug" element={<SidebarLayout><BankDetailPage /></SidebarLayout>} /> {/* ⬅️ NEW */}
-       <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />  {/* NEW */}
+        <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />  {/* NEW */}
         <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
         <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
         <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
