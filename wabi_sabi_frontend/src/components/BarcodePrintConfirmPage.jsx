@@ -2,12 +2,33 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/BarcodePrintConfirmPage.css";
-import { upsertProductsFromBarcodes } from "../api/client"; // ⬅️ NEW: import
+import { upsertProductsFromBarcodes } from "../api/client";
 
-/* Allowed short locations (case-insensitive match on paste) */
-const LOCATIONS = ["IC", "RJR", "RJO", "TN", "UP-AP", "M3M", "UV", "KN"];
+/* Backend helpers */
+const API = "http://127.0.0.1:8000/api";
 
-/* Column order used for paste/keyboard nav (S.No excluded) */
+async function fetchJSON(url, opts = {}) {
+  const res = await fetch(url, { credentials: "include", ...opts, headers: { "Content-Type": "application/json", ...(opts.headers || {}) } });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText} – ${text || "request failed"}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function listLocations() {
+  return fetchJSON(`${API}/locations/`);
+}
+
+async function printBarcodes(payload) {
+  return fetchJSON(`${API}/products/print-barcodes/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/* Column order for paste/keyboard nav (S.No excluded) */
 const COLS = [
   "itemCode",
   "product",
@@ -22,68 +43,38 @@ const COLS = [
 
 const NUM_FIELDS = new Set(["discount", "salesPrice", "mrp", "qty"]);
 const asNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-
-/* Keep uppercase A–Z, 0–9 and single hyphens, trim edge hyphens */
-const sanitizeCode = (v) =>
-  (v || "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-const makeRow = (id) => ({
-  _id: id,
-  itemCode: "",
-  product: "",
-  size: "",
-  location: "",
-  discount: 0,
-  salesPrice: 0,
-  mrp: 0,
-  qty: 0,
-  barcodeNumber: "",
-});
+const sanitizeCode = (v) => (v || "").toUpperCase().replace(/[^A-Z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+const makeRow = (id) => ({ _id: id, itemCode: "", product: "", size: "", location: "", discount: 0, salesPrice: 0, mrp: 0, qty: 0, barcodeNumber: "" });
 
 export default function BarcodePrintConfirmPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
-
-  // If Image-1 passed prefilled rows, use them; otherwise start blank
   const initialRows = Array.isArray(state?.initialRows) ? state.initialRows : [];
 
-  const [excelRows, setExcelRows] = useState(() =>
-    initialRows.length ? initialRows.map((r, i) => ({ _id: r._id ?? i + 1, ...r })) : [makeRow(1)]
-  );
+  const [excelRows, setExcelRows] = useState(() => (initialRows.length ? initialRows.map((r, i) => ({ _id: r._id ?? i + 1, ...r })) : [makeRow(1)]));
+  const [locations, setLocations] = useState([]);
 
   useEffect(() => {
-    if (initialRows.length) {
-      setExcelRows(initialRows.map((r, i) => ({ _id: r._id ?? i + 1, ...r })));
-    }
+    (async () => {
+      try {
+        const locs = await listLocations();
+        setLocations(locs);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to load locations.");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (initialRows.length) setExcelRows(initialRows.map((r, i) => ({ _id: r._id ?? i + 1, ...r })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once to respect prefill while keeping rest of behavior intact
+  }, []);
 
-  const totals = useMemo(
-    () => ({ qty: excelRows.reduce((s, r) => s + (Number(r.qty) || 0), 0) }),
-    [excelRows]
-  );
-
-  /* ===== Spreadsheet focus map ===== */
+  const totals = useMemo(() => ({ qty: excelRows.reduce((s, r) => s + (Number(r.qty) || 0), 0) }), [excelRows]);
   const cellRefs = useRef(new Map());
-  const setCellRef = (rowIdx, colKey) => (el) => {
-    if (!el) return;
-    cellRefs.current.set(`${rowIdx}-${colKey}`, el);
-  };
-
-  const [focusPos, setFocusPos] = useState({ row: 0, col: 0 }); // last focused cell (row/col index)
-  const focusCell = (rowIdx, colIdx) => {
-    const key = `${rowIdx}-${COLS[colIdx]}`;
-    const el = cellRefs.current.get(key);
-    if (el) {
-      el.focus();
-      el.select?.();
-    }
-    setFocusPos({ row: rowIdx, col: colIdx });
-  };
+  const setCellRef = (rowIdx, colKey) => (el) => { if (el) cellRefs.current.set(`${rowIdx}-${colKey}`, el); };
+  const [focusPos, setFocusPos] = useState({ row: 0, col: 0 });
 
   const ensureRows = (need) => {
     setExcelRows((prev) => {
@@ -95,20 +86,13 @@ export default function BarcodePrintConfirmPage() {
     });
   };
 
-  const addRow = () => {
-    setExcelRows((prev) => [...prev, makeRow((prev.at(-1)?._id || 0) + 1)]);
-  };
+  const addRow = () => setExcelRows((prev) => [...prev, makeRow((prev.at(-1)?._id || 0) + 1)]);
   const clearAll = () => setExcelRows([makeRow(1)]);
 
   const updateCell = (rowId, key, val) => {
-    setExcelRows((prev) =>
-      prev.map((r) =>
-        r._id === rowId ? { ...r, [key]: NUM_FIELDS.has(key) ? asNum(val) : val } : r
-      )
-    );
+    setExcelRows((prev) => prev.map((r) => (r._id === rowId ? { ...r, [key]: NUM_FIELDS.has(key) ? asNum(val) : val } : r)));
   };
 
-  /* ===== Bulk paste helpers ===== */
   const parseGrid = (text) => {
     const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trimEnd().split("\n");
     return lines
@@ -120,7 +104,6 @@ export default function BarcodePrintConfirmPage() {
       .filter((row) => row.some((c) => c !== ""));
   };
 
-  /** Paste a grid starting at [startRowIndex, startColKey] */
   const pasteGridAt = useCallback((text, startRowIndex, startColKey) => {
     const grid = parseGrid(text);
     if (!grid.length) return;
@@ -130,8 +113,6 @@ export default function BarcodePrintConfirmPage() {
 
     setExcelRows((prev) => {
       let rows = [...prev];
-
-      // ensure enough rows
       const targetLen = startRowIndex + grid.length;
       let id = (rows.at(-1)?._id || 0) + 1;
       while (rows.length < targetLen) rows.push(makeRow(id++));
@@ -148,8 +129,8 @@ export default function BarcodePrintConfirmPage() {
           if (key === "itemCode" || key === "barcodeNumber") {
             val = sanitizeCode(val);
           } else if (key === "location") {
-            const match = LOCATIONS.find((L) => L.toLowerCase() === String(val).toLowerCase());
-            val = match || val;
+            const match = (locations || []).find((L) => L.code.toLowerCase() === String(val).toLowerCase());
+            val = match ? match.code : val;
           } else if (NUM_FIELDS.has(key)) {
             val = asNum(val);
           }
@@ -159,38 +140,36 @@ export default function BarcodePrintConfirmPage() {
       }
       return rows;
     });
-  }, []);
+  }, [locations]);
 
-  /** Cell onPaste: if text looks like a grid, consume it here */
-  const onCellPaste = (e, rowIdx, colKey) => {
+  const onCellPaste = (e, rowIdx, key) => {
     const txt = e.clipboardData?.getData("text/plain") ?? "";
-    const looksGrid =
-      txt.includes("\n") || txt.includes("\t") || (txt.includes(",") && txt.split(",").length > 1);
+    const looksGrid = txt.includes("\n") || txt.includes("\t") || (txt.includes(",") && txt.split(",").length > 1);
     if (looksGrid) {
       e.preventDefault();
-      pasteGridAt(txt, rowIdx, colKey);
+      pasteGridAt(txt, rowIdx, key);
     }
   };
 
-  /** Table-level paste: works even if the table (not input) is focused */
   const onTablePaste = (e) => {
     const txt = e.clipboardData?.getData("text/plain") ?? "";
     if (!txt) return;
-    const { row, col } = focusPos;
-    // If nothing focused yet, paste from first row/first col
-    const startRow = Math.max(0, row) || 0;
-    const startColKey = COLS[Math.max(0, col) || 0];
+    const startRow = Math.max(0, focusPos.row) || 0;
+    const startColKey = COLS[Math.max(0, focusPos.col) || 0];
     e.preventDefault();
     pasteGridAt(txt, startRow, startColKey);
   };
 
-  /* ===== Keyboard navigation like Excel ===== */
   const handleKeyDown = (e, rowIdx, colIdx) => {
     const lastCol = COLS.length - 1;
-
     const go = (r, c) => {
       if (r >= excelRows.length) ensureRows(r + 1);
-      requestAnimationFrame(() => focusCell(r, c));
+      requestAnimationFrame(() => {
+        const key = `${r}-${COLS[c]}`;
+        const el = cellRefs.current.get(key);
+        el?.focus();
+        el?.select?.();
+      });
     };
 
     if (e.key === "Enter") {
@@ -198,136 +177,133 @@ export default function BarcodePrintConfirmPage() {
       const nextC = colIdx === lastCol ? 0 : colIdx + 1;
       const nextR = colIdx === lastCol ? rowIdx + 1 : rowIdx;
       go(nextR, nextC);
-      return;
-    }
-    if (e.key === "Tab") {
+    } else if (e.key === "Tab") {
       e.preventDefault();
       const dir = e.shiftKey ? -1 : 1;
       let c = colIdx + dir;
       let r = rowIdx;
-      if (c < 0) {
-        c = lastCol;
-        r = Math.max(0, r - 1);
-      } else if (c > lastCol) {
-        c = 0;
-        r = r + 1;
-      }
+      if (c < 0) { c = lastCol; r = Math.max(0, r - 1); }
+      else if (c > lastCol) { c = 0; r = r + 1; }
       go(r, c);
-      return;
-    }
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      go(rowIdx, Math.min(lastCol, colIdx + 1));
-      return;
-    }
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      go(rowIdx, Math.max(0, colIdx - 1));
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      go(rowIdx + 1, colIdx);
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      go(Math.max(0, rowIdx - 1), colIdx);
-      return;
-    }
+    } else if (e.key === "ArrowRight") { e.preventDefault(); go(rowIdx, Math.min(lastCol, colIdx + 1)); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); go(rowIdx, Math.max(0, colIdx - 1)); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); go(rowIdx + 1, colIdx); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); go(Math.max(0, rowIdx - 1), colIdx); }
   };
 
-  /* ===== Expand → third page ===== */
-  // inside BarcodePrintConfirmPage.jsx
-const expandAndNavigate = async () => {
-  const expanded = [];
-  let sNo = 1;
+  /* ===== Expand → save to DB → create STF ===== */
+  const expandAndNavigate = async () => {
+    const expanded = [];
+    let sNo = 1;
 
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const makeBarcode = (code, idx) => `WS-${code}-${pad2(idx)}`;
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const makeBarcode = (code, idx) => `WS-${code}-${pad2(idx)}`;
 
-  excelRows.forEach((r) => {
-    const q = Math.max(0, Math.floor(Number(r.qty) || 0));
-    const code = (r.itemCode || "").trim();
+    excelRows.forEach((r) => {
+      const q = Math.max(0, Math.floor(Number(r.qty) || 0));
+      const code = (r.itemCode || "").trim();
+      for (let i = 1; i <= q; i++) {
+        const shouldBarcode = code !== "" && code !== "0";
+        const barcode = shouldBarcode ? makeBarcode(code, i) : "";
+        expanded.push({
+          sNo: sNo++,
+          itemCode: r.itemCode,
+          product: r.product,
+          size: r.size,
+          location: r.location, // code like RJO
+          discount: Number(r.discount) || 0,
+          salesPrice: Number(r.salesPrice) || 0,
+          mrp: Number(r.mrp) || 0,
+          barcodeNumber: barcode,
+          barcodeName: barcode,
+        });
+      }
+    });
 
-    for (let i = 1; i <= q; i++) {
-      const shouldBarcode = code !== "" && code !== "0";
-      const barcode = shouldBarcode ? makeBarcode(code, i) : "";
+    try {
+      const payload = expanded
+        .filter((r) => r.itemCode && r.itemCode !== "0" && r.barcodeNumber)
+        .map((r) => ({
+          itemCode: String(r.itemCode).trim(),
+          barcodeNumber: String(r.barcodeNumber).trim(),
+          salesPrice: Number(r.salesPrice) || 0,
+          mrp: Number(r.mrp) || 0,
+          size: (r.size || "").trim(),
+          imageUrl: r.imageUrl || "",
+          qty: 1,
+          discountPercent: Number(r.discount) || 0,
+        }));
 
-      expanded.push({
-        sNo: sNo++,
-        itemCode: r.itemCode,
-        product: r.product,
-        size: r.size,
-        location: r.location,
-        discount: Number(r.discount) || 0,
-        // keep these as raw numbers (no currency formatting)
-        salesPrice: Number(r.salesPrice) || 0,   // discounted
-        mrp: Number(r.mrp) || 0,                 // original price from Image-1
-        barcodeNumber: barcode,
-        barcodeName: barcode,
-      });
-    }
-  });
-
-  // ====== SAVE ALL expanded labels to DB ======
-  try {
-    const payload = expanded
-      .filter((r) => r.itemCode && r.itemCode !== "0" && r.barcodeNumber)
-      .map((r) => ({
-        itemCode: String(r.itemCode).trim(),
-        barcodeNumber: String(r.barcodeNumber).trim(),
-        salesPrice: Number(r.salesPrice) || 0,
-        mrp: Number(r.mrp) || 0,
-        size: (r.size || "").trim(),
-        imageUrl: r.imageUrl || "",
-        qty: 1,                                  // ✅ one per physical barcode
-        discountPercent: Number(r.discount) || 0 // ✅ same discount as Image-1
-      }));
-
-    if (payload.length) {
-      const res = await upsertProductsFromBarcodes(payload);
-      const created = res?.created ?? 0;
-      const updated = res?.updated ?? 0;
-      const errs = Array.isArray(res?.errors) ? res.errors : [];
-      if (errs.length) {
-        // show first few error lines to debug quickly
-        const first = errs.slice(0, 5).join("\n - ");
-        alert(`Saved with issues:
+      if (payload.length) {
+        const res = await upsertProductsFromBarcodes(payload);
+        const created = res?.created ?? 0;
+        const updated = res?.updated ?? 0;
+        const errs = Array.isArray(res?.errors) ? res.errors : [];
+        if (errs.length) {
+          alert(`Saved with issues:
 Created: ${created}
 Updated: ${updated}
-Errors: ${errs.length}
- - ${first}`);
-        console.warn("bulk-upsert errors:", errs);
-      } else {
-        alert(`Saved to database successfully.
+Errors: ${errs.length}\n - ${errs.slice(0, 5).join("\n - ")}`);
+          console.warn("bulk-upsert errors:", errs);
+        } else {
+          alert(`Saved to database successfully.
 Created: ${created}
 Updated: ${updated}`);
+        }
+      } else {
+        alert("No rows with Item Code + Barcode to save. Proceeding to expand.");
       }
-    } else {
-      alert("No rows with Item Code + Barcode to save. Proceeding to expand.");
+    } catch (e) {
+      console.error("Bulk upsert failed:", e);
+      alert(`Failed to save to database: ${e.message}`);
     }
-  } catch (e) {
-    console.error("Bulk upsert failed:", e);
-    alert(`Failed to save to database: ${e.message}`);
-    // continue navigation even if save fails
-  }
 
-  // ====== proceed to expanded page (unchanged) ======
-  navigate("/utilities/barcode2/expanded", {
-    state: {
-      expanded,
-      fromRows: excelRows,
-      stored: initialRows,
-      totals: { qty: expanded.length },
-    },
-  });
-};
+    /* ---- Create Stock Transfer(s) by location ---- */
+    try {
+      // group barcodes by location (to_location_code)
+      const byLoc = new Map();
+      for (const r of expanded) {
+        if (!r.location || !r.barcodeNumber) continue;
+        if (!byLoc.has(r.location)) byLoc.set(r.location, []);
+        byLoc.get(r.location).push(r.barcodeNumber);
+      }
 
+      const createdAt = new Date().toISOString(); // or pass your barcode creation datetime
+      const results = [];
+
+      for (const [loc, barcodes] of byLoc.entries()) {
+        const resp = await printBarcodes({
+          to_location_code: loc,
+          barcodes,
+          created_at: createdAt,
+          note: "Auto from Expand",
+        });
+        results.push(resp?.stf_number);
+      }
+
+      if (results.length) {
+        alert(`Stock Transfer created: \n${results.join("\n")}`);
+      } else {
+        alert("No stock transfer created (no location or barcodes).");
+      }
+    } catch (e) {
+      console.error("STF create failed:", e);
+      alert(`Failed to create Stock Transfer: ${e.message}`);
+    }
+
+    // Proceed to expanded page (your existing flow)
+    navigate("/utilities/barcode2/expanded", {
+      state: {
+        expanded,
+        fromRows: excelRows,
+        stored: initialRows,
+        totals: { qty: expanded.length },
+      },
+    });
+  };
 
   return (
     <div className="sit-wrap confirm-page">
-      {/* Top bar — one line tip */}
       <div className="sit-bc">
         <div className="sit-bc-left">
           <span className="sit-title">Barcode Print – Excel Mode</span>
@@ -340,7 +316,6 @@ Updated: ${updated}`);
       </div>
 
       <div className="sit-card confirm-grid">
-        {/* Minimal sidebar */}
         <aside className="confirm-side">
           <div className="side-box">
             <div className="side-title">Quick Actions</div>
@@ -349,22 +324,18 @@ Updated: ${updated}`);
           </div>
         </aside>
 
-        {/* Main: Excel-like table (captures table-level paste) */}
         <div className="confirm-main">
-          {/* datalist for locations (so inputs behave like select but allow bulk paste) */}
           <datalist id="locations">
-            {LOCATIONS.map((loc) => (
-              <option key={loc} value={loc} />
+            {(locations || []).map((loc) => (
+              <option key={loc.code} value={loc.code} />
             ))}
           </datalist>
 
           <div
             className="sit-table-wrap confirm-narrow"
-            onPaste={onTablePaste}     // paste works even if wrapper is focused
-            tabIndex={0}               // allow wrapper to receive focus/paste
-            onFocus={() => {
-              if (excelRows.length === 0) ensureRows(1);
-            }}
+            onPaste={onTablePaste}
+            tabIndex={0}
+            onFocus={() => { if (excelRows.length === 0) ensureRows(1); }}
           >
             <table className="sit-table confirm-table">
               <thead>
@@ -391,12 +362,10 @@ Updated: ${updated}`);
                   excelRows.map((r, rowIdx) => (
                     <tr key={r._id}>
                       <td className="t-right">{rowIdx + 1}</td>
-
                       {COLS.map((key, colIdx) => {
                         const isCode = key === "itemCode" || key === "barcodeNumber";
                         const isNumber = NUM_FIELDS.has(key);
                         const isLocation = key === "location";
-
                         return (
                           <td key={key}>
                             <input
@@ -409,16 +378,11 @@ Updated: ${updated}`);
                                 let v = e.target.value;
                                 if (isCode) v = sanitizeCode(v);
                                 if (isNumber) v = v === "" ? "" : String(v);
-                                updateCell(r._id, key, isNumber ? v : v);
-                              }}
-                              onBlur={(e) => {
-                                if (isNumber) updateCell(r._id, key, asNum(e.target.value));
                                 if (isLocation) {
-                                  const match = LOCATIONS.find(
-                                    (L) => L.toLowerCase() === e.target.value.toLowerCase()
-                                  );
-                                  if (match) updateCell(r._id, key, match);
+                                  const match = (locations || []).find((L) => L.code.toLowerCase() === v.toLowerCase());
+                                  if (match) v = match.code;
                                 }
+                                updateCell(r._id, key, isNumber ? asNum(v) : v);
                               }}
                               onPaste={(e) => onCellPaste(e, rowIdx, key)}
                               onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
@@ -449,7 +413,6 @@ Updated: ${updated}`);
             </table>
           </div>
 
-          {/* Equal-width actions */}
           <div className="sit-actions confirm-actions equal-actions">
             <button type="button" className="btn btn-outline" onClick={() => navigate(-1)}>
               Back

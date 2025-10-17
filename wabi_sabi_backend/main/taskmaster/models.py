@@ -32,3 +32,15 @@ class TaskItem(models.Model):
 
     def __str__(self):
         return f"{self.item_code} — {self.item_full_name or 'Unnamed'}"
+
+
+# --- ADD: Location master (append, do not modify TaskItem) ---
+class Location(models.Model):
+    code = models.CharField(max_length=16, unique=True)   # e.g. "HQ", "WS"
+    name = models.CharField(max_length=64)
+
+    class Meta:
+        ordering = ["code"]
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"

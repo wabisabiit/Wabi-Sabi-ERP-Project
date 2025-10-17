@@ -70,6 +70,30 @@ export async function listProducts(params = {}) {
   return http(`/products/${search ? `?${search}` : ""}`);
 }
 
+// <------------------------17-10-2025------------->
+
+// Locations
+export async function listLocations() {
+  return http(`/locations/`);
+}
+
+// Transfers
+export async function listTransfers(params = {}) {
+  const search = new URLSearchParams(params).toString();
+  return http(`/products/transfers/${search ? `?${search}` : ""}`);
+}
+
+export async function getTransfer(number) {
+  return http(`/products/transfers/${encodeURIComponent(number)}/`);
+}
+
+export async function deleteTransfer(number) {
+  return http(`/products/transfers/${encodeURIComponent(number)}/delete/`, { method: "DELETE" });
+}
+
+
+// <------------------------17-10-2025------------->
+
 export async function getProduct(id) {
   return http(`/products/${id}/`);
 }
@@ -89,6 +113,16 @@ export async function upsertProductsFromBarcodes(rows) {
   });
 }
 
+// ⬇️ put this near the other transfer APIs
+export async function printBarcodes(payload) {
+  // payload = { to_location_code: "RJO", barcodes: ["WS-100-01", ...], created_at?, note? }
+  return http(`/products/print-barcodes/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+
 /* ========= Optional convenience default export ========= */
 export default {
   getItemByCode,
@@ -97,6 +131,12 @@ export default {
   deleteProduct,
   upsertProductsFromBarcodes,
   getProductByBarcode,
+
+  listLocations,
+  listTransfers,
+  getTransfer,
+  deleteTransfer,
+  printBarcodes,
 };
 
 // src/api/client.js  (add this below the existing helpers/exports)

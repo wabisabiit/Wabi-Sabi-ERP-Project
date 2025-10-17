@@ -1,9 +1,12 @@
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.response import Response
 
-from .models import TaskItem
+
+from .models import TaskItem,Location
 from .serializers import TaskItemSerializer
 
 class TaskItemViewSet(viewsets.ModelViewSet):
@@ -22,3 +25,13 @@ class TaskItemViewSet(viewsets.ModelViewSet):
     search_fields = ["item_code", "item_full_name", "item_vasy_name", "item_print_friendly_name"]
     ordering_fields = ["item_code", "category", "department", "gst", "created_at"]
     ordering = ["item_code"]
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def locations_list(request):
+    """
+    GET /api/locations/
+    Returns [{code, name}, ...]
+    """
+    rows = list(Location.objects.order_by("code").values("code","name"))
+    return Response(rows)

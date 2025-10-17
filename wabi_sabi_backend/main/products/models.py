@@ -2,7 +2,7 @@ from django.db import models
 
 # Create your models here.
 from django.db import models
-from taskmaster.models import TaskItem   # <-- your TaskItem
+from taskmaster.models import TaskItem,Location   # <-- your TaskItem
 
 class Product(models.Model):
     """
@@ -42,3 +42,31 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.barcode} -> {self.task_item_id}"
+
+class StockTransfer(models.Model):
+    number = models.CharField(max_length=32, unique=True, db_index=True)  # e.g. STF/WS/0001
+    from_location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="stf_out")
+    to_location   = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="stf_in")
+    created_at    = models.DateTimeField()
+    note          = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at", "number"]
+
+    def __str__(self):
+        return self.number
+
+
+class StockTransferLine(models.Model):
+    transfer = models.ForeignKey(StockTransfer, on_delete=models.CASCADE, related_name="lines")
+    product  = models.ForeignKey('Product', on_delete=models.PROTECT)
+    qty      = models.PositiveIntegerField(default=1)
+
+    # denormalized for fast reporting
+    barcode  = models.CharField(max_length=64, db_index=True)
+    mrp      = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    sp       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        indexes = [models.Index(fields=["barcode"])]
+        ordering = ["barcode"]

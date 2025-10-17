@@ -1,10 +1,16 @@
+// src/components/BarcodeUtility2Page.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/BarcodeUtility2Page.css";
 import { getItemByCode } from "../api/client";
 
-/* ---------------- Location options (short names only) ---------------- */
-const LOCATIONS = ["IC", "RJR", "RJO", "TN", "UP-AP", "M3M", "UV", "KN"];
+/* ---------------- Backend locations ---------------- */
+const API = "http://127.0.0.1:8000/api";
+async function listLocations() {
+  const res = await fetch(`${API}/locations/`, { credentials: "include" });
+  if (!res.ok) throw new Error("Failed to load locations");
+  return res.json(); // [{code,name}]
+}
 
 /* ---------------- Seed rows ---------------- */
 const INIT_ROWS = [
@@ -20,20 +26,9 @@ const INIT_ROWS = [
 
 const STORAGE_KEY = "barcode2_rows_v1";
 
-/* ---------------- Code sanitizers ----------------
-   Loose: allow trailing '-' while typing (so user can type '100-' then '100-W')
-   Strict: trim only leading/trailing '-' on commit (blur/lookup/submit)
---------------------------------------------------*/
-const sanitizeCodeLoose = (v) =>
-  (v || "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]/g, "")
-    .replace(/-+/g, "-");
-
-const sanitizeCodeStrict = (v) =>
-  sanitizeCodeLoose(v).replace(/^-|-$/g, "");
-
-/* -------- numbers: keep strings in state; convert only when needed -------- */
+/* ---------------- Code sanitizers ---------------- */
+const sanitizeCodeLoose = (v) => (v || "").toUpperCase().replace(/[^A-Z0-9-]/g, "").replace(/-+/g, "-");
+const sanitizeCodeStrict = (v) => sanitizeCodeLoose(v).replace(/^-|-$/g, "");
 const toNum = (v) => (v === "" || v == null ? 0 : Number(v));
 
 /* ------------- API lookup helper ------------- */
@@ -42,7 +37,7 @@ async function lookupAndFill(rowId, code, rows, persist) {
   if (!clean) return;
 
   try {
-    const data = await getItemByCode(clean); // must return exact item for '100' or '100-W'
+    const data = await getItemByCode(clean);
     const name =
       data?.product_name ??
       data?.full_name ??
@@ -50,12 +45,9 @@ async function lookupAndFill(rowId, code, rows, persist) {
       data?.item?.name ??
       "";
 
-    const next = rows.map((r) =>
-      r.id === rowId ? { ...r, itemCode: clean, product: name } : r
-    );
+    const next = rows.map((r) => (r.id === rowId ? { ...r, itemCode: clean, product: name } : r));
     persist(next);
-  } catch (err) {
-    console.warn("lookup failed:", err);
+  } catch {
     const next = rows.map((r) => (r.id === rowId ? { ...r, itemCode: clean } : r));
     persist(next);
   }
@@ -64,8 +56,8 @@ async function lookupAndFill(rowId, code, rows, persist) {
 export default function BarcodeUtility2Page({ title = "Common Barcode Printing" }) {
   const navigate = useNavigate();
 
-  /* ---- state + localStorage hydration ---- */
   const [rows, setRows] = useState(INIT_ROWS);
+  const [locations, setLocations] = useState([]); // [{code,name}]
 
   useEffect(() => {
     try {
@@ -77,21 +69,33 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
     } catch {}
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const locs = await listLocations();
+        setLocations(locs);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to load locations.");
+      }
+    })();
+  }, []);
+
   const persist = (next) => {
     setRows(next);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {}
   };
 
-  /* ---- keep a ref for debounced lookups ---- */
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
-  const debouncersRef = useRef({}); // { [rowId]: timeoutId }
+  const debouncersRef = useRef({});
   const scheduleLookup = (rowId, code) => {
     const raw = sanitizeCodeLoose(code);
-    if (!raw || /-$/.test(raw)) return; // skip while user is mid-typing a trailing '-'
+    if (!raw || /-$/.test(raw)) return;
     const clean = sanitizeCodeStrict(raw);
-
     const timers = debouncersRef.current;
     if (timers[rowId]) clearTimeout(timers[rowId]);
     timers[rowId] = setTimeout(() => {
@@ -99,7 +103,6 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
     }, 500);
   };
 
-  /* ---- pagination ---- */
   const [page, setPage] = useState(1);
   const rowsPerPage = 5;
   const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
@@ -112,18 +115,13 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
     setSelected((prev) => pageRows.find((r) => r.id === prev?.id) || pageRows[0] || rows[0]);
   }, [pageRows, rows]);
 
-  /* ---- handlers ---- */
   const handleChange = (id, field, value) => {
-    const next = rows.map((r) =>
-      r.id === id ? { ...r, [field]: value } : r
-    );
+    const next = rows.map((r) => (r.id === id ? { ...r, [field]: value } : r));
     persist(next);
-
     if (field === "itemCode") scheduleLookup(id, value);
   };
 
   const handleSubmit = () => {
-    // Normalize numbers and compute total fields
     const normalized = rows.map((r) => {
       const sp = toNum(r.sp);
       const discount = toNum(r.discount);
@@ -137,16 +135,13 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
         sp,
         discount,
         qty,
-        // % discount on Selling Price
         salesPrice: Math.max(0, sp - (sp * (discount / 100))),
         barcodeName: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
       };
     });
 
-    // Keep only rows where itemCode is not "0" or empty
     const filtered = normalized.filter((r) => r.itemCode && r.itemCode !== "0");
 
-    // Validate required fields for the filtered rows
     const problems = [];
     filtered.forEach((r, idx) => {
       const rowNo = idx + 1;
@@ -162,13 +157,12 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
       return;
     }
 
-    // Prepare rows for Image-2 (confirm) page with WS-{code}-01
     const excelSeed = filtered.map((r, i) => ({
       _id: i + 1,
       itemCode: r.itemCode,
       product: r.product,
       size: r.size,
-      location: r.location,
+      location: r.location, // code like "RJO"
       discount: Number.isFinite(r.discount) ? r.discount : 0,
       salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0,
       mrp: Number.isFinite(r.sp) ? r.sp : 0,
@@ -176,11 +170,8 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
       barcodeNumber: r.itemCode ? `WS-${r.itemCode}-01` : "",
     }));
 
-    // Persist local & go to confirm page with prefilled rows
     persist(normalized);
-    navigate("/utilities/barcode2/confirm", {
-      state: { initialRows: excelSeed },
-    });
+    navigate("/utilities/barcode2/confirm", { state: { initialRows: excelSeed } });
   };
 
   const handleReset = () => {
@@ -189,17 +180,13 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
     setRows(INIT_ROWS);
   };
 
-  /* ---- display helpers ---- */
-  const formatINR = (n) =>
-    `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  // LIVE total amount now uses percentage discount
+  const formatINR = (n) => `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const totalAmt = (r) => {
     const sp = toNum(r.sp);
     const discount = toNum(r.discount);
     return Math.max(0, sp - (sp * (discount / 100)));
   };
 
-  /* ---- UI ---- */
   return (
     <div className="sit-wrap">
       <div className="sit-bc">
@@ -234,15 +221,9 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
                 </thead>
                 <tbody>
                   {pageRows.map((r, idx) => (
-                    <tr
-                      key={r.id}
-                      className={selected?.id === r.id ? "row-active" : ""}
-                      onClick={() => setSelected(r)}
-                      style={{ cursor: "pointer" }}
-                    >
+                    <tr key={r.id} onClick={() => {}} style={{ cursor: "pointer" }}>
                       <td className="t-right">{start + idx + 1}</td>
 
-                      {/* Item Code */}
                       <td>
                         <input
                           className="sit-input t-mono"
@@ -263,10 +244,8 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
                         />
                       </td>
 
-                      {/* Product Name (auto-filled) */}
                       <td><span className="t-link">{r.product}</span></td>
 
-                      {/* Size */}
                       <td>
                         <input
                           className="sit-input"
@@ -277,7 +256,6 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
                         />
                       </td>
 
-                      {/* Location */}
                       <td>
                         <select
                           className="sit-input"
@@ -285,13 +263,12 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
                           onChange={(e) => handleChange(r.id, "location", e.target.value)}
                         >
                           <option value="">Select</option>
-                          {LOCATIONS.map((loc) => (
-                            <option key={loc} value={loc}>{loc}</option>
+                          {locations.map((loc) => (
+                            <option key={loc.code} value={loc.code}>{loc.code}</option>
                           ))}
                         </select>
                       </td>
 
-                      {/* Discount */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -305,7 +282,6 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
                         />
                       </td>
 
-                      {/* Price */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -319,10 +295,8 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
                         />
                       </td>
 
-                      {/* Total Amt */}
                       <td className="t-right t-dim">{formatINR(totalAmt(r))}</td>
 
-                      {/* Qty */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -341,14 +315,12 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
               </table>
             </div>
 
-            {/* Pagination */}
             <div className="sit-pagination">
               <button className="pg-btn" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
               <span className="pg-current">{page}</span>
               <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
             </div>
 
-            {/* Actions */}
             <div className="sit-actions" style={{ gap: 10 }}>
               <button type="button" className="btn btn-warning" onClick={handleReset}>Reset</button>
               <button type="button" className="btn btn-primary" onClick={handleSubmit}>Submit</button>
@@ -359,6 +331,3 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
     </div>
   );
 }
-
-/* keep a ref for debounced lookups — moved here to stay identical to your file */
-const rowsRef = { current: [] };
