@@ -8,17 +8,23 @@ from .views_transfer import (
     transfer_details,
     delete_transfer,
     barcode_last_transfer,
+    transfer_barcodes,
 )
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
 
 urlpatterns = [
-    # custom endpoints BEFORE the router URLs
     path("products/print-barcodes/", print_and_transfer, name="print-and-transfer"),
     path("products/transfers/", transfer_list, name="transfer-list"),
-    path("products/transfers/<path:number>/", transfer_details, name="transfer-details"),        # <-- path
-    path("products/transfers/<path:number>/delete/", delete_transfer, name="transfer-delete"),  # <-- path
+
+    # specific FIRST
+    path("products/transfers/<path:number>/barcodes/", transfer_barcodes, name="transfer-barcodes"),
+    path("products/transfers/<path:number>/delete/",   delete_transfer,   name="transfer-delete"),
+
+    # generic LAST
+    path("products/transfers/<path:number>/", transfer_details, name="transfer-details"),
+
     path("products/barcodes/<str:barcode>/transfer/", barcode_last_transfer, name="barcode-last-transfer"),
 ]
 

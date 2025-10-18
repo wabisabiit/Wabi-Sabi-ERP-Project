@@ -142,3 +142,24 @@ def delete_transfer(request, number: str):
         return Response({"ok": True, "message": f"{number} deleted successfully."}, status=204)
     except StockTransfer.DoesNotExist:
         return Response({"ok": False, "message": "Not found."}, status=404)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def transfer_barcodes(request, number: str):
+    """
+    GET /api/products/transfers/<number>/barcodes/
+    Returns only the list of barcodes for the given transfer number.
+    """
+    # fast, indexed lookup via FK + denormalized barcode field
+    qs = StockTransferLine.objects.filter(transfer__number=number)
+    if not qs.exists():
+        # either the transfer doesn't exist or it has no lines
+        exists = StockTransfer.objects.filter(number=number).exists()
+        return Response(
+            {"detail": "Not found." if not exists else "No lines for this transfer.", "number": number},
+            status=404 if not exists else 200,
+        )
+
+    barcodes = list(qs.values_list("barcode", flat=True).order_by("barcode"))
+    return Response({"number": number, "count": len(barcodes), "barcodes": barcodes})
