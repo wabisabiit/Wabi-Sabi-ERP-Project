@@ -135,7 +135,7 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
         sp,
         discount,
         qty,
-        salesPrice: Math.max(0, sp - (sp * (discount / 100))),
+        salesPrice: Math.round(0, sp - (sp * (discount / 100))),
         barcodeName: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
       };
     });
@@ -180,12 +180,14 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
     setRows(INIT_ROWS);
   };
 
-  const formatINR = (n) => `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatINR = (n) =>
+  `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   const totalAmt = (r) => {
-    const sp = toNum(r.sp);
-    const discount = toNum(r.discount);
-    return Math.max(0, sp - (sp * (discount / 100)));
-  };
+  const sp = toNum(r.sp);
+  const discount = toNum(r.discount);
+  const amt = Math.max(0, sp - (sp * (discount / 100)));
+  return Math.round(amt); // whole number
+};
 
   return (
     <div className="sit-wrap">

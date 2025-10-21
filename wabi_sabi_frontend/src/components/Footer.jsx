@@ -1,14 +1,15 @@
-// ...existing imports
+// src/components/PosFooter.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
 import CashPayment from "./CashPayment";
 import { useNavigate } from "react-router-dom";
-import RedeemCreditModal from "./RedeemCreditModal";   // ✅ NEW
+import RedeemCreditModal from "./RedeemCreditModal";
 
 export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
-  // ---------- Toast state ----------
   const navigate = useNavigate();
+
+  // ---------- Toast state ----------
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef({});
   const idRef = useRef(0);
@@ -16,7 +17,11 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   // Modals
   const [showCard, setShowCard] = useState(false);
   const [showCash, setShowCash] = useState(false);
-  const [showRedeem, setShowRedeem] = useState(false);   // ✅ NEW
+  const [showRedeem, setShowRedeem] = useState(false);
+
+  // ---------- Discount controls ----------
+  const [flatDisc, setFlatDisc] = useState("0.00"); // user input
+  const [isPercent, setIsPercent] = useState(true); // % vs ₹
 
   // ---------- Beep ----------
   const beep = useCallback(() => {
@@ -62,35 +67,25 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
   const handleActionClick = useCallback((label) => {
     // if (totalQty <= 0) { triggerEmptyCartWarning(); return; }
 
-    if (label.includes("Multiple Pay")) {
-      navigate("/multiple-pay");
-      return;
-    }
-
-    if (label === "Card (F5)" || label === "Card (F3)") {
-      setShowCard(true);
-      return;
-    }
-
-    if (label === "Cash (F4)") {
-      setShowCash(true);
-      return;
-    }
-
-    if (label === "Redeem Credit") {     // ✅ NEW
-      setShowRedeem(true);
-      return;
-    }
+    if (label.includes("Multiple Pay")) { navigate("/multiple-pay"); return; }
+    if (label === "Card (F5)" || label === "Card (F3)") { setShowCard(true); return; }
+    if (label === "Cash (F4)") { setShowCash(true); return; }
+    if (label === "Redeem Credit") { setShowRedeem(true); return; }
 
     if (typeof onAction === "function") onAction(label);
     else console.log("Action:", label);
   }, [navigate, totalQty, triggerEmptyCartWarning, onAction]);
 
+  // ---------- Amount math (WHOLE NUMBER) ----------
+  const baseAmount = Number(amount) || 0;
+  const flatDiscNumRaw = Math.max(0, Number(flatDisc) || 0);
+  const discountAmt = isPercent ? (baseAmount * flatDiscNumRaw) / 100 : flatDiscNumRaw;
+  const discountCapped = Math.min(baseAmount, discountAmt);
+  const payableAmount = Math.max(0, Math.round(baseAmount - discountCapped));
+
   return (
     <>
-      {/* ====== FOOTER (same as your original) ====== */}
       <footer className="pos-footer">
-        {/* Totals / inputs row */}
         <div className="totals">
           <div className="metric">
             <div className="value">{Number(totalQty).toFixed(3)}</div>
@@ -114,8 +109,23 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
           </div>
 
           <div className="metric compact">
-            <button type="button" className="percent">%</button>
-            <input className="mini" placeholder="0.00" defaultValue="0.00" />
+            <button
+              type="button"
+              className={`percent${isPercent ? " active" : ""}`}
+              aria-pressed={isPercent}
+              onClick={() => setIsPercent(v => !v)}
+              title={isPercent ? "Percent mode (click to switch to rupees)"
+                               : "Rupee mode (click to switch to percent)"}
+            >
+              %
+            </button>
+            <input
+              className="mini"
+              placeholder={isPercent ? "0" : "0.00"}
+              value={flatDisc}
+              onChange={(e) => setFlatDisc(e.target.value)}
+              inputMode="decimal"
+            />
             <div className="label">Flat Discount</div>
           </div>
 
@@ -125,12 +135,11 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
           </div>
 
           <div className="amount">
-            <div className="amount-value">{Number(amount).toLocaleString()}</div>
+            <div className="amount-value">{Number(payableAmount).toLocaleString()}</div>
             <div className="label">Amount</div>
           </div>
         </div>
 
-        {/* Buttons grid */}
         <div className="pay-grid">
           {actions.map((text) => (
             <button key={text} className="kbtn" onClick={() => handleActionClick(text)}>
@@ -149,7 +158,6 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
           ))}
         </div>
 
-        {/* Toast stack */}
         {toasts.length > 0 && (
           <div className="toast-stack" role="region" aria-live="assertive">
             {toasts.map(t => (
@@ -162,12 +170,9 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
         )}
       </footer>
 
-      {/* ===== Modals ===== */}
-
-      {/* Card Detail */}
       {showCard && (
         <CardDetail
-          amount={amount}
+          amount={payableAmount}
           onClose={() => setShowCard(false)}
           onSubmit={(details) => {
             onAction?.("Card (F5)", { method: "card", details });
@@ -176,10 +181,9 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
         />
       )}
 
-      {/* Cash Payment */}
       {showCash && (
         <CashPayment
-          amount={amount}
+          amount={payableAmount}
           onClose={() => setShowCash(false)}
           onSubmit={(payload) => {
             onAction?.("Cash (F4)", payload);
@@ -188,10 +192,9 @@ export default function PosFooter({ totalQty = 0, amount = 0, onAction }) {
         />
       )}
 
-      {/* ✅ Redeem Credit */}
       {showRedeem && (
         <RedeemCreditModal
-          invoiceBalance={amount || 100}
+          invoiceBalance={payableAmount || 100}
           onClose={() => setShowRedeem(false)}
           onApply={(payload) => {
             onAction?.("Redeem Credit", payload);

@@ -32,6 +32,7 @@ const OrderList = lazy(() => import("./components/OrderListPage"));
 const InvoicePage = lazy(() => import("./components/InvoicePage"));
 const NewInvoicePage = lazy(() => import("./components/NewInvoicePage"));
 const InvoiceDetailPage = lazy(() => import("./components/InvoiceDetailPage"));
+const SalesRegisterPage = lazy(() => import("./components/SalesRegisterPage"));
 
 // Admin
 const EmployeePage = lazy(() => import("./components/EmployeePage"));
@@ -154,7 +155,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -165,7 +166,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
     </>
   );
@@ -233,6 +234,10 @@ export default function App() {
         {/* 🔹 Sales → Invoice Detail */}
         <Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
         <Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
+        <Route
+          path="/sales-register"
+          element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>}
+        />
 
         {/* Utilities */}
         {/* <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} /> */}
