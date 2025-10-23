@@ -1,6 +1,6 @@
 # main/products/admin.py
 from django.contrib import admin
-from .models import Product, StockTransfer, StockTransferLine
+from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, SaleLine, InvoiceSequence
 from taskmaster.models import TaskItem, Location
 
 
@@ -81,3 +81,28 @@ class StockTransferLineAdmin(admin.ModelAdmin):
     list_filter = ("transfer__from_location", "transfer__to_location")
     autocomplete_fields = ("transfer", "product")
     ordering = ("transfer", "barcode")
+
+
+# products/admin.py
+from django.contrib import admin
+from .models import Customer, Sale, SaleLine, InvoiceSequence
+
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ("name", "phone", "email", "created_at")
+    search_fields = ("name", "phone", "email")
+
+@admin.register(Sale)
+class SaleAdmin(admin.ModelAdmin):
+    list_display  = ("invoice_no", "customer", "store", "payment_method", "transaction_date", "grand_total")
+    list_filter   = ("store", "payment_method", "transaction_date")
+    search_fields = ("invoice_no", "customer__name", "customer__phone")
+
+@admin.register(SaleLine)
+class SaleLineAdmin(admin.ModelAdmin):
+    list_display = ("sale", "barcode", "qty", "mrp", "sp")
+    search_fields = ("barcode", "sale__invoice_no")
+
+@admin.register(InvoiceSequence)
+class InvoiceSequenceAdmin(admin.ModelAdmin):
+    list_display = ("prefix", "next_number", "pad_width")

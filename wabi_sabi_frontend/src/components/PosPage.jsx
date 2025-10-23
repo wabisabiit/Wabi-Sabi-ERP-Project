@@ -1,48 +1,59 @@
 import React, { useMemo, useState } from "react";
-import SearchBar from "./SearchBar";     // ✅ same folder
-import CartTable from "./CartTable";     // ✅ same folder
-import Footer from "./Footer";        // ✅ same folder
-
+import SearchBar from "./SearchBar";
+import CartTable from "./CartTable";
+import Footer from "./Footer";
 
 export default function PosPage() {
   const [items, setItems] = useState([]);
 
-  // When a barcode is scanned/pasted in SearchBar and the backend returns product
   const handleAddItem = (p) => {
-    // p => { id, barcode, mrp, sellingPrice, vasyName }
     const row = {
       id: crypto.randomUUID?.() || `${p.id}-${Date.now()}`,
-      itemcode: p.barcode,              // <-- itemcode IS barcode
-      product: p.vasyName || "",        // <-- vasy easy name from TaskMaster
-      qty: 1,                           // <-- default 1
-      mrp: p.mrp,                       // <-- price from products table
-      discount: undefined,              // <-- show as '---'
-      addDisc: undefined,               // <-- show as '---'
-      unitCost: undefined,              // <-- show as '---'
-      netAmount: p.sellingPrice ?? 0,   // <-- selling price from products
+      itemcode: p.barcode,             // Footer/buildLines will read this
+      product: p.vasyName || "",
+      qty: 1,
+      mrp: p.mrp,
+      discount: undefined,
+      addDisc: undefined,
+      unitCost: undefined,
+      netAmount: p.sellingPrice ?? 0,
     };
     setItems((prev) => [...prev, row]);
   };
 
-  // Totals for footer
   const totals = useMemo(() => {
     const totalQty = items.reduce((s, r) => s + (Number(r.qty) || 0), 0);
     const amount = items.reduce(
       (s, r) => s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0),
       0
     );
-    const discount = 0; // You said discount fields are '---' for now; keeping 0 total
-    return { totalQty, amount, discount };
+    return { totalQty, amount, discount: 0 };
   }, [items]);
+
+  // Called by Footer after a successful payment
+  const handleReset = (res) => {
+    try {
+      if (res?.invoice_no) {
+        alert(
+          `Payment successful.\nInvoice: ${res.invoice_no}${
+            res?.grand_total ? `\nAmount: ₹${res.grand_total}` : ""
+          }`
+        );
+      }
+    } catch (_) {}
+    setItems([]); // clear cart for next customer
+  };
 
   return (
     <div className="pos-page">
       <SearchBar onAddItem={handleAddItem} />
       <CartTable items={items} />
       <Footer
+        items={items}                 // <-- IMPORTANT: pass cart rows
         totalQty={totals.totalQty}
         amount={totals.amount}
-        // (Footer already shows a "Discount" metric at the left side of Amount)
+        onReset={handleReset}         // <-- Footer will call this on success
+        customer={someCustomer}  // (optional) pass real customer if you have it
       />
     </div>
   );

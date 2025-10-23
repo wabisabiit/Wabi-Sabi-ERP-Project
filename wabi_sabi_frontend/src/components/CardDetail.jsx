@@ -1,26 +1,31 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "../styles/Card-detail.css";
 
+/**
+ * Card payment modal
+ * Emits onSubmit({...}) with:
+ *  - paymentAccount
+ *  - customerBankName
+ *  - amount
+ *  - cardHolder
+ *  - cardHolderPhone  <-- NEW
+ *  - transactionNo
+ */
 export default function CardDetail({ amount = 0, onClose, onSubmit }) {
   const [form, setForm] = useState({
     paymentAccount: "AXIS BANK UDYOG VIHAR",
     customerBankName: "",
     cardAmount: Number(amount || 0).toFixed(2),
     cardHolder: "",
+    cardHolderPhone: "",               // <-- NEW
     transactionNo: "",
   });
 
-  // 🔒 body scroll lock
+  // lock body scroll while modal is open
   useEffect(() => {
-    const scrollY =
-      window.scrollY ||
-      document.documentElement.scrollTop ||
-      document.body.scrollTop ||
-      0;
-
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
     document.body.classList.add("modal-open");
     document.body.style.top = `-${scrollY}px`;
-
     return () => {
       const top = document.body.style.top;
       document.body.classList.remove("modal-open");
@@ -40,13 +45,14 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
       customerBankName: form.customerBankName.trim(),
       amount: parseFloat(form.cardAmount || 0),
       cardHolder: form.cardHolder.trim(),
+      cardHolderPhone: form.cardHolderPhone.trim(), // <-- NEW
       transactionNo: form.transactionNo.trim(),
     });
   };
 
   const close = () => {
     if (onClose) onClose();
-    else window.history.back(); // fallback
+    else window.history.back();
   };
 
   return (
@@ -116,10 +122,23 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
           </label>
 
           <label className="cd-field">
+            <span>Card Holder Mobile No.</span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="e.g. 9876543210"
+              value={form.cardHolderPhone}
+              onChange={update("cardHolderPhone")}
+              pattern="[0-9]{10,}"
+              title="Enter a valid mobile number"
+            />
+          </label>
+
+          <label className="cd-field">
             <span>Card Transaction No.</span>
             <input
               type="text"
-              placeholder="Card transaction no."
+              placeholder="POS RRN / Auth code"
               value={form.transactionNo}
               onChange={update("transactionNo")}
             />

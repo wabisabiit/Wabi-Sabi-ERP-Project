@@ -135,6 +135,15 @@ function POSLayout() {
     return { totalQty, amount };
   }, [items]);
 
+  const handleReset = (res) => {
+    if (res?.invoice_no) {
+      try {
+        alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
+      } catch (_) {}
+    }
+    setItems([]); // clear cart for next customer
+  };
+
   return (
     <div className="app">
       <Header />
@@ -147,7 +156,12 @@ function POSLayout() {
         </div>
         <RightPanel />
       </main>
-      <Footer totalQty={totals.totalQty} amount={totals.amount} />
+      <Footer
+        items={items}                  // <-- pass the cart rows
+        totalQty={totals.totalQty}
+        amount={totals.amount}
+        onReset={handleReset}          // <-- clear after success
+      />
     </div>
   );
 }

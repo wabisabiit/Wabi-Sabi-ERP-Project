@@ -11,7 +11,7 @@
 /* Dialog card */
 .cd-card {
   width: 350px; 
-  height: 470px;              /* close to screenshot proportions */
+  height: 520px;              /* close to screenshot proportions */
   background: #ffffff;
   border-radius: 6px;
   box-shadow: 0 8px 28px rgba(0,0,0,.35);

@@ -137,6 +137,7 @@ export default {
   getTransfer,
   deleteTransfer,
   printBarcodes,
+  createSale,
 };
 
 // src/api/client.js  (add this below the existing helpers/exports)
@@ -167,3 +168,11 @@ export async function getProductByBarcode(barcode) {
   };
 }
 
+// Create sale (finalize payment)
+export async function createSale(payload) {
+  // payload shape must match SalesView
+  return http(`/sales/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
