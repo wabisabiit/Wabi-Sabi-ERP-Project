@@ -1,0 +1,991 @@
+---------------------------SalelistPage.css----------------------------------------
+:root {
+  --blue: #0ea5e9;
+  --blue-dark: #0b8dca;
+  --bg: #eef2f8;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --text: #1f2937;
+  --border: #e7eaf0;
+  --head: #f2f5fa;
+  --shadow: 0 12px 28px rgba(16, 24, 40, .10);
+}
+
+/* Page canvas (same spacing, font and background as credit note) */
+.ol-wrap {
+  min-height: 100%;
+  background: var(--bg);
+  padding: 18px 24px 24px;
+  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, -apple-system;
+  color: var(--text);
+}
+
+/* Page header (same sizes) */
+.ol-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0 14px;
+}
+
+.ol-title {
+  font-size: 20px;
+  /* credit note uses 20px */
+  font-weight: 500;
+  letter-spacing: .2px;
+  color: var(--text);
+}
+
+.ol-crumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+}
+
+.ol-home {
+  color: #94a3b8;
+  font-size: 22px;
+}
+
+/* home icon size like credit note */
+.ol-sep {
+  opacity: .65;
+}
+
+.ol-sec {
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Card */
+.ol-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 18px 18px 14px;
+  width: 100%;
+}
+
+/* ----- Toolbar (same 40px controls) ----- */
+.ol-toolbar {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  /* col-1: Columns, col-2: right group */
+  align-items: center;
+  column-gap: 14px;
+  margin-bottom: 14px;
+}
+
+.ol-spacer {
+  display: none;
+}
+
+/* remove old flex spacer */
+
+/* Generic control look */
+.ol-control {
+  height: 40px;
+  border: 1px solid #cfd6e1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+/* “Columns” button – neutral like Credit Note’s grey controls */
+.ol-btn {
+  height: 40px;
+  border: 1px solid #cfd6e1;
+  background-color: #0ea5e9;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+/* Export button – blue pill, icon + caret (same as credit note) */
+.ol-iconbtn {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.ol-iconbtn:hover {
+  background: var(--blue-dark);
+}
+
+/* Display select (10/25/50/100) */
+.ol-select select {
+  height: 40px;
+  min-width: 86px;
+  border: 1px solid #cfd6e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-weight: 700;
+  outline: none;
+}
+
+.ol-select select:focus {
+  border-color: #9db9ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+}
+
+/* Filter button */
+.ol-btn-filter {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--blue);
+  color: #fff;
+}
+
+.ol-btn-filter:hover {
+  background: var(--blue-dark);
+}
+
+.ol-btn-filter.is-active .material-icons {
+  color: #000000;
+}
+
+.ol-btn-filter .material-icons {
+  font-size: 20px;
+}
+
+/* Search field with trailing button capsule (styled like Credit Note) */
+.ol-search {
+  position: relative;
+  width: 270px;
+}
+
+.ol-search input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #cfd6e1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0 44px 0 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.ol-search input:focus {
+  border-color: #9db9ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+}
+
+/* Turn the icon span into a small button container */
+.ol-search .material-icons {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  bottom: 4px;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2f8;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 20px;
+}
+
+/* Right toolbar group */
+.ol-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  /* keep on one line */
+  white-space: nowrap;
+}
+
+.ol-right>* {
+  flex: 0 0 auto;
+}
+
+/* prevent wrapping of children */
+.ol-search {
+  width: 270px;
+}
+
+/* same visual width as your credit note */
+
+/* ----- Table (identical metrics/color to Credit Note) ----- */
+.ol-tablewrap {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ol-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.ol-table thead th {
+  background: var(--head);
+  color: #0f172a;
+  font-weight: 500;
+  font-size: 13px;
+  padding: 10px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.ol-th-checkbox {
+  width: 52px;
+  text-align: center;
+}
+
+.ol-table tbody td {
+  padding: 14px;
+  font-size: 15px;
+  color: var(--text);
+  border-bottom: 1px solid #f0f2f5;
+  background: #fff;
+}
+
+.ol-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ol-empty td {
+  color: #6b7280;
+  text-align: center;
+  padding: 18px 14px;
+}
+
+/* ----- Footer / pager (same as Credit Note) ----- */
+.ol-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 6px 6px;
+}
+
+.ol-entries {
+  font-size: 15px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.ol-pager {
+  display: flex;
+  gap: 10px;
+}
+
+.ol-pagebtn {
+  width: 44px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: #eef1f6;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ol-pagebtn:disabled {
+  opacity: .9;
+  cursor: default;
+}
+
+/* ===== Columns picker (matches your screenshot) ===== */
+.ol-col-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+  z-index: 40;
+}
+
+.ol-col-panel {
+  position: fixed;
+  z-index: 41;
+  top: 120px;
+  left: 60%;
+  transform: translateX(-50%);
+  width: 860px;
+  max-width: 94vw;
+  background: #fff;
+  border: 1px solid #dfe3ea;
+  border-radius: 10px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .35);
+  padding: 14px 16px;
+}
+
+.ol-col-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px 16px;
+}
+
+.ol-col-chip {
+  height: 48px;
+  border-radius: 6px;
+  font-weight: 700;
+  border: 1px solid #d0d8e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform .04s ease, background .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.ol-col-chip.on {
+  background: #0ea5e9;
+  color: #fff;
+  border-color: var(--blue);
+}
+
+.ol-col-chip.off {
+  background: #fff;
+  color: #0f172a;
+}
+
+.ol-col-chip:active {
+  transform: scale(.98);
+}
+
+.ol-col-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.ol-col-restore {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 0;
+  background: linear-gradient(#fff, #f2f4f8);
+  color: #334155;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px #dfe3ea;
+  cursor: pointer;
+}
+
+/* ---------- Filter button active: funnel turns black ---------- */
+.ol-btn-filter.is-active .material-icons {
+  color: #000000;
+}
+
+/* ---------- FILTER STRIP (exact layout/colors like screenshot) ---------- */
+.ol-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: 1px 24px;
+  padding: 14px 10px 8px;
+  margin-bottom: 12px;
+}
+
+.ol-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ol-label {
+  font-weight: 500;
+  color: #0f172a;
+  font-size: 13px;
+  letter-spacing: .2px;
+}
+
+/* Date range (left) */
+.ol-field-date {
+  grid-column: auto / span 1;
+}
+
+.ol-datewrap {
+  position: relative;
+}
+
+.ol-input-date {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.ol-datebtn {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  bottom: 4px;
+  width: 36px;
+  border: 1px solid #cfd6e1;
+  background: #fff;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #374151;
+}
+
+/* Customer */
+.ol-field-cust {
+  grid-column: auto / span 2;
+}
+
+.ol-selectwrap {
+  position: relative;
+}
+
+.ol-input-cust {
+  width: 100%;
+  padding-right: 36px;
+}
+
+.ol-dd-caret {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 22px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* Selects styled like screenshot */
+.ol-dd {
+  position: relative;
+}
+
+.ol-select-el {
+  width: 100%;
+  appearance: none;
+  padding-right: 36px;
+}
+
+/* Location pill */
+.ol-locbtn {
+  height: 40px;
+  border: 1px solid #cfd6e1;
+  background: #EEF0F6;
+  border-radius: 10px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #374151;
+  font-weight: 700;
+}
+
+.ol-loctext {
+  opacity: .9;
+}
+
+.ol-locbadge {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1f2937;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.ol-locclose {
+  font-size: 18px;
+  opacity: .85;
+}
+
+/* Actions */
+.ol-filter-actions {
+  grid-column: 1 / span 2;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.ol-btn-apply {
+  background: #22c55e;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  height: 40px;
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.ol-btn-apply:hover {
+  background: #1fb556;
+}
+
+.ol-btn-reset {
+  background: #f59e0b;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  height: 40px;
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.ol-btn-reset:hover {
+  background: #e29007;
+}
+
+/* ---------- Summary strip ---------- */
+.ol-agg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 0 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  width: 50%;
+  margin-bottom: 30px;
+}
+
+.ol-agg-col {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.ol-agg-head {
+  background: #e9edf4;
+  color: #0f172a;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+}
+
+.ol-agg-col:last-child .ol-agg-head {
+  border-right: 0;
+}
+
+.ol-agg-val {
+  background: #ffffff;
+  padding: 12px 14px;
+  font-weight: 500;
+  color: #334155;
+  border-right: 1px solid var(--border);
+}
+
+.ol-agg-col:last-child .ol-agg-val {
+  border-right: 0;
+}
+
+.ol-agg-val.red {
+  color: #ef4444;
+}
+
+/* ===== FIX: keep filter fields inside the card & correct widths ===== */
+
+/* grid stays 5-up, but we pack items tightly and prevent overflow */
+.ol-filters{
+  grid-template-columns: repeat(5, minmax(170px, 1fr));
+  grid-auto-flow: row dense;         /* fill gaps neatly */
+  gap: 18px 22px;                    /* slightly tighter to avoid spill */
+  overflow: visible;                  /* no child can render outside */
+}
+
+/* Customer back to ONE column (was span 2) */
+.ol-field-cust{ grid-column: auto / span 1; }
+
+/* All inputs/selects must respect column width */
+.ol-control,
+.ol-select-el,
+.ol-input-cust,
+.ol-input-date{
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Date icon button stays inside the field */
+.ol-datewrap{ max-width: 100%; }
+.ol-datebtn{ right: 4px; }
+
+/* Location pill: take full column width, with safe text overflow */
+.ol-locbtn{
+  width: 100%;
+  max-width: 100%;
+  justify-content: flex-start;
+  overflow: hidden;                  /* guard the pill itself */
+}
+.ol-loctext{
+  flex: 1 1 auto;
+  min-width: 0;                      /* allow ellipsis to work */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ol-locbadge,
+.ol-locclose{
+  flex: 0 0 auto;
+  margin-left: 8px;
+}
+
+/* Labels keep consistent rhythm; prevents wrap from pushing things out */
+.ol-label{ line-height: 1.15; }
+
+/* Optional: if your screen gets narrower, fall back to 4 then 3 columns */
+@media (max-width: 1400px){
+  .ol-filters{ grid-template-columns: repeat(4, minmax(170px, 1fr)); }
+}
+@media (max-width: 1180px){
+  .ol-filters{ grid-template-columns: repeat(3, minmax(170px, 1fr)); }
+}
+
+/* ---------- Payment Mode dropdown ---------- */
+/* CHANGED: make trigger & dropdown match the field width */
+.pmode-dd { position: relative; width: 100%; }  /* was 168px */
+
+.pmode-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  border: 1px solid #d7dbe3; border-radius: 6px;
+  background: #fff; padding: 0 12px;
+  font-size: 14px; line-height: 1;
+  text-align: left;
+}
+.pmode-btn:hover { border-color: #b7bccc; }
+.pmode-btn.is-open { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
+.pmode-caret { font-size: 20px; transition: transform .15s ease; }
+.pmode-btn.is-open .pmode-caret { transform: rotate(180deg); }
+
+/* popup */
+.pmode-pop {
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(17,24,39,0.1);
+  z-index: 40; overflow: hidden;
+}
+
+/* search bar */
+.pmode-search { position: relative; padding: 8px; border-bottom: 1px solid #eef1f5; }
+.pmode-search input {
+  width: 100%; height: 36px; padding: 0 34px 0 12px;
+  border: 1px solid #d7dbe3; border-radius: 6px; outline: none;
+  font-size: 14px;
+}
+.pmode-search input:focus { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.12); }
+.pmode-search .material-icons {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  font-size: 18px; color: #94a3b8;
+}
+
+/* list: show exactly 6 items then scroll */
+.pmode-list {
+  --row-h: 44px;
+  max-height: calc(var(--row-h) * 6);
+  overflow-y: auto;
+}
+.pmode-item {
+  height: var(--row-h); display: flex; align-items: center;
+  padding: 0 12px; font-size: 14px; cursor: pointer;
+}
+.pmode-item:hover, .pmode-item.is-hover { background: #0ea5e9; color:#eef2f8}
+.pmode-item.is-selected { font-weight: 600; color: #1f4bb0; }
+.pmode-empty { padding: 16px 12px; color: #64748b; font-size: 14px; }
+
+/* make it blend with existing controls */
+.ol-control.pmode-btn { padding-right: 10px; }
+
+/* ---------- Generic searchable dropdown (Order Type / Store / Channel / Payment Status) ---------- */
+/* CHANGED: full width like field */
+.sselect-dd { position: relative; width: 100%; }
+
+.sselect-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; height: 40px;
+  border: 1px solid #d7dbe3; border-radius: 6px;
+  background: #fff; padding: 0 12px;
+  font-size: 14px; line-height: 1; text-align: left;
+}
+.sselect-btn:hover { border-color: #b7bccc; }
+.sselect-btn.is-open { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
+.sselect-caret { font-size: 20px; transition: transform .15s ease; }
+.sselect-btn.is-open .sselect-caret { transform: rotate(180deg); }
+
+/* popup */
+.sselect-pop {
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(17,24,39,0.1);
+  z-index: 40; overflow: hidden;
+}
+
+/* search input */
+.sselect-search { padding: 8px; border-bottom: 1px solid #eef1f5; }
+.sselect-search input {
+  width: 100%; height: 36px; padding: 0 12px;
+  border: 1px solid #d7dbe3; border-radius: 6px; outline: none; font-size: 14px;
+}
+.sselect-search input:focus { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.12); }
+
+/* list */
+.sselect-list {
+  --row-h: 44px;
+  max-height: calc(var(--row-h) * 6);
+  overflow-y: auto;
+}
+.sselect-item {
+  height: var(--row-h); display: flex; align-items: center;
+  padding: 0 12px; font-size: 14px; cursor: pointer;
+}
+.sselect-item:hover, .sselect-item.is-hover { background: #0ea5e9; color:#eef2f8; }
+.sselect-item.is-selected { font-weight: 600; color: #1f4bb0; }
+.sselect-empty { padding: 16px 12px; color: #64748b; font-size: 14px; }
+
+/* ---------- Discount dropdown ---------- */
+/* CHANGED: full width */
+.dselect-dd { position: relative; width: 100%; }
+
+.dselect-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; height: 40px;
+  border: 1px solid #d7dbe3; border-radius: 6px;
+  background: #fff; padding: 0 12px;
+  font-size: 14px; line-height: 1; text-align: left;
+}
+.dselect-btn:hover { border-color: #b7bccc; }
+.dselect-btn.is-open { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
+.dselect-caret { font-size: 20px; transition: transform .15s ease; }
+.dselect-btn.is-open .dselect-caret { transform: rotate(180deg); }
+
+/* popup */
+.dselect-pop {
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(17,24,39,0.1);
+  z-index: 2000; overflow: hidden;
+}
+
+/* search input */
+.dselect-search { padding: 8px; border-bottom: 1px solid #eef1f5; }
+.dselect-search input {
+  width: 100%; height: 36px; padding: 0 12px;
+  border: 1px solid #d7dbe3; border-radius: 6px; outline: none; font-size: 14px;
+}
+.dselect-search input:focus { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.12); }
+
+/* list */
+.dselect-list {
+  --row-h: 44px;
+  max-height: calc(var(--row-h) * 6);
+  overflow-y: auto;
+}
+.dselect-item {
+  height: var(--row-h); display: flex; align-items: center;
+  padding: 0 12px; font-size: 14px; cursor: pointer;
+}
+.dselect-item:hover, .dselect-item.is-hover { background: #0ea5e9; color: #eef2f8; }
+.dselect-item.is-selected { font-weight: 600; color: #1f4bb0; }
+.dselect-empty { padding: 14px 12px; color: #64748b; font-size: 14px; }
+
+/* --- Location dropdown --- */
+.loc-dd { position: relative; width: 100%; }
+
+/* popup — CHANGED: single consistent rule matching trigger width */
+.loc-pop{
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(17,24,39,0.1);
+  z-index: 2000;
+  overflow: hidden;
+}
+
+/* search (blank placeholder like screenshot) */
+.loc-search{ padding: 8px; border-bottom: 1px solid #eef1f5; }
+.loc-search input{
+  width: 100%; height: 36px; padding: 0 12px;
+  border: 1px solid #d7dbe3; border-radius: 6px;
+  outline: none; font-size: 14px;
+}
+.loc-search input:focus{ border-color:#5b8def; box-shadow:0 0 0 3px rgba(91,141,239,.12); }
+
+/* list: show up to 6 rows */
+.loc-list{
+  --row-h: 40px;
+  max-height: calc(var(--row-h) * 6);
+  overflow-y: auto;
+}
+
+.loc-item{
+  display: flex; align-items: center; gap: 8px;
+  height: var(--row-h);
+  padding: 0 10px;
+  cursor: pointer;
+}
+.loc-item:hover{ background: #f3f6fb; }
+
+.loc-item input[type="checkbox"]{
+  width: 16px; height: 16px;
+  accent-color: #0ea5e9; /* blue tick like screenshot */
+  cursor: pointer;
+}
+
+/* long text: keep tidy, no inner scrollbar */
+.loc-text{
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* empty */
+.loc-empty{ padding: 12px; color:#64748b; }
+
+/* keep original dull gray pill exactly as before */
+.ol-locbtn{
+  height: 40px;
+  border: 1px solid #cfd6e1;
+  background: #EEF0F6;      /* dull gray */
+  border-radius: 10px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #374151;
+  font-weight: 700;
+}
+
+/* make sure filter area allows popups to escape */
+.ol-filters{ overflow: visible; }
+
+/* Export dropdown */
+.ol-export { position: relative; }
+.ol-export .ol-iconbtn {
+  display:flex; align-items:center; gap:6px;
+  padding:10px 12px; border-radius:10px;
+  background:#0ea5e9; color:#fff;
+}
+
+.ol-export-pop{
+  position:absolute; top:44px; left:0;
+  background:#fff; border:1px solid #e5e9f2; border-radius:10px;
+  box-shadow:0 12px 28px rgba(17,24,39,.12);
+  width:190px; padding:8px 0; z-index:1200;
+}
+.ol-export-item{
+  width:100%; display:flex; align-items:center; gap:10px;
+  padding:10px 14px; background:#fff; border:0; cursor:pointer;
+  font-weight:500; color:#111827; text-align:left;
+}
+.ol-export-item:hover{ background:#f3f6fb; }
+.ol-export-ic{
+  width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;
+  border-radius:8px; background:#eef2f7; color:#475569; font-size:18px;
+}
+
+/* Order Status dropdown — identical to the generic searchable style */
+.ostatus-dd { position: relative; width: 100%; }
+
+/* CHANGED: full width */
+.ostatus-btn,
+.sselect-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; height: 40px;
+  border: 1px solid #d7dbe3; border-radius: 6px;
+  background: #fff; padding: 0 12px;
+  font-size: 14px; line-height: 1; text-align: left;
+}
+.ostatus-btn:hover { border-color: #b7bccc; }
+.ostatus-btn.is-open { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
+.ostatus-caret { font-size: 20px; transition: transform .15s ease; }
+.ostatus-btn.is-open .ostatus-caret { transform: rotate(180deg); }
+
+.ostatus-pop {
+  position: absolute; left: 0; right: auto; top: calc(100% + 6px);
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  background: #fff; border: 1px solid #d7dbe3; border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(17,24,39,0.1);
+  z-index: 1200; overflow: hidden;
+}
+
+.ostatus-search { padding: 8px; border-bottom: 1px solid #eef1f5; }
+.ostatus-search input {
+  width: 100%; height: 36px; padding: 0 12px;
+  border: 1px solid #d7dbe3; border-radius: 6px; outline: none; font-size: 14px;
+}
+.ostatus-search input:focus { border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.12); }
+
+.ostatus-list {
+  --row-h: 44px;
+  max-height: calc(var(--row-h) * 6);
+  overflow-y: auto;
+}
+.ostatus-item {
+  height: var(--row-h); display: flex; align-items: center;
+  padding: 0 12px; font-size: 14px; cursor: pointer;
+}
+.ostatus-item:hover, .ostatus-item.is-hover { background: #0ea5e9; color: #eef2f8; }
+.ostatus-item.is-selected { font-weight: 600; color: #1f4bb0; }
+.ostatus-empty { padding: 16px 12px; color: #64748b; font-size: 14px; }
+
+/* === Force 5-up layout on desktop, keep responsive fallbacks === */
+.ol-filters{
+  grid-template-columns: repeat(5, minmax(170px, 1fr)) !important;
+  grid-auto-flow: row dense; /* fills gaps so rows stay tight */
+}
+
+/* Was 1400px -> caused 4-up too early; push breakpoints down */
+@media (max-width: 1200px){
+  .ol-filters{ grid-template-columns: repeat(4, minmax(170px, 1fr)) !important; }
+}
+@media (max-width: 992px){
+  .ol-filters{ grid-template-columns: repeat(3, minmax(170px, 1fr)) !important; }
+}
+
+/* Make actions use a single column cell so total = 10 fields + 1 actions = 3 rows */
+.ol-filter-actions{
+  grid-column: auto / span 1 !important;
+  justify-self: start; /* keeps the same visual placement */
+}
+
+/* 1) Never show a page-level horizontal scrollbar on Order List */
+.ol-wrap { overflow-x: hidden; }
+
+/* 2) Remove the inner horizontal scrollbar in the Location list rows */
+.loc-text{
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;            /* no scrollbars */
+  text-overflow: ellipsis;     /* show … when clipped */
+}
+/* make sure custom scrollbar (if any) never appears */
+.loc-text::-webkit-scrollbar{ display: none; }

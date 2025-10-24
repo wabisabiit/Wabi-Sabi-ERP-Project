@@ -28,7 +28,7 @@
   left: 0;
   height: 100vh;
   width: 260px;
-  background: #282733;
+  background: #282733; /* uses your dark tone */
   color: var(--sb-text);
   transform: translateX(-100%);
   transition: transform .22s ease-out;
@@ -79,7 +79,10 @@
 .sb-item:hover{ background: var(--sb-bg-2); text-decoration: none; }
 .sb-ic{ font-size: 20px; opacity: .95; }
 .sb-text{ text-align: left; font-size: 13px;}
-.sb-caret{ margin-left: auto; opacity: .8; }
+.sb-caret{ margin-left: auto; opacity: .8; transition: transform .18s ease; }
+
+/* rotate caret when expanded buttons (works with aria-expanded) */
+.sb-item[aria-expanded="true"] .sb-caret { transform: rotate(180deg); }
 
 .sb-group{ margin-top: 2px; }
 .sb-sub{
@@ -161,3 +164,40 @@
   background: var(--sb-bg-2);
   color: var(--sb-text);
 }
+
+/* =========================
+   Mini-hover / collapsed UX
+   ========================= */
+.sb-panel.mini-hover .sb-items{
+  /* keep icons centered nicely when collapsed */
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* Hide text & caret in icon-only mode (extra guard; JSX also hides via inline style) */
+.sb-panel.mini-hover .sb-text { display: none; }
+.sb-panel.mini-hover .sb-caret { display: none; }
+
+/* Compress grid to just the icon column in icon-only mode */
+.sb-panel.mini-hover .sb-item{
+  grid-template-columns: 28px;
+  justify-content: center;
+}
+
+/* Submenu indentation off in collapsed mode */
+.sb-panel.mini-hover .sb-sub{
+  margin-left: 0;
+  border-left: 0;
+}
+
+/* =========================
+   Scrollbar polish (optional)
+   ========================= */
+.sb-items::-webkit-scrollbar{ width: 10px; }
+.sb-items::-webkit-scrollbar-track{ background: #23232e; }
+.sb-items::-webkit-scrollbar-thumb{
+  background: #3a3a48;
+  border-radius: 6px;
+  border: 2px solid #23232e;
+}
+.sb-items{ scrollbar-color: #3a3a48 #23232e; scrollbar-width: thin; }

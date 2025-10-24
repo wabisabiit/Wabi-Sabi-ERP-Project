@@ -13,15 +13,15 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
   const [expandSettings, setExpandSettings] = useState(false);
   const [expandCRM, setExpandCRM] = useState(false);
   const [expandBankCash, setExpandBankCash] = useState(false);
-  // 🔹 NEW: Accounting group expand state
+  // NEW: Accounting group expand state
   const [expandAccounting, setExpandAccounting] = useState(false);
-  // 🔹 NEW: Sales group expand state
+  // NEW: Sales group expand state
   const [expandSales, setExpandSales] = useState(false);
 
   const location = useLocation();
   const isPath = (prefix) => location.pathname.startsWith(prefix);
 
-  // ── Mini-hover: force icons-only on Credit Note Item Register route ──
+  // Mini-hover: force icons-only on Credit Note Item Register route
   const ICONS_ONLY_ROUTES = [
     "/reports/credit-note-item-register",
     "/reports/credit-note-tem-register", // safeguard for typo
@@ -52,7 +52,7 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
     const el = panelRef.current.querySelector(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
-    el && el.focus();
+    if (el) el.focus();
   }, [open]);
 
   // Auto-expand groups based on route
@@ -62,9 +62,9 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
     if (isPath("/utilities")) setExpandUtilities(true);
     if (isPath("/settings")) setExpandSettings(true);
     if (isPath("/inventory")) setExpandInventory(true);
-    // 🔹 NEW: Auto expand Accounting if route matches
+    // Auto expand Accounting if route matches
     if (isPath("/accounting")) setExpandAccounting(true);
-    // 🔹 NEW: Auto expand Sales if route matches
+    // Auto expand Sales if route matches
     if (isPath("/sales")) setExpandSales(true);
   }, [location]);
 
@@ -92,7 +92,7 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
         aria-label="Main menu"
         style={{
           width: mini ? (collapsed ? COLLAPSED_W : EXPANDED_W) : undefined,
-          transition: "width 160ms ease"
+          transition: "width 160ms ease",
         }}
         onMouseEnter={() => mini && setCollapsed(false)}
         onMouseLeave={() => mini && setCollapsed(true)}
@@ -217,13 +217,14 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
 
             <div id="sb-pos-sub" className={`sb-sub ${expandPOS ? "show" : ""}`} style={textStyle}>
               <NavLink to="/new" className={linkClass} onClick={handleNav}>New</NavLink>
-              <NavLink to="/order-list" className={linkClass} onClick={handleNav}>Order List</NavLink>
+              {/* Updated label only */}
+              <NavLink to="/order-list" className={linkClass} onClick={handleNav}>Sale List</NavLink>
               <NavLink to="/credit-note" className={linkClass} onClick={handleNav}>Credit Note</NavLink>
               <NavLink to="/sales-register" className={linkClass} onClick={handleNav}>Sales Register</NavLink>
             </div>
           </div>
 
-          {/* 🔹 NEW: Sales */}
+          {/* NEW: Sales */}
           <div className="sb-group">
             <button
               className="sb-item"
@@ -296,7 +297,7 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
             <span className="sb-text" style={textStyle}>Report</span>
           </NavLink>
 
-          {/* 🔹 Accounting */}
+          {/* Accounting */}
           <div className="sb-group">
             <button
               className="sb-item"

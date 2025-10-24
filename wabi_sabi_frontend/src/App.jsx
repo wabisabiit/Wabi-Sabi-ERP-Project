@@ -28,7 +28,8 @@ const PointSetupPage = lazy(() => import("./components/PointSetupPage"));
 // Sales / POS extras
 const MultiplePay = lazy(() => import("./components/MultiplePay"));
 const CreditNotePage = lazy(() => import("./components/CreditNotePage"));
-const OrderList = lazy(() => import("./components/OrderListPage"));
+/* ✅ Renamed: use SaleListPage instead of OrderListPage */
+const SaleListPage = lazy(() => import("./components/SalesListPage"));
 const InvoicePage = lazy(() => import("./components/InvoicePage"));
 const NewInvoicePage = lazy(() => import("./components/NewInvoicePage"));
 const InvoiceDetailPage = lazy(() => import("./components/InvoiceDetailPage"));
@@ -41,7 +42,6 @@ const OutletPage = lazy(() => import("./components/OutletPage"));
 const OutletCreatePage = lazy(() => import("./components/OutletCreatePage"));
 
 // Utilities
-// const BarcodeUtilityPage = lazy(() => import("./components/BarcodeUtilityPage"));
 const BarcodeUtility2Page = lazy(() => import("./components/BarcodeUtility2Page"));
 const BarcodePrintConfirmPage = lazy(() => import("./components/BarcodePrintConfirmPage"));
 const ExpandedLabelsPage = lazy(() => import("./components/ExpandedLabelsPage"));
@@ -57,7 +57,8 @@ const ReceiptPage = lazy(() => import("./components/ReceiptPage"));
 const ExpensePage = lazy(() => import("./components/ExpensePage"));
 const NewBankPage = lazy(() => import("./components/NewBankPage"));
 const PaymentCreatePage = lazy(() => import("./components/PaymentCreatePage"));
-const BankDetailPage = lazy(() => import("./components/BankDetailPage")); // ⬅️ NEW
+const BankDetailPage = lazy(() => import("./components/BankDetailPage"));
+const BankEditPage = lazy(() => import("./components/BankEditPage"));
 
 // Inventory core
 const ProductsPage = lazy(() => import("./components/InventoryProductsPage"));
@@ -103,10 +104,9 @@ const AccountPage = lazy(() => import("./components/AccountPage"));
 const OpeningBalancePage = lazy(() => import("./components/OpeningBalancePage"));
 
 const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceCustomerDetailPage"));
-const BankEditPage = lazy(() => import("./components/BankEditPage"));
 
 /* ---------- Layouts ---------- */
-// ✅ REWIRED: POSLayout now manages cart state and passes props
+// POS layout with cart state (kept from Code1)
 function POSLayout() {
   const [items, setItems] = useState([]);
 
@@ -114,32 +114,27 @@ function POSLayout() {
     // p => { id, barcode, mrp, sellingPrice, vasyName }
     const row = {
       id: crypto.randomUUID?.() || `${p.id}-${Date.now()}`,
-      itemcode: p.barcode,            // itemcode IS barcode (from Product)
-      product: p.vasyName || "",      // vasy easy name (from TaskMaster)
-      qty: 1,                         // default 1
-      mrp: p.mrp,                     // price from products
-      discount: undefined,            // show as '---'
-      addDisc: undefined,             // show as '---'
-      unitCost: undefined,            // show as '---'
-      netAmount: p.sellingPrice ?? 0, // selling price from products
+      itemcode: p.barcode,
+      product: p.vasyName || "",
+      qty: 1,
+      mrp: p.mrp,
+      discount: undefined,
+      addDisc: undefined,
+      unitCost: undefined,
+      netAmount: p.sellingPrice ?? 0,
     };
     setItems((prev) => [...prev, row]);
   };
 
   const totals = useMemo(() => {
     const totalQty = items.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const amount = items.reduce(
-      (s, r) => s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0),
-      0
-    );
+    const amount = items.reduce((s, r) => s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0), 0);
     return { totalQty, amount };
   }, [items]);
 
   const handleReset = (res) => {
     if (res?.invoice_no) {
-      try {
-        alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
-      } catch (_) {}
+      try { alert(`Payment successful.\nInvoice: ${res.invoice_no}`); } catch (_) { }
     }
     setItems([]); // clear cart for next customer
   };
@@ -157,10 +152,10 @@ function POSLayout() {
         <RightPanel />
       </main>
       <Footer
-        items={items}                  // <-- pass the cart rows
+        items={items}
         totalQty={totals.totalQty}
         amount={totals.amount}
-        onReset={handleReset}          // <-- clear after success
+        onReset={handleReset}
       />
     </div>
   );
@@ -175,7 +170,6 @@ function SidebarLayout({ children }) {
   );
 }
 
-/** Mini sidebar (icons-only) that expands on hover — compact report pages */
 function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
@@ -213,6 +207,39 @@ export default function App() {
         <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
         <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
 
+
+        {/* CRM */}
+        <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
+        <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
+        <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
+
+        <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
+        <Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
+
+        <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
+        {/* Use whichever filename you really have (see note below) */}
+        <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
+
+        <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
+
+
+        {/* Multipay */}
+        <Route
+          path="/multiple-pay"
+          element={
+            <MultiplePay
+              cart={{
+                customerType: "Walk In Customer",
+                items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
+                roundoff: 0,
+              }}
+              onBack={() => navigate(-1)}
+              onProceed={() => navigate("/new")}
+            />
+          }
+        />
+
+
         {/* Inventory -> report routes */}
         <Route path="/inventory/master-packing-itemwise-summary" element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>} />
         <Route path="/inventory/sales-register" element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>} />
@@ -221,8 +248,8 @@ export default function App() {
 
         {/* Bank / Cash */}
         <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
-        <Route path="/bank/:slug" element={<SidebarLayout><BankDetailPage /></SidebarLayout>} /> {/* ⬅️ NEW */}
-        <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />  {/* NEW */}
+        <Route path="/bank/:slug" element={<SidebarLayout><BankDetailPage /></SidebarLayout>} />
+        <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />
         <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
         <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
         <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
@@ -240,21 +267,21 @@ export default function App() {
         <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
 
         {/* Sales */}
-        <Route path="/order-list" element={<SidebarLayout><OrderList /></SidebarLayout>} />
-        {/* 🔹 Sales → Invoice (List) */}
+        {/* ✅ Canonical Sales List path */}
+        <Route path="/sales/sale-list" element={<SidebarLayout><SaleListPage /></SidebarLayout>} />
+        {/* ♻️ Backward-compat: old /order-list → redirect */}
+        <Route path="/order-list" element={<Navigate to="/sales/sale-list" replace />} />
+
+        {/* Sales → Invoice */}
         <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
-        {/* 🔹 Sales → New Invoice (Form screen) */}
         <Route path="/sales/invoice/new" element={<SidebarLayout><NewInvoicePage /></SidebarLayout>} />
-        {/* 🔹 Sales → Invoice Detail */}
         <Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
         <Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
-        <Route
-          path="/sales-register"
-          element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>}
-        />
+
+        {/* Sales Register (existing) */}
+        <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
 
         {/* Utilities */}
-        {/* <Route path="/utilities/barcode" element={<SidebarLayout><BarcodeUtilityPage /></SidebarLayout>} /> */}
         <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
         <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
         <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
@@ -267,7 +294,6 @@ export default function App() {
         <Route path="/reports/credit-note-item-register" element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>} />
         <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
         <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
-        {/* ⬇️ Added with JSX-safe comments */}
         <Route path="/reports/wow-bill-report" element={<SidebarLayout><WowBillReport /></SidebarLayout>} />
         <Route path="/reports/tax-wise-sales-summary" element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>} />
         <Route path="/reports/sales-summary" element={<SidebarLayout><ReportSalesSummary /></SidebarLayout>} />
@@ -280,41 +306,7 @@ export default function App() {
         {/* Credit Note */}
         <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
 
-        {/* CRM */}
-        <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
-        <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
-        <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
-        <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
-        <Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
-        <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
-        <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
-        <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
-
-        {/* Settings (duplicate set kept to match your file) */}
-        <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
-        <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
-        <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
-        <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
-        <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
-        <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
-        <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
-
-        {/* Multiple Pay */}
-        <Route
-          path="/multiple-pay"
-          element={
-            <MultiplePay
-              cart={{
-                customerType: "Walk In Customer",
-                items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
-                roundoff: 0,
-              }}
-              onBack={() => navigate(-1)}
-              onProceed={() => navigate("/new")}
-            />
-          }
-        />
-
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/new" replace />} />
       </Routes>
     </Suspense>
