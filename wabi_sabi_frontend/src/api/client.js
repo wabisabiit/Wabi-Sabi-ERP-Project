@@ -138,6 +138,7 @@ export default {
   deleteTransfer,
   printBarcodes,
   createSale,
+  listSales,
 };
 
 // src/api/client.js  (add this below the existing helpers/exports)
@@ -176,3 +177,16 @@ export async function createSale(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+// List sales (for Sale List page)
+export async function listSales(params = {}) {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === null || v === undefined) return;
+    if (typeof v === "string" && v.trim() === "") return;
+    sp.append(k, v);
+  });
+  const qs = sp.toString();
+  return http(`/sales/${qs ? `?${qs}` : ""}`);
+}
+

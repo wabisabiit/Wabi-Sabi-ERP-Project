@@ -1,7 +1,10 @@
+// src/components/Footer.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
 import { createSale } from "../api/client";
+import { useNavigate } from "react-router-dom"; // ← keep
+import CashPayment from "./CashPayment"; // ← NEW: use the keypad/modal popup
 
 /* ── Lightweight inline modals for CASH & UPI ─────────────────────────────── */
 function CashModal({ amount = 0, onClose, onSubmit }) {
@@ -164,6 +167,8 @@ export default function Footer({
   amount = 0,
   onReset,
 }) {
+  const navigate = useNavigate(); // ← NEW
+
   // Toasts
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef({});
@@ -171,7 +176,7 @@ export default function Footer({
 
   // Modals
   const [showCard, setShowCard] = useState(false);
-  const [showCash, setShowCash] = useState(false);
+  const [showCash, setShowCash] = useState(false); // ← reuse but now shows CashPayment popup
   const [showUpi, setShowUpi] = useState(false);
 
   // Discounts
@@ -253,6 +258,7 @@ export default function Footer({
               reference:
                 paymentDetails?.reference ||
                 paymentDetails?.transactionNo ||
+                paymentDetails?.cashReference || // ← when coming from CashPayment
                 "",
               card_holder: paymentDetails?.cardHolder || "",
               card_holder_phone: paymentDetails?.cardHolderPhone || "",
@@ -273,7 +279,6 @@ export default function Footer({
       addToast(`Payment successful. Invoice: ${res?.invoice_no || "—"}`);
 
       if (andPrint) {
-        // window.open(`/receipt/${res?.invoice_no}`, "_blank");
         window.print();
       }
 
@@ -312,7 +317,9 @@ export default function Footer({
         return;
       }
       if (label === "Cash (F4)") {
+        // OPEN CashPayment POPUP (net amount after discount)
         setShowCash(true);
+        window.__AND_PRINT__ = false;
         return;
       }
       if (label === "UPI (F5)") {
@@ -327,8 +334,8 @@ export default function Footer({
         return;
       }
       if (label === "Cash & Print (F8)") {
-        setShowCash(true);
-        window.__AND_PRINT__ = true;
+        setShowCash(true);            // open popup
+        window.__AND_PRINT__ = true;  // mark for print after success
         return;
       }
       if (label === "UPI & Print (F10)") {
@@ -337,23 +344,58 @@ export default function Footer({
         return;
       }
 
-      // Multiple pay demo (split 50/50)
+      // ── REDIRECT to your existing MultiplePay page ───────────────────────
       if (label.startsWith("Multiple Pay")) {
-        const total = Number(payableAmount);
-        if (!total) {
-          addToast("Nothing to pay.");
-          return;
-        }
-        const cash = Math.floor(total / 2);
-        const card = total - cash;
-        finalizeSale({
-          multi: true,
-          andPrint: false,
-          paymentDetails: {
-            payments: [
-              { method: "CASH", amount: cash, reference: "Split cash" },
-              { method: "CARD", amount: card, reference: "Split card" },
-            ],
+        const cartItems = (items || []).map((r, i) => {
+          const qty =
+            Number(r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1) || 1;
+
+        const unit =
+            Number(
+              r.sellingPrice ??
+                r.unitPrice ??
+                r.unit_price ??
+                r.price ??
+                r.sp ??
+                r.mrp
+            ) ||
+            (Number(r.netAmount ?? r.amount ?? 0) / qty) ||
+            0;
+
+          return {
+            id: r.id ?? i + 1,
+            name:
+              r.product ||
+              r.name ||
+              r.vasyName ||
+              r.item_print_friendly_name ||
+              r.item_vasy_name ||
+              r.item_full_name ||
+              r.title ||
+              r.barcode ||
+              "Item",
+            qty,
+            price: +unit.toFixed(2),
+            netAmount: Number(r.netAmount ?? r.amount ?? qty * unit),
+            tax: Number(r.tax ?? r.taxAmount ?? 0),
+            barcode: r.barcode ?? r.itemCode ?? r.itemcode ?? r.code ?? "",
+          };
+        });
+
+        navigate("/multiple-pay", {
+          state: {
+            cart: {
+              customerType: customer?.name || "Walk In Customer",
+              items: cartItems,
+              roundoff: 0,
+              amount: Number(payableAmount), // after discount
+            },
+            customer: {
+              name: customer?.name || "",
+              phone: customer?.phone || "",
+              email: customer?.email || "",
+            },
+            andPrint: false,
           },
         });
         return;
@@ -381,7 +423,7 @@ export default function Footer({
         return;
       }
     },
-    [payableAmount, buildLines, customer]
+    [navigate, items, customer, payableAmount]
   );
 
   return (
@@ -512,20 +554,25 @@ export default function Footer({
         />
       )}
 
+      {/* 🔹 CASH PAYMENT POPUP (replaces navigation to /cash-pay) */}
       {showCash && (
-        <CashModal
-          amount={payableAmount}
+        <CashPayment
+          amount={payableAmount} // net amount after discount
           onClose={() => {
             setShowCash(false);
             window.__AND_PRINT__ = false;
           }}
           onSubmit={(payload) => {
+            // payload = { method:'cash', due, tendered, change, ts }
             const printFlag = !!window.__AND_PRINT__;
             window.__AND_PRINT__ = false;
             setShowCash(false);
             finalizeSale({
               method: "CASH",
-              paymentDetails: payload,
+              paymentDetails: {
+                // include tendered/change in reference so it shows on receipt/response
+                cashReference: `Tendered:${Number(payload?.tendered || 0).toFixed(2)}|Change:${Number(payload?.change || 0).toFixed(2)}`,
+              },
               andPrint: printFlag,
             });
           }}

@@ -1,9 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/CashPayemnt.css"; // (exact file name per your request)
+import { createSale } from "../api/client";
 
 export default function CashPayment({ amount = 0, onClose, onSubmit }) {
-  const [due] = useState(Number(amount) || 0);
-  const [tendered, setTendered] = useState(() => Number(amount) || 0);
+  const { state } = useLocation();
+  const navigate = useNavigate();
+
+  // When opened via routing from Footer we receive state: { cart:{items:[]}, customer:{}, amount, andPrint }
+  const routedAmount = Number(state?.amount ?? amount) || 0;
+  const routedCart   = state?.cart || { items: [] };
+  const routedCustomer = state?.customer || { name: "", phone: "", email: "" };
+  const andPrint = !!state?.andPrint;
+  const redirectPath = state?.redirectPath || "/new";
+
+  const [due] = useState(routedAmount);
+  const [tendered, setTendered] = useState(routedAmount);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -16,9 +28,7 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   }, [tendered, due]);
 
   const appendDigit = (d) => {
-    // keep at most 2 decimals, natural typing like a POS keypad
     const s = String(tendered ?? 0);
-    // if user previously had "0", replace it
     const next = s === "0" ? String(d) : s + String(d);
     if (/^\d+(\.\d{0,2})?$/.test(next)) {
       setTendered(Number(next));
@@ -34,20 +44,91 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   };
 
   const clearAll = () => setTendered(0);
-
   const dot = () => {
     const s = String(tendered ?? 0);
     if (!s.includes(".")) setTendered(Number(s + "."));
   };
 
-  const handleSubmit = () =>
-    onSubmit?.({
-      method: "cash",
-      due,
-      tendered: Number(tendered || 0),
-      change: Number(change || 0),
-      ts: Date.now(),
+  // Build sale lines from routed cart (same mapping style you use elsewhere)
+  const buildLines = () =>
+    (routedCart.items || [])
+      .map((r, i) => {
+        const qty =
+          Number(r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1) || 1;
+        const code =
+          r.barcode ?? r.itemCode ?? r.itemcode ?? r.code ?? r.id ?? "";
+        return code ? { barcode: String(code), qty: qty > 0 ? qty : 1 } : null;
+      })
+      .filter(Boolean);
+
+  const submitToServer = async () => {
+    const lines = buildLines();
+    if (!lines.length) {
+      try { window.alert("No items in cart."); } catch {}
+      return;
+    }
+
+    // Payment amount MUST equal server-side total. Use due (net amount), not tendered.
+    const pays = [
+      {
+        method: "CASH",
+        amount: +Number(due).toFixed(2),
+        reference: `Tendered:${Number(tendered || 0).toFixed(2)}|Change:${Number(change || 0).toFixed(2)}`,
+        card_holder: "",
+        card_holder_phone: "",
+        customer_bank: "",
+        account: "",
+      },
+    ];
+
+    const payload = {
+      customer: {
+        name: routedCustomer?.name || "Guest",
+        phone: routedCustomer?.phone || "",
+        email: routedCustomer?.email || "",
+      },
+      lines,
+      payments: pays,
+      store: "Wabi - Sabi",
+      note: "",
+    };
+
+    const res = await createSale(payload);
+
+    const msg = `Payment successful. Invoice: ${res?.invoice_no || "—"}`;
+    try { window.alert(msg); } catch {}
+    if (andPrint) {
+      try { window.print(); } catch {}
+    }
+    navigate(redirectPath, {
+      replace: true,
+      state: { flash: { type: "success", text: msg } },
     });
+  };
+
+  const handleSubmit = () => {
+    // If used as a pure component with onSubmit, respect that; otherwise, post to server.
+    if (onSubmit) {
+      onSubmit({
+        method: "cash",
+        due,
+        tendered: Number(tendered || 0),
+        change: Number(change || 0),
+        ts: Date.now(),
+      });
+      return;
+    }
+    submitToServer().catch((e) => {
+      console.error(e);
+      const msg = "Payment failed: could not update the database. Please try again.";
+      try { window.alert(msg); } catch {}
+    });
+  };
+
+  const handleClose = () => {
+    if (onClose) onClose();
+    else navigate(-1);
+  };
 
   return (
     <div className="cpay-overlay" role="dialog" aria-modal="true">
@@ -119,21 +200,14 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
             <button className="cpay-key" onClick={dot}>.</button>
             <button className="cpay-key" onClick={() => appendDigit(0)}>0</button>
             <button className="cpay-key" onClick={() => appendDigit(50)}>+50</button>
-            <button className="cpay-key" onClick={backspace}>
-              <span aria-hidden>⌫</span></button>
-
-            
-            {/* <button className="cpay-key" onClick={clearAll}>C</button>
-            <button className="cpay-key cpay-empty" disabled />
-            <button className="cpay-key cpay-empty" disabled />
-            <button className="cpay-key" onClick={() => addBump(50)}>+50</button> */}
+            <button className="cpay-key" onClick={backspace}><span aria-hidden>⌫</span></button>
           </div>
 
           <div className="cpay-actions">
             <button className="cpay-btn cpay-submit" onClick={handleSubmit}>
               Submit
             </button>
-            <button className="cpay-btn cpay-cancel" onClick={onClose}>
+            <button className="cpay-btn cpay-cancel" onClick={handleClose}>
               Cancel
             </button>
           </div>

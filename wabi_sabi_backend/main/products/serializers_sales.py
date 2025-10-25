@@ -114,3 +114,46 @@ class SaleCreateSerializer(serializers.Serializer):
             "totals": {"subtotal": str(sale.subtotal), "discount": str(sale.discount_total), "grand_total": str(sale.grand_total)},
             "payments": pays_in,
         }
+
+# ---- List / table serializer (read-only) ----
+class SaleListSerializer(serializers.ModelSerializer):
+    customer_name   = serializers.CharField(source="customer.name")
+    customer_phone  = serializers.CharField(source="customer.phone", allow_null=True)
+    total_amount    = serializers.DecimalField(source="grand_total", max_digits=12, decimal_places=2)
+    due_amount      = serializers.SerializerMethodField()
+    credit_applied  = serializers.SerializerMethodField()
+    order_type      = serializers.SerializerMethodField()
+    feedback        = serializers.SerializerMethodField()
+    payment_status  = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = Sale
+        fields = [
+            "id",
+            "invoice_no",
+            "transaction_date",
+            "customer_name",
+            "customer_phone",
+            "total_amount",
+            "due_amount",
+            "payment_method",
+            "payment_status",
+            "credit_applied",
+            "order_type",
+            "feedback",
+        ]
+
+    def get_due_amount(self, obj):       # default 0
+        return "0.00"
+
+    def get_credit_applied(self, obj):   # default 0
+        return "0.00"
+
+    def get_order_type(self, obj):       # In-Store
+        return "In-Store"
+
+    def get_feedback(self, obj):         # NaN/blank
+        return None
+
+    def get_payment_status(self, obj):   # all paid since due = 0
+        return "Paid"

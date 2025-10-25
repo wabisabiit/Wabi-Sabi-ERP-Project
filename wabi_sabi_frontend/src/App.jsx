@@ -105,6 +105,9 @@ const OpeningBalancePage = lazy(() => import("./components/OpeningBalancePage"))
 
 const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceCustomerDetailPage"));
 
+/* 🔹 Cash payment screen */
+const CashPayment = lazy(() => import("./components/CashPayment")); // (file name as provided)
+
 /* ---------- Layouts ---------- */
 // POS layout with cart state (kept from Code1)
 function POSLayout() {
@@ -207,7 +210,6 @@ export default function App() {
         <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
         <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
 
-
         {/* CRM */}
         <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
         <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
@@ -221,7 +223,6 @@ export default function App() {
         <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
 
         <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
-
 
         {/* Multipay */}
         <Route
@@ -239,6 +240,8 @@ export default function App() {
           }
         />
 
+        {/* 🔹 Cash payment route */}
+        <Route path="/cash-pay" element={<CashPayment />} />
 
         {/* Inventory -> report routes */}
         <Route path="/inventory/master-packing-itemwise-summary" element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>} />
@@ -303,7 +306,8 @@ export default function App() {
         <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
         <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
 
-        {/* Credit Note */}
+        {/* Credit Note */
+        }
         <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
 
         {/* Fallback */}
