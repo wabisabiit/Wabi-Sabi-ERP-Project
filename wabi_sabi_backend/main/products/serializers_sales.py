@@ -1,28 +1,34 @@
 # products/serializers_sales.py
+from django.db import transaction
+from django.db.models import F
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Customer, Product, Sale, SaleLine
+
 
 class CustomerInSerializer(serializers.Serializer):
     name  = serializers.CharField(max_length=120)
     phone = serializers.CharField(max_length=20, allow_blank=True, required=False)
     email = serializers.EmailField(allow_blank=True, required=False)
 
+
 class SaleLineInSerializer(serializers.Serializer):
     # coming from POS cart rows
     barcode = serializers.CharField(max_length=64)
     qty     = serializers.IntegerField(min_value=1)
 
+
 # products/serializers_sales.py  (PaymentInSerializer)
 class PaymentInSerializer(serializers.Serializer):
     method = serializers.ChoiceField(choices=[m[0] for m in Sale.PAYMENT_METHODS])
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    reference       = serializers.CharField(required=False, allow_blank=True)
-    card_holder     = serializers.CharField(required=False, allow_blank=True)
+    reference         = serializers.CharField(required=False, allow_blank=True)
+    card_holder       = serializers.CharField(required=False, allow_blank=True)
     card_holder_phone = serializers.CharField(required=False, allow_blank=True)  # <-- NEW
-    customer_bank   = serializers.CharField(required=False, allow_blank=True)
-    account         = serializers.CharField(required=False, allow_blank=True)
-   # POS terminal/account used
+    customer_bank     = serializers.CharField(required=False, allow_blank=True)
+    account           = serializers.CharField(required=False, allow_blank=True)
+    # POS terminal/account used
+
 
 class SaleCreateSerializer(serializers.Serializer):
     customer = CustomerInSerializer()
@@ -34,14 +40,31 @@ class SaleCreateSerializer(serializers.Serializer):
     def validate(self, data):
         if not data["lines"]:
             raise serializers.ValidationError("At least one line is required.")
+
+        # quantity per barcode requested (aggregate duplicates)
+        want = {}
         total = 0
         for ln in data["lines"]:
-            # check product existence and denormalized price
-            try:
-                p = Product.objects.select_related("task_item").get(barcode=ln["barcode"])
-            except Product.DoesNotExist:
-                raise serializers.ValidationError(f"Product with barcode {ln['barcode']} not found.")
-            total += (p.selling_price or 0) * ln["qty"]
+            code = str(ln["barcode"]).strip()
+            qty  = int(ln["qty"])
+            if qty < 1:
+                raise serializers.ValidationError(f"Invalid qty for {code}.")
+            want[code] = want.get(code, 0) + qty
+
+        # fetch all required products at once
+        products = {p.barcode: p for p in Product.objects.select_related("task_item").filter(barcode__in=want.keys())}
+
+        # existence + availability + total
+        missing = [bc for bc in want.keys() if bc not in products]
+        if missing:
+            raise serializers.ValidationError(f"Products not found: {', '.join(missing)}")
+
+        for bc, need in want.items():
+            p = products[bc]
+            if (p.qty or 0) < need:
+                raise serializers.ValidationError(f"{bc} not available (stock {p.qty}, need {need}).")
+            total += (p.selling_price or 0) * need
+
         pay_total = sum([float(p["amount"]) for p in data["payments"]])
         if round(pay_total, 2) != round(float(total), 2):
             raise serializers.ValidationError(f"Payments total ({pay_total}) must equal cart total ({total}).")
@@ -54,13 +77,12 @@ class SaleCreateSerializer(serializers.Serializer):
         note     = validated.get("note", "")
         store    = validated.get("store", "Wabi - Sabi")
 
-        # Upsert customer (phone is the easiest dedupe key)
+        # --- customer upsert (same as before) ---
         phone = (cust_in.get("phone") or "").strip()
         name  = (cust_in.get("name") or "").strip() or "Guest"
         email = cust_in.get("email", "")
         if phone:
             customer, _ = Customer.objects.get_or_create(phone=phone, defaults={"name": name, "email": email})
-            # keep latest name/email up to date
             if customer.name != name or (email and customer.email != email):
                 customer.name = name
                 if email:
@@ -69,41 +91,50 @@ class SaleCreateSerializer(serializers.Serializer):
         else:
             customer = Customer.objects.create(name=name, email=email)
 
-        # Decide payment method value
         method = Sale.PAYMENT_MULTIPAY if len(pays_in) > 1 else pays_in[0]["method"]
 
-        # Create Sale header (invoice_no auto-fills in model.save())
-        sale = Sale.objects.create(
-            customer=customer,
-            store=store,
-            payment_method=method,
-            transaction_date=timezone.now(),
-            note=note,
-        )
-
-        # Lines (denormalize prices from Product)
-        subtotal = 0
-        for ln in lines_in:
-            p = Product.objects.select_related("task_item").get(barcode=ln["barcode"])
-            qty = int(ln["qty"])
-            SaleLine.objects.create(
-                sale=sale,
-                product=p,
-                qty=qty,
-                barcode=p.barcode,
-                mrp=p.mrp or 0,
-                sp=p.selling_price or 0,
+        with transaction.atomic():
+            sale = Sale.objects.create(
+                customer=customer,
+                store=store,
+                payment_method=method,
+                transaction_date=timezone.now(),
+                note=note,
             )
-            subtotal += (p.selling_price or 0) * qty
 
-        sale.subtotal = subtotal
-        sale.discount_total = 0
-        sale.grand_total = subtotal
-        sale.save(update_fields=["subtotal", "discount_total", "grand_total"])
+            subtotal = 0
 
-        # You can persist payment rows in a separate table if you add a model,
-        # or just include in Sale.note / external gateway logs. For now we
-        # return payment details in the response to render a receipt.
+            # Group requested qty per barcode to do atomic decrements
+            want = {}
+            for ln in lines_in:
+                bc = str(ln["barcode"]).strip()
+                want[bc] = want.get(bc, 0) + int(ln["qty"])
+
+            # Atomic decrement per barcode (protect against race)
+            for bc, need in want.items():
+                updated = Product.objects.select_for_update().filter(barcode=bc, qty__gte=need).update(qty=F("qty") - need)
+                if updated == 0:
+                    # if someone else sold it just now
+                    raise serializers.ValidationError(f"{bc} not available anymore.")
+
+            # Now create sale lines (denormalize)
+            for ln in lines_in:
+                p = Product.objects.get(barcode=ln["barcode"])  # locked by select_for_update above
+                qty = int(ln["qty"])
+                SaleLine.objects.create(
+                    sale=sale,
+                    product=p,
+                    qty=qty,
+                    barcode=p.barcode,
+                    mrp=p.mrp or 0,
+                    sp=p.selling_price or 0,
+                )
+                subtotal += (p.selling_price or 0) * qty
+
+            sale.subtotal = subtotal
+            sale.discount_total = 0
+            sale.grand_total = subtotal
+            sale.save(update_fields=["subtotal", "discount_total", "grand_total"])
 
         return {
             "invoice_no": sale.invoice_no,
@@ -114,6 +145,7 @@ class SaleCreateSerializer(serializers.Serializer):
             "totals": {"subtotal": str(sale.subtotal), "discount": str(sale.discount_total), "grand_total": str(sale.grand_total)},
             "payments": pays_in,
         }
+
 
 # ---- List / table serializer (read-only) ----
 class SaleListSerializer(serializers.ModelSerializer):

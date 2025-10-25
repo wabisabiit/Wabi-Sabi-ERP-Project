@@ -115,8 +115,19 @@ class ProductViewSet(viewsets.ModelViewSet):
         GET /api/products/by-barcode/<barcode>/
         Look up a product by barcode and return minimal fields
         that the frontend needs (including TaskItem 'vasy' name).
+        Also robust to unicode dashes & case.
         """
-        p = get_object_or_404(self.get_queryset(), barcode=barcode)
+        def clean_barcode(v: str) -> str:
+            if not v:
+                return ""
+            # normalize unicode dashes to ASCII '-', trim & upper
+            v = v.replace("–", "-").replace("—", "-").replace("−", "-").replace("‐", "-")
+            return v.strip().upper()
+
+        clean = clean_barcode(barcode)
+        p = Product.objects.select_related("task_item").filter(barcode__iexact=clean).first()
+        if not p:
+            return Response({"detail": f"Product {clean} not found."}, status=status.HTTP_404_NOT_FOUND)
 
         data = {
             "id": p.id,
@@ -127,6 +138,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             "size": getattr(p, "size", "") or "",
             "image_url": getattr(p, "image_url", "") or "",
             "qty": getattr(p, "qty", 0) or 0,
+            "available": (getattr(p, "qty", 0) or 0) > 0,
             "discount_percent": getattr(p, "discount_percent", 0) or 0,
             "task_item": {
                 "item_vasy_name": getattr(p.task_item, "item_vasy_name", "") or "",

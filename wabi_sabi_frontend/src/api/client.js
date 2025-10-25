@@ -141,6 +141,11 @@ export default {
   listSales,
 };
 
+function sanitizeBarcode(v = "") {
+  return v.replace(/[–—−‐]/g, "-").trim().toUpperCase(); // normalize unicode dashes
+}
+
+
 // src/api/client.js  (add this below the existing helpers/exports)
 
 /* ========= Product lookup by barcode (used by SearchBar) ========= */
@@ -166,6 +171,8 @@ export async function getProductByBarcode(barcode) {
     mrp: Number.isFinite(mrpNum) ? mrpNum : 0,
     sellingPrice: Number.isFinite(spNum) ? spNum : 0,
     vasyName,
+    qty: Number(data?.qty ?? 0),
+    available: !!data?.available,     
   };
 }
 

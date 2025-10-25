@@ -172,20 +172,32 @@ export default function SearchBar({ onAddItem }) {
     setOpenDrop(false);
   };
 
-  const handleScanSubmit = useCallback(async () => {
-    const code = scan.trim();
-    if (!code) return;
+ const handleScanSubmit = useCallback(async () => {
+  const code = scan.trim();
+  if (!code) return;
 
-    try {
-      const p = await getProductByBarcode(code);
-      onAddItem?.(p);       // append to table
-      setScan("");          // clear field for next barcode
-    } catch (err) {
-      console.error(err);
-      // Optional: toast/snackbar
-      alert(`Not found: ${code}`);
+  try {
+    const p = await getProductByBarcode(code);
+
+    // ⛔ NEW: don't add if already sold/out-of-stock
+    const qty = Number(p?.qty ?? 0);
+    if (!p || qty <= 0 || p?.available === false) {
+      alert("Product not available / already sold.");
+      setScan("");
+      // refresh after message
+      setTimeout(() => window.location.reload(), 0);
+      return;
     }
-  }, [scan, onAddItem]);
+
+    // ✅ In stock → add to cart
+    onAddItem?.(p);
+    setScan("");
+  } catch (err) {
+    console.error(err);
+    alert(`Not found: ${code}`);
+  }
+}, [scan, onAddItem]);
+
 
   return (
     <div className="search-row">
