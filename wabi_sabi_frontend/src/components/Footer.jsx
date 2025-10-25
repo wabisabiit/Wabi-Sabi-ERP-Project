@@ -4,9 +4,9 @@ import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
 import { createSale } from "../api/client";
 import { useNavigate } from "react-router-dom"; // ← keep
-import CashPayment from "./CashPayment"; // ← NEW: use the keypad/modal popup
+import CashPayment from "./CashPayment"; // ← keypad/modal popup
+import RedeemCreditModal from "./RedeemCreditModal";
 
-/* ── Lightweight inline modals for CASH & UPI ─────────────────────────────── */
 function CashModal({ amount = 0, onClose, onSubmit }) {
   const [cashAmount, setCashAmount] = useState(Number(amount || 0).toFixed(2));
   const [note, setNote] = useState("");
@@ -167,7 +167,7 @@ export default function Footer({
   amount = 0,
   onReset,
 }) {
-  const navigate = useNavigate(); // ← NEW
+  const navigate = useNavigate();
 
   // Toasts
   const [toasts, setToasts] = useState([]);
@@ -176,8 +176,9 @@ export default function Footer({
 
   // Modals
   const [showCard, setShowCard] = useState(false);
-  const [showCash, setShowCash] = useState(false); // ← reuse but now shows CashPayment popup
+  const [showCash, setShowCash] = useState(false); // CashPayment popup
   const [showUpi, setShowUpi] = useState(false);
+  const [showRedeem, setShowRedeem] = useState(false); // ← FIX: define state
 
   // Discounts
   const [flatDisc, setFlatDisc] = useState("0.00");
@@ -236,7 +237,6 @@ export default function Footer({
         return;
       }
 
-      // Prefer explicit customer prop; fall back to Card holder when paying by CARD
       const customerPayload = {
         name:
           (customer && customer.name) ||
@@ -258,7 +258,7 @@ export default function Footer({
               reference:
                 paymentDetails?.reference ||
                 paymentDetails?.transactionNo ||
-                paymentDetails?.cashReference || // ← when coming from CashPayment
+                paymentDetails?.cashReference ||
                 "",
               card_holder: paymentDetails?.cardHolder || "",
               card_holder_phone: paymentDetails?.cardHolderPhone || "",
@@ -317,8 +317,7 @@ export default function Footer({
         return;
       }
       if (label === "Cash (F4)") {
-        // OPEN CashPayment POPUP (net amount after discount)
-        setShowCash(true);
+        setShowCash(true);         // open CashPayment popup
         window.__AND_PRINT__ = false;
         return;
       }
@@ -334,8 +333,8 @@ export default function Footer({
         return;
       }
       if (label === "Cash & Print (F8)") {
-        setShowCash(true);            // open popup
-        window.__AND_PRINT__ = true;  // mark for print after success
+        setShowCash(true);
+        window.__AND_PRINT__ = true;
         return;
       }
       if (label === "UPI & Print (F10)") {
@@ -344,13 +343,13 @@ export default function Footer({
         return;
       }
 
-      // ── REDIRECT to your existing MultiplePay page ───────────────────────
+      // Multiple Pay redirect
       if (label.startsWith("Multiple Pay")) {
         const cartItems = (items || []).map((r, i) => {
           const qty =
             Number(r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1) || 1;
 
-        const unit =
+          const unit =
             Number(
               r.sellingPrice ??
                 r.unitPrice ??
@@ -401,11 +400,13 @@ export default function Footer({
         return;
       }
 
-      // Stubs for now
+      // Redeem Credit (open modal)
       if (label === "Redeem Credit") {
-        addToast("Redeem Credit: coming soon");
+        setShowRedeem(true);
         return;
       }
+
+      // Stubs
       if (label === "Apply Coupon") {
         addToast("Apply Coupon: coming soon");
         return;
@@ -554,7 +555,25 @@ export default function Footer({
         />
       )}
 
-      {/* 🔹 CASH PAYMENT POPUP (replaces navigation to /cash-pay) */}
+      {/* Redeem Credit */}
+      {showRedeem && (
+        <RedeemCreditModal
+          invoiceBalance={amount || 100}
+          onClose={() => setShowRedeem(false)}
+          onApply={(payload) => {
+            // Minimal: show confirmation toast for now
+            const used = Number(payload?.amount || 0);
+            addToast(
+              used > 0
+                ? `Credit applied: ₹${used.toFixed(2)}`
+                : "No credit used"
+            );
+            setShowRedeem(false);
+          }}
+        />
+      )}
+
+      {/* CASH PAYMENT POPUP */}
       {showCash && (
         <CashPayment
           amount={payableAmount} // net amount after discount
@@ -563,14 +582,12 @@ export default function Footer({
             window.__AND_PRINT__ = false;
           }}
           onSubmit={(payload) => {
-            // payload = { method:'cash', due, tendered, change, ts }
             const printFlag = !!window.__AND_PRINT__;
             window.__AND_PRINT__ = false;
             setShowCash(false);
             finalizeSale({
               method: "CASH",
               paymentDetails: {
-                // include tendered/change in reference so it shows on receipt/response
                 cashReference: `Tendered:${Number(payload?.tendered || 0).toFixed(2)}|Change:${Number(payload?.change || 0).toFixed(2)}`,
               },
               andPrint: printFlag,
