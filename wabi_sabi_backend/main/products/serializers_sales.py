@@ -3,8 +3,8 @@ from django.db import transaction
 from django.db.models import F
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Customer, Product, Sale, SaleLine
-
+# from .models import Customer, Product, Sale, SaleLine
+from .models import Customer, Product, Sale, SaleLine  # CreditNote not used here now
 
 class CustomerInSerializer(serializers.Serializer):
     name  = serializers.CharField(max_length=120)
@@ -28,7 +28,6 @@ class PaymentInSerializer(serializers.Serializer):
     customer_bank     = serializers.CharField(required=False, allow_blank=True)
     account           = serializers.CharField(required=False, allow_blank=True)
     # POS terminal/account used
-
 
 class SaleCreateSerializer(serializers.Serializer):
     customer = CustomerInSerializer()
@@ -145,7 +144,6 @@ class SaleCreateSerializer(serializers.Serializer):
             "totals": {"subtotal": str(sale.subtotal), "discount": str(sale.discount_total), "grand_total": str(sale.grand_total)},
             "payments": pays_in,
         }
-
 
 # ---- List / table serializer (read-only) ----
 class SaleListSerializer(serializers.ModelSerializer):

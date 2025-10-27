@@ -7,6 +7,8 @@ from .views_transfer import (
     barcode_last_transfer, transfer_barcodes,
 )
 from .views_sales import SalesView   # <-- add this
+from .views_credit import CreditNoteView
+from .views_sales_return import SaleLinesByInvoice, SalesReturn
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -21,6 +23,11 @@ urlpatterns = [
 
     # NEW
     path("sales/", SalesView.as_view(), name="sales"),
+    path("credit-notes/", CreditNoteView.as_view(), name="credit-notes"),
+
+    # NEW for returns
+    path("sales/<str:invoice_no>/lines/", SaleLinesByInvoice.as_view(), name="sale-lines-by-invoice"),
+    path("sales/<str:invoice_no>/return/", SalesReturn.as_view(), name="sales-return"),
 ]
 
 urlpatterns += router.urls

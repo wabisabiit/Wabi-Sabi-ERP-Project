@@ -184,3 +184,52 @@ class SaleLine(models.Model):
             if not self.sp:
                 self.sp = self.product.selling_price
         super().save(*args, **kwargs)
+
+
+
+#Credit Note
+# ========= Credit Notes =========
+class CreditNoteSequence(models.Model):
+    prefix       = models.CharField(max_length=16, unique=True, default="CRN")  # CRN
+    next_number  = models.PositiveIntegerField(default=1)
+    pad_width    = models.PositiveSmallIntegerField(default=2)  # CRN01
+
+    def __str__(self):
+        return f"{self.prefix} next={self.next_number}"
+
+    @classmethod
+    def next_no(cls, prefix="CRN"):
+        with transaction.atomic():
+            seq, _ = cls.objects.select_for_update().get_or_create(prefix=prefix, defaults={"next_number": 1})
+            num = seq.next_number
+            seq.next_number = num + 1
+            seq.save(update_fields=["next_number"])
+            return f"{prefix}{str(num).zfill(seq.pad_width)}"
+
+
+class CreditNote(models.Model):
+    """
+    One row per product that reached qty==0 due to a successful sale.
+    """
+    note_no         = models.CharField(max_length=32, unique=True, db_index=True)
+    sale            = models.ForeignKey('Sale', on_delete=models.PROTECT, related_name='credit_notes')
+    customer        = models.ForeignKey('Customer', on_delete=models.PROTECT, related_name='credit_notes')
+    date = models.DateTimeField(default=timezone.now) 
+    product         = models.ForeignKey('Product', on_delete=models.PROTECT)
+    barcode         = models.CharField(max_length=64, db_index=True)
+    qty             = models.PositiveIntegerField(default=1)  # always 1 as requested
+    amount          = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # product.selling_price
+    created_at      = models.DateTimeField(auto_now_add=True)
+    note_date       = models.DateTimeField()  # equal to sale.transaction_date
+
+    class Meta:
+        ordering = ["-note_date", "-id"]
+        indexes  = [models.Index(fields=["barcode"])]
+
+    def __str__(self):
+        return self.note_no
+
+    def save(self, *args, **kwargs):
+        if not self.note_no:
+            self.note_no = CreditNoteSequence.next_no(prefix="CRN")
+        super().save(*args, **kwargs)

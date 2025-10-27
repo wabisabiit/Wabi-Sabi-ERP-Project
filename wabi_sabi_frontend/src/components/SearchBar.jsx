@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import "../styles/SearchBar.css";
-import { getProductByBarcode } from "../api/client";
+import { getProductByBarcode, getSaleLinesByInvoice } from "../api/client";
 
 const MOCK_CUSTOMERS = [
   { id: 1, name: "ishika", phone: "9131054736", address: "", verified: false },
@@ -143,6 +143,7 @@ export default function SearchBar({ onAddItem }) {
   const [matches, setMatches] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [prefillName, setPrefillName] = useState("");
+  const [invoice, setInvoice] = useState("");    // NEW: scan sales invoice box
   const wrapRef = useRef(null);
 
   // Close dropdown on outside click
@@ -172,32 +173,61 @@ export default function SearchBar({ onAddItem }) {
     setOpenDrop(false);
   };
 
- const handleScanSubmit = useCallback(async () => {
-  const code = scan.trim();
-  if (!code) return;
+  const handleScanSubmit = useCallback(async () => {
+    const code = scan.trim();
+    if (!code) return;
 
-  try {
-    const p = await getProductByBarcode(code);
+    try {
+      const p = await getProductByBarcode(code);
 
-    // ⛔ NEW: don't add if already sold/out-of-stock
-    const qty = Number(p?.qty ?? 0);
-    if (!p || qty <= 0 || p?.available === false) {
-      alert("Product not available / already sold.");
+      // ⛔ NEW: don't add if already sold/out-of-stock
+      const qty = Number(p?.qty ?? 0);
+      if (!p || qty <= 0 || p?.available === false) {
+        alert("Product not available / already sold.");
+        setScan("");
+        // refresh after message
+        setTimeout(() => window.location.reload(), 0);
+        return;
+      }
+
+      // ✅ In stock → add to cart
+      onAddItem?.(p);
       setScan("");
-      // refresh after message
-      setTimeout(() => window.location.reload(), 0);
-      return;
+    } catch (err) {
+      console.error(err);
+      alert(`Not found: ${code}`);
     }
+  }, [scan, onAddItem]);
 
-    // ✅ In stock → add to cart
-    onAddItem?.(p);
-    setScan("");
-  } catch (err) {
-    console.error(err);
-    alert(`Not found: ${code}`);
+  // Load previous invoice → return mode
+  async function loadInvoice(inv) {
+    try {
+      const res = await getSaleLinesByInvoice(inv);
+      const lines = Array.isArray(res?.lines) ? res.lines : [];
+      if (!lines.length) {
+        alert("No lines for this invoice.");
+        return;
+      }
+
+      window.__RETURN_MODE__ = true;
+      window.__RETURN_INVOICE__ = res.invoice_no;
+
+      lines.forEach((ln) => {
+        onAddItem?.({
+          id: ln.barcode,
+          barcode: ln.barcode,
+          qty: ln.qty,
+          mrp: Number(ln.mrp || 0),
+          sellingPrice: Number(ln.sp || 0),
+          vasyName: ln.name || ln.barcode,
+          netAmount: Number(ln.sp || 0),
+        });
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Invoice not found.");
+    }
   }
-}, [scan, onAddItem]);
-
 
   return (
     <div className="search-row">
@@ -213,7 +243,6 @@ export default function SearchBar({ onAddItem }) {
             if (e.key === "Enter") handleScanSubmit();
           }}
           onBlur={(e) => {
-            // If users paste and click away, still try to add
             if (e.target.value.trim()) handleScanSubmit();
           }}
         />
@@ -269,7 +298,20 @@ export default function SearchBar({ onAddItem }) {
           )}
         </div>
 
-        <input className="invoice" type="text" placeholder="Scan Sales Invoice" />
+        {/* Scan Sales Invoice */}
+        <input
+          className="invoice"
+          type="text"
+          placeholder="Scan Sales Invoice"
+          value={invoice}
+          onChange={(e) => setInvoice(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && invoice.trim()) loadInvoice(invoice.trim());
+          }}
+          onBlur={(e) => {
+            if (e.target.value.trim()) loadInvoice(e.target.value.trim());
+          }}
+        />
       </div>
 
       {/* Modal */}

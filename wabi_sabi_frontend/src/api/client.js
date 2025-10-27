@@ -139,6 +139,11 @@ export default {
   printBarcodes,
   createSale,
   listSales,
+  listCreditNotes,
+
+  // NEW
+  getSaleLinesByInvoice,
+  createSalesReturn,
 };
 
 function sanitizeBarcode(v = "") {
@@ -197,3 +202,27 @@ export async function listSales(params = {}) {
   return http(`/sales/${qs ? `?${qs}` : ""}`);
 }
 
+// Credit Note 
+// --- Credit Notes API ---
+export async function listCreditNotes(params = {}) {
+  // supports: page (1-based), page_size, query
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === null || v === undefined) return;
+    if (typeof v === "string" && v.trim() === "") return;
+    sp.append(k, v);
+  });
+  const qs = sp.toString();
+  return http(`/credit-notes/${qs ? `?${qs}` : ""}`);
+}
+
+// ===== NEW: Sales Return helpers =====
+export async function getSaleLinesByInvoice(invoiceNo) {
+  const safe = String(invoiceNo || "").trim();
+  return http(`/sales/${encodeURIComponent(safe)}/lines/`);
+}
+
+export async function createSalesReturn(invoiceNo) {
+  const safe = String(invoiceNo || "").trim();
+  return http(`/sales/${encodeURIComponent(safe)}/return/`, { method: "POST" });
+}

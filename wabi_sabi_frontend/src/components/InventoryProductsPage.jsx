@@ -237,24 +237,48 @@ export default function InventoryProductsPage() {
 
   const [filters, setFilters] = useState({ dept: "", category: "", brand: "", purchaseTax: "", salesTax: "", hsn: "" });
 
-  /* ===== Load from backend ===== */
+  /* ===== Load ALL pages from backend ===== */
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       setLoadErr("");
       try {
-        const data = await listProducts(search ? { q: search } : {});
+        // First call via helper (works for both paginated + non-paginated)
+        const first = await listProducts(search ? { q: search } : {});
+        let list = [];
+        let nextUrl = null;
+
+        if (Array.isArray(first)) {
+          // Unpaginated API
+          list = first;
+        } else if (first && Array.isArray(first.results)) {
+          // Paginated API: collect first page, then follow `next`
+          list = [...first.results];
+          nextUrl = first.next || null;
+
+          while (nextUrl) {
+            // fetch absolute `next` URL directly (keeps credentials)
+            const res = await fetch(nextUrl, { credentials: "include", headers: { "Accept": "application/json" } });
+            if (!res.ok) {
+              const text = await res.text().catch(() => "");
+              throw new Error(`Fetch next failed (${res.status}): ${text}`);
+            }
+            const j = await res.json();
+            list.push(...(Array.isArray(j.results) ? j.results : []));
+            nextUrl = j.next || null;
+          }
+        } else {
+          list = [];
+        }
+
         // map API rows to UI, with qty defaulting to 1
-        const list = Array.isArray(data?.results) ? data.results : data;
         const mapped = list.map((r) => ({
           id: r.id,
           images: r.image ? [r.image] : [],
           itemCode: r.itemCode || r.item_code || r.barcode || "",
-          // prefer TaskMaster category if available
           category: r.task_item?.category || r.category || "",
           brand: "B4L",
-          // prefer Product.name, else TaskItem names
           name:
             r.name ||
             r.task_item?.item_print_friendly_name ||
@@ -267,9 +291,9 @@ export default function InventoryProductsPage() {
           qty: Number(r.qty ?? 1) || 1,      // ✅ default 1
           active: true,
           showOnline: false,
-          // normalize created date coming from Product table
           createdOn: r.created_on || r.created_at || r.createdOn || r.created || "",
         }));
+
         if (!cancelled) setRows(mapped);
       } catch (e) {
         console.error(e);

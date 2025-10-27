@@ -1,6 +1,6 @@
 # main/products/admin.py
 from django.contrib import admin
-from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, SaleLine, InvoiceSequence
+from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, SaleLine, InvoiceSequence, CreditNoteSequence, CreditNote
 from taskmaster.models import TaskItem, Location
 
 
@@ -106,3 +106,20 @@ class SaleLineAdmin(admin.ModelAdmin):
 @admin.register(InvoiceSequence)
 class InvoiceSequenceAdmin(admin.ModelAdmin):
     list_display = ("prefix", "next_number", "pad_width")
+
+
+@admin.register(CreditNoteSequence)
+class CreditNoteSequenceAdmin(admin.ModelAdmin):
+    list_display = ("prefix", "next_number", "pad_width")
+    search_fields = ("prefix",)
+    # readonly_fields = ("prefix", "next_number", "pad_width")
+
+
+
+@admin.register(CreditNote)
+class CreditNoteAdmin(admin.ModelAdmin):
+    list_display  = ("note_no", "date", "customer", "barcode", "amount", "qty", "sale")
+    search_fields = ("note_no", "barcode", "customer__name", "customer__phone")
+    list_filter   = ("date", "customer")
+    ordering      = ("-date", "-id")
+    date_hierarchy = "date"

@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
-import { createSale } from "../api/client";
+import { createSale, createSalesReturn } from "../api/client";
 import { useNavigate } from "react-router-dom"; // ← keep
 import CashPayment from "./CashPayment"; // ← keypad/modal popup
 import RedeemCreditModal from "./RedeemCreditModal";
@@ -290,27 +290,56 @@ export default function Footer({
     }
   }
 
-  /* Full action list restored */
+  // Actions (switch when in RETURN mode)
+  const returnMode = !!window.__RETURN_MODE__;
   const actions = useMemo(
-    () => [
-      "Multiple Pay (F12)",
-      "Redeem Credit",
-      "Hold (F6)",
-      "UPI (F5)",
-      "Card (F3)",
-      "Cash (F4)",
-      "Apply Coupon",
-      "Pay Later (F11)",
-      "Hold & Print (F7)",
-      "UPI & Print (F10)",
-      "Card & Print (F9)",
-      "Cash & Print (F8)",
-    ],
-    []
+    () => returnMode
+      ? ["Refund", "Sales Return"]
+      : [
+          "Multiple Pay (F12)",
+          "Redeem Credit",
+          "Hold (F6)",
+          "UPI (F5)",
+          "Card (F3)",
+          "Cash (F4)",
+          "Apply Coupon",
+          "Pay Later (F11)",
+          "Hold & Print (F7)",
+          "UPI & Print (F10)",
+          "Card & Print (F9)",
+          "Cash & Print (F8)",
+        ],
+    [returnMode]
   );
 
   const handleActionClick = useCallback(
     (label) => {
+      // Return-mode actions
+      if (label === "Refund") {
+        addToast("Refund: coming soon");
+        return;
+      }
+      if (label === "Sales Return") {
+        const inv = window.__RETURN_INVOICE__;
+        if (!inv) { addToast("No invoice loaded."); return; }
+        (async () => {
+          try {
+            const res = await createSalesReturn(inv);
+            const ok = !!res?.ok;
+            const msg = res?.msg || (ok ? "Credit note created." : "Failed to create credit note.");
+            addToast(msg);
+            if (ok && Array.isArray(res?.notes) && res.notes.length) {
+              alert(`Credit Note(s): ${res.notes.join(", ")}`);
+            }
+            setTimeout(() => window.location.reload(), 600);
+          } catch (e) {
+            console.error(e);
+            addToast("Error: credit note not created.");
+          }
+        })();
+        return;
+      }
+
       // Payment actions
       if (label === "Card (F3)") {
         setShowCard(true);
@@ -561,7 +590,6 @@ export default function Footer({
           invoiceBalance={amount || 100}
           onClose={() => setShowRedeem(false)}
           onApply={(payload) => {
-            // Minimal: show confirmation toast for now
             const used = Number(payload?.amount || 0);
             addToast(
               used > 0
