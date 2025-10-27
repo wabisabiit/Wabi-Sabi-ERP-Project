@@ -144,6 +144,8 @@ export default {
   // NEW
   getSaleLinesByInvoice,
   createSalesReturn,
+  getCreditNote,
+  redeemCreditNote,
 };
 
 function sanitizeBarcode(v = "") {
@@ -220,6 +222,19 @@ export async function listCreditNotes(params = {}) {
 export async function getSaleLinesByInvoice(invoiceNo) {
   const safe = String(invoiceNo || "").trim();
   return http(`/sales/${encodeURIComponent(safe)}/lines/`);
+}
+
+
+export async function getCreditNote(noteNo) {
+  return http(`/credit-notes/${encodeURIComponent(noteNo)}/`);
+}
+
+export async function redeemCreditNote(noteNo, payload) {
+  // payload: { invoice_no, amount }
+  return http(`/credit-notes/${encodeURIComponent(noteNo)}/redeem/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createSalesReturn(invoiceNo) {

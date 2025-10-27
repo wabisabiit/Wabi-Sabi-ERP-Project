@@ -2,86 +2,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
-import { createSale, createSalesReturn } from "../api/client";
-import { useNavigate } from "react-router-dom"; // ← keep
-import CashPayment from "./CashPayment"; // ← keypad/modal popup
+import { createSale, createSalesReturn, redeemCreditNote } from "../api/client";
+import { useNavigate } from "react-router-dom";
+import CashPayment from "./CashPayment";
 import RedeemCreditModal from "./RedeemCreditModal";
-
-function CashModal({ amount = 0, onClose, onSubmit }) {
-  const [cashAmount, setCashAmount] = useState(Number(amount || 0).toFixed(2));
-  const [note, setNote] = useState("");
-
-  useEffect(() => {
-    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    document.body.classList.add("modal-open");
-    document.body.style.top = `-${scrollY}px`;
-    return () => {
-      const top = document.body.style.top;
-      document.body.classList.remove("modal-open");
-      document.body.style.top = "";
-      const y = Math.abs(parseInt(top || "0", 10)) || 0;
-      window.scrollTo(0, y);
-    };
-  }, []);
-
-  const submit = (e) => {
-    e.preventDefault();
-    onSubmit?.({
-      amount: parseFloat(cashAmount || 0),
-      reference: note.trim(),
-    });
-  };
-
-  return (
-    <div
-      className="cd-backdrop"
-      data-backdrop
-      onMouseDown={(e) => {
-        if (e.target.dataset.backdrop) onClose?.();
-      }}
-    >
-      <div
-        className="cd-card"
-        role="dialog"
-        aria-modal="true"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="cd-header">
-          <h3>Cash Payment</h3>
-          <button className="cd-close" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <form className="cd-body" onSubmit={submit}>
-          <label className="cd-field">
-            <span>Cash Amount</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={cashAmount}
-              onChange={(e) => setCashAmount(e.target.value)}
-            />
-          </label>
-          <label className="cd-field">
-            <span>Note (optional)</span>
-            <input
-              type="text"
-              placeholder="e.g. ₹500 x 7 + ₹200 x 1"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </label>
-          <div className="cd-actions">
-            <button type="submit" className="cd-primary">
-              Finalize Payment
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 function UpiModal({ amount = 0, onClose, onSubmit }) {
   const [upiAmount, setUpiAmount] = useState(Number(amount || 0).toFixed(2));
@@ -159,12 +83,11 @@ function UpiModal({ amount = 0, onClose, onSubmit }) {
   );
 }
 
-/* ── Footer ───────────────────────────────────────────────────────────────── */
 export default function Footer({
   items = [],
-  customer,                // <-- may be undefined; we’ll fall back to Card form
+  customer,
   totalQty = 0,
-  amount = 0,
+  amount = 0,          // cart total BEFORE credit
   onReset,
 }) {
   const navigate = useNavigate();
@@ -173,33 +96,31 @@ export default function Footer({
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef({});
   const idRef = useRef(0);
-
-  // Modals
-  const [showCard, setShowCard] = useState(false);
-  const [showCash, setShowCash] = useState(false); // CashPayment popup
-  const [showUpi, setShowUpi] = useState(false);
-  const [showRedeem, setShowRedeem] = useState(false); // ← FIX: define state
-
-  // Discounts
-  const [flatDisc, setFlatDisc] = useState("0.00");
-  const [isPercent, setIsPercent] = useState(true);
-
   const addToast = useCallback((text) => {
     const id = ++idRef.current;
     setToasts((prev) => [{ id, text }, ...prev].slice(0, 3));
     timersRef.current[id] = setTimeout(() => {
-      setToasts((prev2) => prev2.filter((t) => t.id !== id));
+      setToasts((p) => p.filter((t) => t.id !== id));
       delete timersRef.current[id];
     }, 2000);
   }, []);
-  useEffect(
-    () => () => {
-      Object.values(timersRef.current).forEach(clearTimeout);
-    },
-    []
-  );
+  useEffect(() => () => Object.values(timersRef.current).forEach(clearTimeout), []);
 
-  // Totals
+  // Modals
+  const [showCard, setShowCard] = useState(false);
+  const [showCash, setShowCash] = useState(false);
+  const [showUpi, setShowUpi] = useState(false);
+  const [showRedeem, setShowRedeem] = useState(false);
+
+  // Discount UI (kept as-is; applied before credit)
+  const [flatDisc, setFlatDisc] = useState("0.00");
+  const [isPercent, setIsPercent] = useState(true);
+
+  // Credit usage (one note per sale)
+  // shape: { noteNo, amount }
+  const [creditUse, setCreditUse] = useState(null);
+
+  // Payable after discount, BEFORE credit
   const payableAmount = useMemo(() => {
     const baseAmount = Number(amount) || 0;
     const discRaw = Math.max(0, Number(flatDisc) || 0);
@@ -208,7 +129,13 @@ export default function Footer({
     return Math.max(0, Math.round(baseAmount - discCapped));
   }, [amount, flatDisc, isPercent]);
 
-  // Build sale lines (robust to different cart row shapes)
+  // Remaining after applying credit note (never negative)
+  const remainingAfterCredit = useMemo(() => {
+    const credit = Number(creditUse?.amount || 0);
+    return Math.max(0, Math.round(payableAmount - credit));
+  }, [payableAmount, creditUse]);
+
+  // Cart lines builder
   const buildLines = useCallback(() => {
     return (items || [])
       .map((r) => {
@@ -228,14 +155,36 @@ export default function Footer({
       .filter(Boolean);
   }, [items]);
 
-  // Core POST
-  async function finalizeSale({ method, paymentDetails, multi = false, andPrint = false }) {
+  // Finalize: include CREDIT row (if any) + chosen payment method row
+  async function finalizeSale({ method, paymentDetails, andPrint = false }) {
     try {
       const lines = buildLines();
       if (!lines.length) {
         addToast("Add minimum 1 product.");
         return;
       }
+
+      const grandTotal = Number(payableAmount) || 0;
+      const creditRow =
+        creditUse && Number(creditUse.amount) > 0
+          ? [{ method: "CREDIT", amount: Number(creditUse.amount), reference: creditUse.noteNo }]
+          : [];
+
+      const payRow = {
+        method,
+        amount: Number(remainingAfterCredit),
+        reference:
+          paymentDetails?.reference ||
+          paymentDetails?.transactionNo ||
+          paymentDetails?.cashReference ||
+          "",
+        card_holder: paymentDetails?.cardHolder || "",
+        card_holder_phone: paymentDetails?.cardHolderPhone || "",
+        customer_bank: paymentDetails?.customerBankName || "",
+        account: paymentDetails?.paymentAccount || "",
+      };
+
+      const payments = [...creditRow, payRow]; // sums to grandTotal
 
       const customerPayload = {
         name:
@@ -249,24 +198,6 @@ export default function Footer({
         email: (customer && customer.email) || "",
       };
 
-      const payments = multi
-        ? paymentDetails?.payments || []
-        : [
-            {
-              method,
-              amount: Number(payableAmount),
-              reference:
-                paymentDetails?.reference ||
-                paymentDetails?.transactionNo ||
-                paymentDetails?.cashReference ||
-                "",
-              card_holder: paymentDetails?.cardHolder || "",
-              card_holder_phone: paymentDetails?.cardHolderPhone || "",
-              customer_bank: paymentDetails?.customerBankName || "",
-              account: paymentDetails?.paymentAccount || "",
-            },
-          ];
-
       const payload = {
         customer: customerPayload,
         lines,
@@ -278,9 +209,19 @@ export default function Footer({
       const res = await createSale(payload);
       addToast(`Payment successful. Invoice: ${res?.invoice_no || "—"}`);
 
-      if (andPrint) {
-        window.print();
+      // Mark credit note redeemed so it can't be reused
+      if (creditUse?.noteNo && creditUse.amount > 0 && res?.invoice_no) {
+        try {
+          await redeemCreditNote(creditUse.noteNo, {
+            invoice_no: res.invoice_no,
+            amount: creditUse.amount,
+          });
+        } catch (e) {
+          console.warn("Failed to mark credit redeemed:", e);
+        }
       }
+
+      if (andPrint) window.print();
 
       if (typeof onReset === "function") onReset(res);
       else window.location.reload();
@@ -290,38 +231,42 @@ export default function Footer({
     }
   }
 
-  // Actions (switch when in RETURN mode)
+  // Return-mode actions
   const returnMode = !!window.__RETURN_MODE__;
   const actions = useMemo(
-    () => returnMode
-      ? ["Refund", "Sales Return"]
-      : [
-          "Multiple Pay (F12)",
-          "Redeem Credit",
-          "Hold (F6)",
-          "UPI (F5)",
-          "Card (F3)",
-          "Cash (F4)",
-          "Apply Coupon",
-          "Pay Later (F11)",
-          "Hold & Print (F7)",
-          "UPI & Print (F10)",
-          "Card & Print (F9)",
-          "Cash & Print (F8)",
-        ],
+    () =>
+      returnMode
+        ? ["Refund", "Sales Return"]
+        : [
+            "Multiple Pay (F12)",
+            "Redeem Credit",
+            "Hold (F6)",
+            "UPI (F5)",
+            "Card (F3)",
+            "Cash (F4)",
+            "Apply Coupon",
+            "Pay Later (F11)",
+            "Hold & Print (F7)",
+            "UPI & Print (F10)",
+            "Card & Print (F9)",
+            "Cash & Print (F8)",
+          ],
     [returnMode]
   );
 
   const handleActionClick = useCallback(
     (label) => {
-      // Return-mode actions
+      // Return-mode
       if (label === "Refund") {
         addToast("Refund: coming soon");
         return;
       }
       if (label === "Sales Return") {
         const inv = window.__RETURN_INVOICE__;
-        if (!inv) { addToast("No invoice loaded."); return; }
+        if (!inv) {
+          addToast("No invoice loaded.");
+          return;
+        }
         (async () => {
           try {
             const res = await createSalesReturn(inv);
@@ -340,13 +285,13 @@ export default function Footer({
         return;
       }
 
-      // Payment actions
+      // Payments
       if (label === "Card (F3)") {
         setShowCard(true);
         return;
       }
       if (label === "Cash (F4)") {
-        setShowCash(true);         // open CashPayment popup
+        setShowCash(true);
         window.__AND_PRINT__ = false;
         return;
       }
@@ -372,7 +317,7 @@ export default function Footer({
         return;
       }
 
-      // Multiple Pay redirect
+      // Multiple Pay
       if (label.startsWith("Multiple Pay")) {
         const cartItems = (items || []).map((r, i) => {
           const qty =
@@ -390,7 +335,7 @@ export default function Footer({
             (Number(r.netAmount ?? r.amount ?? 0) / qty) ||
             0;
 
-          return {
+        return {
             id: r.id ?? i + 1,
             name:
               r.product ||
@@ -416,7 +361,7 @@ export default function Footer({
               customerType: customer?.name || "Walk In Customer",
               items: cartItems,
               roundoff: 0,
-              amount: Number(payableAmount), // after discount
+              amount: Number(remainingAfterCredit), // remaining after credit
             },
             customer: {
               name: customer?.name || "",
@@ -429,8 +374,12 @@ export default function Footer({
         return;
       }
 
-      // Redeem Credit (open modal)
+      // Redeem Credit
       if (label === "Redeem Credit") {
+        if (creditUse?.noteNo) {
+          addToast("A credit note is already applied.");
+          return;
+        }
         setShowRedeem(true);
         return;
       }
@@ -453,7 +402,7 @@ export default function Footer({
         return;
       }
     },
-    [navigate, items, customer, payableAmount]
+    [navigate, items, customer, remainingAfterCredit, creditUse]
   );
 
   return (
@@ -506,11 +455,15 @@ export default function Footer({
             <input className="mini" placeholder="0.00" defaultValue="0.00" />
             <div className="label">Round OFF</div>
           </div>
+
+          {/* Amount now shows remaining after credit to make it obvious */}
           <div className="amount">
             <div className="amount-value">
-              {Number(payableAmount).toLocaleString()}
+              {Number(remainingAfterCredit).toLocaleString()}
             </div>
-            <div className="label">Amount</div>
+            <div className="label">
+              Amount {creditUse?.amount ? `(after ₹${Number(creditUse.amount).toFixed(2)} credit)` : ""}
+            </div>
           </div>
         </div>
 
@@ -532,9 +485,7 @@ export default function Footer({
               )}
               {text.includes("Hold") &&
                 !text.includes("Multiple") && (
-                  <span className="material-icons">
-                    pause_presentation
-                  </span>
+                  <span className="material-icons">pause_presentation</span>
                 )}
               {text.includes("Multiple") && (
                 <span className="material-icons">view_week</span>
@@ -554,19 +505,17 @@ export default function Footer({
           <div className="toast-stack" role="region" aria-live="assertive">
             {toasts.map((t) => (
               <div key={t.id} className="toast-item toast-error" role="alert">
-                <span className="icon" aria-hidden>
-                  ❗
-                </span>{" "}
-                {t.text}
+                <span className="icon" aria-hidden>❗</span> {t.text}
               </div>
             ))}
           </div>
         )}
       </footer>
 
+      {/* Card */}
       {showCard && (
         <CardDetail
-          amount={payableAmount}
+          amount={remainingAfterCredit}
           onClose={() => {
             setShowCard(false);
             window.__AND_PRINT__ = false;
@@ -587,24 +536,25 @@ export default function Footer({
       {/* Redeem Credit */}
       {showRedeem && (
         <RedeemCreditModal
-          invoiceBalance={amount || 100}
+          invoiceBalance={payableAmount} // cap by current bill (after discount, before credit)
           onClose={() => setShowRedeem(false)}
-          onApply={(payload) => {
-            const used = Number(payload?.amount || 0);
-            addToast(
-              used > 0
-                ? `Credit applied: ₹${used.toFixed(2)}`
-                : "No credit used"
-            );
+          onApply={({ noteNo, amount }) => {
+            if (!noteNo || !amount) {
+              addToast("No credit used");
+              setShowRedeem(false);
+              return;
+            }
+            setCreditUse({ noteNo, amount: Number(amount) });
+            addToast(`Credit applied: ₹${Number(amount).toFixed(2)}`);
             setShowRedeem(false);
           }}
         />
       )}
 
-      {/* CASH PAYMENT POPUP */}
+      {/* Cash */}
       {showCash && (
         <CashPayment
-          amount={payableAmount} // net amount after discount
+          amount={remainingAfterCredit}
           onClose={() => {
             setShowCash(false);
             window.__AND_PRINT__ = false;
@@ -624,9 +574,10 @@ export default function Footer({
         />
       )}
 
+      {/* UPI */}
       {showUpi && (
         <UpiModal
-          amount={payableAmount}
+          amount={remainingAfterCredit}
           onClose={() => {
             setShowUpi(false);
             window.__AND_PRINT__ = false;

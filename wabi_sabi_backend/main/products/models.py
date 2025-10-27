@@ -120,12 +120,14 @@ class Sale(models.Model):
     PAYMENT_CARD      = "CARD"
     PAYMENT_CASH      = "CASH"
     PAYMENT_MULTIPAY  = "MULTIPAY"
+    PAYMENT_CREDIT    = "CREDIT"
 
     PAYMENT_METHODS = [
         (PAYMENT_UPI, "UPI"),
         (PAYMENT_CARD, "Card"),
         (PAYMENT_CASH, "Cash"),
         (PAYMENT_MULTIPAY, "Multipay"),
+        (PAYMENT_CREDIT, "Credit Note"),
     ]
 
     invoice_no       = models.CharField(max_length=32, unique=True, db_index=True)
@@ -221,6 +223,10 @@ class CreditNote(models.Model):
     amount          = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # product.selling_price
     created_at      = models.DateTimeField(auto_now_add=True)
     note_date       = models.DateTimeField()  # equal to sale.transaction_date
+    is_redeemed     = models.BooleanField(default=False)          # ⬅️ NEW
+    redeemed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # ⬅️ NEW
+    redeemed_at     = models.DateTimeField(null=True, blank=True) # ⬅️ NEW
+    redeemed_invoice= models.CharField(max_length=32, blank=True, default="")         # ⬅️ NEW
 
     class Meta:
         ordering = ["-note_date", "-id"]
