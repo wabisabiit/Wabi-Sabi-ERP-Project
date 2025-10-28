@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import "../styles/MultiplePay.css";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createSale } from "../api/client";
+import { createSale, getSelectedCustomer, clearSelectedCustomer } from "../api/client";
 
 export default function MultiplePay({
   cart: cartProp = { customerType: "Walk In Customer", items: [], roundoff: 0, amount: 0 },
@@ -16,7 +16,7 @@ export default function MultiplePay({
 
   // Prefer state passed from Footer -> navigate("/multiple-pay", { state: { cart, customer } })
   const cart = state?.cart || cartProp;
-  const customer = state?.customer || {
+  const customer = state?.customer || getSelectedCustomer() || {
     name: cart.customerName || "",
     phone: "",
     email: "",
@@ -136,7 +136,7 @@ export default function MultiplePay({
 
     const payload = {
       customer: {
-        name: customer?.name || cart.customerType || "Guest",
+        name: customer?.name || cart.customerType || "Walk In Customer",
         phone: customer?.phone || "",
         email: customer?.email || "",
       },
@@ -187,6 +187,8 @@ export default function MultiplePay({
 
       setBanner({ type: "success", text: msg });
       try { window.alert(msg); } catch {}
+      // clear POS customer session now that the transaction is done
+      clearSelectedCustomer();
 
       // Let the user read it, then go back
       setTimeout(() => {

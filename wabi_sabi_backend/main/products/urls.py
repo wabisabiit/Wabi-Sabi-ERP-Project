@@ -9,6 +9,7 @@ from .views_transfer import (
 from .views_sales import SalesView   # <-- add this
 from .views_credit import CreditNoteView,CreditNoteDetail,CreditNoteRedeem
 from .views_sales_return import SaleLinesByInvoice, SalesReturn
+from .views_customers import CustomerListCreate 
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -30,6 +31,7 @@ urlpatterns = [
     # NEW for returns
     path("sales/<str:invoice_no>/lines/", SaleLinesByInvoice.as_view(), name="sale-lines-by-invoice"),
     path("sales/<str:invoice_no>/return/", SalesReturn.as_view(), name="sales-return"),
+    path("customers/", CustomerListCreate.as_view(), name="customers"),
 ]
 
 urlpatterns += router.urls

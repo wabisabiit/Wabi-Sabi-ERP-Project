@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
-import { createSale, createSalesReturn, redeemCreditNote } from "../api/client";
+import { createSale, createSalesReturn, redeemCreditNote, getSelectedCustomer, clearSelectedCustomer } from "../api/client";
 import { useNavigate } from "react-router-dom";
 import CashPayment from "./CashPayment";
 import RedeemCreditModal from "./RedeemCreditModal";
@@ -155,6 +155,10 @@ export default function Footer({
       .filter(Boolean);
   }, [items]);
 
+  // Resolve customer: prefer prop, else session
+  const sessionCustomer = getSelectedCustomer();
+  const effectiveCustomer = customer && (customer.name || customer.phone) ? customer : sessionCustomer;
+
   // Finalize: include CREDIT row (if any) + chosen payment method row
   async function finalizeSale({ method, paymentDetails, andPrint = false }) {
     try {
@@ -188,14 +192,14 @@ export default function Footer({
 
       const customerPayload = {
         name:
-          (customer && customer.name) ||
+          (effectiveCustomer && effectiveCustomer.name) ||
           (method === "CARD" ? (paymentDetails?.cardHolder || "").trim() : "") ||
           "Guest",
         phone:
-          (customer && customer.phone) ||
+          (effectiveCustomer && effectiveCustomer.phone) ||
           (method === "CARD" ? (paymentDetails?.cardHolderPhone || "").trim() : "") ||
           "",
-        email: (customer && customer.email) || "",
+        email: (effectiveCustomer && effectiveCustomer.email) || "",
       };
 
       const payload = {
@@ -222,6 +226,9 @@ export default function Footer({
       }
 
       if (andPrint) window.print();
+
+      // end POS session so next bill requires picking customer again
+      clearSelectedCustomer();
 
       if (typeof onReset === "function") onReset(res);
       else window.location.reload();
@@ -358,15 +365,15 @@ export default function Footer({
         navigate("/multiple-pay", {
           state: {
             cart: {
-              customerType: customer?.name || "Walk In Customer",
+              customerType: (effectiveCustomer?.name || "Walk In Customer"),
               items: cartItems,
               roundoff: 0,
               amount: Number(remainingAfterCredit), // remaining after credit
             },
             customer: {
-              name: customer?.name || "",
-              phone: customer?.phone || "",
-              email: customer?.email || "",
+              name: effectiveCustomer?.name || "",
+              phone: effectiveCustomer?.phone || "",
+              email: effectiveCustomer?.email || "",
             },
             andPrint: false,
           },
@@ -402,7 +409,7 @@ export default function Footer({
         return;
       }
     },
-    [navigate, items, customer, remainingAfterCredit, creditUse]
+    [navigate, items, effectiveCustomer, remainingAfterCredit, creditUse]
   );
 
   return (

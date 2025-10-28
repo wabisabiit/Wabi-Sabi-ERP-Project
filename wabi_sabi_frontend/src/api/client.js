@@ -146,6 +146,13 @@ export default {
   createSalesReturn,
   getCreditNote,
   redeemCreditNote,
+
+  // customers + POS session
+  searchCustomers,
+  createCustomer,
+  getSelectedCustomer,
+  setSelectedCustomer,
+  clearSelectedCustomer,
 };
 
 function sanitizeBarcode(v = "") {
@@ -240,4 +247,31 @@ export async function redeemCreditNote(noteNo, payload) {
 export async function createSalesReturn(invoiceNo) {
   const safe = String(invoiceNo || "").trim();
   return http(`/sales/${encodeURIComponent(safe)}/return/`, { method: "POST" });
+}
+
+
+// ---- Customers ----
+export async function searchCustomers(q) {
+  const sp = new URLSearchParams();
+  if (q) sp.append("q", q);
+  return http(`/customers/${sp.toString() ? `?${sp.toString()}` : ""}`);
+}
+
+export async function createCustomer(payload) {
+  // { name, phone, email? }
+  return http(`/customers/`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+/* POS "session" helpers (persist selection until sale completes) */
+const CKEY = "pos.currentCustomer";
+export function getSelectedCustomer() {
+  try { return JSON.parse(localStorage.getItem(CKEY) || "null"); } catch { return null; }
+}
+export function setSelectedCustomer(cust) {
+  if (cust) localStorage.setItem(CKEY, JSON.stringify(cust));
+  else localStorage.removeItem(CKEY);
+}
+export function clearSelectedCustomer() {
+  try { localStorage.removeItem(CKEY); } catch {}
+  window.dispatchEvent(new CustomEvent("pos:clear-customer"));
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/CashPayemnt.css"; // (exact file name per your request)
-import { createSale } from "../api/client";
+import { createSale, getSelectedCustomer, clearSelectedCustomer } from "../api/client";
 
 export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   const { state } = useLocation();
@@ -10,7 +10,7 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   // When opened via routing from Footer we receive state: { cart:{items:[]}, customer:{}, amount, andPrint }
   const routedAmount = Number(state?.amount ?? amount) || 0;
   const routedCart   = state?.cart || { items: [] };
-  const routedCustomer = state?.customer || { name: "", phone: "", email: "" };
+  const routedCustomer = state?.customer || getSelectedCustomer() || { name: "", phone: "", email: "" };
   const andPrint = !!state?.andPrint;
   const redirectPath = state?.redirectPath || "/new";
 
@@ -83,9 +83,9 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
 
     const payload = {
       customer: {
-        name: routedCustomer?.name || "Guest",
-        phone: routedCustomer?.phone || "",
-        email: routedCustomer?.email || "",
+        name: (routedCustomer?.name || "Guest"),
+        phone: (routedCustomer?.phone || ""),
+        email: (routedCustomer?.email || ""),
       },
       lines,
       payments: pays,
@@ -97,6 +97,7 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
 
     const msg = `Payment successful. Invoice: ${res?.invoice_no || "—"}`;
     try { window.alert(msg); } catch {}
+    clearSelectedCustomer();
     if (andPrint) {
       try { window.print(); } catch {}
     }

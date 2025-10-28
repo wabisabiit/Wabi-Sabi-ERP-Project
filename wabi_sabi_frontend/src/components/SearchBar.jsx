@@ -1,22 +1,60 @@
+// src/components/SearchBar.jsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import "../styles/SearchBar.css";
-import { getProductByBarcode, getSaleLinesByInvoice } from "../api/client";
+import {
+  getProductByBarcode,
+  getSaleLinesByInvoice,
+  // customer APIs + POS session helpers
+  searchCustomers,
+  createCustomer,
+  getSelectedCustomer,
+  setSelectedCustomer,
+  clearSelectedCustomer,
+} from "../api/client";
 
+// (kept for compatibility; only used as fallback if API fails)
 const MOCK_CUSTOMERS = [
   { id: 1, name: "ishika", phone: "9131054736", address: "", verified: false },
   { id: 2, name: "IShika", phone: "7417449691", address: "", verified: false },
-  { id: 3, name: "Rohan",  phone: "9876543210", address: "DLF Phase 3", verified: true },
+  { id: 3, name: "Rohan", phone: "9876543210", address: "DLF Phase 3", verified: true },
 ];
 
-function NewCustomerModal({ open, onClose, prefillName = "" }) {
+function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
+  const nameRef = useRef(null);
+  const phoneRef = useRef(null);
+
   useEffect(() => {
     if (open) document.body.classList.add("modal-open");
     else document.body.classList.remove("modal-open");
     return () => document.body.classList.remove("modal-open");
   }, [open]);
 
+  // prefill name
+  useEffect(() => {
+    if (open && nameRef.current) nameRef.current.value = prefillName || "";
+  }, [open, prefillName]);
+
   if (!open) return null;
   const stop = (e) => e.stopPropagation();
+
+  const handleSave = async () => {
+    const name = (nameRef.current?.value || "").trim();
+    const phone = (phoneRef.current?.value || "").trim();
+
+    if (!name) { alert("Name is required."); return; }
+    if (!phone) { alert("Mobile number is required."); return; }
+
+    try {
+      const res = await createCustomer({ name, phone });
+      const cust = res.customer || res;
+      alert(res.ok ? (res.created ? "Customer created." : "Customer selected.") : "Saved.");
+      onSaved?.(cust);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save customer.");
+    }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -27,14 +65,14 @@ function NewCustomerModal({ open, onClose, prefillName = "" }) {
           <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Body: EXACT 3 columns */}
+        {/* Body: EXACT 3 columns (fields unchanged visually) */}
         <div className="modal-grid grid-3">
           {/* Row 1 */}
           <div className="form-row">
             <div className="label-row">
               <label>Name <span className="req">*</span></label>
             </div>
-            <input className="field" defaultValue={prefillName} placeholder="Name" />
+            <input ref={nameRef} className="field" defaultValue={prefillName} placeholder="Name" />
           </div>
 
           <div className="form-row">
@@ -44,7 +82,7 @@ function NewCustomerModal({ open, onClose, prefillName = "" }) {
             </div>
             <div className="phone-field">
               <span className="country">+91</span>
-              <input className="field" placeholder="Mobile No." />
+              <input ref={phoneRef} className="field" placeholder="Mobile No." />
             </div>
           </div>
 
@@ -129,7 +167,7 @@ function NewCustomerModal({ open, onClose, prefillName = "" }) {
 
         {/* Footer */}
         <div className="modal-footer center">
-          <button className="primary-btn" onClick={onClose}>Save</button>
+          <button className="primary-btn" onClick={handleSave}>Save</button>
         </div>
       </div>
     </div>
@@ -137,14 +175,21 @@ function NewCustomerModal({ open, onClose, prefillName = "" }) {
 }
 
 export default function SearchBar({ onAddItem }) {
-  const [scan, setScan] = useState("");          // <-- barcode input (left box)
+  const [scan, setScan] = useState("");          // barcode input (left box)
   const [query, setQuery] = useState("");        // walk-in customer box
   const [openDrop, setOpenDrop] = useState(false);
   const [matches, setMatches] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [prefillName, setPrefillName] = useState("");
-  const [invoice, setInvoice] = useState("");    // NEW: scan sales invoice box
+  const [invoice, setInvoice] = useState("");    // scan sales invoice box
+  const [customer, setCustomer] = useState(() => getSelectedCustomer()); // POS session
   const wrapRef = useRef(null);
+
+  // ✅ Fresh session on every full page refresh
+  useEffect(() => {
+    clearSelectedCustomer();    // wipe any stale selection from localStorage
+    setCustomer(null);          // reflect in UI so customer-first is enforced
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -155,16 +200,26 @@ export default function SearchBar({ onAddItem }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  // Live search from server (keeps your dropdown UI)
   useEffect(() => {
-    if (query.trim().length >= 1) {
-      const q = query.toLowerCase();
-      const result = MOCK_CUSTOMERS.filter(
-        (c) => c.name.toLowerCase().includes(q) || c.phone.includes(query.trim())
-      );
-      setMatches(result);
-    } else {
-      setMatches([]);
-    }
+    let alive = true;
+    const run = async () => {
+      const q = query.trim();
+      if (!q) { setMatches([]); return; }
+      try {
+        const res = await searchCustomers(q);
+        if (!alive) return;
+        setMatches(res?.results || []);
+      } catch (e) {
+        console.error(e);
+        const ql = q.toLowerCase();
+        setMatches(MOCK_CUSTOMERS.filter(
+          (c) => c.name.toLowerCase().includes(ql) || c.phone.includes(q)
+        ));
+      }
+    };
+    run();
+    return () => { alive = false; };
   }, [query]);
 
   const openAddContact = (name = "") => {
@@ -173,34 +228,46 @@ export default function SearchBar({ onAddItem }) {
     setOpenDrop(false);
   };
 
+  // Enforce customer-first
+  const ensureCustomer = () => {
+    if (!customer?.id) {
+      try { alert("Select the customer first"); } catch { }
+      // Give the alert a tick to close, then hard refresh to start a clean session
+      setTimeout(() => {
+        window.location.reload();
+      }, 0);
+      return false;
+    }
+    return true;
+  };
+
   const handleScanSubmit = useCallback(async () => {
+    if (!ensureCustomer()) return;
+
     const code = scan.trim();
     if (!code) return;
 
     try {
       const p = await getProductByBarcode(code);
 
-      // ⛔ NEW: don't add if already sold/out-of-stock
       const qty = Number(p?.qty ?? 0);
       if (!p || qty <= 0 || p?.available === false) {
         alert("Product not available / already sold.");
         setScan("");
-        // refresh after message
-        setTimeout(() => window.location.reload(), 0);
         return;
       }
 
-      // ✅ In stock → add to cart
       onAddItem?.(p);
       setScan("");
     } catch (err) {
       console.error(err);
       alert(`Not found: ${code}`);
     }
-  }, [scan, onAddItem]);
+  }, [scan, onAddItem, customer]);
 
-  // Load previous invoice → return mode
+  // Load previous invoice → return mode (also enforce customer-first)
   async function loadInvoice(inv) {
+    if (!ensureCustomer()) return;
     try {
       const res = await getSaleLinesByInvoice(inv);
       const lines = Array.isArray(res?.lines) ? res.lines : [];
@@ -229,6 +296,14 @@ export default function SearchBar({ onAddItem }) {
     }
   }
 
+  // Select customer from dropdown
+  const pickCustomer = (c) => {
+    setCustomer(c);
+    setSelectedCustomer(c); // persist until payment success
+    setQuery("");           // keep your input clean
+    setOpenDrop(false);
+  };
+
   return (
     <div className="search-row">
       <div className="container search-bar">
@@ -247,16 +322,16 @@ export default function SearchBar({ onAddItem }) {
           }}
         />
 
-        {/* Walk in Customer */}
+        {/* Walk in Customer (same structure; shows selected session customer as placeholder) */}
         <div className="customer-input" ref={wrapRef}>
           <input
             type="text"
-            placeholder="Walk in Customer"
+            placeholder={customer?.id ? `${customer.name} (${customer.phone})` : "Walk in Customer"}
             value={query}
             onFocus={() => setOpenDrop(true)}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button className="edit-btn" type="button" aria-label="Edit">
+          <button className="edit-btn" type="button" aria-label="Edit" onClick={() => setOpenDrop(v => !v)}>
             <span className="material-icons">edit</span>
           </button>
 
@@ -278,7 +353,7 @@ export default function SearchBar({ onAddItem }) {
 
                   {matches.length > 0 ? (
                     matches.map((c) => (
-                      <div key={c.id} className="customer-item">
+                      <div key={c.id} className="customer-item" onClick={() => pickCustomer(c)}>
                         <div className="cust-line">
                           <span className="cust-name">{c.name}</span>&nbsp;
                           <span className="cust-phone">{c.phone}</span>
@@ -314,11 +389,12 @@ export default function SearchBar({ onAddItem }) {
         />
       </div>
 
-      {/* Modal */}
+      {/* Modal (fields unchanged; Save wires to backend + selects customer) */}
       <NewCustomerModal
         open={showModal}
         onClose={() => setShowModal(false)}
         prefillName={prefillName}
+        onSaved={(cust) => pickCustomer(cust)}
       />
     </div>
   );
