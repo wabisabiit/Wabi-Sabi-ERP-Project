@@ -120,6 +120,21 @@ export default function Footer({
   // shape: { noteNo, amount }
   const [creditUse, setCreditUse] = useState(null);
 
+  // 🔔 CURRENT CUSTOMER (reactive to selection)
+  const [currentCustomer, setCurrentCustomer] = useState(() => getSelectedCustomer());
+  useEffect(() => {
+    const handleCust = () => setCurrentCustomer(getSelectedCustomer());
+    window.addEventListener("pos:customer", handleCust);
+    window.addEventListener("pos:clear-customer", handleCust);
+    window.addEventListener("storage", handleCust);
+    return () => {
+      window.removeEventListener("pos:customer", handleCust);
+      window.removeEventListener("pos:clear-customer", handleCust);
+      window.removeEventListener("storage", handleCust);
+    };
+  }, []);
+  const canPay = !!(currentCustomer && (currentCustomer.name || currentCustomer.phone));
+
   // Payable after discount, BEFORE credit
   const payableAmount = useMemo(() => {
     const baseAmount = Number(amount) || 0;
@@ -155,9 +170,8 @@ export default function Footer({
       .filter(Boolean);
   }, [items]);
 
-  // Resolve customer: prefer prop, else session
-  const sessionCustomer = getSelectedCustomer();
-  const effectiveCustomer = customer && (customer.name || customer.phone) ? customer : sessionCustomer;
+  // Resolve customer: prefer prop, else session (legacy)
+  const effectiveCustomer = (customer && (customer.name || customer.phone)) ? customer : currentCustomer;
 
   // Finalize: include CREDIT row (if any) + chosen payment method row
   async function finalizeSale({ method, paymentDetails, andPrint = false }) {
@@ -263,6 +277,19 @@ export default function Footer({
 
   const handleActionClick = useCallback(
     (label) => {
+      // ⛔ Block payments until a customer is selected
+      const isPaymentAction =
+        label.includes("Card") ||
+        label.includes("Cash") ||
+        label.includes("UPI") ||
+        label.startsWith("Multiple Pay") ||
+        label === "Redeem Credit";
+
+      if (isPaymentAction && !canPay) {
+        addToast("Select the customer first");
+        return;
+      }
+
       // Return-mode
       if (label === "Refund") {
         addToast("Refund: coming soon");
@@ -342,7 +369,7 @@ export default function Footer({
             (Number(r.netAmount ?? r.amount ?? 0) / qty) ||
             0;
 
-        return {
+          return {
             id: r.id ?? i + 1,
             name:
               r.product ||
@@ -362,6 +389,7 @@ export default function Footer({
           };
         });
 
+        // 🔧 PASS FULL CUSTOMER INCLUDING ID
         navigate("/multiple-pay", {
           state: {
             cart: {
@@ -371,6 +399,7 @@ export default function Footer({
               amount: Number(remainingAfterCredit), // remaining after credit
             },
             customer: {
+              id: effectiveCustomer?.id || null,
               name: effectiveCustomer?.name || "",
               phone: effectiveCustomer?.phone || "",
               email: effectiveCustomer?.email || "",
@@ -409,7 +438,7 @@ export default function Footer({
         return;
       }
     },
-    [navigate, items, effectiveCustomer, remainingAfterCredit, creditUse]
+    [navigate, items, effectiveCustomer, remainingAfterCredit, creditUse, canPay]
   );
 
   return (
@@ -475,37 +504,48 @@ export default function Footer({
         </div>
 
         <div className="pay-grid">
-          {actions.map((text) => (
-            <button
-              key={text}
-              className="kbtn"
-              onClick={() => handleActionClick(text)}
-            >
-              {text.includes("Card") && (
-                <span className="material-icons">credit_card</span>
-              )}
-              {text.includes("Cash") && (
-                <span className="material-icons">currency_rupee</span>
-              )}
-              {text.includes("UPI") && (
-                <span className="material-icons">near_me</span>
-              )}
-              {text.includes("Hold") &&
-                !text.includes("Multiple") && (
-                  <span className="material-icons">pause_presentation</span>
+          {actions.map((text) => {
+            const isPaymentBtn =
+              text.includes("Card") ||
+              text.includes("Cash") ||
+              text.includes("UPI") ||
+              text.startsWith("Multiple Pay") ||
+              text === "Redeem Credit";
+
+            return (
+              <button
+                key={text}
+                className="kbtn"
+                onClick={() => handleActionClick(text)}
+                disabled={isPaymentBtn && !canPay}
+                title={isPaymentBtn && !canPay ? "Select the customer first" : ""}
+              >
+                {text.includes("Card") && (
+                  <span className="material-icons">credit_card</span>
                 )}
-              {text.includes("Multiple") && (
-                <span className="material-icons">view_week</span>
-              )}
-              {text.includes("Coupon") && (
-                <span className="material-icons">local_offer</span>
-              )}
-              {text.includes("Pay Later") && (
-                <span className="material-icons">event</span>
-              )}
-              {text}
-            </button>
-          ))}
+                {text.includes("Cash") && (
+                  <span className="material-icons">currency_rupee</span>
+                )}
+                {text.includes("UPI") && (
+                  <span className="material-icons">near_me</span>
+                )}
+                {text.includes("Hold") &&
+                  !text.includes("Multiple") && (
+                    <span className="material-icons">pause_presentation</span>
+                  )}
+                {text.includes("Multiple") && (
+                  <span className="material-icons">view_week</span>
+                )}
+                {text.includes("Coupon") && (
+                  <span className="material-icons">local_offer</span>
+                )}
+                {text.includes("Pay Later") && (
+                  <span className="material-icons">event</span>
+                )}
+                {text}
+              </button>
+            );
+          })}
         </div>
 
         {toasts.length > 0 && (

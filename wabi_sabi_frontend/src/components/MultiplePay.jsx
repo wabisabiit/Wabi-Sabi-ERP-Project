@@ -14,32 +14,30 @@ export default function MultiplePay({
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // Prefer state passed from Footer -> navigate("/multiple-pay", { state: { cart, customer } })
+  // Prefer POS session first (has id), then state, then fallback
   const cart = state?.cart || cartProp;
-  const customer = state?.customer || getSelectedCustomer() || {
-    name: cart.customerName || "",
-    phone: "",
-    email: "",
-  };
+  const customer =
+    getSelectedCustomer() ||
+    state?.customer || {
+      name: cart.customerName || "",
+      phone: "",
+      email: "",
+    };
 
   const banks = ["AXIS BANK UDYOG VIHAR", "SBI", "HDFC", "Punjab National Bank"];
   const upiApps = ["Google Pay", "Paytm", "PhonePe", "Amazon Pay"];
 
   // ===== Totals aligned with backend validation =====
-  // Prefer Footer's line netAmount; else unit price; final fallback MRP.
   const totals = useMemo(() => {
     const items = cart.items || [];
     const sum = items.reduce((acc, it) => {
       const qty = Number(it.qty ?? 1) || 1;
 
-      // 1) Use line total from Footer when present
-      const lineFromFooter =
-        Number(it.netAmount ?? it.amount ?? NaN);
+      const lineFromFooter = Number(it.netAmount ?? it.amount ?? NaN);
       if (Number.isFinite(lineFromFooter) && lineFromFooter > 0) {
         return acc + lineFromFooter;
       }
 
-      // 2) Derive from unit price (prefer selling/discounted fields)
       const candidates = [
         Number(it.sellingPrice),
         Number(it.sp),
@@ -48,7 +46,7 @@ export default function MultiplePay({
         Number(it.discountedPrice),
         Number(it.unitPrice),
         Number(it.unit_price),
-        Number(it.price), // may be generic price
+        Number(it.price),
       ].filter((v) => Number.isFinite(v) && v > 0);
 
       const mrpNum = Number(it.mrp) || 0;
@@ -103,6 +101,14 @@ export default function MultiplePay({
   const handleProceed = async () => {
     if (busy) return;
 
+    // ✅ Accept either id OR (name/phone) — since we now pass id from Footer this will be true
+    const hasCustomer = !!(customer?.id || customer?.phone || customer?.name);
+    if (!hasCustomer) {
+      setBanner({ type: "error", text: "Please select the customer first." });
+      try { alert("Select the customer first"); } catch {}
+      return;
+    }
+
     // Must equal backend total
     if (Math.round(totalReceived * 100) !== Math.round(totals.payableAmount * 100)) {
       setBanner({ type: "error", text: "Payments total must equal payable amount." });
@@ -146,7 +152,7 @@ export default function MultiplePay({
       note: "",
     };
 
-    // Allow external handler (optional) — only skip local POST if parent confirms handled === true
+    // Allow external handler (optional)
     try {
       const handled =
         typeof onProceed === "function" &&
@@ -162,9 +168,7 @@ export default function MultiplePay({
           payload,
         }));
 
-      if (handled === true) {
-        return; // parent fully handled the submission/navigation
-      }
+      if (handled === true) return;
     } catch (e) {
       console.warn("onProceed threw, continuing with local submit:", e);
     }
@@ -176,7 +180,6 @@ export default function MultiplePay({
 
       const res = await createSale(payload);
 
-      // Show invoice + first reference/txn if any
       const firstRef = Array.isArray(res?.payments) && res.payments.length
         ? (res.payments[0].reference || "")
         : (pays[0]?.reference || "");
@@ -187,10 +190,8 @@ export default function MultiplePay({
 
       setBanner({ type: "success", text: msg });
       try { window.alert(msg); } catch {}
-      // clear POS customer session now that the transaction is done
       clearSelectedCustomer();
 
-      // Let the user read it, then go back
       setTimeout(() => {
         navigate(redirectPath, {
           replace: true,
@@ -200,7 +201,6 @@ export default function MultiplePay({
     } catch (e) {
       console.error(e);
 
-      // Try to surface the server validation message
       let msg = "Payment failed: could not update the database. Please try again.";
       if (typeof e?.message === "string" && e.message) {
         const parts = e.message.split("–");
@@ -409,9 +409,7 @@ export default function MultiplePay({
           </div>
 
           <div className="mp-summary-strip">
-            <div>
-              <span>Received:</span> {totalReceived.toFixed(2)}
-            </div>
+            <div><span>Received:</span> {totalReceived.toFixed(2)}</div>
             <div className={remaining > 0 ? "due" : "ok"}>
               <span>Remaining:</span> {Math.max(0, remaining).toFixed(2)}
             </div>

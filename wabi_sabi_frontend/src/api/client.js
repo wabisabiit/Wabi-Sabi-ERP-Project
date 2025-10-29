@@ -268,8 +268,14 @@ export function getSelectedCustomer() {
   try { return JSON.parse(localStorage.getItem(CKEY) || "null"); } catch { return null; }
 }
 export function setSelectedCustomer(cust) {
-  if (cust) localStorage.setItem(CKEY, JSON.stringify(cust));
-  else localStorage.removeItem(CKEY);
+  if (cust) {
+    localStorage.setItem(CKEY, JSON.stringify(cust));
+    // 🔔 notify app so components (Footer, etc.) can re-render immediately
+    try { window.dispatchEvent(new CustomEvent("pos:customer", { detail: cust })); } catch {}
+  } else {
+    localStorage.removeItem(CKEY);
+    try { window.dispatchEvent(new CustomEvent("pos:customer", { detail: null })); } catch {}
+  }
 }
 export function clearSelectedCustomer() {
   try { localStorage.removeItem(CKEY); } catch {}

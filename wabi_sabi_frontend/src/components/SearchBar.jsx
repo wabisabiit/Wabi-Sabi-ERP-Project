@@ -9,10 +9,11 @@ import {
   createCustomer,
   getSelectedCustomer,
   setSelectedCustomer,
-  clearSelectedCustomer,
+  // NOTE: we no longer force-clearing on mount
+  // clearSelectedCustomer,
 } from "../api/client";
 
-// (kept for compatibility; only used as fallback if API fails)
+// (fallback only if API fails)
 const MOCK_CUSTOMERS = [
   { id: 1, name: "ishika", phone: "9131054736", address: "", verified: false },
   { id: 2, name: "IShika", phone: "7417449691", address: "", verified: false },
@@ -29,7 +30,6 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
     return () => document.body.classList.remove("modal-open");
   }, [open]);
 
-  // prefill name
   useEffect(() => {
     if (open && nameRef.current) nameRef.current.value = prefillName || "";
   }, [open, prefillName]);
@@ -59,15 +59,12 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={stop} role="dialog" aria-modal="true">
-        {/* Header */}
         <div className="modal-header">
           <h3 className="modal-title">New Customer</h3>
           <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Body: EXACT 3 columns (fields unchanged visually) */}
         <div className="modal-grid grid-3">
-          {/* Row 1 */}
           <div className="form-row">
             <div className="label-row">
               <label>Name <span className="req">*</span></label>
@@ -94,7 +91,6 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
             </div>
           </div>
 
-          {/* Row 2 */}
           <div className="form-row">
             <div className="label-row"><label>Date Of Birth</label></div>
             <input className="field" type="text" placeholder="Date Of Birth" />
@@ -110,7 +106,6 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
             <input className="field" type="email" placeholder="Email Address" />
           </div>
 
-          {/* Row 3 */}
           <div className="form-row">
             <div className="label-row"><label>Address Line 1</label></div>
             <input className="field" placeholder="AddressLine1" />
@@ -132,7 +127,6 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
             </select>
           </div>
 
-          {/* Row 4 */}
           <div className="form-row">
             <div className="label-row"><label>City</label></div>
             <select className="field" defaultValue="Gurugram">
@@ -155,7 +149,6 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
             </select>
           </div>
 
-          {/* Row 5 */}
           <div className="form-row">
             <div className="label-row"><label>GSTIN</label></div>
             <input className="field" placeholder="GSTIN" />
@@ -165,7 +158,6 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
           <div className="form-row empty"></div>
         </div>
 
-        {/* Footer */}
         <div className="modal-footer center">
           <button className="primary-btn" onClick={handleSave}>Save</button>
         </div>
@@ -175,21 +167,18 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
 }
 
 export default function SearchBar({ onAddItem }) {
-  const [scan, setScan] = useState("");          // barcode input (left box)
-  const [query, setQuery] = useState("");        // walk-in customer box
+  const [scan, setScan] = useState("");
+  const [query, setQuery] = useState("");
   const [openDrop, setOpenDrop] = useState(false);
   const [matches, setMatches] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [prefillName, setPrefillName] = useState("");
-  const [invoice, setInvoice] = useState("");    // scan sales invoice box
+  const [invoice, setInvoice] = useState("");
   const [customer, setCustomer] = useState(() => getSelectedCustomer()); // POS session
   const wrapRef = useRef(null);
 
-  // ✅ Fresh session on every full page refresh
-  useEffect(() => {
-    clearSelectedCustomer();    // wipe any stale selection from localStorage
-    setCustomer(null);          // reflect in UI so customer-first is enforced
-  }, []);
+  // ⛔️ REMOVED: forced clearSelectedCustomer() on mount
+  // We keep any existing customer if present, but not required for scan/invoice.
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -200,7 +189,7 @@ export default function SearchBar({ onAddItem }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // Live search from server (keeps your dropdown UI)
+  // Live search
   useEffect(() => {
     let alive = true;
     const run = async () => {
@@ -228,22 +217,8 @@ export default function SearchBar({ onAddItem }) {
     setOpenDrop(false);
   };
 
-  // Enforce customer-first
-  const ensureCustomer = () => {
-    if (!customer?.id) {
-      try { alert("Select the customer first"); } catch { }
-      // Give the alert a tick to close, then hard refresh to start a clean session
-      setTimeout(() => {
-        window.location.reload();
-      }, 0);
-      return false;
-    }
-    return true;
-  };
-
+  // ✅ Barcode scan now works regardless of customer selection
   const handleScanSubmit = useCallback(async () => {
-    if (!ensureCustomer()) return;
-
     const code = scan.trim();
     if (!code) return;
 
@@ -263,11 +238,10 @@ export default function SearchBar({ onAddItem }) {
       console.error(err);
       alert(`Not found: ${code}`);
     }
-  }, [scan, onAddItem, customer]);
+  }, [scan, onAddItem]);
 
-  // Load previous invoice → return mode (also enforce customer-first)
+  // ✅ Invoice load (return mode) also independent of customer selection
   async function loadInvoice(inv) {
-    if (!ensureCustomer()) return;
     try {
       const res = await getSaleLinesByInvoice(inv);
       const lines = Array.isArray(res?.lines) ? res.lines : [];
@@ -296,11 +270,11 @@ export default function SearchBar({ onAddItem }) {
     }
   }
 
-  // Select customer from dropdown
+  // Select customer from dropdown → persists & notifies Footer to enable payments
   const pickCustomer = (c) => {
     setCustomer(c);
-    setSelectedCustomer(c); // persist until payment success
-    setQuery("");           // keep your input clean
+    setSelectedCustomer(c); // emits window "pos:customer" event in client.js (you already added)
+    setQuery("");
     setOpenDrop(false);
   };
 
@@ -322,7 +296,7 @@ export default function SearchBar({ onAddItem }) {
           }}
         />
 
-        {/* Walk in Customer (same structure; shows selected session customer as placeholder) */}
+        {/* Walk in Customer */}
         <div className="customer-input" ref={wrapRef}>
           <input
             type="text"
@@ -389,7 +363,7 @@ export default function SearchBar({ onAddItem }) {
         />
       </div>
 
-      {/* Modal (fields unchanged; Save wires to backend + selects customer) */}
+      {/* Modal */}
       <NewCustomerModal
         open={showModal}
         onClose={() => setShowModal(false)}

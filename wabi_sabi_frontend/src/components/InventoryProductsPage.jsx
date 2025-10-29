@@ -272,7 +272,7 @@ export default function InventoryProductsPage() {
           list = [];
         }
 
-        // map API rows to UI, with qty defaulting to 1
+        // map API rows to UI (ONLY change: take real qty, and mark sold if 0)
         const mapped = list.map((r) => ({
           id: r.id,
           images: r.image ? [r.image] : [],
@@ -288,7 +288,7 @@ export default function InventoryProductsPage() {
           mrp: Number(r.mrp || 0),
           sp: Number(r.sellingPrice || r.selling_price || 0),
           hsn: r.hsn || r.hsn_code || "",
-          qty: Number(r.qty ?? 1) || 1,      // ✅ default 1
+          qty: Number(r.qty ?? 0) || 0,   // ← REAL QTY (no default 1)
           active: true,
           showOnline: false,
           createdOn: r.created_on || r.created_at || r.createdOn || r.created || "",
@@ -474,97 +474,102 @@ export default function InventoryProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {pageRows.map((r, idx) => (
-                  <tr key={r.id}>
-                    <td className="chk">
-                      <label className="pp-chk">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(r.id)}
-                          onChange={(e) => {
-                            const next = new Set(selectedIds);
-                            if (e.target.checked) next.add(r.id); else next.delete(r.id);
-                            setSelectedIds(next);
-                          }}
-                        />
-                        <span />
-                      </label>
-                    </td>
-                    <td>{start + idx + 1}</td>
-                    <td onClick={() => { uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} style={{ cursor: "pointer" }} title="Click to add images">
-                      {r.images?.length ? (
-                        <div style={{ display: "flex", gap: 4 }}>
-                          {r.images.slice(0, 3).map((u, i) => (
-                            <img key={i} src={u} alt="" style={{ width: 44, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid #cfd7e6", background: "#f9fbff" }}
-                              onClick={(e) => { e.stopPropagation(); uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} />
-                          ))}
-                          {r.images.length > 3 && (
-                            <div style={{ width: 44, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-                              border: "1px dashed #cfd7e6", borderRadius: 8, fontSize: 11, color: "#6b7280", background: "#f9fbff" }}>
-                              +{r.images.length - 3}
+                {pageRows.map((r, idx) => {
+                  const isSold = (Number(r.qty) || 0) <= 0; // ← decide badge by real qty
+                  return (
+                    <tr key={r.id}>
+                      <td className="chk">
+                        <label className="pp-chk">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(r.id)}
+                            onChange={(e) => {
+                              const next = new Set(selectedIds);
+                              if (e.target.checked) next.add(r.id); else next.delete(r.id);
+                              setSelectedIds(next);
+                            }}
+                          />
+                          <span />
+                        </label>
+                      </td>
+                      <td>{start + idx + 1}</td>
+                      <td onClick={() => { uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} style={{ cursor: "pointer" }} title="Click to add images">
+                        {r.images?.length ? (
+                          <div style={{ display: "flex", gap: 4 }}>
+                            {r.images.slice(0, 3).map((u, i) => (
+                              <img key={i} src={u} alt="" style={{ width: 44, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid #cfd7e6", background: "#f9fbff" }}
+                                onClick={(e) => { e.stopPropagation(); uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} />
+                            ))}
+                            {r.images.length > 3 && (
+                              <div style={{ width: 44, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
+                                border: "1px dashed #cfd7e6", borderRadius: 8, fontSize: 11, color: "#6b7280", background: "#f9fbff" }}>
+                                +{r.images.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        ) : (<div className="pp-img-skel"><span className="mi">image</span></div>)}
+                      </td>
+                      <td className="mono">{r.itemCode}</td>
+                      <td>{r.category}</td>
+                      <td className="mono">B4L</td>
+                      <td>
+                        <button
+                          className="pp-link blue"
+                          onClick={() => navigate(`/inventory/products/${r.id}`, { state: { row: r } })}
+                          title="Open product details"
+                          style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
+                        >
+                          {r.name}
+                        </button>
+                      </td>
+                      <td className="num">{Number(r.mrp || 0).toFixed(2)}</td>
+                      <td className="num">{Number(r.sp || 0).toFixed(2)}</td>
+                      <td className="mono">{r.hsn}</td>
+                      {/* Qty uses real number */}
+                      <td className="num">{Number(r.qty ?? 0).toFixed(2)}</td>
+                      {/* Status badge based on qty */}
+                      <td><span className={`pp-badge ${isSold ? "danger" : "success"}`}>{isSold ? "SOLD" : "ACTIVE"}</span></td>
+                      <td>
+                        <label className="pp-switch">
+                          <input type="checkbox" checked={!!r.showOnline} onChange={(e) => {
+                            const checked = e.target.checked;
+                            setRows((l) => l.map((row) => (row.id === r.id ? { ...row, showOnline: checked } : row)));
+                          }} />
+                          <span className="slider" />
+                        </label>
+                      </td>
+                      <td className="act">
+                        <div className="pp-actions" ref={(el) => { if (el) actionRefs.current[r.id] = el; }}>
+                          <button
+                            className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionOpenId((id) => (id === r.id ? null : r.id));
+                            }}
+                            aria-label="Row actions"
+                            aria-expanded={actionOpenId === r.id}
+                          >
+                            <span className="dot" /><span className="dot" /><span className="dot" />
+                          </button>
+
+                          {actionOpenId === r.id && (
+                            <div className="pp-menu right kebab">
+                              <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
+                                <span className="mi icon">open_in_new</span>Edit Details
+                              </button>
+                              <button onClick={async () => { setActionOpenId(null); await handleDeleteOne(r); }}>
+                                <span className="mi icon">delete</span>Delete
+                              </button>
+                              <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
+                                <span className="mi icon">block</span>Deactivate
+                              </button>
                             </div>
                           )}
                         </div>
-                      ) : (<div className="pp-img-skel"><span className="mi">image</span></div>)}
-                    </td>
-                    <td className="mono">{r.itemCode}</td>
-                    <td>{r.category}</td>
-                    <td className="mono">B4L</td>
-                    <td>
-                      <button
-                        className="pp-link blue"
-                        onClick={() => navigate(`/inventory/products/${r.id}`, { state: { row: r } })}
-                        title="Open product details"
-                        style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
-                      >
-                        {r.name}
-                      </button>
-                    </td>
-                    <td className="num">{Number(r.mrp || 0).toFixed(2)}</td>
-                    <td className="num">{Number(r.sp || 0).toFixed(2)}</td>
-                    <td className="mono">{r.hsn}</td>
-                    <td className="num">{Number(r.qty ?? 1).toFixed(2)}</td>
-                    <td><span className="pp-badge success">ACTIVE</span></td>
-                    <td>
-                      <label className="pp-switch">
-                        <input type="checkbox" checked={!!r.showOnline} onChange={(e) => {
-                          const checked = e.target.checked;
-                          setRows((l) => l.map((row) => (row.id === r.id ? { ...row, showOnline: checked } : row)));
-                        }} />
-                        <span className="slider" />
-                      </label>
-                    </td>
-                    <td className="act">
-                      <div className="pp-actions" ref={(el) => { if (el) actionRefs.current[r.id] = el; }}>
-                        <button
-                          className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionOpenId((id) => (id === r.id ? null : r.id));
-                          }}
-                          aria-label="Row actions"
-                          aria-expanded={actionOpenId === r.id}
-                        >
-                          <span className="dot" /><span className="dot" /><span className="dot" />
-                        </button>
-
-                        {actionOpenId === r.id && (
-                          <div className="pp-menu right kebab">
-                            <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
-                              <span className="mi icon">open_in_new</span>Edit Details
-                            </button>
-                            <button onClick={async () => { setActionOpenId(null); await handleDeleteOne(r); }}>
-                              <span className="mi icon">delete</span>Delete
-                            </button>
-                            <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
-                              <span className="mi icon">block</span>Deactivate
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {pageRows.length === 0 && (<tr><td colSpan={14} className="empty">No records found</td></tr>)}
               </tbody>
             </table>

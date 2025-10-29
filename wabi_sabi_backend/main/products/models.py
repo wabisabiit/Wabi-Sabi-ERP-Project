@@ -95,15 +95,15 @@ class InvoiceSequence(models.Model):
     """
     Concurrency-safe sequence for invoice numbers. One row per prefix.
     """
-    prefix       = models.CharField(max_length=16, unique=True, default="TRANS")
+    prefix       = models.CharField(max_length=16, unique=True, default="INV")
     next_number  = models.PositiveIntegerField(default=1)
-    pad_width    = models.PositiveSmallIntegerField(default=2)  # TRANS01, TRANS02... change to 4 for TRANS0001
+    pad_width    = models.PositiveSmallIntegerField(default=2)  
 
     def __str__(self):
         return f"{self.prefix} next={self.next_number}"
 
     @classmethod
-    def next_invoice_no(cls, prefix="TRANS"):
+    def next_invoice_no(cls, prefix="INV"):
         with transaction.atomic():
             seq, _ = cls.objects.select_for_update().get_or_create(prefix=prefix, defaults={"next_number": 1})
             num = seq.next_number
@@ -152,7 +152,7 @@ class Sale(models.Model):
     def save(self, *args, **kwargs):
         # Auto-generate invoice number once per new record
         if not self.invoice_no:
-            self.invoice_no = InvoiceSequence.next_invoice_no(prefix="TRANS")
+            self.invoice_no = InvoiceSequence.next_invoice_no(prefix="INV")
         super().save(*args, **kwargs)
 
 

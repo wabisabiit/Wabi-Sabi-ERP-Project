@@ -20,3 +20,20 @@
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+
+<script>
+  (function () {
+    try {
+      // Detect a true page reload (Navigation Timing Level 2)
+      var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
+      var isReload = nav ? (nav.type === 'reload') : (performance.navigation && performance.navigation.type === 1);
+
+      if (isReload) {
+        // Clear only your POS session keys here
+        localStorage.removeItem('pos.currentCustomer');   // <- your CKEY
+        // localStorage.removeItem('pos.cart');           // (if you store cart)
+        // localStorage.removeItem('pos.hold');           // (any other keys you use)
+      }
+    } catch (e) { /* ignore */ }
+  })();
+</script>

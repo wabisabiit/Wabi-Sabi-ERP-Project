@@ -1,6 +1,7 @@
+// src/components/CashPayment.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import "../styles/CashPayemnt.css"; // (exact file name per your request)
+import "../styles/CashPayemnt.css";
 import { createSale, getSelectedCustomer, clearSelectedCustomer } from "../api/client";
 
 export default function CashPayment({ amount = 0, onClose, onSubmit }) {
@@ -49,19 +50,23 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
     if (!s.includes(".")) setTendered(Number(s + "."));
   };
 
-  // Build sale lines from routed cart (same mapping style you use elsewhere)
+  // Build sale lines from routed cart
   const buildLines = () =>
     (routedCart.items || [])
-      .map((r, i) => {
-        const qty =
-          Number(r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1) || 1;
-        const code =
-          r.barcode ?? r.itemCode ?? r.itemcode ?? r.code ?? r.id ?? "";
+      .map((r) => {
+        const qty = Number(r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1) || 1;
+        const code = r.barcode ?? r.itemCode ?? r.itemcode ?? r.code ?? r.id ?? "";
         return code ? { barcode: String(code), qty: qty > 0 ? qty : 1 } : null;
       })
       .filter(Boolean);
 
   const submitToServer = async () => {
+    // 🔒 customer required
+    if (!routedCustomer?.id) {
+      try { window.alert("Select the customer first"); } catch {}
+      return;
+    }
+
     const lines = buildLines();
     if (!lines.length) {
       try { window.alert("No items in cart."); } catch {}
@@ -108,7 +113,6 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   };
 
   const handleSubmit = () => {
-    // If used as a pure component with onSubmit, respect that; otherwise, post to server.
     if (onSubmit) {
       onSubmit({
         method: "cash",
@@ -175,28 +179,24 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
         {/* Keypad + Actions */}
         <div className="cpay-body">
           <div className="cpay-pad">
-            {/* row 1 */}
             <button className="cpay-key" onClick={() => appendDigit(1)}>1</button>
             <button className="cpay-key" onClick={() => appendDigit(2)}>2</button>
             <button className="cpay-key" onClick={() => appendDigit(3)}>3</button>
             <button className="cpay-key" onClick={() => addBump(5)}>+05</button>
             <button className="cpay-key" onClick={() => addBump(100)}>+100</button>
 
-            {/* row 2 */}
             <button className="cpay-key" onClick={() => appendDigit(4)}>4</button>
             <button className="cpay-key" onClick={() => appendDigit(5)}>5</button>
             <button className="cpay-key" onClick={() => appendDigit(6)}>6</button>
             <button className="cpay-key" onClick={() => addBump(10)}>+10</button>
             <button className="cpay-key" onClick={() => addBump(500)}>+500</button>
 
-            {/* row 3 */}
             <button className="cpay-key" onClick={() => appendDigit(7)}>7</button>
             <button className="cpay-key" onClick={() => appendDigit(8)}>8</button>
             <button className="cpay-key" onClick={() => appendDigit(9)}>9</button>
             <button className="cpay-key" onClick={() => addBump(20)}>+20</button>
             <button className="cpay-key" onClick={() => addBump(2000)}>+2000</button>
 
-            {/* row 4 */}
             <button className="cpay-key" onClick={clearAll}>C</button>
             <button className="cpay-key" onClick={dot}>.</button>
             <button className="cpay-key" onClick={() => appendDigit(0)}>0</button>
@@ -205,12 +205,8 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
           </div>
 
           <div className="cpay-actions">
-            <button className="cpay-btn cpay-submit" onClick={handleSubmit}>
-              Submit
-            </button>
-            <button className="cpay-btn cpay-cancel" onClick={handleClose}>
-              Cancel
-            </button>
+            <button className="cpay-btn cpay-submit" onClick={handleSubmit}>Submit</button>
+            <button className="cpay-btn cpay-cancel" onClick={handleClose}>Cancel</button>
           </div>
         </div>
       </div>

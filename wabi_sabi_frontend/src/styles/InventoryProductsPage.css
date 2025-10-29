@@ -150,3 +150,38 @@
 .pg-btn[disabled]{opacity:.5;cursor:not-allowed;}
 .pg-btn.num.active{background:#1e90ff;color:#fff;border-color:#1e90ff;}
 .pg-ellipsis{padding:0 6px;color:#9aa3af;}
+
+/* red badge for SOLD */
+.pp-badge.danger {
+  background: #ef4444;  
+  color: white;  /* red-500 */
+  display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    line-height: 22px;
+    padding: 0 10px;
+    border-radius: 1000px;
+    font-weight: 800;
+    font-size: 11px;
+}
+
+/* optional: dim the entire sold row slightly */
+.pp-row-sold {
+  background: #fff7f7;    /* very light red wash */
+}
+
+/* qty cell red text when sold */
+.qty-sold {
+  color: #dc2626;         /* red-600 */
+  font-weight: 700;
+}
+
+/* make the switch look disabled when no stock */
+.pp-switch.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+
+

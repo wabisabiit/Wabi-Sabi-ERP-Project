@@ -184,3 +184,5 @@
   .toast-stack{ top: 72px; }
   .toast-item{ min-width: 240px; }
 }
+
+.kbtn:disabled { opacity: .5; cursor: not-allowed; }
