@@ -8,10 +8,12 @@ export default function RedeemCreditModal({ invoiceBalance = 0, onClose, onApply
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [data, setData] = useState(null); // {note_no,date,amount,is_redeemed,...}
+
   const invBal = Math.max(0, Number(invoiceBalance) || 0);
 
-  const amountNum = useMemo(() => Number(data?.amount || 0), [data]);
-  const available = useMemo(() => (data && !data.is_redeemed ? amountNum : 0), [data, amountNum]);
+  const amountNum  = useMemo(() => Number(data?.amount || 0), [data]);
+  const available  = useMemo(() => (data && !data.is_redeemed ? amountNum : 0), [data, amountNum]);
+  const unavailable = useMemo(() => !!data && !!data.is_redeemed, [data]);
 
   const applyAmount = useMemo(() => {
     // clamp: min(invoice balance, available), never negative
@@ -27,9 +29,10 @@ export default function RedeemCreditModal({ invoiceBalance = 0, onClose, onApply
     try {
       const res = await getCreditNote(n);
       if (!res?.ok) {
-        setErr(res?.msg || "Not found");
+        setErr(res?.msg || "Credit note not found.");
       } else if (res.is_redeemed) {
-        setErr("This credit note is already redeemed.");
+        // explicitly signal "already used"
+        setErr("This credit note is already redeemed and not available.");
         setData(res);
       } else {
         setData(res);
@@ -46,6 +49,8 @@ export default function RedeemCreditModal({ invoiceBalance = 0, onClose, onApply
   const formatAmt = (v) =>
     Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const statusText = unavailable ? "Already used" : data ? "Available" : "—";
+
   return (
     <div className="rc-overlay" role="dialog" aria-modal="true">
       <div className="rc-modal">
@@ -53,6 +58,16 @@ export default function RedeemCreditModal({ invoiceBalance = 0, onClose, onApply
           <div className="rc-title">Redeem Credit</div>
           <button className="rc-x" aria-label="Close" onClick={onClose}>×</button>
         </div>
+
+        {/* Alert banner for not-available notes */}
+        {unavailable && (
+          <div className="rc-alert rc-alert-error" role="alert">
+            This credit note is already redeemed and cannot be used again.
+          </div>
+        )}
+        {err && !unavailable && (
+          <div className="rc-alert rc-alert-error" role="alert">{err}</div>
+        )}
 
         <div className="rc-row rc-modes">
           <label className="rc-radio">
@@ -79,10 +94,16 @@ export default function RedeemCreditModal({ invoiceBalance = 0, onClose, onApply
             onBlur={() => lookup(noteNo)}
             onKeyDown={(e) => { if (e.key === "Enter") lookup(noteNo); }}
             placeholder={mode === "credit" ? "Credit Note No." : "Advance Ref No."}
+            aria-invalid={Boolean(err)}
           />
         </div>
 
-        {err && <div className="rc-error">{err}</div>}
+        {/* Status pill */}
+        <div className="rc-status">
+          <span className={`pill ${unavailable ? "pill-red" : data ? "pill-green" : ""}`}>
+            Status: {statusText}
+          </span>
+        </div>
 
         {mode === "credit" ? (
           <>
@@ -116,7 +137,7 @@ export default function RedeemCreditModal({ invoiceBalance = 0, onClose, onApply
 
         <button
           className="rc-cta"
-          disabled={loading || !data || err || applyAmount <= 0}
+          disabled={loading || !data || err || unavailable || applyAmount <= 0}
           onClick={() => onApply?.({ mode, noteNo: data?.note_no, amount: applyAmount })}
         >
           {loading ? "Checking..." : "Apply Credit"}

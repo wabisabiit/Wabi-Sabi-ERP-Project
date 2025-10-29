@@ -214,7 +214,6 @@ export async function listSales(params = {}) {
 // Credit Note 
 // --- Credit Notes API ---
 export async function listCreditNotes(params = {}) {
-  // supports: page (1-based), page_size, query
   const sp = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
     if (v === null || v === undefined) return;
@@ -224,6 +223,7 @@ export async function listCreditNotes(params = {}) {
   const qs = sp.toString();
   return http(`/credit-notes/${qs ? `?${qs}` : ""}`);
 }
+
 
 // ===== NEW: Sales Return helpers =====
 export async function getSaleLinesByInvoice(invoiceNo) {

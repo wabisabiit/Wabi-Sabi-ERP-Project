@@ -118,8 +118,13 @@ class CreditNoteSequenceAdmin(admin.ModelAdmin):
 
 @admin.register(CreditNote)
 class CreditNoteAdmin(admin.ModelAdmin):
-    list_display  = ("note_no", "date", "customer", "barcode", "amount", "qty", "sale")
+    list_display  = ("note_no", "date", "customer", "barcode", "amount", "qty", "sale", "status_display")
     search_fields = ("note_no", "barcode", "customer__name", "customer__phone")
-    list_filter   = ("date", "customer")
+    list_filter   = ("date", "customer")  # keeping your filters as-is
     ordering      = ("-date", "-id")
     date_hierarchy = "date"
+
+    @admin.display(description="Status", ordering="is_redeemed")
+    def status_display(self, obj):
+        # Active if not redeemed, Not Active if already redeemed
+        return "Active" if not obj.is_redeemed else "Not Active"
