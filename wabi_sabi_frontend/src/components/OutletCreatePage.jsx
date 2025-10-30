@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+// src/pages/OutletCreatePage.jsx
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/OutletCreatePage.css";
+import { listLocations, createOutlet } from "../api/client"; // ⬅️ NEW
 
 // Removed YEAR_INTERVALS; using a date picker for Date of Joining
 const GST_TYPES = ["Registered", "Unregistered", "Composition"];
@@ -52,12 +54,57 @@ export default function OutletCreatePage() {
   const [accountHolder, setAccountHolder] = useState("");
   const [outletSize, setOutletSize] = useState("");
 
-  const onSubmit = (e) => {
+  // NEW: pick Location (backend requires location_id)
+  const [locations, setLocations] = useState([]);
+  const [locationId, setLocationId] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await listLocations();
+        const rows = Array.isArray(data?.results) ? data.results : (data || []);
+        setLocations(rows);
+      } catch (e) {
+        console.error("Failed to load locations", e);
+        setLocations([]);
+      }
+    })();
+  }, []);
+
+  const onSubmit = async (e) => {
     e.preventDefault();
-    // TODO: API call – include joiningDate in payload
-    // Example payload structure:
-    // const payload = { outletType, name, displayName, contactName, mobile, telephone, email, userName, pwd, joiningDate, gstType, gstin, tan, fssai, pan, website, address, timezone, country, state, city, zip, bank: { bankName, branchName, accountNo, ifsc, swift, accountHolder }, outletSize };
-    nav("/admin/outlet");
+
+    // Minimal backend shape (you can extend later):
+    // location_id, display_name, contact_no, opening_date, active
+    if (!locationId) {
+      alert("Please select a Location to link this outlet.");
+      return;
+    }
+    if (!displayName.trim()) {
+      alert("Display Name is required.");
+      return;
+    }
+    if (!joiningDate) {
+      alert("Date of Opening is required.");
+      return;
+    }
+
+    const payload = {
+      location_id: Number(locationId),
+      display_name: displayName.trim(),
+      contact_no: mobile.trim(),
+      opening_date: joiningDate, // YYYY-MM-DD
+      active: true,
+    };
+
+    try {
+      await createOutlet(payload);
+      // You can toast here if you have a global toaster
+      nav("/admin/outlet"); // go back to list
+    } catch (err) {
+      console.error(err);
+      alert(`Create failed: ${err?.message || "Unknown error"}`);
+    }
   };
 
   return (
@@ -92,6 +139,24 @@ export default function OutletCreatePage() {
             <input className="inp" placeholder="Contact Name" value={contactName} onChange={e=>setContactName(e.target.value)} />
           </div>
 
+          {/* NEW: Link to existing Location (required for backend) */}
+          <div className="f">
+            <label>Link Location<span className="req">*</span></label>
+            <select
+              className="inp"
+              value={locationId}
+              onChange={(e) => setLocationId(e.target.value)}
+              required
+            >
+              <option value="">Select Location</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.code} — {loc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Row 2: Mobile | Telephone | Email | User Name */}
           <div className="f">
             <label>Mobile No.<span className="req">*</span></label>
@@ -110,7 +175,7 @@ export default function OutletCreatePage() {
             <input className="inp" placeholder="User Name" value={userName} onChange={e=>setUserName(e.target.value)} />
           </div>
 
-          {/* Row 3: Change Password | PAN | Date of Joining | GST Type */}
+          {/* Row 3: Change Password | PAN | Date of Opening | GST Type */}
           <div className="f">
             <label>Change Password</label>
             <input type="password" className="inp" placeholder="Password" value={pwd} onChange={e=>setPwd(e.target.value)} />

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "products",
     "django_filters",
     "taskmaster",
+    "outlets", 
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,6 +45,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+
+#temporary when i am developing remove after creating authorization.
+OPEN_EMP_API = True
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",

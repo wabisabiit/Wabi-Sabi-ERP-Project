@@ -233,3 +233,24 @@
   -webkit-appearance: auto;
   -moz-appearance: auto;
 }
+.emp-pagebar{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 2px;            /* a little breathing room */
+  gap: 12px;                 /* “some space” between items */
+}
+
+.emp-pagebar h1{
+  margin: 0;                 /* remove default h1 margin pushing things down */
+  line-height: 1.2;
+  flex: 1;                   /* take remaining space */
+}
+
+.emp-pagebar .home-ico{
+  margin-left: 16px;         /* extra space from the title */
+  font-size: 22px;           /* tweak size if you like */
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}

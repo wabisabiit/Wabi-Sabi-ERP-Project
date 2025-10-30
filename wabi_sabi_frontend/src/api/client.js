@@ -153,6 +153,13 @@ export default {
   getSelectedCustomer,
   setSelectedCustomer,
   clearSelectedCustomer,
+
+  listOutlets,
+  createOutlet,
+  listEmployees,
+  createEmployee,
+  updateEmployee,
+  deleteEmployee,
 };
 
 function sanitizeBarcode(v = "") {
@@ -280,4 +287,51 @@ export function setSelectedCustomer(cust) {
 export function clearSelectedCustomer() {
   try { localStorage.removeItem(CKEY); } catch {}
   window.dispatchEvent(new CustomEvent("pos:clear-customer"));
+}
+
+/* ========= Outlets & Employees (NEW) ========= */
+
+// List outlets (scoped by backend if non-HQ user)
+export async function listOutlets() {
+  return http(`/outlets/`);
+}
+
+// List employees (HQ can pass ?outlet=<id> to filter)
+export async function listEmployees(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.outlet) sp.append("outlet", params.outlet);
+  if (params.search) sp.append("search", params.search);
+  const qs = sp.toString();
+  return http(`/employees/${qs ? `?${qs}` : ""}`);
+}
+
+// Create employee
+// payload must include: username, password, role, outlet?, aadhaar, pan, bank_name, bank_branch, account_number
+export async function createEmployee(payload) {
+  return http(`/employees/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Update employee
+export async function updateEmployee(id, payload) {
+  return http(`/employees/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Delete employee
+export async function deleteEmployee(id) {
+  return http(`/employees/${id}/`, { method: "DELETE" });
+}
+
+// Create outlet
+export async function createOutlet(payload) {
+  // payload: { location_id, display_name, contact_no, opening_date, active? }
+  return http(`/outlets/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

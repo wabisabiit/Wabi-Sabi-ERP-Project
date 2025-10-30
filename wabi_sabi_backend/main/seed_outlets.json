@@ -1,0 +1,11 @@
+[
+  {"model":"outlets.outlet","pk":1,"fields":{"location":1,"display_name":"Iffco Chowk","contact_no":"+91-9998886067","opening_date":"2025-07-18","active":true}},
+  {"model":"outlets.outlet","pk":2,"fields":{"location":2,"display_name":"Krishna Nagar","contact_no":"+91-7303479020","opening_date":"2025-08-03","active":true}},
+  {"model":"outlets.outlet","pk":3,"fields":{"location":3,"display_name":"M3M Urbana","contact_no":"+91-7333024520","opening_date":"2025-05-10","active":true}},
+  {"model":"outlets.outlet","pk":4,"fields":{"location":4,"display_name":"Rajouri Outside","contact_no":"+91-7017402732","opening_date":"2025-06-20","active":true}},
+  {"model":"outlets.outlet","pk":5,"fields":{"location":5,"display_name":"Rajouri Inside","contact_no":"+91-7307387070","opening_date":"2025-08-25","active":true}},
+  {"model":"outlets.outlet","pk":6,"fields":{"location":6,"display_name":"Tilak Nagar","contact_no":"+91-9998883461","opening_date":"2025-06-01","active":true}},
+  {"model":"outlets.outlet","pk":7,"fields":{"location":7,"display_name":"UP-AP","contact_no":"+91-","opening_date":"2025-04-01","active":true}},
+  {"model":"outlets.outlet","pk":8,"fields":{"location":8,"display_name":"Udyog Vihar","contact_no":"+91-7303467670","opening_date":"2025-07-05","active":true}},
+  {"model":"outlets.outlet","pk":9,"fields":{"location":9,"display_name":"Head Office (WS)","contact_no":"+91-","opening_date":"2025-04-01","active":true}}
+]

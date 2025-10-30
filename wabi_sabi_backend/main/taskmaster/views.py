@@ -1,9 +1,12 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
+from .models import Location
+from .serializers import LocationSerializer
+
 
 
 from .models import TaskItem,Location
@@ -35,3 +38,8 @@ def locations_list(request):
     """
     rows = list(Location.objects.order_by("code").values("code","name"))
     return Response(rows)
+
+class LocationViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Location.objects.all().order_by("code")
+    serializer_class = LocationSerializer
+    permission_classes = [permissions.AllowAny] 

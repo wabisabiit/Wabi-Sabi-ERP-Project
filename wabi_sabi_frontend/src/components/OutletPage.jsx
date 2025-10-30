@@ -1,18 +1,8 @@
+// src/pages/OutletPage.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { listOutlets } from "../api/client";
 import "../styles/OutletPage.css";
-
-/* ----- demo data (updated) ----- */
-const OUTLETS = [
-  { id: 1, type: "Branch", name: "Brands 4 Less – Ansal Plaza", displayName: "Brands 4 Less – Ansal Plaza", contactNo: "+91-8688944560", openingDate: "2025-04-15", month: "April - March" },
-  { id: 2, type: "Branch", name: "Brands 4 Less – M3M Urbana", displayName: "Brands 4 Less – M3M Urbana", contactNo: "+91-7333024520", openingDate: "2025-05-10", month: "April - March" },
-  { id: 3, type: "Branch", name: "Brands 4 Less – Tilak Nagar", displayName: "Brands 4 Less – Tilak Nagar", contactNo: "+91-9998883461", openingDate: "2025-06-01", month: "April - March" },
-  { id: 4, type: "Branch", name: "Brands 4 Less – Rajouri Garden Outside", displayName: "Brands 4 Less – Rajouri Garden Outside", contactNo: "+91-7017402732", openingDate: "2025-06-20", month: "April - March" },
-  { id: 5, type: "Branch", name: "Brands Loot – Udyog Vihar", displayName: "Brands Loot – Udyog Vihar", contactNo: "+91-7303467670", openingDate: "2025-07-05", month: "April - March" },
-  { id: 6, type: "Branch", name: "Brands 4 Less – IFFCO Chowk", displayName: "Brands 4 Less – IFFCO Chowk", contactNo: "+91-9998886067", openingDate: "2025-07-18", month: "April - March" },
-  { id: 7, type: "Branch", name: "Brands 4 Less – Krishna Nagar", displayName: "Brands 4 Less – Krishna Nagar", contactNo: "+91-7303479020", openingDate: "2025-08-03", month: "April - March" },
-  { id: 8, type: "Branch", name: "Brands 4 Less – Rajouri Garden Inside", displayName: "Brands 4 Less – Rajouri Garden Inside", contactNo: "+91-7307387070", openingDate: "2025-08-25", month: "April - March" },
-];
 
 export default function OutletPage() {
   const [pageSize, setPageSize] = useState(15);
@@ -21,14 +11,49 @@ export default function OutletPage() {
   const exportRef = useRef(null);
   const navigate = useNavigate();
 
+  // NEW: data loaded from backend
+  const [outlets, setOutlets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Normalize API -> current UI shape
+  function normalize(apiRows = []) {
+    return apiRows.map((r) => ({
+      id: r.id,
+      type: "Branch",                             // placeholder to keep your column intact
+      name: r.name,                               // from OutletSerializer (location.name)
+      displayName: r.display_name || "",          // display_name
+      contactNo: r.contact_no || "",              // contact_no
+      openingDate: r.opening_date || "",          // opening_date (YYYY-MM-DD)
+      month: "April - March",                     // placeholder to match your existing column
+    }));
+  }
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const data = await listOutlets();
+        const rows = Array.isArray(data?.results) ? data.results : (data || []);
+        if (mounted) setOutlets(normalize(rows));
+      } catch (err) {
+        console.error("Failed to load outlets:", err);
+        if (mounted) setOutlets([]); // keep UI stable
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return OUTLETS;
-    return OUTLETS.filter((r) =>
+    if (!q) return outlets;
+    return outlets.filter((r) =>
       [r.type, r.name, r.displayName, r.contactNo, r.openingDate, r.month]
         .some(v => String(v || "").toLowerCase().includes(q))
     );
-  }, [query]);
+  }, [query, outlets]);
 
   const showingFrom = filtered.length ? 1 : 0;
   const showingTo = Math.min(filtered.length, pageSize);
@@ -39,8 +64,9 @@ export default function OutletPage() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // Updated headers to reflect requested label changes
+  // Export headers (unchanged)
   const headers = ["#", "Outlet Type", "Name", "Display Name", "Contact No", "Date of Opening", "Month Interval"];
+
   const getRows = () =>
     filtered.slice(0, pageSize).map(r => [
       r.id, r.type, `${r.name} %`, r.displayName, r.contactNo, r.openingDate, r.month
@@ -141,7 +167,12 @@ export default function OutletPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, pageSize).map(r => (
+              {loading && (
+                <tr>
+                  <td colSpan={8} className="empty-row">Loading…</td>
+                </tr>
+              )}
+              {!loading && filtered.slice(0, pageSize).map(r => (
                 <tr key={r.id}>
                   <td className="col-sr">{r.id}</td>
                   <td className="col-type">{r.type}</td>
@@ -166,7 +197,7 @@ export default function OutletPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan={8} className="empty-row">No outlets found.</td>
                 </tr>

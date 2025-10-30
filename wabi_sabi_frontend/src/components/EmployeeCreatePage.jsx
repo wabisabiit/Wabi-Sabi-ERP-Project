@@ -1,18 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/EmployeeCreatePage.css";
-
-const BRANCH_OPTIONS = [
-  "WABI SABI SUSTAINABILITY LLP",
-  "Brands4Less - Tilak Nagar",
-  "Brands4Less - M3M Urbana",
-  "Brands4Less-Rajori Garden inside (RJR)",
-  "Rajori Garden outside (RJO)",
-  "Brands4Less-Iffco Chock",
-  "Brands4Less-Krishna Nagar",
-  "Brands4Less-UP-AP",
-  "Brands4Less-Udhyog Vihar",
-];
+import { listOutlets, createEmployee } from "../api/client";
 
 export default function EmployeeCreatePage() {
   const navigate = useNavigate();
@@ -22,27 +11,98 @@ export default function EmployeeCreatePage() {
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [pan, setPan] = useState("");
+  const [aadhaar, setAadhaar] = useState("");               // NEW (required)
+  const [bankName, setBankName] = useState("");             // NEW (required)
+  const [bankBranch, setBankBranch] = useState("");         // NEW (required)
+  const [accountNumber, setAccountNumber] = useState("");   // NEW (required)
+
   const [address, setAddress] = useState("");
 
-  // geo
+  // geo (kept for UI only)
   const [country, setCountry] = useState("India");
   const [state, setState] = useState("Haryana");
   const [city, setCity] = useState("Gurugram");
   const [zip, setZip] = useState("");
 
-  // business
-  const [branch, setBranch] = useState("WABI SABI SUSTAINABILITY LLP");
-  const [salary, setSalary] = useState("");
+  // business (branch from backend)
+  const [branch, setBranch] = useState(""); // will be outlet.id
+  const [branchOptions, setBranchOptions] = useState([]); // [{id, label}]
+  const [salary, setSalary] = useState(""); // ✅ FIX: this was missing and caused the white screen
 
   // auth
   const [showAuth, setShowAuth] = useState(false);
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(""); // keep your UI values; map to backend later
 
-  const save = () => {
-    // TODO: API call
-    navigate("/admin/employee");
+  // Load outlets for branch select
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await listOutlets();
+        const list = (data?.results ?? data ?? []).map(o => ({
+          id: o.id,
+          label: o.name || o.display_name || o.code,
+        }));
+        setBranchOptions(list);
+        if (list.length && !branch) setBranch(String(list[0].id));
+      } catch (e) {
+        console.error("Failed to load outlets:", e);
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Local validation matching backend rules
+  function validate() {
+    if (!userName.trim() || !password.trim()) return "Username and Password are required.";
+    if (!branch) return "Please select a Branch.";
+    const panOk = /^[A-Za-z0-9]{10}$/.test(pan.trim());
+    if (!panOk) return "PAN must be exactly 10 alphanumeric characters.";
+    const aadhaarOk = /^\d{12}$/.test(aadhaar.trim());
+    if (!aadhaarOk) return "Aadhaar must be exactly 12 digits.";
+    const acctOk = /^\d{9,18}$/.test(accountNumber.trim());
+    if (!acctOk) return "Account number must be 9–18 digits.";
+    if (!bankName.trim() || !bankBranch.trim()) return "Bank name and branch are required.";
+    return null;
+  }
+
+  const save = async () => {
+    const err = validate();
+    if (err) { alert(err); return; }
+
+    // Map your UI role to backend expected role (MANAGER/STAFF)
+    let backendRole = "STAFF";
+    if (role === "store_manager") backendRole = "MANAGER";
+
+    // Split full name into first/last (nice-to-have)
+    const first = name.trim().split(" ")[0] || "";
+    const last = name.trim().split(" ").slice(1).join(" ") || "";
+
+    try {
+      await createEmployee({
+        username: userName.trim(),
+        password: password,
+        first_name: first,
+        last_name: last,
+        email: email.trim(),
+        role: backendRole,
+        outlet: Number(branch),            // HQ can choose; non-HQ ignored by backend
+        aadhaar: aadhaar.trim(),
+        pan: pan.trim().toUpperCase(),
+        bank_name: bankName.trim(),
+        bank_branch: bankBranch.trim(),
+        account_number: accountNumber.trim(),
+      });
+      alert("Employee created successfully.");
+      navigate("/admin/employee");
+    } catch (e) {
+      const msg = String(e?.message || "");
+      if (/403/.test(msg)) {
+        alert("Only Head Office can add employees.");
+      } else {
+        alert("Create failed: " + msg);
+      }
+    }
   };
 
   return (
@@ -77,7 +137,7 @@ export default function EmployeeCreatePage() {
             <input className="inp" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="f">
-            <label>PAN No.</label>
+            <label>PAN No. <span className="req">*</span></label>
             <input className="inp" placeholder="PAN No." value={pan} onChange={(e) => setPan(e.target.value)} />
           </div>
 
@@ -137,14 +197,45 @@ export default function EmployeeCreatePage() {
           </div>
 
           <div className="f">
-            <label>Select Branch</label>
+            <label>Select Branch <span className="req">*</span></label>
             <select className="inp" value={branch} onChange={(e) => setBranch(e.target.value)}>
-              {BRANCH_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
+              {branchOptions.length === 0 ? (
+                <option value="">Loading…</option>
+              ) : (
+                branchOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))
+              )}
             </select>
+          </div>
+
+          {/* NEW KYC/BANK row */}
+          <div className="f">
+            <label>Aadhaar (12 digits) <span className="req">*</span></label>
+            <input
+              className="inp"
+              placeholder="Aadhaar"
+              value={aadhaar}
+              maxLength={12}
+              onChange={(e) => setAadhaar(e.target.value.replace(/\D/g, ""))}
+            />
+          </div>
+          <div className="f">
+            <label>Bank Name <span className="req">*</span></label>
+            <input className="inp" placeholder="Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+          </div>
+          <div className="f">
+            <label>Bank Branch <span className="req">*</span></label>
+            <input className="inp" placeholder="Bank Branch" value={bankBranch} onChange={(e) => setBankBranch(e.target.value)} />
+          </div>
+          <div className="f">
+            <label>Account Number <span className="req">*</span></label>
+            <input
+              className="inp"
+              placeholder="Account Number"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+            />
           </div>
 
           <div className="f f-empty" />
