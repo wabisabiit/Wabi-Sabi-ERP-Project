@@ -5,6 +5,7 @@ from rest_framework import status
 from django.db.models import Prefetch
 from .models import MasterPack, MasterPackLine
 from .serializers import MasterPackCreateSerializer, MasterPackOutSerializer
+from django.shortcuts import get_object_or_404
 
 class MasterPackView(APIView):
     """
@@ -38,3 +39,28 @@ class MasterPackView(APIView):
         pack = ser.save()
         out = MasterPackOutSerializer(pack).data
         return Response({"status": "ok", "pack": out}, status=status.HTTP_201_CREATED)
+
+class MasterPackDetail(APIView):
+    """
+    DELETE /api/master-packs/<number>/
+    """
+    def delete(self, request, number):
+        pack = get_object_or_404(MasterPack, number=number)
+        pack.delete()  # cascades to MasterPackLine
+        return Response({"status": "ok", "deleted": number}, status=status.HTTP_200_OK)
+
+
+class MasterPackBulkDelete(APIView):
+    """
+    POST /api/master-packs/bulk-delete/
+    body: { "numbers": ["INV1","INV2", ...] }
+    """
+    def post(self, request):
+        numbers = request.data.get("numbers", [])
+        if not isinstance(numbers, list) or not numbers:
+            return Response({"status": "error", "detail": "numbers[] required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        qs = MasterPack.objects.filter(number__in=numbers)
+        found = list(qs.values_list("number", flat=True))
+        deleted_count, _ = qs.delete()
+        return Response({"status": "ok", "requested": numbers, "deleted": found, "deleted_count": deleted_count}, status=status.HTTP_200_OK)

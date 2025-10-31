@@ -5,7 +5,11 @@ import { useNavigate } from "react-router-dom";
 import "../styles/InvoicePage.css";
 
 import { buildInvoiceDetail } from "../data/invoices"; // only for building customer context
-import { listMasterPacks } from "../api/client";
+import {
+  listMasterPacks,
+  deleteMasterPack,
+  bulkDeleteMasterPacks,
+} from "../api/client";
 
 /* ───────────────── Demo/settings ───────────────── */
 const YEAR_RANGES = ["Current Year","Last Month","This Month","Last Week","This Week","Today","2025–2026"];
@@ -83,7 +87,11 @@ function rowsToCSV(rows){
 export default function InvoicePage(){
   const navigate = useNavigate();
 
-  /* ⬇️ Live rows from backend */
+  /* Toast */
+  const [toast, setToast] = useState(null); // {type:'ok'|'err', msg:string}
+  const clearToastSoon = () => setTimeout(() => setToast(null), 2200);
+
+  /* Live rows from backend */
   const [ROWS, setROWS] = useState([]);
 
   /* Fetch MasterPack list and map to grid shape */
@@ -102,19 +110,19 @@ export default function InvoicePage(){
         const mapped = (list || []).map(p => {
           const invNo = p.number || "";
           const invDate = p.created_at ? toDMY(p.created_at) : "";
-          const dueDate = invDate; // as requested: same as DB date for now
+          const dueDate = invDate; // as requested
           const net = Number(p.amount_total || 0);
           return {
-            no: invNo,                                   // Invoice No.
-            invDate,                                     // Invoice Date
-            dueDate,                                     // Due Date
-            customer: p.location?.name || p.location?.code || "", // customer shown as location
-            net,                                         // Net Amount (DB)
-            paid: 0,                                     // Paid (default 0)
-            due: net,                                    // Due = net (requested)
+            no: invNo,
+            invDate,
+            dueDate,
+            customer: p.location?.name || p.location?.code || "",
+            net,
+            paid: 0,
+            due: net,
             status: "INVOICED",
             payStatus: "DUE",
-            tax: 0,                                      // leave for now
+            tax: 0,
             createdBy: "WABI SABI LLP",
             location: p.location?.code || p.location?.name || "",
           };
@@ -124,7 +132,7 @@ export default function InvoicePage(){
       .catch(() => setROWS([]));
   }, []);
 
-  /* ⬇️ customers & locations derived from live data */
+  /* customers & locations derived from live data */
   const ALL_CUSTOMERS = useMemo(() => [...new Set(ROWS.map(r => r.customer))], [ROWS]);
   const ALL_LOCATIONS = useMemo(() => [...new Set(ROWS.map(r => r.location))], [ROWS]);
 
@@ -203,10 +211,52 @@ export default function InvoicePage(){
   const mInvoiced = filteredRows.filter(r => r.status === "INVOICED").length;
   const mCancelled = filteredRows.filter(r => r.status === "CANCELLED").length;
   const mPaid = sum(filteredRows, "paid");           // paid total (0 for now)
-  const mUnPaid = sum(filteredRows, "due");          // equals total invoice amount as requested
-  const mTotalSales = sum(filteredRows, "net");      // total sales = sum of net
+  const mUnPaid = sum(filteredRows, "due");          // equals total invoice amount
+  const mTotalSales = sum(filteredRows, "net");      // total sales
 
-  /* customer name click -> CustomerDetail with invoice context */
+  /* delete handlers */
+  async function handleDeleteOne(row) {
+    try {
+      await deleteMasterPack(row.no);
+      setROWS(prev => prev.filter(r => r.no !== row.no));
+          // also cleanup checkbox/expanded if present
+      setChecked(prev => { const n={...prev}; delete n[row.no]; return n; });
+      setExpanded(prev => { const n={...prev}; delete n[row.no]; return n; });
+      setToast({ type: "ok", msg: `Deleted ${row.no}` });
+    } catch (e) {
+      setToast({ type: "err", msg: `Delete failed for ${row.no}` });
+    } finally {
+      clearToastSoon();
+    }
+  }
+
+  async function handleBulkDelete() {
+    const numbers = Object.entries(checked).filter(([, on]) => on).map(([no]) => no);
+    if (numbers.length === 0) return;
+
+    try {
+      const res = await bulkDeleteMasterPacks(numbers);
+      const deleted = res?.deleted || numbers;
+      setROWS(prev => prev.filter(r => !deleted.includes(r.no)));
+      setChecked(prev => {
+        const next = { ...prev };
+        deleted.forEach(no => delete next[no]);
+        return next;
+      });
+      setExpanded(prev => {
+        const next = { ...prev };
+        deleted.forEach(no => delete next[no]);
+        return next;
+      });
+      setToast({ type: "ok", msg: `Deleted ${deleted.length} invoice(s)` });
+    } catch (e) {
+      setToast({ type: "err", msg: `Bulk delete failed` });
+    } finally {
+      clearToastSoon();
+    }
+  }
+
+  /* customer name click -> CustomerDetail with context */
   const handleOpenCustomer = (row) => {
     try {
       const built = buildInvoiceDetail(row);
@@ -222,6 +272,26 @@ export default function InvoicePage(){
 
   return (
     <div className="inv-page" onClick={closeAll}>
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`mp-toast ${toast.type === "ok" ? "ok" : "err"}`}
+          style={{
+            position: "fixed",
+            top: 14,
+            right: 14,
+            zIndex: 9999,
+            background: toast.type === "ok" ? "#10b981" : "#ef4444",
+            color: "#fff",
+            padding: "10px 14px",
+            borderRadius: 8,
+            boxShadow: "0 8px 24px rgba(0,0,0,.15)",
+          }}
+        >
+          {toast.msg}
+        </div>
+      )}
+
       {/* Breadcrumb + FY selector */}
       <div className="inv-breadcrumb" onClick={(e)=>e.stopPropagation()}>
         <span className="mi">home</span><span className="active">Invoice</span>
@@ -395,7 +465,7 @@ export default function InvoicePage(){
           <span className="bulk-text">Selected {Object.values(checked).filter(Boolean).length} Invoice</span>
           <button className="btn"><span className="mi">print</span> Print PDF</button>
           <button className="btn"><span className="mi">send</span> Send Email</button>
-          <button className="btn danger"><span className="mi">delete</span> Delete</button>
+          <button className="btn danger" onClick={handleBulkDelete}><span className="mi">delete</span> Delete</button>
         </div>
       )}
 
@@ -524,7 +594,9 @@ export default function InvoicePage(){
                           <button className="icon" title="Edit"><span className="mi">edit</span></button>
                           <button className="icon" title="Copy"><span className="mi">content_copy</span></button>
                           <button className="icon" title="Print"><span className="mi">print</span></button>
-                          <button className="icon danger" title="Delete"><span className="mi">delete</span></button>
+                          <button className="icon danger" title="Delete" onClick={() => handleDeleteOne(r)}>
+                            <span className="mi">delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -561,6 +633,14 @@ export default function InvoicePage(){
           <button disabled={page===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}><span className="mi">chevron_right</span></button>
         </div>
       </div>
+
+      {/* Bulk bar duplicated here for mobile visibility (optional) */}
+      {someChecked && (
+        <div className="bulk-bar mobile" onClick={(e)=>e.stopPropagation()}>
+          <span className="bulk-text">Selected {Object.values(checked).filter(Boolean).length} Invoice</span>
+          <button className="btn danger" onClick={handleBulkDelete}><span className="mi">delete</span> Delete</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -162,7 +162,9 @@ export default {
   deleteEmployee,
 
   createMasterPack,
-  listMasterPacks
+  listMasterPacks,
+  deleteMasterPack,
+  bulkDeleteMasterPacks,
 };
 
 function sanitizeBarcode(v = "") {
@@ -354,4 +356,15 @@ export async function listMasterPacks(params = {}) {
   });
   const qs = sp.toString();
   return http(`/master-packs/${qs ? `?${qs}` : ""}`);
+}
+
+export async function deleteMasterPack(number) {
+  return http(`/master-packs/${encodeURIComponent(number)}/`, { method: "DELETE" });
+}
+
+export async function bulkDeleteMasterPacks(numbers = []) {
+  return http(`/master-packs/bulk-delete/`, {
+    method: "POST",
+    body: JSON.stringify({ numbers }),
+  });
 }

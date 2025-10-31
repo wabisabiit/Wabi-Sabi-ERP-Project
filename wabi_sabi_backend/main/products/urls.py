@@ -10,7 +10,7 @@ from .views_sales import SalesView   # <-- add this
 from .views_credit import CreditNoteView,CreditNoteDetail,CreditNoteRedeem
 from .views_sales_return import SaleLinesByInvoice, SalesReturn
 from .views_customers import CustomerListCreate 
-from .views_masterpack import MasterPackView
+from .views_masterpack import MasterPackView,MasterPackDetail, MasterPackBulkDelete
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -36,6 +36,8 @@ urlpatterns = [
 
     #for Master Packing
     path("master-packs/", MasterPackView.as_view(), name="master-pack-create"),
+    path("master-packs/bulk-delete/", MasterPackBulkDelete.as_view(), name="master-pack-bulk-delete"),  # ⬅️ NEW
+    path("master-packs/<str:number>/", MasterPackDetail.as_view(), name="master-pack-detail"),
 ]
 
 urlpatterns += router.urls
