@@ -2,6 +2,7 @@
 from django.contrib import admin
 from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, SaleLine, InvoiceSequence, CreditNoteSequence, CreditNote
 from taskmaster.models import TaskItem, Location
+from .models import MasterPack, MasterPackLine
 
 
 @admin.register(Product)
@@ -128,3 +129,15 @@ class CreditNoteAdmin(admin.ModelAdmin):
     def status_display(self, obj):
         # Active if not redeemed, Not Active if already redeemed
         return "Active" if not obj.is_redeemed else "Not Active"
+
+@admin.register(MasterPack)
+class MasterPackAdmin(admin.ModelAdmin):
+    list_display = ("number", "created_at", "items_total", "qty_total", "amount_total")
+    search_fields = ("number",)
+    date_hierarchy = "created_at"
+
+@admin.register(MasterPackLine)
+class MasterPackLineAdmin(admin.ModelAdmin):
+    list_display = ("pack", "barcode", "qty", "sp", "location")
+    search_fields = ("barcode", "pack__number")
+    list_filter = ("location",)

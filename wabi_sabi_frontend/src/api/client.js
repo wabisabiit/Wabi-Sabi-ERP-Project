@@ -160,6 +160,9 @@ export default {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+
+  createMasterPack,
+  listMasterPacks
 };
 
 function sanitizeBarcode(v = "") {
@@ -334,4 +337,21 @@ export async function createOutlet(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function createMasterPack(payload) {
+  return http(`/master-packs/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listMasterPacks(params = {}) {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === null || v === undefined || v === "") return;
+    sp.append(k, v);
+  });
+  const qs = sp.toString();
+  return http(`/master-packs/${qs ? `?${qs}` : ""}`);
 }

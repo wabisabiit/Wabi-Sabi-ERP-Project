@@ -1,17 +1,8 @@
+// src/pages/MasterPackagingPage.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import "../styles/MasterPackagingPage.css";
-
-const ALL_LOCATIONS = [
-  "Brands4Less - Tilak Nagar",
-  "Brands4Less - M3M Urbana",
-  "Brands4Less-Rajori Garden inside (RJR)",
-  "Rajori Garden outside (RJO)",
-  "Brands4Less-Iffco Chock",
-  "Brands4Less-Krishna Nagar",
-  "Brands4Less-UP-AP",
-  "Brands4Less-Udhyog Vihar",
-];
+import { listLocations, getProductByBarcode, createMasterPack } from "../api/client";
 
 function useClickOutside(refs, cb) {
   useEffect(() => {
@@ -29,22 +20,34 @@ export default function MasterPackagingPage() {
   const [scan, setScan] = useState("");
   const [rows, setRows] = useState([]);
   const [station] = useState("PACK-01");
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null); // {type:'ok'|'err', msg:string}
+  const [packResult, setPackResult] = useState(null); // server response { pack: {...} }
 
-  /* ───── Header Location (default for new rows) ───── */
+  // ---- Locations from backend ----
+  const [locs, setLocs] = useState([]); // [{code,name}]
+  useEffect(() => {
+    listLocations()
+      .then((r) => setLocs(Array.isArray(r) ? r : []))
+      .catch(() => setLocs([]));
+  }, []);
+  const locMap = useMemo(() => {
+    const m = new Map();
+    locs.forEach((l) => m.set(l.code, l.name));
+    return m;
+  }, [locs]);
+
+  /* ───── Header default Location ───── */
   const [defaultLoc, setDefaultLoc] = useState("");
   const [headLocOpen, setHeadLocOpen] = useState(false);
   const [headLocQuery, setHeadLocQuery] = useState("");
   const headBtnRef = useRef(null);
-
-  // floating panel position (fixed)
   const [headLocRect, setHeadLocRect] = useState({ top: 0, left: 0, width: 280 });
-
   const headerFiltered = useMemo(() => {
     const q = headLocQuery.trim().toLowerCase();
-    if (!q) return ALL_LOCATIONS;
-    return ALL_LOCATIONS.filter((l) => l.toLowerCase().includes(q));
-  }, [headLocQuery]);
-
+    if (!q) return locs;
+    return locs.filter((l) => (l.code + " " + l.name).toLowerCase().includes(q));
+  }, [headLocQuery, locs]);
   const openHeaderDropdown = () => {
     if (!headBtnRef.current) return;
     const r = headBtnRef.current.getBoundingClientRect();
@@ -53,17 +56,14 @@ export default function MasterPackagingPage() {
     setHeadLocQuery("");
     setHeadLocOpen(true);
   };
-
   const pickHeaderLocation = (loc) => {
-    setDefaultLoc(loc);
+    setDefaultLoc(loc.code);
     setHeadLocOpen(false);
     setHeadLocQuery("");
-    setRows((prev) => prev.map((r) => (r.location ? r : { ...r, location: loc })));
+    setRows((prev) => prev.map((r) => (r.location_code ? r : { ...r, location_code: loc.code })));
   };
-
   const headPanelRef = useRef(null);
   useClickOutside([headPanelRef, headBtnRef], () => setHeadLocOpen(false));
-
   useEffect(() => {
     const cb = () => {
       if (!headBtnRef.current || !headLocOpen) return;
@@ -86,64 +86,136 @@ export default function MasterPackagingPage() {
     [rows]
   );
   const priceTotal = useMemo(
-    () => rows.reduce((t, r) => t + (Number(r.price) || 0) * (Number(r.qty) || 0), 0),
+    () => rows.reduce((t, r) => t + (Number(r.sellingPrice) || 0) * (Number(r.qty) || 0), 0),
     [rows]
   );
 
-  /* ───── Add row ───── */
-  const addScanned = () => {
-    if (!scan.trim()) return;
-    setRows((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        itemCode: scan.trim().toUpperCase(),
-        name: "Sample Product",
-        size: "M",
-        price: 0, // per-unit price
-        qty: 1,
-        brand: "Brand",
-        color: "—",
-        location: defaultLoc || "",
-      },
-    ]);
+  /* ───── Add / Merge scanned barcode ───── */
+  async function addScanned() {
+    const raw = scan.trim();
+    if (!raw) return;
     setScan("");
-  };
+    try {
+      const data = await getProductByBarcode(raw); // {barcode, vasyName, sellingPrice, qty...}
+      const barcode = String(data.barcode || "").toUpperCase();
+      if (!barcode) throw new Error("Barcode not found");
 
-  /* ───── Row-wise Location ───── */
+      setRows((prev) => {
+        const idx = prev.findIndex((r) => r.barcode === barcode);
+        if (idx !== -1) {
+          // existing -> qty +1
+          const copy = prev.slice();
+          copy[idx] = { ...copy[idx], qty: (copy[idx].qty || 0) + 1 };
+          return copy;
+        }
+        // new row
+        return [
+          ...prev,
+          {
+            id: Date.now(),
+            barcode,
+            name: data.vasyName || "",
+            size: "",                // leave as-is unless you want to snap from product.size
+            sellingPrice: Number(data.sellingPrice || 0),
+            qty: 1,
+            brand: "B4L",
+            color: "",
+            location_code: defaultLoc || "", // can change row-wise
+          },
+        ];
+      });
+    } catch (e) {
+      setToast({ type: "err", msg: `Lookup failed: ${e.message || e}` });
+      clearToastSoon();
+    }
+  }
+
+  /* ───── Row Location ───── */
   const [locOpenFor, setLocOpenFor] = useState(null);
   const [locQuery, setLocQuery] = useState("");
   const rowLocRef = useRef(null);
   useClickOutside([rowLocRef], () => setLocOpenFor(null));
-
   const filteredLocations = useMemo(() => {
     const q = locQuery.trim().toLowerCase();
-    if (!q) return ALL_LOCATIONS;
-    return ALL_LOCATIONS.filter((l) => l.toLowerCase().includes(q));
-  }, [locQuery]);
-
-  const setRowLocation = (rowId, value) => {
-    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, location: value } : r)));
+    if (!q) return locs;
+    return locs.filter((l) => (l.code + " " + l.name).toLowerCase().includes(q));
+  }, [locs, locQuery]);
+  const setRowLocation = (rowId, code) => {
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, location_code: code } : r)));
     setLocOpenFor(null);
     setLocQuery("");
   };
 
   const updateQty = (rowId, value) => {
-    setRows((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, qty: Math.max(0, Number(value) || 0) } : r))
-    );
+    const v = Math.max(0, Number(value) || 0);
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, qty: v } : r)));
   };
-
   const removeRow = (rowId) => setRows((prev) => prev.filter((r) => r.id !== rowId));
+
+  /* ───── Save & Preview -> create master pack ───── */
+  // replace your onSaveAndPreview with this version
+  async function onSaveAndPreview() {
+    if (rows.length === 0) {
+      setToast({ type: "err", msg: "Nothing to save." });
+      clearToastSoon();
+      return;
+    }
+    if (!defaultLoc) {
+      setToast({ type: "err", msg: "Choose a location from the header first." });
+      clearToastSoon();
+      return;
+    }
+
+    const payload = {
+      rows: rows.map((r) => ({
+        barcode: r.barcode,
+        qty: Number(r.qty) || 0,
+        // 👇 force all rows to use the header location
+        location_code: defaultLoc,
+      })),
+    };
+
+    setSaving(true);
+    try {
+      const res = await createMasterPack(payload);
+      if (res?.status === "ok" && res?.pack) {
+        setPackResult(res.pack);
+        setToast({ type: "ok", msg: `Saved successfully as ${res.pack.number}` });
+
+        // 👇 clear the table after successful save
+        setRows([]);
+        setHeadLocOpen(false);
+      } else {
+        throw new Error("Unexpected response");
+      }
+    } catch (e) {
+      setToast({ type: "err", msg: `Save failed: ${e.message || e}` });
+    } finally {
+      setSaving(false);
+      clearToastSoon();
+    }
+  }
+
+
+  function clearToastSoon() {
+    setTimeout(() => setToast(null), 2200);
+  }
 
   return (
     <div className="mp-wrap">
+      {/* Toast */}
+      {toast && (
+        <div className={`mp-toast ${toast.type === "ok" ? "ok" : "err"}`}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mp-head">
         <h1>Master Packaging</h1>
         <div className="mp-station">
           <span className="mp-station-label">Station:</span>
-          <span className="mp-station-badge"> {station}</span>
+          <span className="mp-station-badge">{station}</span>
         </div>
       </div>
 
@@ -151,10 +223,9 @@ export default function MasterPackagingPage() {
         {/* LEFT */}
         <div className="mp-left-card">
           <div className="mp-section-title">Scan Products</div>
-
           <div className="mp-scan-row">
             <div className="mp-field grow">
-              <label>Barcode / Item Code (e.g., SKU-TSHIRT-BLKM)</label>
+              <label>Barcode / Item Code</label>
               <div className="mp-input">
                 <input
                   type="text"
@@ -165,59 +236,47 @@ export default function MasterPackagingPage() {
                 />
               </div>
             </div>
-
             <button className="mp-btn mp-btn-dark" onClick={addScanned}>Add</button>
           </div>
 
-          <div className="mp-tip">
-            Tip: Append <b>*SIZE</b> to barcode to set size in one scan.
-          </div>
-
           {/* Table */}
-          <div className="mp-table-wrap">
+          <div className="mp-table-wrap five-rows">
             <table className="mp-table">
               <thead>
                 <tr>
                   <th>Item Code</th>
-                  <th>Product Name</th>
-                  <th>Size</th>
+                  <th>Name</th>
                   <th>Selling Price</th>
                   <th>Qty</th>
                   <th>Brand</th>
                   <th>Color</th>
-
-                  {/* Header Location with floating dropdown */}
+                  {/* header default location */}
                   <th className="mp-location-cell mp-th-loc">
                     <button
                       ref={headBtnRef}
                       type="button"
                       className={`mp-loc-btn mp-loc-btn--th ${defaultLoc ? "set" : ""}`}
                       onClick={() => (headLocOpen ? setHeadLocOpen(false) : openHeaderDropdown())}
-                      title="Default Location for new scans"
+                      title="Default Location for new rows"
                     >
-                      {defaultLoc || "Location"}
+                      {defaultLoc ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}` : "Location"}
                       <span className="material-icons-outlined">arrow_drop_down</span>
                     </button>
                   </th>
-
                   <th></th>
                 </tr>
               </thead>
-
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td className="mp-empty" colSpan={9}>
-                      Scan products to populate the list…
-                    </td>
+                    <td className="mp-empty" colSpan={8}>Scan products to populate the list…</td>
                   </tr>
                 ) : (
                   rows.map((r) => (
                     <tr key={r.id}>
-                      <td>{r.itemCode}</td>
+                      <td>{r.barcode}</td>
                       <td className="mp-ellipsis">{r.name}</td>
-                      <td>{r.size}</td>
-                      <td className="mp-num">{Number(r.price).toFixed(2)}</td>
+                      <td className="mp-num">₹{Number(r.sellingPrice || 0).toFixed(2)}</td>
                       <td className="mp-qty">
                         <input
                           type="number"
@@ -226,55 +285,14 @@ export default function MasterPackagingPage() {
                           onChange={(e) => updateQty(r.id, e.target.value)}
                         />
                       </td>
-                      <td>{r.brand}</td>
-                      <td>{r.color}</td>
-
-                      {/* Row Location */}
+                      <td>B4L</td>
+                      <td></td>
+                      {/* replace the location <td> in each row with this (no dropdown, always header location) */}
                       <td className="mp-location-cell">
-                        <button
-                          className={`mp-loc-btn ${r.location ? "set" : ""}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLocOpenFor((prev) => (prev === r.id ? null : r.id));
-                            setLocQuery("");
-                          }}
-                        >
-                          {r.location || "Select location"}
-                          <span className="material-icons-outlined">arrow_drop_down</span>
-                        </button>
-
-                        {locOpenFor === r.id && (
-                          <div
-                            className="mp-popover"
-                            ref={rowLocRef}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="mp-pop-search">
-                              <input
-                                autoFocus
-                                placeholder="Search location…"
-                                value={locQuery}
-                                onChange={(e) => setLocQuery(e.target.value)}
-                              />
-                            </div>
-                            <div className="mp-pop-list">
-                              {filteredLocations.map((loc) => (
-                                <button
-                                  key={loc}
-                                  className="mp-pop-item"
-                                  onClick={() => setRowLocation(r.id, loc)}
-                                >
-                                  {loc}
-                                </button>
-                              ))}
-                              {filteredLocations.length === 0 && (
-                                <div className="mp-pop-empty">No matches</div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                        <div className="mp-loc-fixed">
+                          {defaultLoc ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}` : "Location not set"}
+                        </div>
                       </td>
-
                       <td>
                         <button className="mp-icon-btn" onClick={() => removeRow(r.id)}>
                           <span className="material-icons-outlined">delete</span>
@@ -291,13 +309,14 @@ export default function MasterPackagingPage() {
           <div className="mp-bottom">
             <div className="mp-totals">
               <div className="mp-total-row"><span>Items</span><b>{itemsCount}</b></div>
-              {/* CHANGED: Total Price instead of Total Qty */}
+              <div className="mp-total-row"><span>Quantity</span><b>{qtyTotal}</b></div>
               <div className="mp-total-row"><span>Total Price</span><b>₹{priceTotal.toFixed(2)}</b></div>
             </div>
-
             <div className="mp-actions">
-              <button className="mp-btn mp-btn-ghost">Close Master Packaging</button>
-              <button className="mp-btn mp-btn-primary">Save &amp; Preview</button>
+              <button className="mp-btn mp-btn-ghost" onClick={() => setRows([])}>Clear</button>
+              <button className="mp-btn mp-btn-primary" disabled={saving} onClick={onSaveAndPreview}>
+                {saving ? "Saving..." : "Save & Preview"}
+              </button>
             </div>
           </div>
         </div>
@@ -306,7 +325,7 @@ export default function MasterPackagingPage() {
         <div className="mp-right-card">
           <div className="mp-preview-head">
             <span className="mp-tag">Station {station}</span>
-            <span className="mp-status open">Open</span>
+            <span className={`mp-status ${packResult ? "saved" : "open"}`}>{packResult ? "Saved" : "Open"}</span>
           </div>
 
           <div className="mp-preview-block">
@@ -315,44 +334,56 @@ export default function MasterPackagingPage() {
               <div className="mp-preview-kv"><span className="mp-k">Qty</span><span className="mp-v">{qtyTotal}</span></div>
             </div>
 
-            <div className="mp-preview-note">{rows.length ? "" : "Nothing scanned yet."}</div>
-
             <div className="mp-preview-sum">
-              {/* CHANGED: Total Price instead of Total Qty */}
               <div className="mp-preview-row"><span>Total Price</span><b>₹{priceTotal.toFixed(2)}</b></div>
-              <div className="mp-preview-row"><span>Open</span><span>{new Date().toLocaleString()}</span></div>
+              <div className="mp-preview-row">
+                <span>{packResult ? "Invoice No." : "Open"}</span>
+                <span>{packResult ? packResult.number : new Date().toLocaleString()}</span>
+              </div>
             </div>
+
+            {packResult && (
+              <div className="mp-pack-lines">
+                <div className="mp-pack-title">Saved Lines</div>
+                <ul>
+                  {packResult.lines.map((ln) => (
+                    <li key={`${ln.barcode}-${ln.location?.code}`}>
+                      {ln.barcode} × {ln.qty} @ ₹{Number(ln.sp).toFixed(2)} — {ln.location?.code}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Floating header dropdown (portal) */}
-      {headLocOpen &&
-        createPortal(
-          <div
-            ref={headPanelRef}
-            className="mp-popover mp-float-panel"
-            style={{ position: "fixed", top: headLocRect.top, left: headLocRect.left, width: headLocRect.width }}
-          >
-            <div className="mp-pop-search">
-              <input
-                autoFocus
-                placeholder="Search location…"
-                value={headLocQuery}
-                onChange={(e) => setHeadLocQuery(e.target.value)}
-              />
-            </div>
-            <div className="mp-pop-list">
-              {headerFiltered.map((loc) => (
-                <button key={loc} className="mp-pop-item" onClick={() => pickHeaderLocation(loc)}>
-                  {loc}
-                </button>
-              ))}
-              {headerFiltered.length === 0 && <div className="mp-pop-empty">No matches</div>}
-            </div>
-          </div>,
-          document.body
-        )}
+      {/* Floating header dropdown */}
+      {headLocOpen && createPortal(
+        <div
+          ref={headPanelRef}
+          className="mp-popover mp-float-panel"
+          style={{ position: "fixed", top: headLocRect.top, left: headLocRect.left, width: headLocRect.width }}
+        >
+          <div className="mp-pop-search">
+            <input
+              autoFocus
+              placeholder="Search location…"
+              value={headLocQuery}
+              onChange={(e) => setHeadLocQuery(e.target.value)}
+            />
+          </div>
+          <div className="mp-pop-list">
+            {headerFiltered.map((loc) => (
+              <button key={loc.code} className="mp-pop-item" onClick={() => pickHeaderLocation(loc)}>
+                {loc.code} – {loc.name}
+              </button>
+            ))}
+            {headerFiltered.length === 0 && <div className="mp-pop-empty">No matches</div>}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -33,11 +33,11 @@ class Employee(models.Model):
     is_active = models.BooleanField(default=True)
 
     # ── NEW mandatory KYC/bank fields ───────────────────────────────────────────
-    aadhaar = models.CharField(max_length=12, validators=[aadhaar_validator], unique=True)
-    pan     = models.CharField(max_length=10, validators=[pan_validator], unique=True)
-    bank_name    = models.CharField(max_length=80)
-    bank_branch  = models.CharField(max_length=120)
-    account_number = models.CharField(max_length=18, validators=[acct_validator])
+    aadhaar = models.CharField(max_length=12, validators=[aadhaar_validator], unique=True,blank=True,default="")
+    pan     = models.CharField(max_length=10, validators=[pan_validator], unique=True,blank=True,default="")
+    bank_name    = models.CharField(max_length=80,blank=True, default="")
+    bank_branch  = models.CharField(max_length=120,blank=True, default="")
+    account_number = models.CharField(max_length=18, validators=[acct_validator],blank=True,default="")
 
     class Meta:
         ordering = ["user__username"]

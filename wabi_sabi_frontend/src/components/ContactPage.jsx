@@ -1,50 +1,19 @@
+// src/pages/Contact.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/ContactPage.css";
-import ContactForm from "../components/ContactForm"; // ⟵ ADD
-
-/* ----- Demo rows ----- */
-const ROWS = [
-  { sr: 1, name: "Brands 4 less – Ansal Plaza – – Brands 4 less – Ansal Plaza", contact: "+91–8868964450", whatsapp: "+91–8868964450", gstin: "07AADFW9945P1Z6", createdBy: "mail@harmeet.com", mobileStatus: "Un-verified", status: "ACTIVE", loyalty: "0.00" },
-  { sr: 2, name: "Brands Loot – Udyog Vihar – – Brands Loot – Udyog Vihar", contact: "+91–7303467070", whatsapp: "+91–7303467070", gstin: "07AADFW9945P1Z6", createdBy: "mail@harmeet.com", mobileStatus: "Un-verified", status: "ACTIVE", loyalty: "0.00" },
-  { sr: 3, name: "Brands 4 less – IFFCO Chowk – – Brands 4 less – IFFCO Chowk", contact: "+91–9599882602", whatsapp: "+91–9599882602", gstin: "07AADFW9945P1Z6", createdBy: "mail@harmeet.com", mobileStatus: "Un-verified", status: "ACTIVE", loyalty: "0.00" },
-  { sr: 4, name: "WABI SABI SUSTAINABILITY LLP – WABI SABI SUSTAINABILITY LLP", contact: "+91–7303045070", whatsapp: "+91–7303045070", gstin: "07AADFW9945P1Z6", createdBy: "mail@harmeet.com", mobileStatus: "Un-verified", status: "ACTIVE", loyalty: "0.00" },
-  { sr: 5, name: "WABI SABI SUSTAINABILITY LLP – WABI SABI", contact: "+91–7303045070", whatsapp: "+91–7303045070", gstin: "07AADFW9945P1Z6", createdBy: "mail@harmeet.com", mobileStatus: "Un-verified", status: "ACTIVE", loyalty: "0.00" },
-];
+import ContactForm from "../components/ContactForm";
+import { searchCustomers } from "../api/client";
 
 /** --- Columns master (ALL possible columns) --- */
+/* Reordered to: Sr. No., Name, Contact, Whatsapp, GSTIN, Created By, Mobile No status, Status, Loyalty Point, Actions */
 const COLS = [
   { id: "sr",          label: "Sr. No.",         th: (<><div>Sr.</div><div>No.</div></>), td: r => r.sr, thClass: "col-sr" },
   { id: "name",        label: "Name",            td: r => <a className="con-link two-line" href="#!">{r.name}</a> },
-  { id: "firstName",   label: "First Name",      td: r => r.firstName || "" },
-  { id: "lastName",    label: "Last Name",       td: r => r.lastName || "" },
-  { id: "companyName", label: "Company Name",    td: r => r.companyName || "" },
   { id: "contact",     label: "Contact No.",     th: (<><div>Contact</div><div>No.</div></>), td: r => r.contact },
   { id: "whatsapp",    label: "Whatsapp No.",    td: r => r.whatsapp },
-
-  { id: "email",       label: "Email Id",        td: r => r.email || "" },
-  { id: "telephone",   label: "Telephone No.",   td: r => r.telephone || "" },
-  { id: "gstType",     label: "GST Type",        td: r => r.gstType || "" },
   { id: "gstin",       label: "GSTIN",           td: r => <span className="two-line">{r.gstin}</span> },
-  { id: "pan",         label: "PAN No.",         td: r => r.pan || "" },
-  { id: "customerType",label: "Customer Type",   td: r => r.customerType || "" },
-  { id: "bankName",    label: "Bank Name",       td: r => r.bankName || "" },
-
-  { id: "branchName",  label: "Branch Name",     td: r => r.branchName || "" },
-  { id: "bankAccount", label: "Bank Account No.",td: r => r.bankAccount || "" },
-  { id: "ifsc",        label: "IFSC Code",       td: r => r.ifsc || "" },
-  { id: "addr1",       label: "Address Line 1",  td: r => r.addr1 || "" },
-  { id: "addr2",       label: "Address Line 2",  td: r => r.addr2 || "" },
-  { id: "pin",         label: "Pin Code",        td: r => r.pin || "" },
-  { id: "dob",         label: "DOB",             td: r => r.dob || "" },
-
-  { id: "opening",     label: "Opening Balance", td: r => r.opening || "" },
-  { id: "crdr",        label: "CR/DR",           td: r => r.crdr || "" },
-  { id: "city",        label: "City",            td: r => r.city || "" },
-  { id: "state",       label: "State",           td: r => r.state || "" },
-  { id: "country",     label: "Country",         td: r => r.country || "" },
-
-  { id: "segment",     label: "Customer Segment",td: r => r.segment || "" },
-  { id: "membership",  label: "Membership Type", td: r => r.membership || "" },
+  { id: "createdBy",   label: "Created By",      td: r => <span className="two-line">{r.createdBy}</span> },
+  { id: "mobileStatus",label: "Mobile No status",th: (<><div>Mobile</div><div>No status</div></>), td: r => <span className="muted">{r.mobileStatus}</span> },
   { id: "status",      label: "Status",          td: () => <span className="con-status">ACTIVE</span> },
   { id: "loyalty",     label: "Loyalty Point",   th: (<><div>Loyalty</div><div>Point</div></>), td: r => r.loyalty },
   { id: "actions",     label: "Actions",         td: () => (
@@ -54,11 +23,33 @@ const COLS = [
       </>
     ), thClass: "col-actions" },
 
-  { id: "createdBy",   label: "Created By",      td: r => <span className="two-line">{r.createdBy}</span> },
-  { id: "mobileStatus",label: "Mobile No status",th: (<><div>Mobile</div><div>No status</div></>), td: r => <span className="muted">{r.mobileStatus}</span> },
+  /* ---- Extra columns (not visible by default) ---- */
+  { id: "firstName",   label: "First Name",      td: r => r.firstName || "" },
+  { id: "lastName",    label: "Last Name",       td: r => r.lastName || "" },
+  { id: "companyName", label: "Company Name",    td: r => r.companyName || "" },
+  { id: "email",       label: "Email Id",        td: r => r.email || "" },
+  { id: "telephone",   label: "Telephone No.",   td: r => r.telephone || "" },
+  { id: "gstType",     label: "GST Type",        td: r => r.gstType || "" },
+  { id: "pan",         label: "PAN No.",         td: r => r.pan || "" },
+  { id: "customerType",label: "Customer Type",   td: r => r.customerType || "" },
+  { id: "bankName",    label: "Bank Name",       td: r => r.bankName || "" },
+  { id: "branchName",  label: "Branch Name",     td: r => r.branchName || "" },
+  { id: "bankAccount", label: "Bank Account No.",td: r => r.bankAccount || "" },
+  { id: "ifsc",        label: "IFSC Code",       td: r => r.ifsc || "" },
+  { id: "addr1",       label: "Address Line 1",  td: r => r.addr1 || "" },
+  { id: "addr2",       label: "Address Line 2",  td: r => r.addr2 || "" },
+  { id: "pin",         label: "Pin Code",        td: r => r.pin || "" },
+  { id: "dob",         label: "DOB",             td: r => r.dob || "" },
+  { id: "opening",     label: "Opening Balance", td: r => r.opening || "" },
+  { id: "crdr",        label: "CR/DR",           td: r => r.crdr || "" },
+  { id: "city",        label: "City",            td: r => r.city || "" },
+  { id: "state",       label: "State",           td: r => r.state || "" },
+  { id: "country",     label: "Country",         td: r => r.country || "" },
+  { id: "segment",     label: "Customer Segment",td: r => r.segment || "" },
+  { id: "membership",  label: "Membership Type", td: r => r.membership || "" },
 ];
 
-/* Default visible sets by tab */
+/* Default visible sets by tab (unchanged) */
 const CUSTOMER_VISIBLE = ["sr","name","contact","whatsapp","gstin","createdBy","mobileStatus","status","loyalty","actions"];
 const VENDOR_VISIBLE   = ["sr","name","contact","whatsapp","gstin","createdBy","mobileStatus","status","actions"]; // no loyalty
 
@@ -144,7 +135,11 @@ export default function ContactPage() {
   const [pageSize, setPageSize] = useState(15);
   const [query, setQuery] = useState("");
 
-  // ⟵ ADD: overlay state
+  // rows from backend
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // overlay state
   const [formOpen, setFormOpen] = useState(false);
   const [formType, setFormType] = useState("customer");
 
@@ -222,30 +217,66 @@ export default function ContactPage() {
     setDlOpen(false);
   }
 
+  // 🔗 FETCH customers from backend and map to table rows
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await searchCustomers("");
+        const list = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+        const mapped = list.map((c, idx) => {
+          const phone = c?.phone || "";
+          return {
+            sr: idx + 1,
+            name: c?.name || "",
+            contact: phone,
+            whatsapp: phone,
+            gstin: "",
+            createdBy: "mail@harmeet.com",
+            mobileStatus: "Verified",
+            status: "ACTIVE",
+            loyalty: "0.00",
+            email: c?.email || "",
+            city: c?.city || "",
+            state: c?.state || "",
+          };
+        });
+        if (alive) setRows(mapped);
+      } catch (e) {
+        console.error("Failed to load customers:", e);
+        if (alive) setRows([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   // --- Search + Location combined filter ---
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let rows = ROWS;
+    let out = rows;
 
     if (q) {
-      rows = rows.filter((r) =>
+      out = out.filter((r) =>
         [r.name, r.contact, r.whatsapp, r.gstin, r.createdBy, r.mobileStatus, r.status]
           .some((v) => String(v || "").toLowerCase().includes(q))
       );
     }
     if (locations.length > 0) {
-      rows = rows.filter((r) =>
+      out = out.filter((r) =>
         locations.some((loc) => r.name.toLowerCase().includes(loc.toLowerCase()))
       );
     }
-    return rows;
-  }, [query, locations]);
+    return out;
+  }, [query, locations, rows]);
 
   const showingFrom = filtered.length ? 1 : 0;
   const showingTo = Math.min(filtered.length, pageSize);
   const shownCols = useMemo(() => COLS.filter((c) => visible.has(c.id)), [visible]);
 
-  // ⟵ ADD: handler to open the form matching current tab
+  // handler to open the form matching current tab
   const openCreate = () => {
     setFormType(tab === "vendor" ? "vendor" : "customer");
     setFormOpen(true);
@@ -323,9 +354,8 @@ export default function ContactPage() {
             />
           </div>
 
-          {/* ⟵ ADD: Create New button (right of search) */}
+          {/* Create New button */}
           <button className="con-btn primary create-new" onClick={openCreate}>
-
             <span>Create New</span>
           </button>
         </div>
@@ -397,17 +427,22 @@ export default function ContactPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, pageSize).map((r) => (
-                <tr key={r.sr}>
-                  <td className="col-check"><input type="checkbox" /></td>
-                  {shownCols.map((c) => (
-                    <td key={c.id} className={c.tdClass || ""}>
-                      {c.td ? c.td(r) : (r[c.id] ?? "")}
-                    </td>
-                  ))}
+              {loading ? (
+                <tr>
+                  <td colSpan={1 + shownCols.length} className="con-empty">Loading…</td>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
+              ) : filtered.slice(0, pageSize).length > 0 ? (
+                filtered.slice(0, pageSize).map((r) => (
+                  <tr key={r.sr}>
+                    <td className="col-check"><input type="checkbox" /></td>
+                    {shownCols.map((c) => (
+                      <td key={c.id} className={c.tdClass || ""}>
+                        {c.td ? c.td(r) : (r[c.id] ?? "")}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan={1 + shownCols.length} className="con-empty">
                     No data available in table
@@ -430,9 +465,9 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* ⟵ ADD: Render the overlay form */}
+      {/* Overlay form */}
       <ContactForm
-        type={formType}             // "customer" or "vendor" based on current tab
+        type={formType}
         open={formOpen}
         onClose={() => setFormOpen(false)}
       />

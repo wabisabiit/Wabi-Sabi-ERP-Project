@@ -121,3 +121,26 @@
 .mp-preview-note{ color:#6b7280; margin:10px 0; }
 .mp-preview-sum{ display:flex; flex-direction:column; gap:6px; }
 .mp-preview-row{ display:flex; align-items:center; justify-content:space-between; }
+
+/* 5-row scrollable table area */
+.mp-table-wrap.five-rows {
+  max-height: 260px; /* ~5 rows + header; adjust to your row height */
+  overflow-y: auto;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+}
+
+/* simple toast */
+.mp-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: #111827;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  z-index: 2000;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.mp-toast.ok { background: #065f46; }   /* green */
+.mp-toast.err { background: #991b1b; }  /* red */

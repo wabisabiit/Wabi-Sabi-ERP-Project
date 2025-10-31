@@ -296,3 +296,4 @@ input[type="checkbox"]{ width:16px; height:16px; accent-color:#0ea5e9; }
   color: #111 !important;
 }
 
+.con-status-verified { color: #16a34a; font-weight: 600; }

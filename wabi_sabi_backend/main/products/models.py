@@ -1,5 +1,5 @@
 # Create your models here.
-from django.db import models
+from django.db import models,transaction
 from taskmaster.models import TaskItem,Location   # <-- your TaskItem
 
 class Product(models.Model):
@@ -239,3 +239,54 @@ class CreditNote(models.Model):
         if not self.note_no:
             self.note_no = CreditNoteSequence.next_no(prefix="CRN")
         super().save(*args, **kwargs)
+
+class MasterPack(models.Model):
+    """
+    Master packing header. Generates invoice numbers like INV1, INV2...
+    Tracks totals and created time.
+    """
+    number = models.CharField(max_length=32, unique=True, db_index=True)  # e.g. INV1
+    created_at = models.DateTimeField(default=timezone.now)
+    items_total = models.PositiveIntegerField(default=0)      # unique barcodes (lines)
+    qty_total = models.PositiveIntegerField(default=0)        # sum of qty across lines
+    amount_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return self.number
+
+    def save(self, *args, **kwargs):
+        # Use your existing InvoiceSequence to mint INV numbers
+        if not self.number:
+            from .models import InvoiceSequence  # same file; safe circular point
+            self.number = InvoiceSequence.next_invoice_no(prefix="INV")
+        super().save(*args, **kwargs)
+
+
+class MasterPackLine(models.Model):
+    """
+    One barcode row in the packing sheet.
+    Location is chosen per row (linked to Taskmaster.Location).
+    """
+    pack = models.ForeignKey(MasterPack, on_delete=models.CASCADE, related_name="lines")
+    product = models.ForeignKey('Product', on_delete=models.PROTECT)
+    barcode = models.CharField(max_length=64, db_index=True)
+
+    # Snapshots for traceability
+    name = models.CharField(max_length=512, blank=True, default="")
+    brand = models.CharField(max_length=64, blank=True, default="B4L")
+    color = models.CharField(max_length=64, blank=True, default="")  # left empty
+    size = models.CharField(max_length=32, blank=True, default="")
+    sp = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # selling price
+
+    qty = models.PositiveIntegerField(default=1)
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="master_pack_lines")
+
+    class Meta:
+        ordering = ["barcode"]
+        indexes = [models.Index(fields=["barcode"])]
+
+    def __str__(self):
+        return f"{self.pack.number} • {self.barcode} x{self.qty}"

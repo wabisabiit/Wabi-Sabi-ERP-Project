@@ -4,17 +4,23 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import "../styles/InvoicePage.css";
 
-/* ⬇️ central data */
-import { INVOICE_ROWS as ROWS, buildInvoiceDetail } from "../data/invoices"; // ⬅️ buildInvoiceDetail जोड़ा
+import { buildInvoiceDetail } from "../data/invoices"; // only for building customer context
+import { listMasterPacks } from "../api/client";
 
-/* ───────────────── Demo settings ───────────────── */
+/* ───────────────── Demo/settings ───────────────── */
 const YEAR_RANGES = ["Current Year","Last Month","This Month","Last Week","This Week","Today","2025–2026"];
 const PAGE_SIZES = [10, 25, 50, 100, 200, 500, "All"];
 
 const sum = (arr, key) => arr.reduce((a, r) => a + Number(r[key] || 0), 0);
 const formatMoney = (n) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n || 0);
-const shortINR = (n = 0) => { const abs=Math.abs(n); if(abs>=1e7)return`${(n/1e7).toFixed(2)}C`; if(abs>=1e5)return`${(n/1e5).toFixed(2)}L`; if(abs>=1e3)return`${(n/1e3).toFixed(2)}K`; return Math.round(n).toString(); };
+const shortINR = (n = 0) => {
+  const abs = Math.abs(n);
+  if (abs >= 1e7) return `${(n / 1e7).toFixed(2)}C`;
+  if (abs >= 1e5) return `${(n / 1e5).toFixed(2)}L`;
+  if (abs >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
+  return Math.round(n).toString();
+};
 
 // Date helpers (DD/MM/YYYY)
 const parseDMY = (s) => { if (!s) return null; const [dd, mm, yyyy] = s.split("/").map(Number); return new Date(yyyy, (mm || 1) - 1, dd || 1); };
@@ -35,7 +41,7 @@ const rangeFor = (label) => {
   const from = new Date(today.getFullYear(), 0, 1); const to = endOfDay(new Date(today.getFullYear(), 11, 31)); return { from, to };
 };
 
-/* Popover (unchanged) */
+/* Popover */
 function Popover({ open, anchorRef, onClose, width, align="left", children }) {
   const [style, setStyle] = useState({ top:0, left:0, width:width||undefined });
   useLayoutEffect(() => {
@@ -77,9 +83,50 @@ function rowsToCSV(rows){
 export default function InvoicePage(){
   const navigate = useNavigate();
 
-  /* ⬇️ customers & locations are derived from data (future-proof) */
-  const ALL_CUSTOMERS = useMemo(() => [...new Set(ROWS.map(r => r.customer))], []);
-  const ALL_LOCATIONS = useMemo(() => [...new Set(ROWS.map(r => r.location))], []);
+  /* ⬇️ Live rows from backend */
+  const [ROWS, setROWS] = useState([]);
+
+  /* Fetch MasterPack list and map to grid shape */
+  useEffect(() => {
+    const toDMY = (iso) => {
+      if (!iso) return "";
+      const d = new Date(iso);
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yy = d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    };
+
+    listMasterPacks()
+      .then(list => {
+        const mapped = (list || []).map(p => {
+          const invNo = p.number || "";
+          const invDate = p.created_at ? toDMY(p.created_at) : "";
+          const dueDate = invDate; // as requested: same as DB date for now
+          const net = Number(p.amount_total || 0);
+          return {
+            no: invNo,                                   // Invoice No.
+            invDate,                                     // Invoice Date
+            dueDate,                                     // Due Date
+            customer: p.location?.name || p.location?.code || "", // customer shown as location
+            net,                                         // Net Amount (DB)
+            paid: 0,                                     // Paid (default 0)
+            due: net,                                    // Due = net (requested)
+            status: "INVOICED",
+            payStatus: "DUE",
+            tax: 0,                                      // leave for now
+            createdBy: "WABI SABI LLP",
+            location: p.location?.code || p.location?.name || "",
+          };
+        });
+        setROWS(mapped);
+      })
+      .catch(() => setROWS([]));
+  }, []);
+
+  /* ⬇️ customers & locations derived from live data */
+  const ALL_CUSTOMERS = useMemo(() => [...new Set(ROWS.map(r => r.customer))], [ROWS]);
+  const ALL_LOCATIONS = useMemo(() => [...new Set(ROWS.map(r => r.location))], [ROWS]);
 
   const [year,setYear]=useState("Current Year");
   const [yearQuery,setYearQuery]=useState("");
@@ -126,12 +173,12 @@ export default function InvoicePage(){
       rows=rows.filter(r=> r.payStatus===mapP[pstatus]);
     }
     return rows;
-  },[year,query,customerValue,locValues,status,pstatus]);
+  },[year,query,customerValue,locValues,status,pstatus,ROWS]);
 
   /* pagination */
   const itemsPerPage = pageSize==="All" ? filteredRows.length : pageSize;
   const [page,setPage]=useState(1);
-  useEffect(()=>setPage(1),[year,query,customerValue,locValues,status,pstatus,pageSize]);
+  useEffect(()=>setPage(1),[year,query,customerValue,locValues,status,pstatus,pageSize,ROWS]);
   const totalPages = Math.max(1, Math.ceil((filteredRows.length||1)/(itemsPerPage||1)));
   const pageRows = filteredRows.slice((page-1)*itemsPerPage, (page-1)*itemsPerPage + itemsPerPage);
 
@@ -152,23 +199,22 @@ export default function InvoicePage(){
   const closeAll=()=>{ setOpenYear(false); setOpenExport(false); setOpenPage(false); setOpenCust(false); setLocOpen(false); };
 
   /* metrics (filtered) */
-  const mAll = filteredRows.length;
+  const mAll = filteredRows.length;                  // number of invoices
   const mInvoiced = filteredRows.filter(r => r.status === "INVOICED").length;
   const mCancelled = filteredRows.filter(r => r.status === "CANCELLED").length;
-  const mPaid = sum(filteredRows, "paid");
-  const mUnPaid = sum(filteredRows, "due");
-  const mTotalSales = sum(filteredRows, "net");
+  const mPaid = sum(filteredRows, "paid");           // paid total (0 for now)
+  const mUnPaid = sum(filteredRows, "due");          // equals total invoice amount as requested
+  const mTotalSales = sum(filteredRows, "net");      // total sales = sum of net
 
-  /* ⬇️ NEW: customer name click -> CustomerDetail with invoice context */
+  /* customer name click -> CustomerDetail with invoice context */
   const handleOpenCustomer = (row) => {
     try {
-      const built = buildInvoiceDetail(row); // invoice का पूरा context तैयार
+      const built = buildInvoiceDetail(row);
       const slug = encodeURIComponent(built.party.slug || built.party.name || row.customer || "customer");
       navigate(`/customer/${slug}?inv=${encodeURIComponent(built.meta.invoiceNo)}`, {
         state: { fromInvoice: built },
       });
     } catch {
-      // fallback: कम से कम slug & inv पास करें
       const slug = encodeURIComponent(row.customer || "customer");
       navigate(`/customer/${slug}?inv=${encodeURIComponent(row.no)}`);
     }
@@ -435,7 +481,7 @@ export default function InvoicePage(){
 
                     <td className="w40">{sr}</td>
 
-                    {/* 🔹 Clickable Invoice No. -> Detail page */}
+                    {/* Clickable Invoice No. -> Detail page */}
                     <td
                       className="link"
                       onClick={() => navigate(`/sales/invoice/${r.no}`)}
@@ -448,7 +494,7 @@ export default function InvoicePage(){
                     <td>{r.invDate}</td>
                     <td>{r.dueDate}</td>
 
-                    {/* 🔹 NEW: Customer name -> Customer Detail with context */}
+                    {/* Customer name -> Customer Detail with context */}
                     <td
                       className="link"
                       onClick={() => handleOpenCustomer(r)}
