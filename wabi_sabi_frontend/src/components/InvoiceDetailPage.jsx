@@ -1,8 +1,8 @@
 // src/components/InvoiceDetailPage.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { findInvoiceRow, buildInvoiceDetail } from "../data/invoices";
 import "../styles/InvoiceDetailPage.css";
+import { getMasterPack } from "../api/client";
 
 /* ==== helpers ==== */
 const fmt = (n) =>
@@ -38,41 +38,143 @@ function itemsToCSV(items) {
   return lines.join("\r\n");
 }
 
+/* date helpers */
+const toDMY = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+};
+const toReadableDT = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const dt = d.toLocaleDateString("en-GB");
+  const tm = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return `${dt} ${tm}`;
+};
+
 export default function InvoiceDetailPage() {
   const { invNo } = useParams();
   const [topTab, setTopTab] = useState("general");
   const [tab, setTab] = useState("product");
 
-  const data = useMemo(() => {
-    const row = findInvoiceRow(invNo) || {
-      no: invNo || "INV-NA", invDate:"01/01/2025", dueDate:"01/01/2025",
-      customer:"Unknown Customer –", net:5600, paid:0, due:5600, status:"INVOICED",
-      payStatus:"DUE", tax:266.67, createdBy:"Krishna Pandit",
-      location:"WABI SABI SUSTAINABILITY LLP",
-    };
-    const built = buildInvoiceDetail(row);
+  // ---- NEW: fetch MasterPack detail and normalize into your previous shape ----
+  const [pack, setPack] = useState(null);
+  const [err, setErr] = useState("");
 
-    const creator = (built.meta?.createdBy || row.createdBy || "").toString();
-    const createdTime = built.meta?.createdTime || "10/10/2025 01:49 PM";
-
-    return {
-      terms: built.terms || ["Goods once sold, cannot be returned. Wabi Sabi xxxxxx"],
-      note: built.note || "",
-      receipts: built.receipts || [],
-      credits: built.credits || [],
-      shipping: built.shipping || {
-        type: "Delivery", shipDate: "10/10/2025", refNo: "",
-        transportDate: "10/10/2025", mode: "", transporter: "", weight: "", vehicle: "",
-      },
-      history: built.history || [{
-        dt: createdTime,
-        action: "Invoice created Of Amount",
-        amount: built.summary?.netAmount ?? row.net ?? 0,
-        by: creator || "System",
-      }],
-      ...built,
-    };
+  useEffect(() => {
+    let on = true;
+    setErr("");
+    (async () => {
+      try {
+        const raw = await getMasterPack(invNo);
+        const p = raw && raw.pack ? raw.pack : raw; // accept wrapped or raw
+        if (!on) return;
+        setPack(p || null);
+      } catch (e) {
+        if (!on) return;
+        setErr(e?.message || "Failed to load invoice");
+      }
+    })();
+    return () => { on = false; };
   }, [invNo]);
+
+  const data = useMemo(() => {
+    // If backend not loaded yet OR error, keep a safe fallback so page renders
+    const mp = pack || {};
+    const lines = Array.isArray(mp.lines) ? mp.lines : [];
+
+    const invoiceNo = mp.number || invNo || "INV-NA";
+    const invoiceDate = toDMY(mp.created_at);
+    const createdTime = toReadableDT(mp.created_at);
+    const dueDate = invoiceDate;
+    const totalAmount = Number(mp.amount_total ?? 0);
+
+    // Use first line's location as "Created By"/Place of Supply
+    const firstLoc = lines[0]?.location || {};
+    const locName = firstLoc.name || firstLoc.code || "WABI SABI LLP";
+
+    // Build items (keep numeric fields since your table/CSV calls .toFixed())
+    const items = lines.map((ln, i) => ({
+      idx: i + 1,
+      itemCode: ln?.barcode || "",
+      itemName: ln?.name || "",
+      batch: "",          // empty
+      qty: 1,             // default 1
+      free: 0,
+      price: Number(ln?.sp ?? 0),
+      taxable: 0,         // keep numeric to avoid .toFixed crash
+      tax: 0,             // keep blank in UI by rendering 0 with your existing cells
+      total: Number(ln?.sp ?? 0),
+    }));
+
+    // Build object the rest of your JSX already expects
+    return {
+      party: {
+        name: locName || "Unknown Customer –",
+        slug: encodeURIComponent(locName || "unknown-customer"),
+        placeOfSupply: locName,
+        billing: {
+          line1: "J-1/61, RAJORI GARDEN, New Delhi West Delhi – 110027 Delhi India",
+          line2: "",
+          gstin: "07AADFW9945P1Z6",
+          phone: "+91-9599883461",
+        },
+        shipping: {
+          line1: "J-1/61, RAJORI GARDEN, New Delhi West Delhi – 110027 Delhi India",
+          line2: "",
+          gstin: "07AADFW9945P1Z6",
+          phone: "Mobile no. is not provided",
+        },
+      },
+      meta: {
+        invoiceNo,
+        invoiceDate,
+        dueDate,
+        reverseCharge: "No",
+        paymentTerm: "N/A",
+        exportSez: "No",
+        paymentReminder: "No",
+        accountLedger: "Sales",
+        createdBy: "Krishna Pandit",
+        createdTime,
+        paidAmount: 0,
+        dueAmount: totalAmount,   // Due same as total
+        totalAmount,
+      },
+      items,
+      terms: ["Goods once sold, cannot be returned. Wabi Sabi xxxxxx"],
+      note: "",
+      receipts: [],
+      credits: [],
+      shipping: {
+        type: "Delivery",
+        shipDate: invoiceDate,
+        refNo: "",
+        transportDate: invoiceDate,
+        mode: "",
+        transporter: "",
+        weight: "",
+        vehicle: "",
+      },
+      summary: {
+        grossAmount: totalAmount,
+        discount: 0,
+        taxableAmount: 0,
+        taxAmount: 0,
+        roundoff: 0,
+        netAmount: totalAmount,
+      },
+      history: [{
+        dt: createdTime || invoiceDate,
+        action: "Invoice created Of Amount",
+        amount: totalAmount,
+        by: "krishna Pandit",
+      }],
+    };
+  }, [pack, invNo]);
 
   /* icon handlers */
   const onPrint = () => window.print();
@@ -286,14 +388,7 @@ export default function InvoiceDetailPage() {
                 <tr><th className="w40">#</th><th>Receipt No</th><th>Date</th><th>Payment Mode</th><th>Amount</th><th>Action</th></tr>
               </thead>
               <tbody>
-                {data.receipts.length===0 ? (
-                  <tr><td colSpan={6} className="muted center">No data available in table</td></tr>
-                ) : data.receipts.map((r,i)=>(
-                  <tr key={i}>
-                    <td className="num">{i+1}</td><td>{r.no}</td><td>{r.date}</td><td>{r.mode}</td>
-                    <td className="num">{fmt(r.amount)}</td><td className="muted">-</td>
-                  </tr>
-                ))}
+                <tr><td colSpan={6} className="muted center">No data available in table</td></tr>
               </tbody>
             </table>
             <div className="mini-foot">
@@ -312,14 +407,7 @@ export default function InvoiceDetailPage() {
                 <tr><th className="w40">#</th><th>Sales No</th><th>Date</th><th>Paid Amount</th><th>Total</th><th>Action</th></tr>
               </thead>
               <tbody>
-                {data.credits.length===0 ? (
-                  <tr><td colSpan={6} className="muted center">No data available in table</td></tr>
-                ) : data.credits.map((r,i)=>(
-                  <tr key={i}>
-                    <td className="num">{i+1}</td><td>{r.salesNo}</td><td>{r.date}</td>
-                    <td className="num">{fmt(r.paidAmount)}</td><td className="num">{fmt(r.total)}</td><td className="muted">-</td>
-                  </tr>
-                ))}
+                <tr><td colSpan={6} className="muted center">No data available in table</td></tr>
               </tbody>
             </table>
             <div className="mini-foot">
@@ -370,6 +458,7 @@ export default function InvoiceDetailPage() {
           </table>
         </div>
       </div>
+      {err && <div className="muted" style={{padding:"8px 16px"}}>Note: {err}</div>}
     </div>
   );
 }

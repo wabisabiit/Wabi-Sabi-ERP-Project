@@ -42,13 +42,23 @@ class MasterPackView(APIView):
 
 class MasterPackDetail(APIView):
     """
-    DELETE /api/master-packs/<number>/
+    GET    /api/master-packs/<number>/  -> detail (with lines)
+    DELETE /api/master-packs/<number>/  -> delete
     """
+    def get(self, request, number):
+        pack = get_object_or_404(
+            MasterPack.objects.prefetch_related(
+                Prefetch("lines", queryset=MasterPackLine.objects.select_related("location"))
+            ),
+            number=number,
+        )
+        data = MasterPackOutSerializer(pack).data
+        return Response(data, status=status.HTTP_200_OK)
+
     def delete(self, request, number):
         pack = get_object_or_404(MasterPack, number=number)
-        pack.delete()  # cascades to MasterPackLine
+        pack.delete()
         return Response({"status": "ok", "deleted": number}, status=status.HTTP_200_OK)
-
 
 class MasterPackBulkDelete(APIView):
     """

@@ -165,6 +165,7 @@ export default {
   listMasterPacks,
   deleteMasterPack,
   bulkDeleteMasterPacks,
+  getMasterPack,
 };
 
 function sanitizeBarcode(v = "") {
@@ -367,4 +368,10 @@ export async function bulkDeleteMasterPacks(numbers = []) {
     method: "POST",
     body: JSON.stringify({ numbers }),
   });
+}
+
+
+// Get one Master Pack (invoice) by number
+export async function getMasterPack(number) {
+  return http(`/master-packs/${encodeURIComponent(number)}/`);
 }
