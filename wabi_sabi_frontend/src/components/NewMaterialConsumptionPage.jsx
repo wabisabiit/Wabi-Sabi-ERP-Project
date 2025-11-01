@@ -1,15 +1,92 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/MaterialConsumption.css";
+import { listLocations, getProductByBarcode, mcGetNextNumber, mcCreate } from "../api/client";
+
+function todayISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export default function NewMaterialConsumptionPage() {
   const navigate = useNavigate();
-  const [date, setDate] = useState("2025-01-01");
-  const [prefix, setPrefix] = useState("CONWS");
-  const [serial, setSerial] = useState("59");
-  const [user, setUser] = useState("WABI SABI SUSTAINABILITY LLP");
+  const [date, setDate] = useState(todayISO());
+  const [seq, setSeq] = useState({ prefix:"CONWS", next: 59, preview:"CONWS59" });
+  const [locations, setLocations] = useState([]);
+  const [loc, setLoc] = useState("");  // location code
   const [type, setType] = useState("Production");
-  const [remarks, setRemarks] = useState("");
+  const [remark, setRemark] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [rows, setRows] = useState([]); // {barcode, name, qty, price, total}
+
+  // load locations + next number
+  useEffect(() => {
+    listLocations().then(setLocations).catch(()=>{});
+    mcGetNextNumber().then(setSeq).catch(()=>{});
+  }, []);
+
+  // totals
+  const total = useMemo(() => rows.reduce((s,r)=>s + Number(r.total||0), 0), [rows]);
+
+  // add barcode
+  const addBarcode = async () => {
+    const b = String(barcode || "").trim();
+    if (!b) return;
+    setBarcode("");
+    try {
+      const p = await getProductByBarcode(b);
+      const name = p.vasyName || "";
+      const price = Number(p.sellingPrice || 0);
+      // if exists, bump qty
+      setRows(prev => {
+        const idx = prev.findIndex(x => x.barcode === p.barcode);
+        if (idx >= 0) {
+          const copy = [...prev];
+          const r = { ...copy[idx] };
+          r.qty += 1;
+          r.total = r.qty * r.price;
+          copy[idx] = r;
+          return copy;
+        }
+        return [...prev, { barcode: p.barcode, name, qty: 1, price, total: price }];
+      });
+    } catch (e) {
+      alert(`Not found: ${b}`);
+    }
+  };
+
+  const onQtyChange = (i, v) => {
+    setRows(prev => {
+      const copy = [...prev];
+      const q = Math.max(1, Number(v||1));
+      copy[i] = { ...copy[i], qty: q, total: q * Number(copy[i].price||0) };
+      return copy;
+    });
+  };
+  const removeRow = (i) => setRows(prev => prev.filter((_,j)=>j!==i));
+
+  const onSave = async () => {
+    if (!loc) { alert("Please select user (location)."); return; }
+    if (rows.length === 0) { alert("Please add at least one barcode."); return; }
+    try {
+      const payload = {
+        date,
+        location_code: loc,
+        consumption_type: type,
+        remark,
+        rows: rows.map(r => ({ barcode: r.barcode, qty: r.qty, price: r.price })),
+      };
+      const res = await mcCreate(payload);
+      alert(res?.message || "Saved successfully.");
+      // Go back to list or stay?
+      navigate("/inventory/material-consumption");
+    } catch (e) {
+      alert(`Save failed: ${e.message || e}`);
+    }
+  };
 
   return (
     <div className="mc-new">
@@ -19,26 +96,35 @@ export default function NewMaterialConsumptionPage() {
 
       <div className="mc-form-card">
         <div className="mc-form-row">
+          {/* Date */}
           <div className="mc-field">
             <label>Consumption Date<span className="req">*</span></label>
-            <div className="mc-date"><input type="date" value={date} onChange={(e)=>setDate(e.target.value)} /></div>
-          </div>
-
-          <div className="mc-field">
-            <label>Consumption No.<span className="req">*</span></label>
-            <div className="mc-no">
-              <input value={prefix} onChange={(e)=>setPrefix(e.target.value)} />
-              <input value={serial} onChange={(e)=>setSerial(e.target.value)} />
+            <div className="mc-date">
+              <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
             </div>
           </div>
 
+          {/* Number (read-only) */}
+          <div className="mc-field">
+            <label>Consumption No.<span className="req">*</span></label>
+            <div className="mc-no">
+              <input value={seq.prefix} disabled />
+              <input value={String(seq.next)} disabled />
+            </div>
+          </div>
+
+          {/* User -> Location dropdown */}
           <div className="mc-field">
             <label>Select User</label>
-            <select value={user} onChange={(e)=>setUser(e.target.value)}>
-              <option>WABI SABI SUSTAINABILITY LLP</option>
+            <select value={loc} onChange={(e)=>setLoc(e.target.value)}>
+              <option value="">Select location</option>
+              {locations.map(l => (
+                <option key={l.code} value={l.code}>{l.name}</option>
+              ))}
             </select>
           </div>
 
+          {/* Type */}
           <div className="mc-field">
             <label>Consumption Type</label>
             <div className="mc-multitag">
@@ -55,20 +141,25 @@ export default function NewMaterialConsumptionPage() {
 
         <div className="mc-field full">
           <label>Remarks</label>
-          <textarea placeholder="Enter Remark" value={remarks} onChange={(e)=>setRemarks(e.target.value)} />
+          <textarea placeholder="Enter Remark" value={remark} onChange={(e)=>setRemark(e.target.value)} />
         </div>
       </div>
 
       <div className="mc-product-card">
         <div className="mc-card-head">
           <div className="title">Product Details</div>
-          <button className="mc-upload">
+          <button className="mc-upload" type="button" disabled>
             <span className="material-icons">file_upload</span> Upload Products
           </button>
         </div>
 
         <div className="mc-search-line">
-          <input placeholder="Search product & barcode" />
+          <input
+            placeholder="Search product & barcode"
+            value={barcode}
+            onChange={(e)=>setBarcode(e.target.value)}
+            onKeyDown={(e)=> e.key === "Enter" && addBarcode()}
+          />
         </div>
 
         <div className="mc-tablewrap">
@@ -85,8 +176,40 @@ export default function NewMaterialConsumptionPage() {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={7} className="muted center">Total</td></tr>
+              {rows.length === 0 ? (
+                <tr><td colSpan={7} className="muted center">Total</td></tr>
+              ) : rows.map((r, i) => (
+                <tr key={r.barcode}>
+                  <td className="num">{i+1}</td>
+                  <td>{r.barcode}</td>
+                  <td>{r.name}</td>
+                  <td className="num">
+                    <input
+                      type="number" min="1"
+                      value={r.qty}
+                      onChange={(e)=>onQtyChange(i, e.target.value)}
+                      style={{ width: 64, textAlign:"right" }}
+                    />
+                  </td>
+                  <td className="num">{Number(r.price || 0).toFixed(2)}</td>
+                  <td className="num">{Number(r.total || 0).toFixed(2)}</td>
+                  <td className="center">
+                    <button className="icon-btn" onClick={()=>removeRow(i)} title="Delete">
+                      <span className="material-icons">delete</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
+            {rows.length > 0 && (
+              <tfoot>
+                <tr>
+                  <td colSpan={5} className="right strong">Total</td>
+                  <td className="num strong">{total.toFixed(2)}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
@@ -94,8 +217,8 @@ export default function NewMaterialConsumptionPage() {
       <div className="mc-bottombar">
         <button className="btn light" onClick={()=>navigate(-1)}>Cancel</button>
         <div className="spacer" />
-        <button className="btn primary">Save</button>
-        <button className="btn primary ghost">Save &amp; Create New</button>
+        <button className="btn primary" onClick={onSave}>Save</button>
+        <button className="btn primary ghost" onClick={onSave}>Save &amp; Create New</button>
       </div>
     </div>
   );

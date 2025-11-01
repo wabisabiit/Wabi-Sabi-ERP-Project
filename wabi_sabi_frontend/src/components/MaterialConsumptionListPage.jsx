@@ -1,47 +1,89 @@
-import React, { useMemo, useState } from "react";
+// src/components/MaterialConsumptionListPage.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/MaterialConsumption.css";
+import { mcList, listLocations } from "../api/client";
 
-/* ---------- Dummy data (exact-looking) ---------- */
-const LOCATIONS = [
-  { code: "WSLLP", name: "WABI SABI SUSTAINABILITY LLP" },
-  { code: "WSGUR", name: "WABI SABI – GURUGRAM" },
-  { code: "WSRJN", name: "WABI SABI – RAJOURI" },
-];
-
-const ROWS = [
-  { no: "CONWS58", date: "23/10/2025", user: "Krishna Pandit", type: "Scrap/Wastage", loc: LOCATIONS[0].name, amount: 2080 },
-  { no: "CONWS57", date: "21/10/2025", user: "Krishna Pandit", type: "Production",    loc: LOCATIONS[0].name, amount: 307550 },
-  { no: "CONWS56", date: "18/10/2025", user: "Krishna Pandit", type: "Expired",       loc: LOCATIONS[0].name, amount: 53567 },
-  { no: "CONWS55", date: "10/10/2025", user: "Krishna Pandit", type: "Scrap/Wastage", loc: LOCATIONS[0].name, amount: 3200 },
-  { no: "CONWS54", date: "10/10/2025", user: "Krishna Pandit", type: "Scrap/Wastage", loc: LOCATIONS[0].name, amount: 8080 },
-  { no: "CONWS53", date: "09/10/2025", user: "Krishna Pandit", type: "Expired",       loc: LOCATIONS[0].name, amount: 235885 },
-  { no: "CONWS52", date: "03/10/2025", user: "Krishna Pandit", type: "Expired",       loc: LOCATIONS[0].name, amount: 207078 },
-  { no: "CONWS51", date: "03/10/2025", user: "Krishna Pandit", type: "Expired",       loc: LOCATIONS[0].name, amount: 123000 },
-  { no: "CONWS50", date: "03/10/2025", user: "Krishna Pandit", type: "Expired",       loc: LOCATIONS[0].name, amount: 60066 },
-  { no: "CONWS49", date: "03/10/2025", user: "Krishna Pandit", type: "Expired",       loc: LOCATIONS[0].name, amount: 3346 },
-];
+/* Small helpers */
+const toDMY = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+};
+const fmtInt = (n) => Number(n || 0).toLocaleString("en-IN");
 
 export default function MaterialConsumptionListPage() {
   const navigate = useNavigate();
+
+  const [rows, setRows] = useState([]);          // fetched from API
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [locations, setLocations] = useState([]); // from API
   const [perPage, setPerPage] = useState(10);
   const [filterOpen, setFilterOpen] = useState(false);
+
   const [search, setSearch] = useState("");
   const [fType, setFType] = useState("");
-  const [from, setFrom] = useState("01/04/2025");
-  const [to, setTo] = useState("31/03/2026");
+  const [from, setFrom] = useState("");           // dd/mm/yyyy shown, we’ll not send to API for now
+  const [to, setTo] = useState("");
   const [loc, setLoc] = useState("");
 
+  /* Load locations + consumptions */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const [locs, list] = await Promise.all([
+          listLocations(),
+          mcList(), // client-side filtering keeps UI instant
+        ]);
+        if (!alive) return;
+        setLocations(locs || []);
+        setRows((list || []).map(r => ({
+          no: r.number,
+          date: toDMY(r.date),
+          user: r.user || "Krishna Pandit",
+          type: r.type,
+          loc: r.location,
+          amount: Number(r.amount || 0),
+        })));
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || "Failed to load");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  /* Client-side filter & search exactly like your previous version */
   const filtered = useMemo(() => {
-    return ROWS.filter(r => {
-      const okQ = !search || [r.no, r.user, r.type, r.loc].some(x => x.toLowerCase().includes(search.toLowerCase()));
+    const q = search.trim().toLowerCase();
+    return rows.filter(r => {
+      const okQ = !q || [r.no, r.user, r.type, r.loc].some(
+        x => String(x || "").toLowerCase().includes(q)
+      );
       const okT = !fType || r.type === fType;
-      const okL = !loc || r.loc === loc;
-      return okQ && okT && okL;
+      const okL = !loc   || r.loc  === loc;
+      // date range (dd/mm/yyyy compare safely)
+      const toKey = (dmy) => dmy.split("/").reverse().join(""); // yyyymmdd
+      const okFrom = !from || toKey(r.date) >= toKey(from);
+      const okTo   = !to   || toKey(r.date) <= toKey(to);
+      return okQ && okT && okL && okFrom && okTo;
     });
-  }, [search, fType, loc]);
+  }, [rows, search, fType, loc, from, to]);
 
   const total = useMemo(() => filtered.reduce((s, r) => s + (r.amount || 0), 0), [filtered]);
+
+  if (loading) return <div className="mc-page"><div className="muted" style={{padding:12}}>Loading…</div></div>;
+  if (error)   return <div className="mc-page"><div className="muted" style={{padding:12}}>Error: {error}</div></div>;
 
   return (
     <div className="mc-page">
@@ -70,6 +112,7 @@ export default function MaterialConsumptionListPage() {
         </div>
       </div>
 
+      {/* Filter panel */}
       {filterOpen && (
         <div className="mc-filter">
           <div className="row">
@@ -84,18 +127,26 @@ export default function MaterialConsumptionListPage() {
             </div>
             <div className="col">
               <label>From Date</label>
-              <input value={from} onChange={(e)=>setFrom(e.target.value)} placeholder="dd/mm/yyyy" />
+              <input
+                value={from}
+                onChange={(e)=>setFrom(e.target.value)}
+                placeholder="dd/mm/yyyy"
+              />
             </div>
             <div className="col">
               <label>To Date</label>
-              <input value={to} onChange={(e)=>setTo(e.target.value)} placeholder="dd/mm/yyyy" />
+              <input
+                value={to}
+                onChange={(e)=>setTo(e.target.value)}
+                placeholder="dd/mm/yyyy"
+              />
             </div>
             <div className="col">
               <label>Location</label>
               <div className="loc-wrap">
                 <select value={loc} onChange={(e)=>setLoc(e.target.value)}>
                   <option value="">Select Location</option>
-                  {LOCATIONS.map(l=> <option key={l.code} value={l.name}>{l.name}</option>)}
+                  {locations.map(l=> <option key={l.code} value={l.name}>{l.name}</option>)}
                 </select>
                 <span className="mi loc-ico">search</span>
               </div>
@@ -127,7 +178,7 @@ export default function MaterialConsumptionListPage() {
                 <td>{r.user}</td>
                 <td>{r.type}</td>
                 <td>{r.loc}</td>
-                <td className="num">{r.amount}</td>
+                <td className="num">{fmtInt(r.amount)}</td>
                 <td className="actions">
                   <span className="mi">visibility</span>
                   <span className="mi">edit</span>
@@ -139,7 +190,7 @@ export default function MaterialConsumptionListPage() {
           <tfoot>
             <tr>
               <td colSpan={6} className="right strong">Total</td>
-              <td className="num strong">{total}</td>
+              <td className="num strong">{fmtInt(total)}</td>
               <td/>
             </tr>
           </tfoot>

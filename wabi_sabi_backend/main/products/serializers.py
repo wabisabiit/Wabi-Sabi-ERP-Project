@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Product
-from .models import MasterPack, MasterPackLine
+from .models import MasterPack, MasterPackLine,MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence
 from taskmaster.models import Location
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -161,3 +161,106 @@ class MasterPackOutSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterPack
         fields = ["number", "created_at", "items_total", "qty_total", "amount_total", "lines"]
+
+
+class MCLineInSerializer(serializers.Serializer):
+    barcode = serializers.CharField()
+    qty     = serializers.IntegerField(min_value=1, default=1)
+    price   = serializers.DecimalField(max_digits=12, decimal_places=2)  # selling price snap
+
+
+class MaterialConsumptionCreateSerializer(serializers.Serializer):
+    date            = serializers.DateField()
+    location_code   = serializers.CharField()
+    consumption_type= serializers.ChoiceField(choices=["Production", "Scrap/Wastage", "Expired"])
+    remark          = serializers.CharField(allow_blank=True, required=False)
+    rows            = MCLineInSerializer(many=True)
+
+    def validate(self, data):
+        if not data.get("rows"):
+            raise serializers.ValidationError({"rows": "At least one barcode row is required."})
+        return data
+
+    def create(self, validated):
+        loc_code = validated["location_code"]
+        try:
+            loc = Location.objects.get(code=loc_code)
+        except Location.DoesNotExist:
+            raise serializers.ValidationError({"location_code": f"Unknown location: {loc_code}"})
+
+        rows = validated["rows"]
+        # fetch products by barcode
+        barcodes = [r["barcode"].replace("–","-").replace("—","-").strip().upper() for r in rows]
+        prows = {p.barcode.upper(): p for p in Product.objects.select_related("task_item").filter(barcode__in=barcodes)}
+        missing = [b for b in barcodes if b not in prows]
+        if missing:
+            raise serializers.ValidationError({"barcodes": f"Not found: {', '.join(missing)}"})
+
+        mc = MaterialConsumption.objects.create(
+            location=loc,
+            consumption_type=validated["consumption_type"],
+            remark=validated.get("remark",""),
+            date=validated["date"],
+        )
+
+        total_amount = 0
+        for r in rows:
+            b = r["barcode"].replace("–","-").replace("—","-").strip().upper()
+            p = prows[b]
+            ti = getattr(p, "task_item", None)
+            name = (getattr(ti, "item_print_friendly_name", "") or
+                    getattr(ti, "item_vasy_name", "") or
+                    getattr(ti, "item_full_name", "") or "")
+
+            qty   = int(r.get("qty", 1) or 1)
+            price = r["price"]
+            total = price * qty
+
+            MaterialConsumptionLine.objects.create(
+                consumption=mc,
+                product=p,
+                barcode=p.barcode,
+                name=name,
+                qty=qty,
+                price=price,
+                total=total,
+            )
+            total_amount += total
+
+        mc.total_amount = total_amount
+        mc.save(update_fields=["total_amount"])
+        return mc
+
+
+class MaterialConsumptionOutLineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MaterialConsumptionLine
+        fields = ["barcode", "name", "qty", "price", "total"]
+
+
+class MaterialConsumptionOutSerializer(serializers.ModelSerializer):
+    location = serializers.SerializerMethodField()
+    lines    = MaterialConsumptionOutLineSerializer(many=True, read_only=True)
+
+    class Meta:
+        model  = MaterialConsumption
+        fields = ["number","date","consumption_type","remark","total_amount","location","lines"]
+
+    def get_location(self, obj):
+        return {"code": obj.location.code, "name": obj.location.name}
+
+
+class NextMCNumberSerializer(serializers.Serializer):
+    """
+    Read-only serializer to expose next number without incrementing the counter.
+    """
+    prefix = serializers.CharField()
+    next   = serializers.IntegerField()
+    preview= serializers.CharField()
+
+    @staticmethod
+    def build(prefix="CONWS"):
+        seq, _ = MaterialConsumptionSequence.objects.get_or_create(prefix=prefix, defaults={"next_number": 1})
+        nxt = seq.next_number
+        preview = f"{prefix}{nxt}" if (seq.pad_width or 0) == 0 else f"{prefix}{str(nxt).zfill(seq.pad_width)}"
+        return {"prefix": prefix, "next": nxt, "preview": preview}

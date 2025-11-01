@@ -166,6 +166,10 @@ export default {
   deleteMasterPack,
   bulkDeleteMasterPacks,
   getMasterPack,
+  mcGetNextNumber,
+  mcCreate,
+  mcList,
+  mcGet,
 };
 
 function sanitizeBarcode(v = "") {
@@ -374,4 +378,29 @@ export async function bulkDeleteMasterPacks(numbers = []) {
 // Get one Master Pack (invoice) by number
 export async function getMasterPack(number) {
   return http(`/master-packs/${encodeURIComponent(number)}/`);
+}
+
+// Material Consumption
+export async function mcGetNextNumber() {
+  return http(`/material-consumptions/next/`);
+}
+
+export async function mcCreate(payload) {
+  // payload: { date: "2025-01-01", location_code: "WSLLP", consumption_type: "Production", remark: "", rows: [{barcode, qty, price}] }
+  return http(`/material-consumptions/`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function mcList(params = {}) {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || String(v).trim() === "") return;
+    sp.append(k, v);
+  });
+  const qs = sp.toString();
+  return http(`/material-consumptions/${qs ? `?${qs}` : ""}`);
+}
+
+// Get one (detail) – already available via your detail route if you need it
+export async function mcGet(number) {
+  return http(`/material-consumptions/${encodeURIComponent(number)}/`);
 }

@@ -1,33 +1,69 @@
-import React from "react";
+// src/components/MaterialConsumptionDetailPage.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import "../styles/MaterialConsumptionDetail.css";
+import { mcGet } from "../api/client";
 
-/* Dummy payloads keyed by consumption no. */
-const DETAILS = {
-  CONWS58: {
-    date: "23/10/2025",
-    no: "CONWS58",
-    user: "Krishna Pandit",
-    type: "Scrap/Wastage",
-    remarks: "",
-    items: [
-      { idx:1, code:"113320-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:240, total:240 },
-      { idx:2, code:"113313-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:200, total:200 },
-      { idx:3, code:"113312-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:200, total:200 },
-      { idx:4, code:"113315-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:240, total:240 },
-      { idx:5, code:"113318-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:240, total:240 },
-      { idx:6, code:"113314-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:240, total:240 },
-      { idx:7, code:"113317-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:240, total:240 },
-      { idx:8, code:"113316-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:240, total:240 },
-      { idx:9, code:"113319-F", name:"(141) (B&G) Bottoms (Pants, Jogging & Pyjama)", qty:1, price:240, total:240 },
-    ],
-  },
+/* helpers */
+const toDMY = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
 };
+const sum = (arr, k) => arr.reduce((s, r) => s + Number(r[k] || 0), 0);
 
 export default function MaterialConsumptionDetailPage() {
   const { consNo } = useParams();
-  const data = DETAILS[consNo] || DETAILS.CONWS58;
-  const sum = (arr, k) => arr.reduce((s, r) => s + Number(r[k] || 0), 0);
+
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setErr("");
+        const res = await mcGet(consNo); // GET /api/material-consumptions/<number>/
+        if (!alive) return;
+
+        // Normalize possible shapes from backend
+        // Expect either { number,date,user,type,remarks,items:[{barcode,name,qty,price,total},...] }
+        // or { lines:[{ barcode, name, qty, sp }], ... }
+        const items = (res.items || res.lines || []).map((ln, i) => ({
+          idx: i + 1,
+          code: ln.barcode || ln.code || "",
+          name: ln.name || "",
+          qty: Number(ln.qty || 1),
+          price: Number(ln.price ?? ln.sp ?? 0),
+          total: Number(ln.total ?? (Number(ln.price ?? ln.sp ?? 0) * Number(ln.qty || 1))),
+        }));
+
+        setData({
+          date: toDMY(res.date || res.created_at || ""),
+          no: res.number || consNo,
+          user: res.user || "Krishna Pandit",
+          type: res.type || res.consumption_type || "",
+          remarks: res.remarks || "",
+          items,
+        });
+      } catch (e) {
+        if (!alive) return;
+        setErr(e?.message || "Failed to load");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [consNo]);
+
+  if (loading) return <div className="mcd-root"><div className="mcd-card" style={{padding:12}}>Loading…</div></div>;
+  if (err)      return <div className="mcd-root"><div className="mcd-card" style={{padding:12}}>Error: {err}</div></div>;
+  if (!data)    return null;
 
   return (
     <div className="mcd-root">
@@ -85,12 +121,15 @@ export default function MaterialConsumptionDetailPage() {
               </tr>
             </tfoot>
           </table>
+
           <div className="mcd-pager">
             <button className="ghost" disabled>‹</button>
             <button className="current">1</button>
             <button className="ghost" disabled>›</button>
           </div>
-          <div className="mcd-entries">Showing 1 to {data.items.length} of {data.items.length} entries</div>
+          <div className="mcd-entries">
+            Showing 1 to {data.items.length} of {data.items.length} entries
+          </div>
         </div>
       </div>
 

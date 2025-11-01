@@ -3,6 +3,9 @@ from django.contrib import admin
 from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, SaleLine, InvoiceSequence, CreditNoteSequence, CreditNote
 from taskmaster.models import TaskItem, Location
 from .models import MasterPack, MasterPackLine
+from .models import (
+    MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence
+)
 
 
 @admin.register(Product)
@@ -141,3 +144,18 @@ class MasterPackLineAdmin(admin.ModelAdmin):
     list_display = ("pack", "barcode", "qty", "sp", "location")
     search_fields = ("barcode", "pack__number")
     list_filter = ("location",)
+
+@admin.register(MaterialConsumption)
+class MaterialConsumptionAdmin(admin.ModelAdmin):
+    list_display = ("number","date","location","consumption_type","total_amount","created_at")
+    search_fields = ("number","location__code","location__name")
+    list_filter = ("consumption_type","location")
+
+@admin.register(MaterialConsumptionLine)
+class MaterialConsumptionLineAdmin(admin.ModelAdmin):
+    list_display = ("consumption","barcode","name","qty","price","total")
+    search_fields = ("barcode","name","consumption__number")
+
+@admin.register(MaterialConsumptionSequence)
+class MaterialConsumptionSequenceAdmin(admin.ModelAdmin):
+    list_display = ("prefix","next_number","pad_width")

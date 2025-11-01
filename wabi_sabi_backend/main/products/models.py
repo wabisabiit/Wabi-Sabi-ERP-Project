@@ -1,6 +1,8 @@
 # Create your models here.
 from django.db import models,transaction
 from taskmaster.models import TaskItem,Location   # <-- your TaskItem
+from django.utils import timezone
+
 
 class Product(models.Model):
     """
@@ -290,3 +292,71 @@ class MasterPackLine(models.Model):
 
     def __str__(self):
         return f"{self.pack.number} • {self.barcode} x{self.qty}"
+    
+
+class MaterialConsumptionSequence(models.Model):
+    prefix      = models.CharField(max_length=16, unique=True, default="CONWS")
+    next_number = models.PositiveIntegerField(default=1)
+    pad_width   = models.PositiveSmallIntegerField(default=0)  # no padding like CONWS58
+
+    def __str__(self):
+        return f"{self.prefix} next={self.next_number}"
+
+    @classmethod
+    def next_no(cls, prefix="CONWS"):
+        # concurrency-safe counter
+        with transaction.atomic():
+            seq, _ = cls.objects.select_for_update().get_or_create(
+                prefix=prefix, defaults={"next_number": 1}
+            )
+            num = seq.next_number
+            seq.next_number = num + 1
+            seq.save(update_fields=["next_number"])
+            # No zero-padding in your screenshots (CONWS58)
+            if (seq.pad_width or 0) > 0:
+                return f"{prefix}{str(num).zfill(seq.pad_width)}"
+            return f"{prefix}{num}"
+
+
+class MaterialConsumption(models.Model):
+    """
+    Header for a consumption entry.
+    """
+    number          = models.CharField(max_length=32, unique=True, db_index=True)  # e.g. CONWS59
+    location        = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="material_consumptions")
+    consumption_type= models.CharField(max_length=32, default="Production")  # Production / Scrap/Wastage / Expired
+    remark          = models.TextField(blank=True, default="")
+    date            = models.DateField(default=timezone.now)
+
+    total_amount    = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return self.number
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = MaterialConsumptionSequence.next_no(prefix="CONWS")
+        super().save(*args, **kwargs)
+
+
+class MaterialConsumptionLine(models.Model):
+    """
+    Lines added by scanning / typing barcode.
+    """
+    consumption = models.ForeignKey(MaterialConsumption, on_delete=models.CASCADE, related_name="lines")
+    product     = models.ForeignKey(Product, on_delete=models.PROTECT)
+    barcode     = models.CharField(max_length=64, db_index=True)
+
+    name        = models.CharField(max_length=512, blank=True, default="")
+    qty         = models.PositiveIntegerField(default=1)
+    price       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["barcode"]
+        indexes  = [models.Index(fields=["barcode"])]
