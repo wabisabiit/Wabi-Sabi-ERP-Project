@@ -1,0 +1,70 @@
+/* --- page shell --- */
+.mc-page, .mc-new { padding: 12px 16px 64px; }
+.mi { font-family: 'Material Icons'; font-size: 20px; vertical-align: -4px; }
+.req { color:#f44336; margin-left:2px; }
+
+/* --- top bar (list) --- */
+.mc-topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mc-title { font-size:20px; font-weight:600; }
+.mc-actions { display:flex; gap:8px; align-items:center; }
+.mc-select.sm { height:32px; padding:0 8px; border:1px solid #dcdcdc; border-radius:6px; }
+.mc-btn { height:32px; padding:0 10px; border:1px solid #dcdcdc; border-radius:6px; background:#fff; display:flex; align-items:center; gap:6px; }
+.mc-btn.primary { background:#1677ff; border-color:#1677ff; color:#fff; }
+.mc-btn.filter .mi { color:#6b7280; }
+.mc-btn.filter.active { border-color:#111; color:#111; }
+.mc-btn.filter.active .mi { color:#000; }
+.mc-search { height:32px; padding:0 10px; border:1px solid #dcdcdc; border-radius:6px; width:220px; }
+
+/* --- filter tray --- */
+.mc-filter { background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:10px; }
+.mc-filter .row { display:grid; grid-template-columns: 240px 180px 180px 260px; gap:12px; }
+.mc-filter label { font-size:12px; color:#6b7280; display:block; margin-bottom:4px; }
+.mc-filter select, .mc-filter input { width:100%; height:34px; border:1px solid #dcdcdc; border-radius:6px; padding:0 8px; }
+.loc-wrap { position:relative; }
+.loc-wrap .loc-ico { position:absolute; right:8px; top:7px; font-size:20px; color:#9aa0a6; }
+
+/* --- table --- */
+.mc-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; }
+.mc-table { width:100%; border-collapse:separate; border-spacing:0; }
+.mc-table thead th { background:#f3f4f6; padding:10px; font-weight:600; font-size:14px; text-align:left; border-bottom:1px solid #e5e7eb; }
+.mc-table td { padding:10px; border-bottom:1px solid #f0f0f0; font-size:14px; }
+.mc-table .num { text-align:right; }
+.mc-table .actions .mi { font-size:18px; color:#4b5563; margin:0 4px; cursor:pointer; }
+.mc-table a.mc-link { color:#1677ff; text-decoration:none; }
+.mc-table tfoot td { background:#fafafa; font-weight:600; }
+.right { text-align:right; }
+
+/* --- table footer --- */
+.mc-table-foot { padding:10px; display:flex; align-items:center; justify-content:space-between; }
+.pager-mini button { border:1px solid #dcdcdc; background:#fff; height:28px; min-width:28px; border-radius:6px; margin-left:4px; }
+.pager-mini .current { background:#111; color:#fff; border-color:#111; }
+
+/* --- new page --- */
+.mc-form-card, .mc-product-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:12px; }
+.mc-form-row { display:grid; grid-template-columns: repeat(4, minmax(220px,1fr)); gap:12px; }
+.mc-field label { font-size:12px; color:#6b7280; margin-bottom:4px; display:block; }
+.mc-field input, .mc-field textarea, .mc-field select { width:100%; border:1px solid #dcdcdc; border-radius:6px; height:34px; padding:0 8px; }
+.mc-field textarea { height:64px; padding:8px; }
+.mc-field.full { grid-column: 1 / -1; }
+
+.mc-no { display:flex; gap:8px; }
+.mc-no input:first-child { width:120px; }
+.mc-no input:last-child { width:90px; }
+
+.mc-multitag { display:flex; gap:8px; align-items:center; }
+.mc-multitag .tag { background:#f1f5f9; border:1px solid #e2e8f0; padding:2px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; }
+.mc-multitag .tag button { border:none; background:transparent; cursor:pointer; font-weight:700; }
+
+.mc-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mc-card-head .title { font-weight:600; }
+.mc-upload { border:1px dashed #cbd5e1; background:#fff; height:32px; padding:0 10px; border-radius:8px; display:flex; align-items:center; gap:6px; }
+.mc-upload .material-icons { font-size:18px; }
+.mc-search-line { margin-bottom:8px; }
+.mc-search-line input { width:320px; border:1px solid #dcdcdc; border-radius:8px; height:34px; padding:0 10px; }
+
+.mc-bottombar { position:fixed; left:56px; right:0; bottom:0; background:#fff; border-top:1px solid #e5e7eb; padding:10px 16px; display:flex; gap:8px; align-items:center; }
+.mc-bottombar .spacer { flex:1; }
+.btn { height:36px; padding:0 14px; border-radius:8px; border:1px solid #dcdcdc; background:#fff; }
+.btn.light { background:#f3f4f6; border-color:#e5e7eb; }
+.btn.primary { background:#1677ff; color:#fff; border-color:#1677ff; }
+.btn.primary.ghost { background:#fff; color:#1677ff; }

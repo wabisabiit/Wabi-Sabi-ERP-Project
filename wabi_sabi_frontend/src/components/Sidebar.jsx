@@ -1,4 +1,3 @@
-// src/components/Sidebar.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import "../styles/Sidebar.css";
@@ -171,6 +170,10 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
               <NavLink to="/inventory/stock-transfer" className={linkClass} onClick={handleNav}>Stock Transfer</NavLink>
               <NavLink to="/inventory/master-packaging" className={linkClass} onClick={handleNav}>
                 Master Packaging
+              </NavLink>
+              {/* ✅ NEW: Material Consumption */}
+              <NavLink to="/inventory/material-consumption" className={linkClass} onClick={handleNav}>
+                Material Consumption
               </NavLink>
             </div>
           </div>

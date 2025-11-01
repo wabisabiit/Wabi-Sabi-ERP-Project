@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { Suspense, lazy, useMemo, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
@@ -108,6 +107,11 @@ const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceC
 /* 🔹 Cash payment screen */
 const CashPayment = lazy(() => import("./components/CashPayment")); // (file name as provided)
 
+/* 🔹 NEW: Material Consumption */
+const MaterialConsumptionListPage = lazy(() => import("./components/MaterialConsumptionListPage"));
+const NewMaterialConsumptionPage = lazy(() => import("./components/NewMaterialConsumptionPage"));
+const MaterialConsumptionDetailPage = lazy(() => import("./components/MaterialConsumptionDetailPage"));
+
 /* ---------- Layouts ---------- */
 // POS layout with cart state (kept from Code1)
 function POSLayout() {
@@ -210,6 +214,11 @@ export default function App() {
         <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
         <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
 
+        {/* ✅ NEW: Material Consumption */}
+        <Route path="/inventory/material-consumption" element={<SidebarLayout><MaterialConsumptionListPage /></SidebarLayout>} />
+        <Route path="/inventory/material-consumption/new" element={<SidebarLayout><NewMaterialConsumptionPage /></SidebarLayout>} />
+        <Route path="/inventory/material-consumption/:consNo" element={<SidebarLayout><MaterialConsumptionDetailPage /></SidebarLayout>} />
+
         {/* CRM */}
         <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
         <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
@@ -306,8 +315,7 @@ export default function App() {
         <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
         <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
 
-        {/* Credit Note */
-        }
+        {/* Credit Note */ }
         <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
 
         {/* Fallback */}
