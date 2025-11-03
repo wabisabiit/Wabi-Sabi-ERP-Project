@@ -106,7 +106,7 @@ export default function MaterialConsumptionListPage() {
             onChange={(e)=>setSearch(e.target.value)}
             placeholder="Search list..."
           />
-          <button className="mc-btn primary" onClick={()=>navigate("/inventory/material-consumption/new")}>
+          <button className="mc-btn" onClick={()=>navigate("/inventory/material-consumption/new")}>
             Create New
           </button>
         </div>

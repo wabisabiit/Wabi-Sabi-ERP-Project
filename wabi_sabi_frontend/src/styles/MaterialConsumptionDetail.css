@@ -1,37 +1,85 @@
-.mcd-root { padding: 12px 16px 32px; }
-.mi { font-family:'Material Icons'; font-size:20px; vertical-align:-4px; }
+/* ===== Page & header (matches screenshot) ===== */
+.mcd-root{
+  padding:20px 22px 40px;
+  background:#f5f7fb;
+  color:#111827;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+}
+.mi{font-family:'Material Icons';font-size:20px;vertical-align:-4px}
 
-/* breadcrumb + title */
-.mcd-breadcrumb { display:flex; align-items:center; gap:8px; color:#6b7280; margin-bottom:4px; }
-.mcd-breadcrumb .home { color:#6b7280; text-decoration:none; display:inline-flex; align-items:center; }
-.mcd-breadcrumb .sep { opacity:.6; }
-.mcd-title { font-size:20px; font-weight:600; margin:4px 0 10px; }
+.mcd-header{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.mcd-title{
+  font-size:26px;font-weight:700;letter-spacing:.2px;margin:0;color:#111827
+}
+.mcd-breadcrumb{display:flex;align-items:center;gap:8px;color:#6b7280}
+.mcd-breadcrumb .pipe{opacity:.6;margin:0 2px}
+.mcd-breadcrumb .home{color:#6b7280;text-decoration:none;display:inline-flex;align-items:center}
+.mcd-breadcrumb .sep{opacity:.6}
 
-/* cards */
-.mcd-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:12px; }
+/* ===== Cards ===== */
+.mcd-card{
+  background:#fff;border:1px solid #e7ebf2;border-radius:12px;margin-bottom:16px;
+  box-shadow:0 1px 0 rgba(17,24,39,.02)
+}
+.mcd-card.mcd-info{padding:14px}
 
-/* header grid */
-.mcd-grid { display:grid; grid-template-columns: 300px 300px 300px; gap:10px; }
-.lv { display:flex; }
-.lv.full { grid-column: 1 / -1; }
-.lv .k { width:300px; background:#eef2ff; border:1px solid #e5e7eb; border-right:none; padding:10px 12px; font-weight:600; }
-.lv .v { flex:1; background:#f3f4f6; border:1px solid #e5e7eb; padding:10px 12px; }
+/* ===== Header grid (labels left white, values gray like screenshot) ===== */
+.mcd-grid{display:grid;grid-template-columns: 300px 227px 200fr;gap:10px}
+.lv{display:flex}
+.lv.full{grid-column:1/-1}
+.lv .k{
+  width:260px;background:#ffffff;border:1px solid #e7ebf2;border-right:none;
+  padding:12px 14px;font-weight:700;color:#111827;border-top-left-radius:8px;border-bottom-left-radius:8px
+}
+.lv .v{
+  flex:1;background:#f3f4f6;border:1px solid #e7ebf2;padding:12px 14px;
+  color:#111827;border-top-right-radius:8px;border-bottom-right-radius:8px
+}
 
-/* table */
-.mcd-subtitle { font-weight:600; margin-bottom:8px; }
-.mcd-tablewrap { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
-.mcd-table { width:100%; border-collapse:separate; border-spacing:0; }
-.mcd-table thead th { background:#f3f4f6; text-align:left; padding:10px; font-weight:600; border-bottom:1px solid #e5e7eb; }
-.mcd-table td { padding:10px; border-bottom:1px solid #f0f0f0; }
-.mcd-table .num { text-align:right; }
-.mcd-table .w50 { width:50px; }
-.mcd-table tfoot td { background:#fafafa; font-weight:600; }
-.mcd-table a { color:#1677ff; text-decoration:none; }
+/* ===== Section title with blue underline (like “Product Details”) ===== */
+.mcd-subtitle{
+  padding:14px 16px 10px;margin:0;color:#1d4ed8;font-weight:700
+}
+.mcd-subtitle::after{
+  content:"";display:block;height:3px;width:160px;background:#1d4ed8;border-radius:2px;margin-top:8px
+}
 
-/* pager + footer lines */
-.mcd-pager { display:flex; gap:6px; padding:10px; }
-.mcd-pager button { border:1px solid #dcdcdc; border-radius:6px; background:#fff; height:28px; min-width:28px; }
-.mcd-pager .current { background:#111; color:#fff; border-color:#111; }
-.mcd-entries { padding:0 10px 10px; color:#6b7280; font-size:13px; }
+/* ===== Table wrapper (rounded + subtle accent line on top) ===== */
+.mcd-tablewrap{border:1px solid #e7ebf2;border-radius:12px;overflow:hidden;background:#fff}
+.mcd-tablewrap::before{content:"";display:block;height:6px;background:#eef2ff}
 
-.mcd-footer { color:#6b7280; font-size:13px; padding-top:8px; }
+/* ===== Table ===== */
+.mcd-table{width:100%;border-collapse:separate;border-spacing:0;font-size:15.5px}
+.mcd-table thead th{
+  background:#f3f4f6;text-align:left;padding:14px 14px;font-weight:700;border-bottom:1px solid #e7ebf2;color:#111827
+}
+.mcd-table td{padding:16px 14px;border-bottom:1px solid #eff2f7}
+.mcd-table tbody tr:hover td{background:#fafbff}
+.mcd-table .num{text-align:right}
+.mcd-table .w50{width:56px}
+.mcd-table a{color:#0d6efd;text-decoration:none}
+.mcd-table a:hover{text-decoration:underline}
+
+/* Total row style (bolder + tinted background like screenshot) */
+.mcd-table tfoot td{
+  background:#edf1f8;font-weight:800;color:#111827;border-top:1px solid #e7ebf2
+}
+.strong{font-weight:800}
+
+/* ===== Table footer (entries left, pager right in rounded tray) ===== */
+.mcd-tablefoot{
+  display:flex;align-items:center;justify-content:space-between;padding:12px;background:#fff
+}
+.mcd-entries{color:#6b7280;font-size:13.5px}
+
+.mcd-pager{
+  display:inline-flex;gap:6px;background:#eef2f6;border:1px solid #e0e6ef;border-radius:10px;
+  padding:6px
+}
+.mcd-pager button{
+  border:1px solid #dbe1ea;border-radius:8px;background:#fff;height:28px;min-width:28px
+}
+.mcd-pager .current{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
+
+/* ===== Footer ===== */
+.mcd-footer{color:#6b7280;font-size:13.5px;padding-top:8px}

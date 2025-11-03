@@ -31,9 +31,6 @@ export default function MaterialConsumptionDetailPage() {
         const res = await mcGet(consNo); // GET /api/material-consumptions/<number>/
         if (!alive) return;
 
-        // Normalize possible shapes from backend
-        // Expect either { number,date,user,type,remarks,items:[{barcode,name,qty,price,total},...] }
-        // or { lines:[{ barcode, name, qty, sp }], ... }
         const items = (res.items || res.lines || []).map((ln, i) => ({
           idx: i + 1,
           code: ln.barcode || ln.code || "",
@@ -67,16 +64,20 @@ export default function MaterialConsumptionDetailPage() {
 
   return (
     <div className="mcd-root">
-      <div className="mcd-breadcrumb">
-        <Link to="/inventory/material-consumption" className="home">
-          <span className="mi">home</span>
-        </Link>
-        <span className="sep">/</span>
-        <span>Material Consumption</span>
+      {/* Header matches screenshot: Title | Home - Material Consumption */}
+      <div className="mcd-header">
+        <h1 className="mcd-title">Material Consumption</h1>
+        <div className="mcd-breadcrumb">
+          <span className="pipe">|</span>
+          <Link to="/inventory/material-consumption" className="home">
+            <span className="mi">home</span>
+          </Link>
+          <span className="sep">-</span>
+          <span>Material Consumption</span>
+        </div>
       </div>
-      <h1 className="mcd-title">Material Consumption</h1>
 
-      <div className="mcd-card">
+      <div className="mcd-card mcd-info">
         <div className="mcd-grid">
           <LabelVal label="Consumption Date" value={data.date} />
           <LabelVal label="Consumption No." value={data.no} />
@@ -122,18 +123,20 @@ export default function MaterialConsumptionDetailPage() {
             </tfoot>
           </table>
 
-          <div className="mcd-pager">
-            <button className="ghost" disabled>‹</button>
-            <button className="current">1</button>
-            <button className="ghost" disabled>›</button>
-          </div>
-          <div className="mcd-entries">
-            Showing 1 to {data.items.length} of {data.items.length} entries
+          <div className="mcd-tablefoot">
+            <div className="mcd-entries">
+              Showing 1 to {data.items.length} of {data.items.length} entries
+            </div>
+            <div className="mcd-pager">
+              <button className="ghost" disabled>‹</button>
+              <button className="current">1</button>
+              <button className="ghost" disabled>›</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="mcd-footer">2025 © VasyERP Solutions Pvt. Ltd.</div>
+      
     </div>
   );
 }
