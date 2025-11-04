@@ -1,6 +1,12 @@
+// src/pages/CouponPage.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/CouponPage.css";
+import {
+  listCoupons,
+  listGeneratedCoupons,
+  generateCoupons,
+} from "../api/client";
 
 /* ----------------------- tiny helpers ----------------------- */
 const downloadBlob = (blob, filename) => {
@@ -228,12 +234,9 @@ function LocationSelect({ value = [], onChange, options = [] }) {
 }
 
 /* ----------------------- Generate Coupon POPUP ----------------------- */
-function GenerateCouponModal({ open, onClose, onGenerate }) {
+function GenerateCouponModal({ open, onClose, onGenerate, couponOptions }) {
   const [coupon, setCoupon] = useState("");
   const [qty, setQty] = useState("");
-
-  // empty list so default is "No results found" (like screenshot)
-  const COUPON_OPTIONS = [];
 
   useEffect(() => {
     if (!open) {
@@ -258,7 +261,7 @@ function GenerateCouponModal({ open, onClose, onGenerate }) {
             <label className="gc-label">Coupon<span className="gc-req">*</span></label>
             <ComboSelect
               placeholder="Select Coupon"
-              options={COUPON_OPTIONS}
+              options={couponOptions}
               value={coupon}
               onChange={setCoupon}
               width={520}
@@ -298,7 +301,7 @@ function GenerateCouponModal({ open, onClose, onGenerate }) {
    Column configs (SEPARATE per tab)
 --------------------------------------------------------------*/
 
-/* Columns for the COUPONS tab (matches your first table) */
+/* Columns for the COUPONS tab (matches screenshot 3) */
 const COUPONS_COLUMNS = [
   { key: "sr", label: "#" },
   { key: "name", label: "Coupon Name" },
@@ -318,10 +321,8 @@ const COUPONS_COLUMNS = [
 
 const DEFAULT_VISIBLE_COUPONS = COUPONS_COLUMNS.map((c) => c.key);
 
-/* Columns for the GENERATED COUPONS tab (your long table) */
+/* Columns for the GENERATED COUPONS tab (long table) */
 const GENERATED_COLUMNS = [
-  { key: "sr", label: "Sr No." },
-  { key: "serial", label: "Serial No." },
   { key: "barcode", label: "Barcode" },
   { key: "name", label: "Coupon Name" },
   { key: "price", label: "Coupon Price" },
@@ -413,29 +414,106 @@ export default function CouponPage() {
     else setVisibleGenerated(DEFAULT_VISIBLE_GENERATED);
   };
 
-  /* Dummy coupon list for select (empty to match screenshot) */
-  const COUPON_OPTIONS = [];
+  /* ====== Backend data ====== */
+  const [couponOptions, setCouponOptions] = useState([]);
+  const [couponsRows, setCouponsRows] = useState([]); // Coupons tab
+  const [genRows, setGenRows] = useState([]); // Generated tab
+
+  // Load coupons for both tabs
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await listCoupons();
+        setCouponOptions(list.map((c) => c.name));
+        // For the Coupons table: only show a few columns; others left blank
+        setCouponsRows(
+          list.map((c, idx) => ({
+            sr: idx + 1,
+            name: c.name,
+            price: c.price,
+            redeemValue: c.redeem_value,
+            redeemType: "",
+            monthlyBasis: "",
+            numMonths: "",
+            singleUse: "",
+            toIssue: "",
+            toRedeem: "",
+            entireBill: "",
+            createdOn: c.created_at,
+            endDate: "",
+            expiryDays: "",
+          }))
+        );
+      } catch (e) {
+        setCouponOptions([]);
+        setCouponsRows([]);
+      }
+    })();
+  }, []);
+
+  // Load generated coupons when tab or filters change
+  useEffect(() => {
+    if (activeTab !== "generated") return;
+    (async () => {
+      try {
+        const data = await listGeneratedCoupons({
+          coupon: selectedCoupon || undefined,
+          assign: assignType || undefined,
+        });
+        setGenRows(
+          data.map((r) => ({
+            barcode: r.code,
+            name: r.coupon_name,
+            price: r.price,
+            totalRedeem: r.total_redeem,
+            redeemMonthly: "",
+            monthDivAmt: "",
+            singleUse: "",
+            minPurchase: "",
+            applyEntire: "",
+            assignedTo: r.assigned_to || "",
+            custNo: r.customer_no || "",
+            issuedBy: r.issued_by,
+            usedValue: "",
+            availRedeem: "",
+            createdDate: r.created_date,
+            endDate: "",
+            redemptionDate: r.redemption_date || "",
+            expiryDays: "",
+            status: r.status,
+            toIssued: "",
+            toRedeemed: "",
+            actions: "",
+          }))
+        );
+      } catch (e) {
+        setGenRows([]);
+      }
+    })();
+  }, [activeTab, selectedCoupon, assignType]);
 
   /* Export handlers — headers from the Generated tab columns */
   const handleExport = (type) => {
     const header = GENERATED_COLUMNS.map((c) => `"${c.label}"`).join(",") + "\n";
+    const rows = genRows.map((row) =>
+      GENERATED_COLUMNS.map((c) => `"${String(row[c.key] ?? "").replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+
     if (type === "excel") {
-      const blob = new Blob([header], { type: "text/csv;charset=utf-8" });
+      const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8" });
       downloadBlob(blob, "generated_coupons.csv");
     } else {
-      const blob = new Blob([new Uint8Array()], { type: "application/pdf" });
+      const blob = new Blob([header + rows], { type: "application/pdf" });
       downloadBlob(blob, "generated_coupons.pdf");
     }
     setExportOpen(false);
   };
 
-  /* Which header keys get the little ↕ marker */
   const sortKeys =
     activeTab === "coupons"
       ? new Set(["price", "redeemValue", "singleUse", "toRedeem"])
       : new Set(["redeemMonthly", "singleUse", "applyEntire"]);
 
-  /* ===== Generate Coupon popup control ===== */
   const [genOpen, setGenOpen] = useState(false);
 
   return (
@@ -487,7 +565,7 @@ export default function CouponPage() {
             <button
               className="mybtn"
               type="button"
-              onClick={() => setGenOpen(true)}   /* ← open popup here */
+              onClick={() => setGenOpen(true)}
             >
               Generate Coupon
             </button>
@@ -520,7 +598,7 @@ export default function CouponPage() {
             <div className="gc-left">
               <ComboSelect
                 placeholder="Select Coupon"
-                options={COUPON_OPTIONS}
+                options={couponOptions}
                 value={selectedCoupon}
                 onChange={setSelectedCoupon}
                 width={220}
@@ -565,14 +643,39 @@ export default function CouponPage() {
               </tr>
             </thead>
             <tbody>
-              <tr className="empty-row">
-                <td colSpan={columnsToRender.length}>No data available in table</td>
-              </tr>
+              {(activeTab === "coupons" ? couponsRows : genRows).length ? (
+                (activeTab === "coupons" ? couponsRows : genRows).map((row, i) => (
+                  <tr key={i}>
+                    {columnsToRender.map((c, j) => {
+                      const val = row[c.key] ?? "";
+                      // ⭐ Only special-render the Status column as a colored badge
+                      if (c.key === "status") {
+                        const low = String(val).toLowerCase();
+                        const cls = low.includes("avail")
+                          ? "st-available"
+                          : low.includes("redeem")
+                          ? "st-redeemed"
+                          : "";
+                        return (
+                          <td key={c.key + j}>
+                            <span className={`status-badge ${cls}`}>{val}</span>
+                          </td>
+                        );
+                      }
+                      return <td key={c.key + j}>{val}</td>;
+                    })}
+                  </tr>
+                ))
+              ) : (
+                <tr className="empty-row">
+                  <td colSpan={columnsToRender.length}>No data available in table</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Footer / pager */}
+        {/* Footer / pager (static visuals) */}
         <div className="cp-foot">
           <div className="foot-left">Showing 0 to 0 of 0 entries</div>
           <div className="foot-right">
@@ -624,9 +727,46 @@ export default function CouponPage() {
       <GenerateCouponModal
         open={genOpen}
         onClose={() => setGenOpen(false)}
-        onGenerate={(payload) => {
-          console.log("GENERATE →", payload);
-          setGenOpen(false);
+        couponOptions={couponOptions}
+        onGenerate={async ({ coupon, qty }) => {
+          if (!coupon || !qty) return;
+          try {
+            await generateCoupons({ coupon_name: coupon, qty: Number(qty) });
+            setGenOpen(false);
+            // refresh generated tab with current filter set to coupon
+            setActiveTab("generated");
+            setSelectedCoupon(coupon);
+            const data = await listGeneratedCoupons({ coupon });
+            setGenRows(
+              data.map((r) => ({
+                barcode: r.code,
+                name: r.coupon_name,
+                price: r.price,
+                totalRedeem: r.total_redeem,
+                redeemMonthly: "",
+                monthDivAmt: "",
+                singleUse: "",
+                minPurchase: "",
+                applyEntire: "",
+                assignedTo: r.assigned_to || "",
+                custNo: r.customer_no || "",
+                issuedBy: r.issued_by,
+                usedValue: "",
+                availRedeem: "",
+                createdDate: r.created_date,
+                endDate: "",
+                redemptionDate: r.redemption_date || "",
+                expiryDays: "",
+                status: r.status,
+                toIssued: "",
+                toRedeemed: "",
+                actions: "",
+              }))
+            );
+            alert("Coupons generated successfully.");
+          } catch (e) {
+            alert("Failed to generate coupons.");
+          }
         }}
       />
     </div>

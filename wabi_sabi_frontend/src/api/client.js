@@ -170,6 +170,15 @@ export default {
   mcCreate,
   mcList,
   mcGet,
+
+  listCoupons,
+  createCoupon,
+  generateCoupons,
+  listGeneratedCoupons,
+  lookupCoupon,
+  redeemCoupon,
+  asArray,
+
 };
 
 function sanitizeBarcode(v = "") {
@@ -403,4 +412,51 @@ export async function mcList(params = {}) {
 // Get one (detail) – already available via your detail route if you need it
 export async function mcGet(number) {
   return http(`/material-consumptions/${encodeURIComponent(number)}/`);
+}
+
+// src/api/client.js  (additions)
+
+
+export async function listCoupons() {
+  const res = await http(`/coupons/`);
+  return asArray(res);
+}
+
+export async function createCoupon(payload) {
+  // { name, price }
+  return http(`/coupons/`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function generateCoupons({ coupon_id, coupon_name, qty }) {
+  return http(`/coupons/generate/`, {
+    method: "POST",
+    body: JSON.stringify({ coupon_id, coupon_name, qty }),
+  });
+}
+
+export async function listGeneratedCoupons(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.coupon) sp.append("coupon", params.coupon);
+  if (params.assign) sp.append("assign", params.assign);
+  const qs = sp.toString();
+  const res = await http(`/coupons/instances/${qs ? `?${qs}` : ""}`);
+  return asArray(res);
+}
+
+export async function lookupCoupon(code) {
+  return http(`/coupons/instances/${encodeURIComponent(code)}/`);
+}
+
+export async function redeemCoupon(code, payload) {
+  // payload: { invoice_no, customer: { id?, name, phone, email? } }
+  return http(`/coupons/instances/${encodeURIComponent(code)}/redeem/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Normalize helpers
+function asArray(payload) {
+  if (Array.isArray(payload)) return payload;
+  return payload?.results || payload?.data || payload?.items || [];
 }

@@ -519,3 +519,15 @@
 .gc-btn-primary{ background:#0ea5e9; color:#fff; border-color:#0ea5e9; box-shadow:0 6px 16px rgba(14,165,233,.18); }
 .gc-btn-primary:hover{ filter:brightness(1.05); }
 
+/* ===== Status badges (Generated Coupons: Status column) ===== */
+.status-badge{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+  line-height:1;
+}
+
+.status-badge.st-available{ background:#16a34a; color:#fff; } /* green */
+.status-badge.st-redeemed{ background:#dc2626; color:#fff; }  /* red */

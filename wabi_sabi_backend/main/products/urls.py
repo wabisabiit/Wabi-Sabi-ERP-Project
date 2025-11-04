@@ -15,6 +15,11 @@ from .views_material_consumption import (
     MaterialConsumptionView, MaterialConsumptionDetail, MaterialConsumptionNext
 )
 
+from .views_coupons import (
+    CouponListCreate, CouponGenerate, GeneratedCouponList,
+    CouponLookup, CouponRedeem
+)
+
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
 
@@ -45,6 +50,14 @@ urlpatterns = [
     path("material-consumptions/", MaterialConsumptionView.as_view(), name="material-consumption-create"),
     path("material-consumptions/next/", MaterialConsumptionNext.as_view(), name="material-consumption-next"),
     path("material-consumptions/<str:number>/", MaterialConsumptionDetail.as_view(), name="material-consumption-detail"),
+
+
+    # Coupons
+    path("coupons/", CouponListCreate.as_view(), name="coupon-list-create"),
+    path("coupons/generate/", CouponGenerate.as_view(), name="coupon-generate"),
+    path("coupons/instances/", GeneratedCouponList.as_view(), name="generated-coupons"),
+    path("coupons/instances/<str:code>/", CouponLookup.as_view(), name="coupon-lookup"),
+    path("coupons/instances/<str:code>/redeem/", CouponRedeem.as_view(), name="coupon-redeem"),
 ]
 
 urlpatterns += router.urls

@@ -8,7 +8,7 @@ import "../styles/Card-detail.css";
  *  - customerBankName
  *  - amount
  *  - cardHolder
- *  - cardHolderPhone  <-- NEW
+ *  - cardHolderPhone
  *  - transactionNo
  */
 export default function CardDetail({ amount = 0, onClose, onSubmit }) {
@@ -17,7 +17,7 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
     customerBankName: "",
     cardAmount: Number(amount || 0).toFixed(2),
     cardHolder: "",
-    cardHolderPhone: "",               // <-- NEW
+    cardHolderPhone: "",
     transactionNo: "",
   });
 
@@ -45,7 +45,7 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
       customerBankName: form.customerBankName.trim(),
       amount: parseFloat(form.cardAmount || 0),
       cardHolder: form.cardHolder.trim(),
-      cardHolderPhone: form.cardHolderPhone.trim(), // <-- NEW
+      cardHolderPhone: form.cardHolderPhone.trim(),
       transactionNo: form.transactionNo.trim(),
     });
   };

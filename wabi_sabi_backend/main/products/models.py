@@ -2,7 +2,14 @@
 from django.db import models,transaction
 from taskmaster.models import TaskItem,Location   # <-- your TaskItem
 from django.utils import timezone
+from django.core.validators import RegexValidator
 
+
+
+alnum_validator = RegexValidator(
+    regex=r"^[A-Za-z0-9]+$",
+    message="Coupon name must be alphanumeric (A–Z, a–z, 0–9) without spaces.",
+)
 
 class Product(models.Model):
     """
@@ -123,6 +130,7 @@ class Sale(models.Model):
     PAYMENT_CASH      = "CASH"
     PAYMENT_MULTIPAY  = "MULTIPAY"
     PAYMENT_CREDIT    = "CREDIT"
+    PAYMENT_COUPON    = "COUPON"
 
     PAYMENT_METHODS = [
         (PAYMENT_UPI, "UPI"),
@@ -130,6 +138,7 @@ class Sale(models.Model):
         (PAYMENT_CASH, "Cash"),
         (PAYMENT_MULTIPAY, "Multipay"),
         (PAYMENT_CREDIT, "Credit Note"),
+        (PAYMENT_COUPON, "Coupon"),
     ]
 
     invoice_no       = models.CharField(max_length=32, unique=True, db_index=True)
@@ -360,3 +369,110 @@ class MaterialConsumptionLine(models.Model):
     class Meta:
         ordering = ["barcode"]
         indexes  = [models.Index(fields=["barcode"])]
+
+class Coupon(models.Model):
+    """
+    Master coupon (template). Single price; redeem value always equals price.
+    Name must be unique (case-insensitive).
+    """
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        validators=[alnum_validator],
+    )
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # redeem_value mirrors price per requirement
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                models.functions.Lower("name"),
+                name="coupon_name_unique_ci",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class GeneratedCoupon(models.Model):
+    """
+    One physical/usable coupon code created from a Coupon.
+    Code is like <COUPONNAME>_01, _02, ...
+    """
+    STATUS_AVAILABLE = "AVAILABLE"
+    STATUS_REDEEMED  = "REDEEMED"
+    STATUS_CHOICES = [
+        (STATUS_AVAILABLE, "Available"),
+        (STATUS_REDEEMED,  "Redeemed"),
+    ]
+
+    coupon      = models.ForeignKey(Coupon, on_delete=models.PROTECT, related_name="instances")
+    serial_no   = models.PositiveIntegerField()                         # 1,2,3... within coupon
+    code        = models.CharField(max_length=80, unique=True, db_index=True)  # ex: Ranjit342_01
+    price       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # “Generated table” fields you asked to persist/show
+    issued_by   = models.CharField(max_length=64, default="Vishnu")     # default Vishnu
+    assigned_to = models.ForeignKey(Customer, null=True, blank=True, on_delete=models.SET_NULL)
+    customer_no = models.CharField(max_length=20, blank=True, default="")  # phone snapshot
+
+    created_date    = models.DateTimeField(auto_now_add=True)
+    redemption_date = models.DateTimeField(null=True, blank=True)
+
+    status      = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_AVAILABLE)
+    redeemed_invoice_no = models.CharField(max_length=32, blank=True, default="")
+
+    class Meta:
+        ordering  = ["-created_date", "-id"]
+        indexes   = [models.Index(fields=["code"]), models.Index(fields=["coupon", "serial_no"])]
+
+    def __str__(self):
+        return self.code
+
+    @classmethod
+    def bulk_generate(cls, coupon: Coupon, qty: int):
+        """Concurrency-safe serial allocation + code building."""
+        qty = max(0, int(qty or 0))
+        if qty == 0:
+            return []
+
+        with transaction.atomic():
+            # find current max serial for this coupon
+            last = (
+                cls.objects.select_for_update()
+                .filter(coupon=coupon)
+                .order_by("-serial_no")
+                .first()
+            )
+            start = (last.serial_no if last else 0) + 1
+            rows = []
+            for i in range(qty):
+                sn = start + i
+                code = f"{coupon.name}_{str(sn).zfill(2)}"
+                rows.append(
+                    cls(
+                        coupon=coupon,
+                        serial_no=sn,
+                        code=code,
+                        price=coupon.price,
+                    )
+                )
+            created = cls.objects.bulk_create(rows, ignore_conflicts=False)
+            return created
+
+    def redeem(self, *, sale: Sale, customer: Customer):
+        if self.status == self.STATUS_REDEEMED:
+            raise ValueError("Coupon already redeemed.")
+        self.status = self.STATUS_REDEEMED
+        self.redemption_date = timezone.now()
+        self.redeemed_invoice_no = sale.invoice_no
+        self.assigned_to = customer
+        self.customer_no = (customer.phone or "")
+        self.save(update_fields=[
+            "status", "redemption_date", "redeemed_invoice_no",
+            "assigned_to", "customer_no"
+        ])

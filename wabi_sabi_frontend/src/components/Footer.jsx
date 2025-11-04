@@ -1,8 +1,14 @@
-// src/components/Footer.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
-import { createSale, createSalesReturn, redeemCreditNote, getSelectedCustomer, clearSelectedCustomer } from "../api/client";
+import {
+  createSale,
+  createSalesReturn,
+  redeemCreditNote,
+  redeemCoupon,            // ← mark coupon redeemed after sale
+  getSelectedCustomer,
+  clearSelectedCustomer,
+} from "../api/client";
 import { useNavigate } from "react-router-dom";
 import CashPayment from "./CashPayment";
 import RedeemCreditModal from "./RedeemCreditModal";
@@ -87,7 +93,7 @@ export default function Footer({
   items = [],
   customer,
   totalQty = 0,
-  amount = 0,          // cart total BEFORE credit
+  amount = 0,          // cart total BEFORE coupon/credit
   onReset,
 }) {
   const navigate = useNavigate();
@@ -111,10 +117,15 @@ export default function Footer({
   const [showCash, setShowCash] = useState(false);
   const [showUpi, setShowUpi] = useState(false);
   const [showRedeem, setShowRedeem] = useState(false);
+  const [redeemMode, setRedeemMode] = useState("credit"); // "credit" | "coupon"
 
-  // Discount UI (kept as-is; applied before credit)
+  // Discount UI (applied BEFORE coupon/credit)
   const [flatDisc, setFlatDisc] = useState("0.00");
   const [isPercent, setIsPercent] = useState(true);
+
+  // Coupon usage (treat like extra discount)
+  // shape: { code, amount }
+  const [couponUse, setCouponUse] = useState(null);
 
   // Credit usage (one note per sale)
   // shape: { noteNo, amount }
@@ -135,14 +146,23 @@ export default function Footer({
   }, []);
   const canPay = !!(currentCustomer && (currentCustomer.name || currentCustomer.phone));
 
-  // Payable after discount, BEFORE credit
-  const payableAmount = useMemo(() => {
+  // Base after manual flat discount
+  const baseAfterFlat = useMemo(() => {
     const baseAmount = Number(amount) || 0;
     const discRaw = Math.max(0, Number(flatDisc) || 0);
     const discAmt = isPercent ? (baseAmount * discRaw) / 100 : discRaw;
     const discCapped = Math.min(baseAmount, discAmt);
     return Math.max(0, Math.round(baseAmount - discCapped));
   }, [amount, flatDisc, isPercent]);
+
+  // Apply coupon like a discount (cap so it never exceeds baseAfterFlat)
+  const afterCoupon = useMemo(() => {
+    const c = Number(couponUse?.amount || 0);
+    return Math.max(0, Math.round(baseAfterFlat - Math.max(0, Math.min(c, baseAfterFlat))));
+  }, [baseAfterFlat, couponUse]);
+
+  // Payable BEFORE credit
+  const payableAmount = afterCoupon;
 
   // Remaining after applying credit note (never negative)
   const remainingAfterCredit = useMemo(() => {
@@ -173,7 +193,7 @@ export default function Footer({
   // Resolve customer: prefer prop, else session (legacy)
   const effectiveCustomer = (customer && (customer.name || customer.phone)) ? customer : currentCustomer;
 
-  // Finalize: include CREDIT row (if any) + chosen payment method row
+  // Finalize: include COUPON + CREDIT row (if any) + chosen payment method row
   async function finalizeSale({ method, paymentDetails, andPrint = false }) {
     try {
       const lines = buildLines();
@@ -182,7 +202,15 @@ export default function Footer({
         return;
       }
 
+      // Grand total before credit (after discounts + coupon)
       const grandTotal = Number(payableAmount) || 0;
+
+      // Treat coupon as a payment row so backend sum matches
+      const couponRow =
+        couponUse && Number(couponUse.amount) > 0
+          ? [{ method: "COUPON", amount: Number(couponUse.amount), reference: couponUse.code || "" }]
+          : [];
+
       const creditRow =
         creditUse && Number(creditUse.amount) > 0
           ? [{ method: "CREDIT", amount: Number(creditUse.amount), reference: creditUse.noteNo }]
@@ -202,7 +230,12 @@ export default function Footer({
         account: paymentDetails?.paymentAccount || "",
       };
 
-      const payments = [...creditRow, payRow]; // sums to grandTotal
+      // If nothing remains after coupon/credit, don't send a zero row
+      const payments = [
+        ...couponRow,
+        ...creditRow,
+        ...(Number(remainingAfterCredit) > 0 ? [payRow] : []),
+      ];
 
       const customerPayload = {
         name:
@@ -222,6 +255,7 @@ export default function Footer({
         payments,
         store: "Wabi - Sabi",
         note: paymentDetails?.note || "",
+        // you can also attach { coupon: couponUse } here if backend wants it
       };
 
       const res = await createSale(payload);
@@ -236,6 +270,23 @@ export default function Footer({
           });
         } catch (e) {
           console.warn("Failed to mark credit redeemed:", e);
+        }
+      }
+
+      // Mark coupon redeemed (link it with invoice & customer)
+      if (couponUse?.code && couponUse.amount > 0 && res?.invoice_no) {
+        try {
+          await redeemCoupon(couponUse.code, {
+            invoice_no: res.invoice_no,
+            customer: {
+              id: effectiveCustomer?.id || null,
+              name: effectiveCustomer?.name || "",
+              phone: effectiveCustomer?.phone || "",
+              email: effectiveCustomer?.email || "",
+            },
+          });
+        } catch (e) {
+          console.warn("Failed to mark coupon redeemed:", e);
         }
       }
 
@@ -410,21 +461,29 @@ export default function Footer({
         return;
       }
 
-      // Redeem Credit
+      // Redeem Credit (credit note path)
       if (label === "Redeem Credit") {
         if (creditUse?.noteNo) {
           addToast("A credit note is already applied.");
           return;
         }
+        setRedeemMode("credit");
+        setShowRedeem(true);
+        return;
+      }
+
+      // Apply Coupon (coupon path)
+      if (label === "Apply Coupon") {
+        if (couponUse?.code) {
+          addToast("A coupon is already applied.");
+          return;
+        }
+        setRedeemMode("coupon");
         setShowRedeem(true);
         return;
       }
 
       // Stubs
-      if (label === "Apply Coupon") {
-        addToast("Apply Coupon: coming soon");
-        return;
-      }
       if (label === "Hold (F6)") {
         addToast("Hold: coming soon");
         return;
@@ -438,7 +497,7 @@ export default function Footer({
         return;
       }
     },
-    [navigate, items, effectiveCustomer, remainingAfterCredit, creditUse, canPay]
+    [navigate, items, effectiveCustomer, remainingAfterCredit, creditUse, couponUse, canPay]
   );
 
   return (
@@ -492,13 +551,18 @@ export default function Footer({
             <div className="label">Round OFF</div>
           </div>
 
-          {/* Amount now shows remaining after credit to make it obvious */}
+          {/* Amount now shows remaining after credit; shows coupon & credit badges for clarity */}
           <div className="amount">
             <div className="amount-value">
               {Number(remainingAfterCredit).toLocaleString()}
             </div>
             <div className="label">
-              Amount {creditUse?.amount ? `(after ₹${Number(creditUse.amount).toFixed(2)} credit)` : ""}
+              Amount
+              {couponUse?.amount ? ` (after ₹${Number(couponUse.amount).toFixed(2)} coupon` : ""}
+              {creditUse?.amount
+                ? `${couponUse?.amount ? " & " : " (after "}₹${Number(creditUse.amount).toFixed(2)} credit`
+                : ""}
+              {(couponUse?.amount || creditUse?.amount) ? ")" : ""}
             </div>
           </div>
         </div>
@@ -580,19 +644,30 @@ export default function Footer({
         />
       )}
 
-      {/* Redeem Credit */}
+      {/* Redeem Credit / Apply Coupon (same modal; initialMode controls tab) */}
       {showRedeem && (
         <RedeemCreditModal
-          invoiceBalance={payableAmount} // cap by current bill (after discount, before credit)
+          initialMode={redeemMode}
+          invoiceBalance={redeemMode === "credit" ? payableAmount : baseAfterFlat}
           onClose={() => setShowRedeem(false)}
-          onApply={({ noteNo, amount }) => {
-            if (!noteNo || !amount) {
-              addToast("No credit used");
-              setShowRedeem(false);
-              return;
+          onApply={({ mode, noteNo, amount, code }) => {
+            if (mode === "credit") {
+              if (!noteNo || !amount) {
+                addToast("No credit used");
+                setShowRedeem(false);
+                return;
+              }
+              setCreditUse({ noteNo, amount: Number(amount) });
+              addToast(`Credit applied: ₹${Number(amount).toFixed(2)}`);
+            } else {
+              if (!code || !amount) {
+                addToast("No coupon used");
+                setShowRedeem(false);
+                return;
+              }
+              setCouponUse({ code, amount: Number(amount) });
+              addToast(`Coupon applied: ₹${Number(amount).toFixed(2)}`);
             }
-            setCreditUse({ noteNo, amount: Number(amount) });
-            addToast(`Credit applied: ₹${Number(amount).toFixed(2)}`);
             setShowRedeem(false);
           }}
         />

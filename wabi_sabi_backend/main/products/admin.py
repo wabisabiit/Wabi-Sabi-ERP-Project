@@ -4,8 +4,9 @@ from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, Sa
 from taskmaster.models import TaskItem, Location
 from .models import MasterPack, MasterPackLine
 from .models import (
-    MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence
+    MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,Coupon, GeneratedCoupon
 )
+
 
 
 @admin.register(Product)
@@ -159,3 +160,14 @@ class MaterialConsumptionLineAdmin(admin.ModelAdmin):
 @admin.register(MaterialConsumptionSequence)
 class MaterialConsumptionSequenceAdmin(admin.ModelAdmin):
     list_display = ("prefix","next_number","pad_width")
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = ("name", "price", "created_at")
+    search_fields = ("name",)
+
+@admin.register(GeneratedCoupon)
+class GeneratedCouponAdmin(admin.ModelAdmin):
+    list_display = ("code", "coupon", "price", "status", "issued_by", "assigned_to", "customer_no", "created_date", "redemption_date", "redeemed_invoice_no")
+    list_filter = ("status", "issued_by", "coupon")
+    search_fields = ("code", "redeemed_invoice_no", "customer_no")

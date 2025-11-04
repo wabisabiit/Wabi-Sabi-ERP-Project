@@ -1,4 +1,3 @@
-// src/components/CashPayment.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/CashPayemnt.css";

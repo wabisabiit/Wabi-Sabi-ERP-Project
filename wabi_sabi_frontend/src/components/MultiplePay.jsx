@@ -1,4 +1,3 @@
-// src/components/MultiplePay.jsx
 import React, { useMemo, useState } from "react";
 import "../styles/MultiplePay.css";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -101,7 +100,7 @@ export default function MultiplePay({
   const handleProceed = async () => {
     if (busy) return;
 
-    // ✅ Accept either id OR (name/phone) — since we now pass id from Footer this will be true
+    // ✅ Accept either id OR (name/phone)
     const hasCustomer = !!(customer?.id || customer?.phone || customer?.name);
     if (!hasCustomer) {
       setBanner({ type: "error", text: "Please select the customer first." });
