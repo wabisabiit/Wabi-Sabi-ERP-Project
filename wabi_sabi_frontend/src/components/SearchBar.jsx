@@ -13,6 +13,11 @@ import {
   // clearSelectedCustomer,
 } from "../api/client";
 
+// Track barcodes already added to cart (session-scoped here)
+const ADDED_BARCODES = new Set();
+// Track scans currently being processed to prevent race duplicates
+const INFLIGHT = new Set();
+
 // (fallback only if API fails)
 const MOCK_CUSTOMERS = [
   { id: 1, name: "ishika", phone: "9131054736", address: "", verified: false },
@@ -176,9 +181,15 @@ export default function SearchBar({ onAddItem }) {
   const [invoice, setInvoice] = useState("");
   const [customer, setCustomer] = useState(() => getSelectedCustomer()); // POS session
   const wrapRef = useRef(null);
+  const scanInputRef = useRef(null);
 
-  // ⛔️ REMOVED: forced clearSelectedCustomer() on mount
-  // We keep any existing customer if present, but not required for scan/invoice.
+  // tiny guard to suppress input handlers right after a global scan fires
+  const scanLockRef = useRef(0);
+  const markScanHandled = () => { scanLockRef.current = Date.now(); };
+  const recentlyHandled = (ms = 200) => Date.now() - scanLockRef.current < ms;
+
+  // Autofocus the scan box so it's ready for the scanner
+  useEffect(() => { scanInputRef.current?.focus(); }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -211,20 +222,21 @@ export default function SearchBar({ onAddItem }) {
     return () => { alive = false; };
   }, [query]);
 
-  const openAddContact = (name = "") => {
-    setPrefillName(name);
-    setShowModal(true);
-    setOpenDrop(false);
-  };
-
-  // ✅ Barcode scan now works regardless of customer selection
-  const handleScanSubmit = useCallback(async () => {
-    const code = scan.trim();
+  // ==== Add-to-cart from a barcode (with pre-flight de-dupe + inflight) ====
+  const addByBarcode = useCallback(async (raw) => {
+    const code = String(raw || "").trim();
     if (!code) return;
 
+    // Already added or currently being processed?
+    if (ADDED_BARCODES.has(code) || INFLIGHT.has(code)) {
+      alert(`Already in cart: ${code}`);
+      setScan("");
+      return;
+    }
+
+    INFLIGHT.add(code);
     try {
       const p = await getProductByBarcode(code);
-
       const qty = Number(p?.qty ?? 0);
       if (!p || qty <= 0 || p?.available === false) {
         alert("Product not available / already sold.");
@@ -233,14 +245,63 @@ export default function SearchBar({ onAddItem }) {
       }
 
       onAddItem?.(p);
+      ADDED_BARCODES.add(code); // remember it so it won't be added twice later
       setScan("");
     } catch (err) {
       console.error(err);
       alert(`Not found: ${code}`);
+    } finally {
+      INFLIGHT.delete(code);
     }
-  }, [scan, onAddItem]);
+  }, [onAddItem]);
 
-  // ✅ Invoice load (return mode) also independent of customer selection
+  // Manual entry handler
+  const handleScanSubmit = useCallback(async () => {
+    if (recentlyHandled()) return; // global scan just handled it
+    const code = scan.trim();
+    if (!code) return;
+    addByBarcode(code);
+  }, [scan, addByBarcode]);
+
+  // ==== USB scanner as keyboard (global listener) ====
+  useEffect(() => {
+    const suffixKey = "Enter";
+    const minLength = 5;
+    const charTimeoutMs = 45;
+
+    let buf = "";
+    let lastTs = 0;
+
+    const onKeyDown = (e) => {
+      const now = performance.now();
+      const gap = now - (lastTs || 0);
+      lastTs = now;
+
+      // If gap is large, treat as a new stream
+      if (gap > charTimeoutMs) buf = "";
+
+      if (e.key === suffixKey) {
+        const code = buf.trim();
+        buf = "";
+        if (code.length >= minLength) {
+          e.preventDefault?.();
+          markScanHandled();       // suppress input-level submit/blur echo
+          addByBarcode(code);
+        }
+        return;
+      }
+
+      // ignore control keys (Shift, Alt, etc.)
+      if (e.key.length !== 1) return;
+
+      buf += e.key;
+    };
+
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [addByBarcode]);
+
+  // Invoice load (return mode) — de-dupe each line by barcode as well
   async function loadInvoice(inv) {
     try {
       const res = await getSaleLinesByInvoice(inv);
@@ -254,6 +315,9 @@ export default function SearchBar({ onAddItem }) {
       window.__RETURN_INVOICE__ = res.invoice_no;
 
       lines.forEach((ln) => {
+        const bc = String(ln.barcode || "").trim();
+        if (!bc || ADDED_BARCODES.has(bc) || INFLIGHT.has(bc)) return;
+        INFLIGHT.add(bc);
         onAddItem?.({
           id: ln.barcode,
           barcode: ln.barcode,
@@ -263,6 +327,8 @@ export default function SearchBar({ onAddItem }) {
           vasyName: ln.name || ln.barcode,
           netAmount: Number(ln.sp || 0),
         });
+        ADDED_BARCODES.add(bc);
+        INFLIGHT.delete(bc);
       });
     } catch (e) {
       console.error(e);
@@ -270,11 +336,17 @@ export default function SearchBar({ onAddItem }) {
     }
   }
 
-  // Select customer from dropdown → persists & notifies Footer to enable payments
+  // Select customer from dropdown → persists & notifies Footer
   const pickCustomer = (c) => {
     setCustomer(c);
-    setSelectedCustomer(c); // emits window "pos:customer" event in client.js (you already added)
+    setSelectedCustomer(c);
     setQuery("");
+    setOpenDrop(false);
+  };
+
+  const openAddContact = (name = "") => {
+    setPrefillName(name);
+    setShowModal(true);
     setOpenDrop(false);
   };
 
@@ -283,6 +355,7 @@ export default function SearchBar({ onAddItem }) {
       <div className="container search-bar">
         {/* LEFT: scan barcode / product name */}
         <input
+          ref={scanInputRef}
           className="scan"
           type="text"
           placeholder="Scan Barcode/Enter Product Name"
@@ -292,6 +365,7 @@ export default function SearchBar({ onAddItem }) {
             if (e.key === "Enter") handleScanSubmit();
           }}
           onBlur={(e) => {
+            if (recentlyHandled()) return; // avoid double after global scan causes blur
             if (e.target.value.trim()) handleScanSubmit();
           }}
         />

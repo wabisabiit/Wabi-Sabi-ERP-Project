@@ -1,18 +1,21 @@
-// src/components/ExpandedLabelsPage.jsx
+/* global qz */
 import React, { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import "../styles/BarcodePrintConfirmPage.css"; // compact styles + (updated) bc-card styles
+import "../styles/BarcodePrintConfirmPage.css";
+import { printTwoUpLabels, todayDMY, qzConnectSafe } from "../printing/qz-two-up";
 
 export default function ExpandedLabelsPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
   // Expanded unit-level rows (one per label)
-  const rows = Array.isArray(state?.expanded) ? state.expanded : [];
+  const rowsExpanded = Array.isArray(state?.expanded) ? state.expanded : [];
   // Editor rows (so user can reopen in editor)
   const fromRows = Array.isArray(state?.fromRows) ? state.fromRows : [];
-  // Also allow returning the stored rows if you passed them along
   const stored = Array.isArray(state?.stored) ? state.stored : [];
+
+  // We will display `rows` (prefer expanded; else fall back to fromRows)
+  const rows = rowsExpanded.length ? rowsExpanded : fromRows;
 
   // Paging
   const [page, setPage] = useState(1);
@@ -34,15 +37,14 @@ export default function ExpandedLabelsPage() {
 
   // Summary
   const summary = useMemo(() => {
-    const count = rows.length;
+    const count = rowsExpanded.length ? rowsExpanded.length : rows.reduce((s, r) => s + Math.max(1, Number(r.qty || 1)), 0);
     const uniqueItems = new Set(rows.map((r) => `${r.itemCode}|${r.size}`)).size;
     const totalMrp = rows.reduce((s, r) => s + Number(r.mrp || 0), 0);
     const totalSp = rows.reduce((s, r) => s + Number(r.salesPrice || 0), 0);
     const totalDisc = rows.reduce((s, r) => s + Number(r.discount || 0), 0);
     return { count, uniqueItems, totalMrp, totalSp, totalDisc };
-  }, [rows]);
+  }, [rows, rowsExpanded]);
 
-  const printNow = () => window.print?.();
   const formatINR = (n) =>
     `₹ ${Number(n || 0).toLocaleString("en-IN", {
       minimumFractionDigits: 2,
@@ -50,17 +52,37 @@ export default function ExpandedLabelsPage() {
     })}`;
 
   const getBarcodeNumber = (r) =>
-    r?.barcodeNumber ?? r?.barcodeName ?? r?.itemCode ?? "";
+    r?.barcodeNumber ?? r?.barcodeName ?? r?.barcode ?? r?.itemCode ?? "";
 
-  // Total Amt (same logic used earlier)
   const totalAmt = (r) =>
     Math.max(0, Number(r?.salesPrice || 0) - Number(r?.discount || 0));
 
   const handleGenerate = () => {
     if (!selected) return;
-    // TODO: hook your real generator here
     console.log("Generate for:", selected);
     alert(`Generating barcode for ${getBarcodeNumber(selected) || "(no code)"}`);
+  };
+
+  // ===== PRINT (QZ Tray + TSPL two-up) =====
+  const printNow = async () => {
+    // Build a full list to print from ALL rows (not just current page)
+    const list = (rows || []).map((r) => ({
+      name: r.product || "",
+      mrp: Number(r.mrp || 0),
+      sp: Number(r.salesPrice || r.sp || 0),
+      code: getBarcodeNumber(r),
+      location: r.location || r.location_code || "",
+      qty: rowsExpanded.length ? 1 : Math.max(1, Number(r.qty || 1)), // if already expanded, 1 each
+    }));
+
+    try {
+      await qzConnectSafe();
+      await printTwoUpLabels(list, { title: "BRANDS 4 LESS", date: todayDMY() });
+      alert("Print job(s) sent to QZ Tray.");
+    } catch (e) {
+      console.error(e);
+      alert("Printing failed: " + e.message);
+    }
   };
 
   return (
@@ -70,9 +92,6 @@ export default function ExpandedLabelsPage() {
         <div className="sit-bc-left">
           <span className="sit-title">Expanded Labels</span>
           <span className="sit-sep">|</span>
-          {/* <span className="t-dim">
-            {summary.count} rows · {summary.uniqueItems} unique (item+size)
-          </span> */}
         </div>
         <div className="sit-home" aria-label="Home">
           <svg
@@ -87,7 +106,7 @@ export default function ExpandedLabelsPage() {
         </div>
       </div>
 
-      {/* two-column layout with sidebar (now hosting barcode preview) */}
+      {/* two-column layout with sidebar (barcode preview) */}
       <div className="sit-card confirm-grid">
         {/* SIDEBAR with Summary + Barcode Preview */}
         <aside className="confirm-side">
@@ -95,7 +114,7 @@ export default function ExpandedLabelsPage() {
             <div className="side-title">Summary</div>
             <div className="side-stats">
               <div>
-                <span className="t-dim">Expanded Rows:</span> {summary.count}
+                <span className="t-dim">Pieces to print:</span> {summary.count}
               </div>
               <div>
                 <span className="t-dim">Unique (Item+Size):</span>{" "}
@@ -139,8 +158,6 @@ export default function ExpandedLabelsPage() {
             >
               Generate Barcode
             </button>
-
-            {/* ⬇️ Actions section removed as requested */}
           </div>
         </aside>
 
@@ -158,7 +175,6 @@ export default function ExpandedLabelsPage() {
                   <th style={{ width: 90 }}>Discount</th>
                   <th style={{ width: 104 }}>Selling Price</th>
                   <th style={{ width: 100 }}>MRP</th>
-                  {/* ✅ Added Qty column */}
                   <th style={{ width: 64 }}>Qty</th>
                   <th style={{ width: 130 }}>Barcode Number</th>
                 </tr>
@@ -191,7 +207,6 @@ export default function ExpandedLabelsPage() {
                       <td className="t-right">{formatINR(r.discount || 0)}</td>
                       <td className="t-right">{formatINR(r.salesPrice || 0)}</td>
                       <td className="t-right t-dim">{formatINR(r.mrp || 0)}</td>
-                      {/* ✅ Qty cell (unit-level rows => default 1) */}
                       <td className="t-right">{Number(r.qty ?? 1)}</td>
                       <td className="t-mono">{getBarcodeNumber(r)}</td>
                     </tr>
