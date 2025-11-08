@@ -47,11 +47,57 @@ const PAGE_H_MM   = SINGLE_H_MM;
 const SPEED       = 4;
 const DENSITY     = 10;
 
+/* ===== Layout (tuned spacing) ===== */
+const Y_TITLE_MM         = 1.0;
+const Y_NAME_MM          = 5.0;
+
+/* more air around SIZE */
+const SIZE_TOP_GAP_MM    = 2.2;  // ↑ was 1.8
+const SIZE_BOTTOM_GAP_MM = 4.0;  // ↑ was 2.3
+
+/* gently push the whole lower block down */
+const Y_MRP_MM_BASE      = 10.0;  // ↑ was 8.9
+const Y_SP_MM            = 15.6; // ↑ was 12.8
+const Y_BC_MM            = 18.8; // ↑ was 17.0
+
+const BARCODE_HEIGHT_MM  = 5.0;
+
+/* cleaner gaps between lower elements */
+const Y_CODE_GAP_MM      = 1.6;  // ↑ was 1.2
+const Y_DATE_GAP_MM      = 3.8;  // ↑ was 3.6
+const Y_LOC_GAP_MM       = 4.0;  // ↑ was 3.0  (push Location lower to use bottom space)
+
+/* ===== Width helpers ===== */
+const CHAR_MM = 1.2; // TSPL "1" ≈ 1.2mm/char at scale 1
+function textWidthMM(text, scaleX = 1) {
+  return (text?.length || 0) * CHAR_MM * scaleX;
+}
+/* Rough Code128 width estimate to center barcode */
+function code128WidthMM(code, narrowDots = 2) {
+  const len = (code?.length || 0);
+  const modules = (len * 11) + 35;
+  const dots = modules * narrowDots;
+  const mmPerDot = 25.4 / 203;
+  return dots * mmPerDot;
+}
+
+/* ===== Sort helpers so rows print 6-7 / 8-9 / 10 ===== */
+function normalizeCode(v) {
+  return String(v || "").toUpperCase().replace(/[–—−‐]/g, "-").trim();
+}
+function codeKey(code) {
+  const c = normalizeCode(code);
+  const m = c.match(/^([A-Z])-(\d{1,3})$/);
+  if (!m) return [c, 0];
+  return [m[1], Number(m[2])];
+}
+
 /* =========== TSPL generators =========== */
-function tsplOneLabel({ title, name, mrp, sp, code, location, date }, x0mm) {
+function tsplOneLabel({ title, name, size, mrp, sp, code, location, date }, x0mm) {
   const x0 = mm(x0mm);
   title    = (title || "BRANDS 4 LESS").toString();
   name     = (name  || "").toString();
+  size     = (size  || "").toString(); // only real size; no fallback from name
   mrp      = Number(mrp || 0);
   sp       = Number(sp || 0);
   code     = (code || "").toString();
@@ -59,63 +105,72 @@ function tsplOneLabel({ title, name, mrp, sp, code, location, date }, x0mm) {
   date     = (date || todayDMY());
 
   const cmds = [];
-
   const INNER_MARGIN_MM = 2.1;
   const LEFT   = x0 + mm(INNER_MARGIN_MM);
   const RIGHT  = x0 + mm(SINGLE_W_MM - INNER_MARGIN_MM);
   const WIDTH  = RIGHT - LEFT;
   const centerX = LEFT + Math.floor(WIDTH / 2);
 
-  // Title – centered (2×2)
-  const titleWidth = title.length * 2.5;
-  cmds.push(`TEXT ${centerX - mm(titleWidth / 2)},${mm(1)},"1",0,2,2,"${title}"`);
+  /* Title: "BRANDS" + "4LESS" tight */
+  const t1 = "BRANDS";
+  const t2 = "4LESS";
+  const gapMM = 1.0;
+  const t1w = textWidthMM(t1, 2);
+  const t2w = textWidthMM(t2, 2);
+  const totalW = t1w + gapMM + t2w;
+  const t1x = centerX - mm(totalW / 2);
+  const t2x = t1x + mm(t1w + gapMM);
+  cmds.push(`TEXT ${t1x},${mm(Y_TITLE_MM)},"1",0,2,2,"${t1}"`);
+  cmds.push(`TEXT ${t2x},${mm(Y_TITLE_MM)},"1",0,2,2,"${t2}"`);
 
-  // Product – centered (1×1)
+  /* Name */
   const pname = name.length > 20 ? name.slice(0, 20) : name;
-  const pnameWidth = pname.length * 1.2;
-  cmds.push(`TEXT ${centerX - mm(pnameWidth / 2)},${mm(5)},"1",0,1,1,"${pname}"`);
+  const pnameWidthMM = textWidthMM(pname, 1);
+  const nameY = mm(Y_NAME_MM);
+  cmds.push(`TEXT ${centerX - mm(pnameWidthMM / 2)},${nameY},"1",0,1,1,"${pname}"`);
 
-  /* ===== MRP (not bold), bigger + STRIKE EXACTLY MID ===== */
+  /* Size with margins */
+  let yCursor = nameY;
+  if (size) {
+    const sizeText = `( ${size} )`;
+    const sizeW = textWidthMM(sizeText, 1.3);
+    const ySize = nameY + mm(SIZE_TOP_GAP_MM);
+    cmds.push(`TEXT ${centerX - mm(sizeW / 2)},${ySize},"1",0,1,2,"${sizeText}"`); // 1×2 for readability
+    yCursor = ySize + mm(SIZE_BOTTOM_GAP_MM);
+  }
+
+  /* MRP (2×) + thin strike */
   const MRP_SCALE_X = 2, MRP_SCALE_Y = 2;
-  const mrpY = mm(7.2);
   const mrpStr = `${mrp.toFixed(0)}`;
-
-  // width estimate ≈ 1.2mm per char × scale
-  const mrpCharMM = 1.2 * MRP_SCALE_X;
-  const mrpWidthMM = mrpStr.length * mrpCharMM;
-  const mrpX = centerX - mm(mrpWidthMM / 2);
+  const mrpWmm = textWidthMM(mrpStr, MRP_SCALE_X);
+  const mrpX = centerX - mm(mrpWmm / 2);
+  const mrpY = Math.max(yCursor, mm(Y_MRP_MM_BASE));
   cmds.push(`TEXT ${mrpX},${mrpY},"1",0,${MRP_SCALE_X},${MRP_SCALE_Y},"${mrpStr}"`);
+  cmds.push(`BAR ${mrpX},${mrpY + mm(0.8)},${mm(mrpWmm)},2`);
 
-  // Strike-through: thin line across the vertical middle of 2× text
-  // (2× font height ≈ ~5.2mm visually; set offset ~half)
-  const strikeYOffsetMM = 0.8;     // middle of the taller 2× glyphs
-  const strikeHeightDots = 2;      // thin line (NOT bold)
-  cmds.push(`BAR ${mrpX},${mrpY + mm(strikeYOffsetMM)},${mm(mrpWidthMM)},${strikeHeightDots}`);
-
-  // Selling price – centered (2×2)
+  /* Selling Price (2×) */
   const spStr = sp.toFixed(0);
-  const spWidth = spStr.length * 2.5;
-  const spY = mm(11.6);
-  cmds.push(`TEXT ${centerX - mm(spWidth / 2)},${spY},"1",0,2,2,"${spStr}"`);
+  const spWmm = textWidthMM(spStr, 2);
+  cmds.push(`TEXT ${centerX - mm(spWmm / 2)},${mm(Y_SP_MM)},"1",0,2,2,"${spStr}"`);
 
-  /* ===== Barcode ===== */
-  const bcY = mm(16.2);
-  cmds.push(`BARCODE ${x0 + mm(1.7)},${bcY},"128",${mm(5)},0,0,2,3,"${code}"`);
+  /* Barcode (centered) */
+  const bcY = mm(Y_BC_MM);
+  const estWmm = Math.max(22, Math.min(32, code128WidthMM(code)));
+  const bcX = centerX - mm(estWmm / 2);
+  cmds.push(`BARCODE ${bcX},${bcY},"128",${mm(BARCODE_HEIGHT_MM)},0,0,2,3,"${code}"`);
 
-  /* ===== Code & Date ===== */
-  const barH = mm(5);
-  const codeY = bcY + barH + mm(1.2);
-  const codeWidth = code.length * 1.2;
-  cmds.push(`TEXT ${centerX - mm(codeWidth / 2)},${codeY},"1",0,1,2,"${code}"`);
+  /* Code (1×2) */
+  const barH = mm(BARCODE_HEIGHT_MM);
+  const codeY = bcY + barH + mm(Y_CODE_GAP_MM);
+  const codeWmm = textWidthMM(code, 1);
+  cmds.push(`TEXT ${centerX - mm(codeWmm / 2)},${codeY},"1",0,1,2,"${code}"`);
 
-  // DATE: **LEFT-ALIGNED** (per your request)
-  const dateY = codeY + mm(3.6);
+  /* Date left + Location centered (pushed lower) */
+  const dateY = codeY + mm(Y_DATE_GAP_MM);
   cmds.push(`TEXT ${LEFT},${dateY},"1",0,1,1,"${date}"`);
-
-  // Location – centered, a bit larger (1×2)
-  const locY = dateY + mm(3.0);
-  const locWidth = location.length * 1.5;
-  cmds.push(`TEXT ${centerX - mm(locWidth / 2)},${locY},"1",0,1,2,"${location}"`);
+  const locY = dateY + mm(Y_LOC_GAP_MM);
+  const locWmm = textWidthMM(location, 1.5);
+  cmds.push(`TEXT ${centerX - mm(locWmm / 2)},${locY},"1",0,1,2,"${location}"`);
 
   return cmds;
 }
@@ -131,7 +186,7 @@ function tsplTwoUpPage(r1, r2) {
     `DIRECTION 1`,
     `CLS`,
   ];
-  const left  = tsplOneLabel(r1, 0);
+  const left  = r1 ? tsplOneLabel(r1, 0) : [];
   const right = r2 ? tsplOneLabel(r2, SINGLE_W_MM + H_GAP_MM + RIGHT_SHIFT_MM) : [];
   return [...header, ...left, ...right, `PRINT 1,1`];
 }
@@ -158,6 +213,7 @@ export async function printTwoUpLabels(rows, opts = {}) {
 
   if (!Array.isArray(rows) || rows.length === 0) throw new Error("No rows to print.");
 
+  // 1) Expand copies
   const expanded = [];
   for (const r of rows) {
     if (!r) continue;
@@ -165,9 +221,10 @@ export async function printTwoUpLabels(rows, opts = {}) {
     const safe = {
       title,
       name: (r.name || r.product || "").toString(),
+      size: (r.size || r.product_size || "").toString(),
       mrp: Number(r.mrp || 0),
       sp: Number(r.sp || r.selling_price || r.sellingPrice || 0),
-      code: (r.code || r.barcode || r.barcodeNumber || "").toString(),
+      code: normalizeCode(r.code || r.barcode || r.barcodeNumber || ""),
       location: (r.location || r.location_code || "").toString(),
       date,
     };
@@ -176,19 +233,28 @@ export async function printTwoUpLabels(rows, opts = {}) {
   }
   if (!expanded.length) throw new Error("No valid barcodes to print.");
 
-  for (let i = 0; i < expanded.length; i += 2) {
-    const left  = expanded[i];
-    const right = expanded[i + 1] || null;
-    const cmdsStr = tsplTwoUpPage(left, right).join("\r\n");
-    const dataArray = [{ type: "raw", format: "command", data: cmdsStr }];
-    await window.qz.print(cfg, dataArray);
-  }
-}
+  // 2) Sort ascending so physical labels are uniform (…06,07 / 08,09 / 10)
+  expanded.sort((a, b) => {
+    const [la, na] = codeKey(a.code);
+    const [lb, nb] = codeKey(b.code);
+    if (la !== lb) return la < lb ? -1 : 1;
+    return na - nb;
+  });
 
-/* Sample */
-export async function printSample() {
-  await printTwoUpLabels([
-    { name: "(L) Denim Skirt", mrp: 3000, sp: 2400, code: "WS-270-01", location: "IC", qty: 1 },
-    { name: "(L) Denim Skirt", mrp: 3000, sp: 2400, code: "WS-270-02", location: "IC", qty: 1 },
-  ]);
+  // 3) Pair up; if odd, last single goes LEFT
+  for (let i = 0; i < expanded.length; ) {
+    let left = null, right = null;
+    const remaining = expanded.length - i;
+    if (remaining >= 2) {
+      left  = expanded[i];
+      right = expanded[i + 1];
+      i += 2;
+    } else {
+      left = expanded[i];
+      right = null;
+      i += 1;
+    }
+    const cmdsStr = tsplTwoUpPage(left, right).join("\r\n");
+    await window.qz.print(cfg, [{ type: "raw", format: "command", data: cmdsStr }]);
+  }
 }

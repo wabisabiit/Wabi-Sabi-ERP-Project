@@ -27,12 +27,13 @@ class ProductGridSerializer(serializers.ModelSerializer):
     sellingPrice = serializers.DecimalField(source="selling_price", max_digits=12, decimal_places=2)
     image        = serializers.CharField(source="image_url", allow_blank=True, allow_null=True, default="")
     qty          = serializers.SerializerMethodField()  # robust int
+    size         = serializers.CharField(allow_blank=True, default="")  # ⬅️ ADD THIS
 
     class Meta:
         model = Product
         fields = [
             "id", "itemCode", "category", "brand", "name",
-            "mrp", "sellingPrice", "hsn", "qty", "image"
+            "mrp", "sellingPrice", "hsn", "qty", "image", "size"  # ⬅️ ADD size HERE
         ]
 
     def get_name(self, obj):

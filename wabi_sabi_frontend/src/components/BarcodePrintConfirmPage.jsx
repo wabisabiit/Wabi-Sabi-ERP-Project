@@ -44,7 +44,7 @@ const COLS = [
 const NUM_FIELDS = new Set(["discount", "salesPrice", "mrp", "qty"]);
 const asNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const sanitizeCode = (v) => (v || "").toUpperCase().replace(/[^A-Z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
-const makeRow = (id) => ({ _id: id, itemCode: "", product: "", size: "", location: "", discount: 0, salesPrice: 0, mrp: 0, qty: 0, barcodeNumber: "" });
+const makeRow = (id) => ({ _id: id, itemCode: "", product: "", size: "", location: "", discount: 0, salesPrice: 0, mrp: 0, qty: 1, barcodeNumber: "" });
 
 export default function BarcodePrintConfirmPage() {
   const { state } = useLocation();
@@ -192,53 +192,57 @@ export default function BarcodePrintConfirmPage() {
   };
 
   /* ===== Expand → save to DB → create STF ===== */
+  /* ===== Expand → save to DB (server mints barcodes) → create STF ===== */
   const expandAndNavigate = async () => {
+    // 1) Expand rows by qty (no client-side barcode generation)
     const expanded = [];
     let sNo = 1;
 
-    const pad2 = (n) => String(n).padStart(2, "0");
-    const makeBarcode = (code, idx) => `WS-${code}-${pad2(idx)}`;
-
     excelRows.forEach((r) => {
-      const q = Math.max(0, Math.floor(Number(r.qty) || 0));
-      const code = (r.itemCode || "").trim();
-      for (let i = 1; i <= q; i++) {
-        const shouldBarcode = code !== "" && code !== "0";
-        const barcode = shouldBarcode ? makeBarcode(code, i) : "";
+      const qty = Math.max(0, Math.floor(Number(r.qty) || 0));
+      const itemCode = String(r.itemCode || "").trim();
+      for (let i = 0; i < qty; i++) {
         expanded.push({
           sNo: sNo++,
-          itemCode: r.itemCode,
+          itemCode,
           product: r.product,
           size: r.size,
-          location: r.location, // code like RJO
+          location: r.location, // e.g. RJO
           discount: Number(r.discount) || 0,
           salesPrice: Number(r.salesPrice) || 0,
           mrp: Number(r.mrp) || 0,
-          barcodeNumber: barcode,
-          barcodeName: barcode,
+          barcodeNumber: "",        // SERVER will fill
+          barcodeName: "",          // (kept for UI compatibility)
+          imageUrl: r.imageUrl || "",
         });
       }
     });
 
-    try {
-      const payload = expanded
-        .filter((r) => r.itemCode && r.itemCode !== "0" && r.barcodeNumber)
-        .map((r) => ({
-          itemCode: String(r.itemCode).trim(),
-          barcodeNumber: String(r.barcodeNumber).trim(),
-          salesPrice: Number(r.salesPrice) || 0,
-          mrp: Number(r.mrp) || 0,
-          size: (r.size || "").trim(),
-          imageUrl: r.imageUrl || "",
-          qty: 1,
-          discountPercent: Number(r.discount) || 0,
-        }));
+    // Build payload for /products/bulk-upsert/
+    // One row per label; barcodeNumber intentionally blank
+    const payload = expanded
+      .filter((r) => r.itemCode && r.itemCode !== "0")
+      .map((r) => ({
+        itemCode: r.itemCode,
+        barcodeNumber: "",                 // <-- let server mint A-001 … Z-999
+        salesPrice: r.salesPrice,
+        mrp: r.mrp,
+        size: (r.size || "").trim(),
+        imageUrl: r.imageUrl || "",
+        qty: 1,                            // one product per label
+        discountPercent: r.discount,
+      }));
 
+    // 2) Upsert → server generates barcodes and returns them in results[]
+    let minted = [];
+    try {
       if (payload.length) {
-        const res = await upsertProductsFromBarcodes(payload);
+        const res = await upsertProductsFromBarcodes(payload); // POST /products/bulk-upsert/
         const created = res?.created ?? 0;
         const updated = res?.updated ?? 0;
         const errs = Array.isArray(res?.errors) ? res.errors : [];
+        minted = Array.isArray(res?.results) ? res.results : [];
+
         if (errs.length) {
           alert(`Saved with issues:
 Created: ${created}
@@ -251,16 +255,25 @@ Created: ${created}
 Updated: ${updated}`);
         }
       } else {
-        alert("No rows with Item Code + Barcode to save. Proceeding to expand.");
+        alert("No rows with Item Code to save. Proceeding to expand.");
       }
     } catch (e) {
       console.error("Bulk upsert failed:", e);
       alert(`Failed to save to database: ${e.message}`);
     }
 
-    /* ---- Create Stock Transfer(s) by location ---- */
+    // 3) Fill expanded[] with the actual server-minted barcodes (A-xxx)
+    //    We created payload in the same order as expanded, so map by index.
+    if (minted.length) {
+      const codes = minted.map((m) => m.barcode); // [{row, id, itemCode, barcode}]
+      for (let i = 0; i < expanded.length && i < codes.length; i++) {
+        expanded[i].barcodeNumber = codes[i] || expanded[i].barcodeNumber;
+        expanded[i].barcodeName = expanded[i].barcodeNumber;
+      }
+    }
+
+    // 4) Create Stock Transfers — group by location using real (A-xxx) barcodes
     try {
-      // group barcodes by location (to_location_code)
       const byLoc = new Map();
       for (const r of expanded) {
         if (!r.location || !r.barcodeNumber) continue;
@@ -268,13 +281,13 @@ Updated: ${updated}`);
         byLoc.get(r.location).push(r.barcodeNumber);
       }
 
-      const createdAt = new Date().toISOString(); // or pass your barcode creation datetime
+      const createdAt = new Date().toISOString();
       const results = [];
 
       for (const [loc, barcodes] of byLoc.entries()) {
         const resp = await printBarcodes({
           to_location_code: loc,
-          barcodes,
+          barcodes,               // <- A-xxx from server
           created_at: createdAt,
           note: "Auto from Expand",
         });
@@ -291,7 +304,7 @@ Updated: ${updated}`);
       alert(`Failed to create Stock Transfer: ${e.message}`);
     }
 
-    // Proceed to expanded page (your existing flow)
+    // 5) Navigate to expanded preview (now showing A-xxx barcodes)
     navigate("/utilities/barcode2/expanded", {
       state: {
         expanded,
@@ -301,6 +314,7 @@ Updated: ${updated}`);
       },
     });
   };
+
 
   return (
     <div className="sit-wrap confirm-page">
@@ -401,7 +415,8 @@ Updated: ${updated}`);
                                             ? "0"
                                             : "Barcode Number"
                               }
-                              inputMode={isNumber ? "decimal" : isCode ? "numeric" : "text"}
+                              /* text for codes (allows letters like A-001), decimal for number fields */
+                              inputMode={isNumber ? "decimal" : undefined}
                             />
                           </td>
                         );

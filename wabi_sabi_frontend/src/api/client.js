@@ -189,12 +189,12 @@ function sanitizeBarcode(v = "") {
 // src/api/client.js  (add this below the existing helpers/exports)
 
 /* ========= Product lookup by barcode (used by SearchBar) ========= */
+/* ========= Product lookup by barcode (used by SearchBar) ========= */
 export async function getProductByBarcode(barcode) {
   const url = `/products/by-barcode/${encodeURIComponent(barcode)}/`;
   const data = await http(url);
 
-  // Map DRF response -> POS row needs
-  // DRF returns strings for decimals; convert to numbers safely
+  // DRF returns strings for decimals; convert safely
   const mrpNum = Number(data?.mrp ?? 0);
   const spNum  = Number(data?.selling_price ?? 0);
 
@@ -212,9 +212,11 @@ export async function getProductByBarcode(barcode) {
     sellingPrice: Number.isFinite(spNum) ? spNum : 0,
     vasyName,
     qty: Number(data?.qty ?? 0),
-    available: !!data?.available,     
+    available: !!data?.available,
+    size: data?.size || "",      // <-- ADD THIS LINE
   };
 }
+
 
 // Create sale (finalize payment)
 export async function createSale(payload) {

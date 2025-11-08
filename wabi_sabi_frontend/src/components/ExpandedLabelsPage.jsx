@@ -66,13 +66,15 @@ export default function ExpandedLabelsPage() {
   // ===== PRINT (QZ Tray + TSPL two-up) =====
   const printNow = async () => {
     // Build a full list to print from ALL rows (not just current page)
+    // ✅ AFTER (with size)
     const list = (rows || []).map((r) => ({
       name: r.product || "",
+      size: r.size || "",              // ⬅️ ADD THIS LINE
       mrp: Number(r.mrp || 0),
       sp: Number(r.salesPrice || r.sp || 0),
       code: getBarcodeNumber(r),
       location: r.location || r.location_code || "",
-      qty: rowsExpanded.length ? 1 : Math.max(1, Number(r.qty || 1)), // if already expanded, 1 each
+      qty: rowsExpanded.length ? 1 : Math.max(1, Number(r.qty || 1)),
     }));
 
     try {
@@ -194,7 +196,7 @@ export default function ExpandedLabelsPage() {
                       style={{ cursor: "pointer" }}
                       className={
                         selected &&
-                        getBarcodeNumber(selected) === getBarcodeNumber(r)
+                          getBarcodeNumber(selected) === getBarcodeNumber(r)
                           ? "row-active"
                           : ""
                       }

@@ -288,7 +288,7 @@ export default function BarcodeUtility2Page({ title = "Common Barcode Printing" 
       salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0, // rounded
       mrp: Number.isFinite(r.sp) ? r.sp : 0,
       qty: Number.isFinite(r.qty) ? r.qty : 0,
-      barcodeNumber: r.itemCode ? `WS-${r.itemCode}-01` : "",
+      barcodeNumber:"",
     }));
 
     persist(normalized);

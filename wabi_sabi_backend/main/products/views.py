@@ -10,6 +10,63 @@ from .models import Product
 from .serializers import ProductSerializer, ProductGridSerializer
 from taskmaster.models import TaskItem
 
+# ------------------ BARCODE GENERATOR HELPERS (local) ------------------
+import re
+
+_BAR_RE = re.compile(r'^[A-Z]-\d{3}$')  # e.g., A-001
+
+def _fmt(letter: str, num: int) -> str:
+    return f"{letter}-{num:03d}"
+
+def _bump(letter: str, num: int):
+    """A-001..A-999, then B-001..Z-999, wrap to A-001."""
+    letter = (letter or "A").upper()
+    if not ("A" <= letter <= "Z"):
+        letter = "A"
+    num = int(num or 0) + 1
+    if num <= 999:
+        return letter, num
+    # carry to next letter
+    num = 1
+    idx = (ord(letter) - ord('A') + 1) % 26
+    return chr(ord('A') + idx), num
+
+def _parse(code: str):
+    if not code or not _BAR_RE.match(code):
+        return None
+    try:
+        return code[0], int(code[2:])
+    except Exception:
+        return None
+
+def _last_seen_letter_num():
+    """
+    Get the last LETTER-NNN based on creation order.
+    If none found, return ('A', 0) so next is A-001.
+    """
+    last = (
+        Product.objects
+        .filter(barcode__regex=r'^[A-Z]-\d{3}$')
+        .order_by('-created_at', '-id')
+        .values_list('barcode', flat=True)
+        .first()
+    )
+    parsed = _parse(last) if last else None
+    return parsed if parsed else ("A", 0)
+
+def _next_available(letter: str, num: int):
+    """
+    From the given (letter,num) cursor, find the next free code.
+    Returns (new_letter, new_num, code).
+    """
+    for _ in range(26 * 999 + 5):
+        letter, num = _bump(letter, num)
+        candidate = _fmt(letter, num)
+        if not Product.objects.filter(barcode=candidate).exists():
+            return letter, num, candidate
+    raise RuntimeError("Exhausted barcode space unexpectedly")
+# ----------------------------------------------------------------------
+
 
 class ProductViewSet(viewsets.ModelViewSet):
     """
@@ -49,8 +106,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         Accepts a list of rows (from your Expanded/Print step), each like:
           {
-            "itemCode": "100-W",            # TaskItem.item_code
-            "barcodeNumber": "WS-100-W-01", # Product.barcode
+            "itemCode": "100-W",            # REQUIRED: TaskItem.item_code
+            "barcodeNumber": "",            # OPTIONAL: if LETTER-NNN & unused, accepted; else server generates
             "salesPrice": 1999,
             "mrp": 3500,
             "size": "M",
@@ -59,23 +116,48 @@ class ProductViewSet(viewsets.ModelViewSet):
             "discountPercent": 0
           }
 
-        Creates or updates Product so your inventory list shows real data.
+        Creates/updates Product rows. If no valid barcodeNumber is supplied, the server
+        generates the next code in a global sequence:
+          A-001..A-999, B-001..Z-999, then wraps to A-001 (skipping used).
+
+        Returns:
+          {
+            created, updated, errors: [...],
+            results: [{ row, id, itemCode, barcode }]
+          }
         """
         items = request.data if isinstance(request.data, list) else request.data.get("rows", [])
         if not isinstance(items, list):
             return Response({"detail": "Expected a list or {rows: [...]}."}, status=status.HTTP_400_BAD_REQUEST)
 
         created, updated, errors = 0, 0, []
+        results = []
+
+        # Initialize a cursor once per request (fewer DB scans)
+        cur_letter, cur_num = _last_seen_letter_num()
+
         with transaction.atomic():
             for i, row in enumerate(items, start=1):
                 try:
                     item_code = str(row.get("itemCode", "")).strip()
-                    barcode = str(row.get("barcodeNumber", "")).strip()
-                    if not item_code or not barcode:
-                        errors.append(f"row {i}: itemCode/barcodeNumber missing")
+                    raw_barcode = (row.get("barcodeNumber") or "").strip().upper()
+
+                    if not item_code:
+                        errors.append(f"row {i}: itemCode missing")
                         continue
 
                     ti = TaskItem.objects.get(item_code=item_code)
+
+                    # Decide the final barcode
+                    barcode = None
+                    if _BAR_RE.match(raw_barcode):
+                        # Accept client value only if unused
+                        if not Product.objects.filter(barcode=raw_barcode).exists():
+                            barcode = raw_barcode
+
+                    if not barcode:
+                        # Mint next available code from the rolling sequence
+                        cur_letter, cur_num, barcode = _next_available(cur_letter, cur_num)
 
                     discount_val = row.get("discountPercent", row.get("discount", 0)) or 0
                     qty_val = row.get("qty", 1) or 1
@@ -97,12 +179,19 @@ class ProductViewSet(viewsets.ModelViewSet):
                     else:
                         updated += 1
 
+                    results.append({
+                        "row": i,
+                        "id": obj.id,
+                        "itemCode": item_code,
+                        "barcode": obj.barcode,  # <- the actual A-xxx code to use for printing
+                    })
+
                 except TaskItem.DoesNotExist:
                     errors.append(f"row {i}: TaskItem {item_code!r} not found")
                 except Exception as e:
                     errors.append(f"row {i}: {e}")
 
-        return Response({"created": created, "updated": updated, "errors": errors})
+        return Response({"created": created, "updated": updated, "errors": errors, "results": results})
 
     # ---------- BY BARCODE LOOKUP ----------
     @action(
