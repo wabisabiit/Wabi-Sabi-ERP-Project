@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/MaterialConsumption.css";
 import { listLocations, getProductByBarcode, mcGetNextNumber, mcCreate } from "../api/client";
@@ -22,24 +22,54 @@ export default function NewMaterialConsumptionPage() {
   const [barcode, setBarcode] = useState("");
   const [rows, setRows] = useState([]); // {barcode, name, qty, price, total}
 
+  // ---- scanner helpers ----
+  const inputRef = useRef(null);
+  const lastScanRef = useRef({ code: "", ts: 0 });
+
+  const ensureFocus = useCallback(() => {
+    if (document.activeElement !== inputRef.current) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
   // load locations + next number
   useEffect(() => {
     listLocations().then(setLocations).catch(()=>{});
     mcGetNextNumber().then(setSeq).catch(()=>{});
   }, []);
 
+  // autofocus scan box on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   // totals
   const total = useMemo(() => rows.reduce((s,r)=>s + Number(r.total||0), 0), [rows]);
 
   // add barcode
-  const addBarcode = async () => {
+  const addBarcode = useCallback(async () => {
     const b = String(barcode || "").trim();
-    if (!b) return;
+    if (!b) { ensureFocus(); return; }
+
+    // debounce duplicate fast scans (e.g., gun firing Enter + Tab quickly)
+    const now = Date.now();
+    if (lastScanRef.current.code === b && (now - lastScanRef.current.ts) < 400) {
+      ensureFocus();
+      return;
+    }
+    lastScanRef.current = { code: b, ts: now };
+
+    // fire a DOM event (optional compatibility)
+    try {
+      window.dispatchEvent(new CustomEvent("pos:scan", { detail: { barcode: b, ts: now } }));
+    } catch {}
+
     setBarcode("");
     try {
       const p = await getProductByBarcode(b);
       const name = p.vasyName || "";
       const price = Number(p.sellingPrice || 0);
+
       // if exists, bump qty
       setRows(prev => {
         const idx = prev.findIndex(x => x.barcode === p.barcode);
@@ -55,6 +85,17 @@ export default function NewMaterialConsumptionPage() {
       });
     } catch (e) {
       alert(`Not found: ${b}`);
+    } finally {
+      // keep focus in the scan box for continuous scanning
+      ensureFocus();
+    }
+  }, [barcode, ensureFocus]);
+
+  // Treat Enter or Tab as "Add"
+  const onScanKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      addBarcode();
     }
   };
 
@@ -81,7 +122,6 @@ export default function NewMaterialConsumptionPage() {
       };
       const res = await mcCreate(payload);
       alert(res?.message || "Saved successfully.");
-      // Go back to list or stay?
       navigate("/inventory/material-consumption");
     } catch (e) {
       alert(`Save failed: ${e.message || e}`);
@@ -155,10 +195,12 @@ export default function NewMaterialConsumptionPage() {
 
         <div className="mc-search-line">
           <input
+            ref={inputRef}
             placeholder="Search product & barcode"
             value={barcode}
             onChange={(e)=>setBarcode(e.target.value)}
-            onKeyDown={(e)=> e.key === "Enter" && addBarcode()}
+            onKeyDown={onScanKeyDown}
+            onFocus={ensureFocus}
           />
         </div>
 

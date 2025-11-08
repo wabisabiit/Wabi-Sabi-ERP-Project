@@ -24,6 +24,18 @@ export default function MasterPackagingPage() {
   const [toast, setToast] = useState(null); // {type:'ok'|'err', msg:string}
   const [packResult, setPackResult] = useState(null); // server response { pack: {...} }
 
+  // ==== NEW: robust scanner focus & de-dupe ====
+  const scanRef = useRef(null);
+  const lastScanRef = useRef({ code: "", ts: 0 });
+  useEffect(() => {
+    // autofocus on mount
+    scanRef.current?.focus();
+  }, []);
+  // keep focus on the scan box so hardware scanners always type there
+  const ensureScanFocus = () => {
+    if (document.activeElement !== scanRef.current) scanRef.current?.focus();
+  };
+
   // ---- Locations from backend ----
   const [locs, setLocs] = useState([]); // [{code,name}]
   useEffect(() => {
@@ -94,6 +106,16 @@ export default function MasterPackagingPage() {
   async function addScanned() {
     const raw = scan.trim();
     if (!raw) return;
+
+    // prevent accidental double fire from some scanners
+    const now = Date.now();
+    if (lastScanRef.current.code === raw && now - lastScanRef.current.ts < 400) {
+      setScan("");
+      ensureScanFocus();
+      return;
+    }
+    lastScanRef.current = { code: raw, ts: now };
+
     setScan("");
     try {
       const data = await getProductByBarcode(raw); // {barcode, vasyName, sellingPrice, qty...}
@@ -127,6 +149,8 @@ export default function MasterPackagingPage() {
     } catch (e) {
       setToast({ type: "err", msg: `Lookup failed: ${e.message || e}` });
       clearToastSoon();
+    } finally {
+      ensureScanFocus();
     }
   }
 
@@ -196,7 +220,6 @@ export default function MasterPackagingPage() {
     }
   }
 
-
   function clearToastSoon() {
     setTimeout(() => setToast(null), 2200);
   }
@@ -228,11 +251,19 @@ export default function MasterPackagingPage() {
               <label>Barcode / Item Code</label>
               <div className="mp-input">
                 <input
+                  ref={scanRef}
                   type="text"
                   placeholder="Scan or type code..."
                   value={scan}
                   onChange={(e) => setScan(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addScanned()}
+                  onKeyDown={(e) => {
+                    // scanners usually send Enter or Tab
+                    if (e.key === "Enter" || e.key === "Tab") {
+                      e.preventDefault();
+                      addScanned();
+                    }
+                  }}
+                  onBlur={ensureScanFocus}
                 />
               </div>
             </div>
