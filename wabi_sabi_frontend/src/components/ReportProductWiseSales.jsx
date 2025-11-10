@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportProductWiseSales.css";
+import { listProductWiseSales } from "../api/client";
 
 /* ===== Masters (match screenshots) ===== */
 const LOCATION_OPTIONS = [
@@ -17,7 +18,6 @@ const LOCATION_OPTIONS = [
 ];
 
 const DEPARTMENT_OPTIONS = ["Other", "Test", "S", "clothes", "Miscellaneous"];
-
 const CATEGORY_OPTIONS = [
   "Accessories",
   "Boys & Girls - Blouse",
@@ -26,33 +26,10 @@ const CATEGORY_OPTIONS = [
   "Boys & Girls - Shirt",
   "Boys & Girls - Shoes",
 ];
-
 const BRAND_OPTIONS = ["B4L", "ddd", "ff", "ffff", "g", "ggg"];
-
-const SUBCATEGORY_OPTIONS = []; // none -> "No results found"
-const SUBBRAND_OPTIONS = []; // none -> "No results found"
-
-const SALES_TYPES = ["Invoice", "POS"];
+const SUBCATEGORY_OPTIONS = []; // none
+const SUBBRAND_OPTIONS = []; // none
 const PAGE_SIZES = [10, 25, 50, 100];
-
-/* ===== Dummy rows (10) ===== */
-const ROWS = Array.from({ length: 10 }, (_, i) => ({
-  sr: i + 1,
-  department: "Accessories",
-  category: "Accessories",
-  subCategory: "Hand Bag",
-  brand: "B4L",
-  subBrand: i % 2 ? "B4L Classic" : "B4L Premium",
-  itemcode: `${26570 + i}–F`,
-  product: "(860) (L) Hand Bag",
-  lastPurchaseDate: "23/07/2025",
-  lastPurchaseQty: 0,
-  lastSalesDate: "23/07/2025",
-  location: "WABI SABI SUSTAINABILITY LLP",
-  qtySold: 1,
-  customerName: `Customer ${i + 1}`,
-  mobile: `98${String(10000000 + i + 1).slice(0, 8)}`,
-}));
 
 const COLUMNS = [
   { key: "sr", label: "Sr. No." },
@@ -72,7 +49,7 @@ const COLUMNS = [
   { key: "mobile", label: "Mobile Number" },
 ];
 
-/* ---------- UI primitives to mirror screenshots ---------- */
+/* ---------- UI primitives ---------- */
 
 /** Searchable single-select (Dept/Category/Brand/SubBrand/SalesType) */
 function SearchSelect({
@@ -206,7 +183,7 @@ function MultiSelectLocation({ label, options, value, onChange }) {
   );
 }
 
-/** Product box (requires >=3 chars, shows helper text like screenshot) */
+/** Product box (typed search) */
 function ProductSearchBox({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -231,10 +208,10 @@ function ProductSearchBox({ value, onChange }) {
           onChange={(e) => onChange(e.target.value)}
           placeholder=""
         />
-        {(!value || value.length < 3) ? (
+        {!value || value.length < 3 ? (
           <div className="ss-empty">Please enter 3 or more characters</div>
         ) : (
-          <div className="ss-list">{/* (intentionally blank for demo) */}</div>
+          <div className="ss-list" />
         )}
       </div>
     </div>
@@ -254,10 +231,14 @@ export default function ReportProductWiseSales() {
   const [productSearch, setProductSearch] = useState("");
   const [fromDate, setFromDate] = useState("2025-04-01");
   const [toDate, setToDate] = useState("2026-03-31");
-  const [salesType, setSalesType] = useState("");
   const [pageSize, setPageSize] = useState(10);
 
-  /* Download split menu (unchanged) */
+  /* Data */
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  /* Download split menu */
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   useEffect(() => {
@@ -266,25 +247,33 @@ export default function ReportProductWiseSales() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  /* Filtering (now accepts multi-location) */
-  const filtered = useMemo(() => {
-    const q = productSearch.trim().toLowerCase();
-    return ROWS.filter((r) => {
-      if (q) {
-        const hay = `${r.product} ${r.brand} ${r.category} ${r.department} ${r.location} ${r.customerName}`.toLowerCase();
-        if (!hay.includes(q)) return false;
+  /* Fetch server data whenever filters change */
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true); setError("");
+      try {
+        const res = await listProductWiseSales({
+          location: locations.includes("All") || locations.length === 0 ? null : locations,
+          department,
+          category,                // accepted, maps to department on server
+          brand,
+          product: productSearch,
+          date_from: fromDate,
+          date_to: toDate,
+          all: 1,                  // fetch all; client slices by page size
+        });
+        setRows(res?.results || []);
+      } catch (e) {
+        setError(String(e?.message || e));
+        setRows([]);
+      } finally {
+        setLoading(false);
       }
-      if (locations.length && !locations.includes("All") && !locations.includes(r.location)) return false;
-      if (department && r.department !== department) return false;
-      if (category && r.category !== category) return false;
-      if (subCategory && r.subCategory !== subCategory) return false;
-      if (brand && r.brand !== brand) return false;
-      if (subBrand && r.subBrand !== subBrand) return false;
-      return true;
-    });
-  }, [productSearch, locations, department, category, subCategory, brand, subBrand]);
+    };
+    run();
+  }, [locations, department, category, brand, productSearch, fromDate, toDate]);
 
-  /* Horizontal scroll buttons (unchanged) */
+  /* Horizontal scroll buttons */
   const scrollerRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
@@ -308,7 +297,7 @@ export default function ReportProductWiseSales() {
   }, []);
   const scrollByX = (dx) => scrollerRef.current?.scrollBy({ left: dx, behavior: "smooth" });
 
-  /* Downloads — EMPTY files (unchanged) */
+  /* Downloads — empty placeholders */
   const downloadEmpty = (filename, type) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([], { type }));
@@ -321,16 +310,23 @@ export default function ReportProductWiseSales() {
   const onExcel = () => downloadEmpty("product-wise-sales-summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   const onPDF = () => downloadEmpty("product-wise-sales-summary.pdf", "application/pdf");
   const onAllDataExcel = () => downloadEmpty("product-wise-sales-summary-all-data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  const onAllDataPDF = () => downloadEmpty("product-wise-sales-summary-all-data.pdf", "application/pdf");
 
-  const showing = Math.min(filtered.length, pageSize);
+  const showing = Math.min(rows.length, pageSize);
 
   return (
     <div className="pwss-wrap">
       <div className="pwss-top">
         <div className="pwss-title">Product Wise Sales Summary</div>
         <div className="pwss-crumb" aria-label="breadcrumb">
-          <span className="material-icons-outlined pwss-crumb-link" role="link" tabIndex={0} onClick={() => navigate("/")} title="Home">home</span>
+          <span
+            className="material-icons-outlined pwss-crumb-link"
+            role="link"
+            tabIndex={0}
+            onClick={() => navigate("/")}
+            title="Home"
+          >
+            home
+          </span>
           <span className="pwss-crumb-sep">|</span>
           <span className="pwss-crumb-dim">Reports</span>
         </div>
@@ -411,14 +407,6 @@ export default function ReportProductWiseSales() {
               </div>
             </div>
 
-            <SearchSelect
-              label="Select Sales Type"
-              placeholder="Select Sales Type"
-              options={SALES_TYPES}
-              value={salesType}
-              onChange={setSalesType}
-            />
-
             <div className="pwss-spacer" />
 
             <div className="pwss-actions" ref={menuRef}>
@@ -452,12 +440,16 @@ export default function ReportProductWiseSales() {
           </div>
         </div>
 
-        {/* ===== Table (unchanged) ===== */}
+        {/* ===== Status ===== */}
+        {loading && <div className="pwss-status">Loading…</div>}
+        {error && <div className="pwss-error">{error}</div>}
+
+        {/* ===== Table ===== */}
         <div className="pwss-table-outer">
-          <button className="hbtn left" onClick={() => scrollByX(-320)}>
+          <button className={`hbtn left ${canLeft ? "" : "dim"}`} onClick={() => scrollByX(-320)}>
             <span className="material-icons-outlined">chevron_left</span>
           </button>
-          <button className="hbtn right" onClick={() => scrollByX(320)}>
+          <button className={`hbtn right ${canRight ? "" : "dim"}`} onClick={() => scrollByX(320)}>
             <span className="material-icons-outlined">chevron_right</span>
           </button>
 
@@ -467,9 +459,16 @@ export default function ReportProductWiseSales() {
                 <tr>{COLUMNS.map((c) => <th key={c.key}>{c.label}</th>)}</tr>
               </thead>
               <tbody>
-                {filtered.slice(0, pageSize).map((r) => (
-                  <tr key={r.sr}>{COLUMNS.map((c) => <td key={c.key}>{r[c.key]}</td>)}</tr>
+                {rows.slice(0, pageSize).map((r, idx) => (
+                  <tr key={`${r.itemcode}-${idx}`}>
+                    {COLUMNS.map((c) => <td key={c.key}>{r[c.key]}</td>)}
+                  </tr>
                 ))}
+                {(!loading && rows.length === 0) && (
+                  <tr>
+                    <td colSpan={COLUMNS.length} style={{ textAlign: "center" }}>No data</td>
+                  </tr>
+                )}
               </tbody>
               <tfoot>
                 <tr>
@@ -480,7 +479,9 @@ export default function ReportProductWiseSales() {
             </table>
           </div>
 
-          <div className="pwss-meta">Showing 1 to {Math.min(filtered.length, pageSize)} of {filtered.length} entries</div>
+          <div className="pwss-meta">
+            Showing 1 to {showing} of {rows.length} entries
+          </div>
         </div>
       </div>
     </div>

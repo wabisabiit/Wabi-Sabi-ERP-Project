@@ -180,7 +180,7 @@ export default {
   asArray,
 
   listDaywiseSalesSummary,
-
+  listProductWiseSales,
 };
 
 function sanitizeBarcode(v = "") {
@@ -473,4 +473,25 @@ export async function listDaywiseSalesSummary(params = {}) {
   if (params.date_to) sp.append("date_to", params.date_to);
   if (params.location) sp.append("location", params.location);
   return http(`/reports/daywise-sales/?${sp.toString()}`);
+}
+
+
+// --- Product Wise Sales Summary (real) ---
+export async function listProductWiseSales(params = {}) {
+  const sp = new URLSearchParams();
+  // multi-location support:
+  if (Array.isArray(params.location) && params.location.length) {
+    params.location.forEach((l) => sp.append("location", l));
+  }
+  const keys = [
+    "q","department","category","brand","product",
+    "date_from","date_to","sales_type","page","page_size","all"
+  ];
+  keys.forEach(k => {
+    const v = params[k];
+    if (v === undefined || v === null || String(v).trim() === "") return;
+    sp.append(k, v);
+  });
+  const qs = sp.toString();
+  return http(`/reports/product-wise-sales/${qs ? `?${qs}` : ""}`);
 }

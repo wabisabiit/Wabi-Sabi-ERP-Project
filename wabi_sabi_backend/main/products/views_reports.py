@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from django.db.models import Sum, F, DecimalField, ExpressionWrapper, Count
+from django.db.models import Sum, F, DecimalField, ExpressionWrapper, Count, Q
 from django.db.models.functions import TruncDate
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -116,3 +116,163 @@ class DaywiseSalesSummary(APIView):
                 "total": f"{(total_cash + Decimal(total_cn)):.2f}",
             },
         }, status=status.HTTP_200_OK)
+
+
+# ========= NEW: Product Wise Sales =========
+class ProductWiseSalesReport(APIView):
+    """
+    GET /api/reports/product-wise-sales/
+    Query params (all optional):
+      q           -> free text across barcode, product name, customer, store
+      date_from   -> YYYY-MM-DD
+      date_to     -> YYYY-MM-DD
+      location    -> multi allowed (?location=A&location=B) – 'All' to ignore
+      department  -> maps to TaskItem.department
+      category    -> same as department (accepted for UI parity)
+      brand       -> if not 'B4L', returns none (brand fixed to B4L)
+      product     -> partial search (>=3 chars) over barcode/name
+      page        -> default 1
+      page_size   -> default 50
+      all         -> 1|true => return all rows (no pagination)
+    Rules:
+      - department from taskmaster
+      - category is same as department
+      - subCategory, subBrand are blank
+      - brand 'B4L'
+      - itemcode is barcode
+      - lastPurchaseDate = sale date
+      - lastPurchaseQty = 0
+      - lastSalesDate = sale date
+      - location = sale.store
+      - qtySold = 1
+      - customer name + mobile from backend
+      - show all barcodes sold (i.e., SaleLine rows)
+    """
+
+    def _format_ddmmyyyy(self, d):
+        try:
+            return d.strftime("%d/%m/%Y")
+        except Exception:
+            return ""
+
+    def get(self, request):
+        qs = (
+            SaleLine.objects
+            .select_related("sale", "sale__customer", "product", "product__task_item")
+            .order_by("-sale__transaction_date", "-sale_id", "barcode")
+        )
+
+        # --- Date range ---
+        df = _parse_date(request.GET.get("date_from", ""))
+        dt = _parse_date(request.GET.get("date_to", ""))
+        if df and dt and df <= dt:
+            qs = qs.filter(
+                sale__transaction_date__date__gte=df,
+                sale__transaction_date__date__lte=dt
+            )
+
+        # --- Locations (multi or single) ---
+        locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
+        if locs and "All" not in locs:
+            if len(locs) == 1:
+                qs = qs.filter(sale__store__icontains=locs[0])
+            else:
+                qs = qs.filter(sale__store__in=locs)
+
+        # --- Department/Category (both map to TaskItem.department) ---
+        dept = (request.GET.get("department") or "").strip()
+        cat  = (request.GET.get("category") or "").strip()
+        dep_val = dept or cat
+        if dep_val:
+            qs = qs.filter(product__task_item__department=dep_val)
+
+        # --- Brand (only B4L supported) ---
+        brand = (request.GET.get("brand") or "").strip()
+        if brand and brand.upper() not in ("B4L", "ALL"):
+            qs = qs.none()
+
+        # --- Product search (barcode/name) ---
+        prod_q = (request.GET.get("product") or "").strip()
+        if len(prod_q) >= 3:
+            qs = qs.filter(
+                Q(barcode__icontains=prod_q) |
+                Q(product__task_item__item_vasy_name__icontains=prod_q) |
+                Q(product__task_item__item_full_name__icontains=prod_q) |
+                Q(product__task_item__item_print_friendly_name__icontains=prod_q)
+            )
+
+        # --- Free text 'q' ---
+        q = (request.GET.get("q") or "").strip()
+        if q and q.lower() not in ("all", "undefined", "null"):
+            qs = qs.filter(
+                Q(barcode__icontains=q) |
+                Q(product__task_item__item_vasy_name__icontains=q) |
+                Q(product__task_item__item_full_name__icontains=q) |
+                Q(product__task_item__item_print_friendly_name__icontains=q) |
+                Q(sale__customer__name__icontains=q) |
+                Q(sale__customer__phone__icontains=q) |
+                Q(sale__store__icontains=q)
+            )
+
+        # --- All vs pagination ---
+        want_all = (request.GET.get("all") or "").lower() in ("1", "true", "yes", "on") \
+                   or (request.GET.get("page_size") or "").lower() == "all"
+
+        total = qs.count()
+
+        if want_all:
+            page = 1
+            page_size = total or 1
+            items = qs
+        else:
+            try:
+                page_size = max(1, min(1000, int(request.GET.get("page_size", 50))))
+            except ValueError:
+                page_size = 50
+            try:
+                page = max(1, int(request.GET.get("page", 1)))
+            except ValueError:
+                page = 1
+            start = (page - 1) * page_size
+            end = start + page_size
+            items = qs[start:end]
+
+        # --- Build rows (keys match your React columns) ---
+        rows = []
+        sr_start = 1 if want_all else ((page - 1) * page_size + 1)
+        for i, ln in enumerate(items, start=sr_start):
+            sale = getattr(ln, "sale", None)
+            cust = getattr(sale, "customer", None)
+            ti = getattr(getattr(ln, "product", None), "task_item", None)
+
+            prod_name = (
+                (getattr(ti, "item_print_friendly_name", "") or "").strip()
+                or (getattr(ti, "item_vasy_name", "") or "").strip()
+                or (getattr(ti, "item_full_name", "") or "").strip()
+            )
+
+            sdate = getattr(sale, "transaction_date", None)
+            sdate_str = self._format_ddmmyyyy(sdate) if sdate else ""
+
+            rows.append({
+                "sr": i,
+                "department": (getattr(ti, "department", "") or ""),
+                "category":   (getattr(ti, "department", "") or ""),  # same as department
+                "subCategory": "",
+                "brand": "B4L",
+                "subBrand": "",
+                "itemcode": ln.barcode,
+                "product": prod_name,
+                "lastPurchaseDate": sdate_str,
+                "lastPurchaseQty": 0,
+                "lastSalesDate": sdate_str,
+                "location": (getattr(sale, "store", "") or ""),
+                "qtySold": 1,
+                "customerName": (getattr(cust, "name", "") or ""),
+                "mobile": (getattr(cust, "phone", "") or ""),
+            })
+
+        return Response(
+            {"results": rows, "total": total, "page": page, "page_size": page_size},
+            status=status.HTTP_200_OK
+        )
