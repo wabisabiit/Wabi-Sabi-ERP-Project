@@ -236,3 +236,133 @@
   .rp-toolbar--grid .rp-field-loc{ grid-column:1/-1; }
   .rp-toolbar--grid .rp-actions{ grid-column:1/-1; justify-self:end; gap:6px; }
 }
+
+/* ===== Day-wise Sales Summary (Image-2 look) ===== */
+.dss-wrap{
+  padding: 20px 18px;
+}
+
+.dss-letterhead{
+  text-align:center;
+  margin-bottom: 18px;
+  color:#0f172a;
+}
+.dss-org{
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:.3px;
+}
+.dss-addr{
+  margin-top:4px;
+  font-size:13px;
+  color:#475569;
+}
+.dss-title{
+  margin-top:10px;
+  font-weight:800;
+  font-size:16px;
+}
+.dss-dates{
+  font-size:12px;
+  color:#475569;
+  margin-top:2px;
+}
+
+/* table shell */
+.dss-table-scroll{
+  overflow:auto;
+}
+.dss-table{
+  width: max(1180px, 100%);
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size:14px;
+  color:#0f172a;
+}
+
+/* header cells */
+.dss-table thead th{
+  border:1px solid #e2e8f0;
+  background:#f8fafc;
+  text-align:center;
+  padding:10px 8px;
+  font-weight:700;
+  line-height:1.15;
+}
+
+/* body cells */
+.dss-table tbody td{
+  border:1px solid #e2e8f0;
+  padding:10px 8px;
+  vertical-align:middle;
+}
+
+/* first two columns centered/left like the screenshot */
+.dss-table tbody td:nth-child(1){
+  text-align:center; width:60px;
+}
+.dss-table tbody td:nth-child(2){
+  text-align:left; width:120px;
+}
+
+/* numeric columns aligned right by default */
+.dss-table thead th:nth-child(n+3),
+.dss-table tbody td:nth-child(n+3){
+  text-align:right;
+}
+
+/* TOTAL row emphasis */
+.dss-strong{
+  font-weight:700;
+  background:#f8fafc;
+}
+
+/* ========== Day-wise table: make columns wider & rows taller ========== */
+.dss-table-scroll{
+  overflow:auto;
+}
+
+/* Fill the surface, but keep a generous minimum so headers don't wrap */
+.dss-table{
+  width:100%;
+  width:1000px;          /* ⬅️ increase if you want even wider columns */
+  border-collapse:collapse;
+  table-layout:fixed;        /* allows widths to be respected evenly */
+  font-size:14.5px;
+  color:#0f172a;
+}
+
+/* Taller rows via padding; larger tap targets */
+.dss-table thead th,
+.dss-table tbody td{
+  border:1px solid #e2e8f0;
+  padding:14px 14px;         /* ⬅️ row height boost */
+  line-height:1.25;
+}
+
+/* Header look */
+.dss-table thead th{
+  background:#f8fafc;
+  text-align:center;
+  font-weight:700;
+}
+
+/* First two columns sized & aligned like the screenshot */
+.dss-table thead th:nth-child(1),
+.dss-table tbody td:nth-child(1){ width:50px; text-align:center; }
+.dss-table thead th:nth-child(2),
+.dss-table tbody td:nth-child(2){ width:100px; text-align:left; }
+
+/* All numeric columns get a comfortable width and right alignment */
+.dss-table thead th:not(:nth-child(-n+2)),
+.dss-table tbody td:not(:nth-child(-n+2)){
+  width:120px;               /* ⬅️ per-column width */
+  text-align:right;
+}
+
+/* TOTAL row emphasis */
+.dss-strong{
+  font-weight:700;
+  background:#f8fafc;
+}
+

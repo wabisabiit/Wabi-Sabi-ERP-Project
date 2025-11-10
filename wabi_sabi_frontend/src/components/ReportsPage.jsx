@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportsPage.css";
+import { listDaywiseSalesSummary } from "../api/client";
 
 /* ───────────────── Report Data Constants ───────────────── */
 
@@ -287,7 +288,21 @@ export function DayWiseSalesSummaryPage() {
   const [locOpen, setLocOpen] = useState(false);
   const [selectedLocs, setSelectedLocs] = useState([]);
 
+  // NEW state for data + UX
+  const [rows, setRows] = useState([]);
+  const [totals, setTotals] = useState({ cash: "0.00", credit_notes: 0, total: "0.00" });
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
+
+  // init default dates to today
+  React.useEffect(() => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    setFromDate(iso);
+    setToDate(iso);
+  }, []);
 
   const toggleVoucher = (v) => {
     setVoucherTypes((prev) =>
@@ -302,6 +317,43 @@ export function DayWiseSalesSummaryPage() {
       setSelectedLocs((p) =>
         p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
       );
+    }
+  };
+
+  // helper to show DD/MM/YYYY like your screenshot
+  const dmy = (iso) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  };
+
+  // --- SEARCH handler (calls backend) ---
+  const onSearch = async () => {
+    if (!fromDate || !toDate) {
+      alert("Please select From Date and To Date.");
+      return;
+    }
+    setLoading(true);
+    try {
+      // Backend expects a single 'location' text (icontains).
+      // If user picked exactly 1 location, pass it; else omit to include all.
+      const locationParam = selectedLocs.length === 1 ? selectedLocs[0] : undefined;
+
+      const res = await listDaywiseSalesSummary({
+        date_from: fromDate,
+        date_to: toDate,
+        location: locationParam,
+      });
+
+      setRows(res?.rows || []);
+      setTotals(res?.totals || { cash: "0.00", credit_notes: 0, total: "0.00" });
+    } catch (e) {
+      console.error(e);
+      setRows([]);
+      setTotals({ cash: "0.00", credit_notes: 0, total: "0.00" });
+      alert("Failed to load Day-wise Sales Summary.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -407,13 +459,148 @@ export function DayWiseSalesSummaryPage() {
         </div>
 
         <div className="rp-actions">
-          <button className="btn btn-primary" type="button">Search</button>
-          <button className="btn btn-success" type="button">PDF</button>
-          <button className="btn btn-warning" type="button">Excel</button>
+          <button className="btn btn-primary" type="button" onClick={onSearch} disabled={loading}>
+            {loading ? "Loading…" : "Search"}
+          </button>
+          <button className="btn btn-success" type="button" disabled>PDF</button>
+          <button className="btn btn-warning" type="button" disabled>Excel</button>
         </div>
       </div>
 
-      <div className="rp-surface rp-result-surface" />
+      {/* Results */}
+      <div className="rp-surface rp-result-surface">
+        <div className="dss-wrap">
+          {/* Letterhead (organization & address removed as requested) */}
+          <div className="dss-letterhead">
+            <div className="dss-title">Daily Sales Summary</div>
+            <div className="dss-dates">
+              {fromDate && toDate ? `${dmy(fromDate)} to ${dmy(toDate)}` : ""}
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="dss-table-scroll">
+            <table className="dss-table">
+              <thead>
+                <tr>
+                  <th>Sr.No</th>
+                  <th>Sales Date</th>
+                  <th>Gross<br />Amount</th>
+                  <th>Tax<br />Amount</th>
+                  <th>CGST</th>
+                  <th>SGST</th>
+                  <th>IGST</th>
+                  <th>5%</th>
+                  <th>12%</th>
+                  <th>18%</th>
+                  <th>28%</th>
+                  <th>CESS</th>
+                  <th>Discount</th>
+                  <th>Bank</th>
+                  <th>Cash</th>
+                  <th>Credit<br />Note</th>
+                  <th>Coupon<br />Discount</th>
+                  <th>Additional<br />Charge</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows && rows.length > 0 ? (
+                  <>
+                    {rows.map((r) => (
+                      <tr key={`${r.sr_no}-${r.sales_date}`}>
+                        <td>{r.sr_no}</td>
+                        <td>{dmy(r.sales_date)}</td>
+                        <td>{r.gross_amount ?? ""}</td>
+                        <td>{r.tax_amount ?? ""}</td>
+                        <td>{r.cgst ?? ""}</td>
+                        <td>{r.sgst ?? ""}</td>
+                        <td>{r.igst ?? ""}</td>
+                        <td>{r.tax_5 ?? ""}</td>
+                        <td>{r.tax_12 ?? ""}</td>
+                        <td>{r.tax_18 ?? ""}</td>
+                        <td>{r.tax_28 ?? ""}</td>
+                        <td>{r.cess ?? ""}</td>
+                        <td>{r.discount ?? ""}</td>
+                        <td>{r.bank ?? ""}</td>
+                        <td>{r.cash ?? ""}</td>
+                        <td>{r.credit_notes ?? ""}</td>
+                        <td>{r.coupon_discount ?? ""}</td>
+                        <td>{r.additional_charge ?? ""}</td>
+                        <td>{r.total ?? ""}</td>
+                      </tr>
+                    ))}
+
+                    {/* TOTAL from API */}
+                    <tr>
+                      <td className="dss-strong" colSpan={2}>TOTAL</td>
+                      <td>{totals?.gross_amount ?? ""}</td>
+                      <td>{totals?.tax_amount ?? ""}</td>
+                      <td>{totals?.cgst ?? ""}</td>
+                      <td>{totals?.sgst ?? ""}</td>
+                      <td>{totals?.igst ?? ""}</td>
+                      <td>{totals?.tax_5 ?? ""}</td>
+                      <td>{totals?.tax_12 ?? ""}</td>
+                      <td>{totals?.tax_18 ?? ""}</td>
+                      <td>{totals?.tax_28 ?? ""}</td>
+                      <td>{totals?.cess ?? ""}</td>
+                      <td>{totals?.discount ?? ""}</td>
+                      <td>{totals?.bank ?? ""}</td>
+                      <td>{totals?.cash ?? ""}</td>
+                      <td>{totals?.credit_notes ?? ""}</td>
+                      <td>{totals?.coupon_discount ?? ""}</td>
+                      <td>{totals?.additional_charge ?? ""}</td>
+                      <td>{totals?.total ?? ""}</td>
+                    </tr>
+                  </>
+                ) : (
+                  /* Fallback: blank template rows per day, when no data returned */
+                  <>
+                    {(() => {
+                      if (!fromDate || !toDate) {
+                        return (
+                          <tr className="cws-empty">
+                            <td colSpan={19}>Select dates to view</td>
+                          </tr>
+                        );
+                      }
+                      const start = new Date(fromDate);
+                      const end = new Date(toDate);
+                      const out = [];
+                      let i = 1;
+                      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                        out.push(
+                          <tr key={iso}>
+                            <td>{i++}</td>
+                            <td>{dmy(iso)}</td>
+                            {/* remaining 17 numeric columns left blank */}
+                            <td></td><td></td><td></td><td></td><td></td>
+                            <td></td><td></td><td></td><td></td><td></td>
+                            <td></td><td></td><td></td><td></td><td></td>
+                            <td></td><td></td>
+                          </tr>
+                        );
+                      }
+                      return out;
+                    })()}
+
+                    <tr>
+                      <td className="dss-strong" colSpan={2}>TOTAL</td>
+                      {/* 17 blanks in fallback */}
+                      <td></td><td></td><td></td><td></td><td></td>
+                      <td></td><td></td><td></td><td></td><td></td>
+                      <td></td><td></td><td></td><td></td><td></td>
+                      <td></td><td></td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -457,8 +644,8 @@ export function TaxWiseSalesSummaryPage() {
 
   const [voucherOpen, setVoucherOpen] = useState(false);
   const [voucherTypes, setVoucherTypes] = useState(["Invoice", "POS"]);
-  const toggleVoucher = (v) =>
-    setVoucherTypes((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
+  const toggleVoucher = (s) =>
+    setVoucherTypes((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
 
   const [locOpen, setLocOpen] = useState(false);
   const [selectedLocs, setSelectedLocs] = useState([]);

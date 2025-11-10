@@ -179,6 +179,8 @@ export default {
   redeemCoupon,
   asArray,
 
+  listDaywiseSalesSummary,
+
 };
 
 function sanitizeBarcode(v = "") {
@@ -461,4 +463,14 @@ export async function redeemCoupon(code, payload) {
 function asArray(payload) {
   if (Array.isArray(payload)) return payload;
   return payload?.results || payload?.data || payload?.items || [];
+}
+
+
+// --- Reports ---
+export async function listDaywiseSalesSummary(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.date_from) sp.append("date_from", params.date_from);
+  if (params.date_to) sp.append("date_to", params.date_to);
+  if (params.location) sp.append("location", params.location);
+  return http(`/reports/daywise-sales/?${sp.toString()}`);
 }
