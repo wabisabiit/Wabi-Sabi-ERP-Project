@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/ReportCategoryWiseSales.css";
 import { useNavigate } from "react-router-dom";
 
-/* ---------- Demo masters ---------- */
+const API_BASE = (import.meta?.env?.VITE_API_BASE) || "http://127.0.0.1:8000/api";
+
+/* ---------- Demo masters (kept for UX; filtering still applies) ---------- */
 const ALL_LOCATIONS = [
   "WABI SABI SUSTAINABILITY LLP",
   "Brands 4 less – Ansal Plaza",
@@ -33,19 +35,6 @@ const SUBCAT_MAP = {
   Footwear: ["Sneakers", "Sandals"],
 };
 
-const RAW_ROWS = [
-  { sr: 1, category: "Accessories",           location: "WABI SABI SUSTAINABILITY LLP", qty: 770,   taxable: 86193.01,  tax: 4309.64,  total: 90502.65 },
-  { sr: 2, category: "Boys & Girls - Blouse", location: "WABI SABI SUSTAINABILITY LLP", qty: 77,    taxable: 6914.29,   tax: 345.72,   total: 7260.00  },
-  { sr: 3, category: "Boys & Girls - Dress",  location: "WABI SABI SUSTAINABILITY LLP", qty: 340,   taxable: 55390.43,  tax: 2769.57,  total: 58160.00 },
-  { sr: 4, category: "Boys & Girls - Pant",   location: "WABI SABI SUSTAINABILITY LLP", qty: 114,   taxable: 18304.75,  tax: 915.25,   total: 19220.00 },
-  { sr: 5, category: "Boys & Girls - Shirt",  location: "WABI SABI SUSTAINABILITY LLP", qty: 48,    taxable: 5733.33,   tax: 286.67,   total: 6020.00  },
-  { sr: 6, category: "Boys & Girls - Shorts", location: "WABI SABI SUSTAINABILITY LLP", qty: 180,   taxable: 13295.82,  tax: 664.78,   total: 13960.60 },
-  { sr: 7, category: "Boys & Girls - T-Shirt",location:"WABI SABI SUSTAINABILITY LLP", qty: 310,   taxable: 20039.81,  tax: 1001.96,  total: 21041.77 },
-  { sr: 8, category: "Children - Mix",        location: "WABI SABI SUSTAINABILITY LLP", qty: 40,    taxable: 3866.67,   tax: 193.33,   total: 4060.00  },
-  { sr: 9, category: "Clothing",              location: "WABI SABI SUSTAINABILITY LLP", qty: 51197, taxable: 8582479.41, tax: 445332.08,total: 9027811.49 },
-  { sr:10, category: "Footwear",              location: "WABI SABI SUSTAINABILITY LLP", qty: 943,   taxable: 545353.20, tax: 44167.65, total: 589520.85 },
-];
-
 /* Default visible columns (blue in popup) */
 const DEFAULT_VISIBLE = ["sr", "category", "location", "qty", "taxable", "tax", "total"];
 
@@ -53,13 +42,13 @@ const COL_META = [
   { key: "sr",       label: "Sr No",           align: "left",  width: 70 },
   { key: "category", label: "Category Name",   align: "left",  width: 240 },
   { key: "location", label: "Location",        align: "left",  width: 320 },
-  { key: "qty",      label: "Qty",             align: "right", width: 120, format: v => v.toLocaleString() },
-  { key: "taxable",  label: "Taxable Amount",  align: "right", width: 170, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "tax",      label: "Tax Amount",      align: "right", width: 150, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "total",    label: "Total Amount",    align: "right", width: 170, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "cgst",     label: "CGST",            align: "right", width: 140, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "sgst",     label: "SGST",            align: "right", width: 140, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
-  { key: "igst",     label: "IGST",            align: "right", width: 140, format: v => v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "qty",      label: "Qty",             align: "right", width: 120, format: v => Number(v ?? 0).toLocaleString() },
+  { key: "taxable",  label: "Taxable Amount",  align: "right", width: 170, format: v => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "tax",      label: "Tax Amount",      align: "right", width: 150, format: v => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "total",    label: "Total Amount",    align: "right", width: 170, format: v => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "cgst",     label: "CGST",            align: "right", width: 140, format: v => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "sgst",     label: "SGST",            align: "right", width: 140, format: v => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
+  { key: "igst",     label: "IGST",            align: "right", width: 140, format: v => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) },
 ];
 
 export default function ReportCategoryWiseSales() {
@@ -80,9 +69,14 @@ export default function ReportCategoryWiseSales() {
   const [catSelected, setCatSelected] = useState("");
   const [catQ, setCatQ] = useState("");
 
-  /* Sub Category */
+  /* Sub Category (UI only; not sent to API) */
   const [subQ, setSubQ] = useState("");
   const [selectedSub, setSelectedSub] = useState("");
+
+  /* Table data (REAL) */
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   /* Table controls */
   const [pageSize, setPageSize] = useState(10);
@@ -112,13 +106,14 @@ export default function ReportCategoryWiseSales() {
     return hit ? hit.filter(s => s.toLowerCase().includes(subQ.trim().toLowerCase())) : [];
   }, [catSelected, subQ]);
 
+  /* Apply client search on fetched rows */
   const appliedRows = useMemo(() => {
     const s = search.trim().toLowerCase();
-    return RAW_ROWS.filter(r => {
-      const matchText = `${r.category} ${r.location} ${r.qty} ${r.taxable} ${r.tax} ${r.total}`.toLowerCase();
+    return rows.filter(r => {
+      const matchText = `${r.category} ${r.location} ${r.qty} ${r.taxable ?? ""} ${r.tax ?? ""} ${r.total ?? ""}`.toLowerCase();
       return s ? matchText.includes(s) : true;
     });
-  }, [search]);
+  }, [search, rows]);
 
   /* Open one popover at a time */
   const toggleOpen = (key) => setOpenKey(prev => (prev === key ? null : key));
@@ -141,6 +136,43 @@ export default function ReportCategoryWiseSales() {
       document.removeEventListener("keydown", onEsc);
     };
   }, []);
+
+  /* Fetch data whenever filters change */
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setErrorMsg("");
+      try {
+        const sp = new URLSearchParams();
+        sp.append("date_from", fromDate);
+        sp.append("date_to", toDate);
+        if (catSelected) sp.append("category", catSelected);
+        // multi-locations
+        (selectedLocs || []).forEach(l => sp.append("location", l));
+
+        const res = await fetch(`${API_BASE}/reports/category-wise-sales/?${sp.toString()}`, {
+          headers: { Accept: "application/json" },
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`${res.status} ${res.statusText} – ${txt}`);
+        }
+        const data = await res.json();
+
+        // rows from API, ensure sr present (backend already sets sr)
+        const r = Array.isArray(data?.rows) ? data.rows : [];
+        setRows(r);
+      } catch (err) {
+        setRows([]);
+        setErrorMsg(err?.message || "Failed to load report.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    // only fetch when dates are valid
+    if (fromDate && toDate) fetchData();
+  }, [fromDate, toDate, selectedLocs, catSelected]);
 
   /* Actions */
   const toggleLoc = (loc) => {
@@ -166,12 +198,18 @@ export default function ReportCategoryWiseSales() {
     setVisibleCols((p) => (p.includes(key) ? p.filter((k) => k !== key) : [...p, key]));
   const restoreCols = () => setVisibleCols(DEFAULT_VISIBLE.slice());
 
-  /* Single page (demo) */
+  /* Single page */
   const pageRows = appliedRows.slice(0, pageSize);
 
   const keyLink = (fn) => (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
   };
+
+  /* Totals based on fetched rows */
+  const totalQty = useMemo(() => pageRows.reduce((a,b)=> a + Number(b.qty || 0), 0), [pageRows]);
+  const totalTaxable = 0; // kept empty in UI
+  const totalTax = 0;     // kept empty in UI
+  const totalAmount = useMemo(() => pageRows.reduce((a,b)=> a + Number(b.total || 0), 0), [pageRows]);
 
   return (
     <div className="cws-wrap">
@@ -444,63 +482,71 @@ export default function ReportCategoryWiseSales() {
 
       {/* Table */}
       <div className="cws-table-wrap">
-        <table className="cws-table">
-          <thead>
-            <tr>
-              {COL_META.filter(c=>isVisible(c.key)).map(c=>(
-                <th key={c.key} style={{textAlign:c.align, width:c.width}}>{c.label}</th>
+        {loading && <div className="cws-loading">Loading…</div>}
+        {(!loading && errorMsg) && <div className="cws-error">{errorMsg}</div>}
+
+        {!loading && !errorMsg && (
+          <table className="cws-table">
+            <thead>
+              <tr>
+                {COL_META.filter(c=>isVisible(c.key)).map(c=>(
+                  <th key={c.key} style={{textAlign:c.align, width:c.width}}>{c.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((r) => (
+                <tr key={`${r.sr}-${r.category}-${r.location}`}>
+                  {COL_META.filter(c=>isVisible(c.key)).map(c=>{
+                    let raw = r[c.key];
+
+                    // derive CGST/SGST/IGST
+                    if (c.key === "cgst") raw = r.tax ? Number(r.tax)/2 : 0;
+                    if (c.key === "sgst") raw = r.tax ? Number(r.tax)/2 : 0;
+                    if (c.key === "igst") raw = 0;
+
+                    // keep Taxable/Tax blank if backend sent "" or null
+                    if ((c.key === "taxable" || c.key === "tax") && (raw === "" || raw === null)) {
+                      return <td key={c.key} style={{textAlign:c.align}}></td>;
+                    }
+
+                    const val = c.format ? c.format(raw ?? 0) : (raw ?? "");
+                    return <td key={c.key} style={{textAlign:c.align}}>{val}</td>;
+                  })}
+                </tr>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map((r) => (
-              <tr key={r.sr}>
-                {COL_META.filter(c=>isVisible(c.key)).map(c=>{
-                  let raw = r[c.key];
-                  if (c.key === "cgst") raw = r.tax / 2;
-                  if (c.key === "sgst") raw = r.tax / 2;
-                  if (c.key === "igst") raw = 0;
-                  const val = c.format ? c.format(raw ?? "") : (raw ?? "");
-                  return <td key={c.key} style={{textAlign:c.align}}>{val}</td>;
+
+              {/* Totals row */}
+              <tr className="cws-total">
+                {COL_META.filter(c=>isVisible(c.key)).map((c, idx) => {
+                  if (c.key === "qty") {
+                    return <td key={c.key} style={{textAlign:c.align}}>{Number(totalQty).toLocaleString()}</td>;
+                  }
+                  if (c.key === "taxable") {
+                    return <td key={c.key} style={{textAlign:c.align}}></td>;
+                  }
+                  if (c.key === "tax") {
+                    return <td key={c.key} style={{textAlign:c.align}}></td>;
+                  }
+                  if (c.key === "cgst") {
+                    return <td key={c.key} style={{textAlign:c.align}}>{Number(0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
+                  }
+                  if (c.key === "sgst") {
+                    return <td key={c.key} style={{textAlign:c.align}}>{Number(0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
+                  }
+                  if (c.key === "igst") {
+                    return <td key={c.key} style={{textAlign:c.align}}>{Number(0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
+                  }
+                  if (c.key === "total") {
+                    return <td key={c.key} style={{textAlign:c.align}}>{Number(totalAmount).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
+                  }
+                  if (idx === 0) return <td key={c.key} style={{textAlign:"left"}}>Total</td>;
+                  return <td key={c.key} />;
                 })}
               </tr>
-            ))}
-            <tr className="cws-total">
-              {COL_META.filter(c=>isVisible(c.key)).map((c, idx) => {
-                if (c.key === "qty") {
-                  const sum = RAW_ROWS.reduce((a,b)=>a+b.qty,0);
-                  return <td key={c.key} style={{textAlign:c.align}}>{sum.toLocaleString()}</td>;
-                }
-                if (c.key === "taxable") {
-                  const sum = RAW_ROWS.reduce((a,b)=>a+b.taxable,0);
-                  return <td key={c.key} style={{textAlign:c.align}}>{sum.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
-                }
-                if (c.key === "tax") {
-                  const sum = RAW_ROWS.reduce((a,b)=>a+b.tax,0);
-                  return <td key={c.key} style={{textAlign:c.align}}>{sum.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
-                }
-                if (c.key === "cgst") {
-                  const sum = RAW_ROWS.reduce((a,b)=>a+(b.tax/2),0);
-                  return <td key={c.key} style={{textAlign:c.align}}>{sum.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
-                }
-                if (c.key === "sgst") {
-                  const sum = RAW_ROWS.reduce((a,b)=>a+(b.tax/2),0);
-                  return <td key={c.key} style={{textAlign:c.align}}>{sum.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
-                }
-                if (c.key === "igst") {
-                  const sum = 0;
-                  return <td key={c.key} style={{textAlign:c.align}}>{sum.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
-                }
-                if (c.key === "total") {
-                  const sum = RAW_ROWS.reduce((a,b)=>a+b.total,0);
-                  return <td key={c.key} style={{textAlign:c.align}}>{sum.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>;
-                }
-                if (idx === 0) return <td key={c.key} style={{textAlign:"left"}}>Total</td>;
-                return <td key={c.key} />;
-              })}
-            </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Pagination (single page) */}
@@ -511,7 +557,7 @@ export default function ReportCategoryWiseSales() {
       </div>
 
       <div className="cws-entries">
-        Showing 1 to {Math.min(pageRows.length, RAW_ROWS.length)} of {RAW_ROWS.length} entries
+        Showing 1 to {Math.min(pageRows.length, appliedRows.length)} of {appliedRows.length} entries
       </div>
     </div>
   );

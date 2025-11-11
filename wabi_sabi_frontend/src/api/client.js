@@ -181,6 +181,7 @@ export default {
 
   listDaywiseSalesSummary,
   listProductWiseSales,
+  listCategoryWiseSales,       // <-- ADDED export
 };
 
 function sanitizeBarcode(v = "") {
@@ -190,7 +191,6 @@ function sanitizeBarcode(v = "") {
 
 // src/api/client.js  (add this below the existing helpers/exports)
 
-/* ========= Product lookup by barcode (used by SearchBar) ========= */
 /* ========= Product lookup by barcode (used by SearchBar) ========= */
 export async function getProductByBarcode(barcode) {
   const url = `/products/by-barcode/${encodeURIComponent(barcode)}/`;
@@ -494,4 +494,20 @@ export async function listProductWiseSales(params = {}) {
   });
   const qs = sp.toString();
   return http(`/reports/product-wise-sales/${qs ? `?${qs}` : ""}`);
+}
+
+/* --- NEW: Category Wise Sales Summary (real) --- */
+export async function listCategoryWiseSales(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.date_from) sp.append("date_from", params.date_from);
+  if (params.date_to) sp.append("date_to", params.date_to);
+  if (params.category) sp.append("category", params.category);
+  // multi-location
+  if (Array.isArray(params.location) && params.location.length) {
+    params.location.forEach(l => sp.append("location", l));
+  } else if (typeof params.location === "string" && params.location.trim() !== "") {
+    sp.append("location", params.location.trim());
+  }
+  const qs = sp.toString();
+  return http(`/reports/category-wise-sales/${qs ? `?${qs}` : ""}`);
 }

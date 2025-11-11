@@ -2,8 +2,10 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from django.db.models import Sum, F, DecimalField, ExpressionWrapper, Count, Q
-from django.db.models.functions import TruncDate
+from django.db.models import (
+    Sum, F, DecimalField, ExpressionWrapper, Count, Q, IntegerField, Value
+)
+from django.db.models.functions import TruncDate, Coalesce
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -45,10 +47,6 @@ class DaywiseSalesSummary(APIView):
         loc = (request.GET.get("location") or "").strip()
 
         # ---- CASH (sum of line amounts per day) ----
-        line_amount = ExpressionWrapper(
-            F("sp") * F("qty"),
-            output_field=DecimalField(max_digits=16, decimal_places=2),
-        )
         sl_qs = (
             SaleLine.objects
             .select_related("sale")
@@ -61,7 +59,7 @@ class DaywiseSalesSummary(APIView):
         cash_rows = (
             sl_qs.annotate(sday=TruncDate("sale__transaction_date"))
                  .values("sday")
-                 .annotate(cash=Sum(line_amount))
+                 .annotate(cash=Sum(F("sp") * F("qty"), output_field=DecimalField(max_digits=16, decimal_places=2)))
         )
         cash_by_day = {r["sday"]: (r["cash"] or Decimal("0.00")) for r in cash_rows}
 
@@ -118,35 +116,10 @@ class DaywiseSalesSummary(APIView):
         }, status=status.HTTP_200_OK)
 
 
-# ========= NEW: Product Wise Sales =========
+# ========= Product Wise Sales =========
 class ProductWiseSalesReport(APIView):
     """
-    GET /api/reports/product-wise-sales/
-    Query params (all optional):
-      q           -> free text across barcode, product name, customer, store
-      date_from   -> YYYY-MM-DD
-      date_to     -> YYYY-MM-DD
-      location    -> multi allowed (?location=A&location=B) – 'All' to ignore
-      department  -> maps to TaskItem.department
-      category    -> same as department (accepted for UI parity)
-      brand       -> if not 'B4L', returns none (brand fixed to B4L)
-      product     -> partial search (>=3 chars) over barcode/name
-      page        -> default 1
-      page_size   -> default 50
-      all         -> 1|true => return all rows (no pagination)
-    Rules:
-      - department from taskmaster
-      - category is same as department
-      - subCategory, subBrand are blank
-      - brand 'B4L'
-      - itemcode is barcode
-      - lastPurchaseDate = sale date
-      - lastPurchaseQty = 0
-      - lastSalesDate = sale date
-      - location = sale.store
-      - qtySold = 1
-      - customer name + mobile from backend
-      - show all barcodes sold (i.e., SaleLine rows)
+    (unchanged from your version)
     """
 
     def _format_ddmmyyyy(self, d):
@@ -274,5 +247,127 @@ class ProductWiseSalesReport(APIView):
 
         return Response(
             {"results": rows, "total": total, "page": page, "page_size": page_size},
+            status=status.HTTP_200_OK
+        )
+
+
+# ========= Category Wise Sales (REAL DATA) =========
+class CategoryWiseSalesSummary(APIView):
+    """
+    GET /api/reports/category-wise-sales/
+    Query params (all optional unless noted):
+      - date_from (YYYY-MM-DD)  REQUIRED
+      - date_to   (YYYY-MM-DD)  REQUIRED
+      - location  (multi allowed; ?location=A&location=B) — icontains if single
+      - category  (exact match to TaskItem.category; optional)
+
+    Output rows (per your UI keys):
+      { sr, category, location, qty, taxable, tax, total }
+
+    Rules:
+      - Category comes from TaskItem.category
+      - Qty is number of products sold for that category at that location (sum of SaleLine.qty)
+      - Total sums SaleLine.sp * qty, across all barcodes that share the same TaskItem
+      - Taxable and Tax are empty strings for each row (as requested)
+    """
+
+    def get(self, request):
+        # --- validate dates ---
+        df = _parse_date(request.GET.get("date_from", ""))
+        dt = _parse_date(request.GET.get("date_to", ""))
+        if not df or not dt or df > dt:
+            return Response(
+                {"detail": "Provide valid date_from and date_to (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # base queryset
+        qs = (
+            SaleLine.objects
+            .select_related("sale", "product", "product__task_item")
+            .filter(
+                sale__transaction_date__date__gte=df,
+                sale__transaction_date__date__lte=dt,
+            )
+        )
+
+        # optional: category filter (exact)
+        cat = (request.GET.get("category") or "").strip()
+        if cat:
+            qs = qs.filter(product__task_item__category=cat)
+
+        # locations
+        locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
+        if locs and "All" not in locs:
+            if len(locs) == 1:
+                # fuzzy match for a single location (the UI passes names with symbols like en-dash)
+                qs = qs.filter(sale__store__icontains=locs[0])
+            else:
+                # exact match when multiple provided
+                qs = qs.filter(sale__store__in=locs)
+
+        # ⚠️ FIX: Annotate each line with its amount first, then aggregate
+        qs = qs.annotate(
+            line_amount=ExpressionWrapper(
+                F("sp") * F("qty"),
+                output_field=DecimalField(max_digits=16, decimal_places=2)
+            )
+        )
+
+        # Now aggregate by category + store
+        agg = (
+            qs.values("product__task_item__category", "sale__store")
+              .annotate(
+                  qty=Coalesce(Sum("qty"), Value(0, output_field=IntegerField())),
+                  total=Coalesce(
+                      Sum("line_amount"),  # ✅ Now we sum the already-computed field
+                      Value(0, output_field=DecimalField(max_digits=16, decimal_places=2)),
+                  ),
+              )
+              .order_by("product__task_item__category", "sale__store")
+        )
+
+        # build rows
+        rows = []
+        sr = 1
+        total_qty = 0
+        total_amount = Decimal("0.00")
+
+        for rec in agg:
+            category = rec["product__task_item__category"] or ""
+            location = rec["sale__store"] or ""
+            qty = int(rec["qty"] or 0)
+            total = Decimal(rec["total"] or 0)
+
+            rows.append({
+                "sr": sr,
+                "category": category,
+                "location": location,
+                "qty": qty,
+                # keep these blank in UI
+                "taxable": "",   # per requirement
+                "tax": "",       # per requirement
+                "total": float(total),  # numeric for easy formatting on UI
+            })
+            sr += 1
+            total_qty += qty
+            total_amount += total
+
+        return Response(
+            {
+                "filters": {
+                    "date_from": df.isoformat(),
+                    "date_to": dt.isoformat(),
+                    "locations": locs,
+                    "category": cat,
+                },
+                "rows": rows,
+                "totals": {
+                    "qty": total_qty,
+                    "taxable": "",
+                    "tax": "",
+                    "total": f"{total_amount:.2f}",
+                },
+            },
             status=status.HTTP_200_OK
         )
