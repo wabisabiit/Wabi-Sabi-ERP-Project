@@ -6,7 +6,7 @@ from .models import MasterPack, MasterPackLine
 from .models import (
     MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,Coupon, GeneratedCoupon
 )
-
+from .models import Discount
 
 
 @admin.register(Product)
@@ -171,3 +171,43 @@ class GeneratedCouponAdmin(admin.ModelAdmin):
     list_display = ("code", "coupon", "price", "status", "issued_by", "assigned_to", "customer_no", "created_date", "redemption_date", "redeemed_invoice_no")
     list_filter = ("status", "issued_by", "coupon")
     search_fields = ("code", "redeemed_invoice_no", "customer_no")
+
+@admin.register(Discount)
+class DiscountAdmin(admin.ModelAdmin):
+    list_display = (
+        "title", "code", "mode", "applicable",
+        "value_type", "value", "start_date", "end_date", "is_active",
+    )
+    list_filter  = ("mode", "applicable", "value_type", "start_date", "end_date")
+    search_fields = ("title", "code", "applies_category", "branches__name", "branches__code")
+    date_hierarchy = "start_date"
+    filter_horizontal = ("branches",)   # easy multi-select for locations
+    readonly_fields = ("created_at",)
+
+    fieldsets = (
+        ("Basic", {
+            "fields": ("title", "code", "branches", "applies_category"),
+        }),
+        ("How it applies", {
+            "fields": ("applicable", "mode"),
+        }),
+        ("Discount Value", {
+            "fields": ("value_type", "value"),
+            "description": "Percentage (%) or fixed amount (₹).",
+        }),
+        ("Range Wise (optional)", {
+            "fields": ("range_min_amount", "range_max_amount"),
+            "classes": ("collapse",),
+        }),
+        ("Buy X Get Y (optional)", {
+            "fields": ("x_qty", "y_qty"),
+            "classes": ("collapse",),
+        }),
+        ("Product at Fix Amount (optional)", {
+            "fields": ("min_amount_for_fix",),
+            "classes": ("collapse",),
+        }),
+        ("Validity", {
+            "fields": ("start_date", "end_date", "created_at"),
+        }),
+    )

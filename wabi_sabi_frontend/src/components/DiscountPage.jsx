@@ -1,16 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";          // ⬅️ add
+import { useNavigate } from "react-router-dom";
 import "../styles/DiscountPage.css";
-
-/** ======= Demo data (empty like screenshot) ======= */
-const ROWS = [];
+import { listDiscounts, deleteDiscount } from "../api/client";
 
 /** Filters */
 const STATUS_OPTIONS = ["All", "ARCHIVE", "ACTIVE", "DEACTIVE"];
 const PAGE_SIZE_OPTIONS = [15, 25, 50, 100, 200, 500, "All"];
 const RANGE_OPTIONS = ["Current Year", "Last Month", "This Month", "Last Week", "This Week", "Today"];
 
-/** Locations */
+/** Locations (UI only; server filtering not wired here) */
 const LOCATION_OPTIONS = [
   "Brands4Less - Tilak Nagar",
   "Brands4Less - M3M Urbana",
@@ -126,30 +124,87 @@ export default function DiscountPage() {
   const [pageSize, setPageSize] = useState(15);
   const [locations, setLocations] = useState([]);
 
-  const navigate = useNavigate();                         // ⬅️ add
+  const [rows, setRows] = useState([]);
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  async function load() {
+    setLoading(true);
+    setMsg("");
+    try {
+      const data = await listDiscounts();
+      setRows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setMsg(e.message || "Failed to load discounts.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
-    let rows = ROWS;
-    if (status !== "All") rows = rows.filter((r) => (r.status || "").toUpperCase() === status);
+    let rs = rows.slice();
+
+    // Status filter: map to API status ("Active"/"Expired")
+    if (status !== "All") {
+      const want = status.toUpperCase();
+      rs = rs.filter((r) => (r.status || "").toUpperCase() === want);
+    }
+
+    // Text query
     const s = query.trim().toLowerCase();
     if (s) {
-      rows = rows.filter((r) =>
-        [r.title, r.createdOn, r.validity, r.discountType, r.createdBy, r.status].some((v) =>
-          String(v || "").toLowerCase().includes(s)
-        )
+      rs = rs.filter((r) =>
+        [
+          r.title,
+          r.created_at,
+          String(r.validity),
+          r.mode,
+          r.status,
+          r.code,
+          r.value_type,
+          r.applies_category,
+        ].some((v) => String(v || "").toLowerCase().includes(s))
       );
     }
+
+    // Location “UI” filter (client-side only; checks branch names)
     if (locations.length > 0) {
-      rows = rows.filter((r) =>
-        locations.some((loc) => String(r.title || "").toLowerCase().includes(loc.toLowerCase()))
-      );
+      rs = rs.filter((r) => {
+        const names = (r.branches || []).map((b) => b.name?.toLowerCase());
+        return locations.some((loc) => names.includes(String(loc).toLowerCase()));
+      });
     }
-    return rows;
-  }, [status, query, locations]);
+
+    return rs;
+  }, [rows, status, query, locations]);
 
   const showingFrom = filtered.length ? 1 : 0;
-  const limit = pageSize === "All" ? filtered.length || 0 : Number(pageSize);
+  const limit = pageSize === "All" ? (filtered.length || 0) : Number(pageSize);
   const showingTo = Math.min(filtered.length, limit);
+
+  const mapMode = (m) =>
+    m === "NORMAL" ? "Normal" :
+    m === "RANGE" ? "Range wise" :
+    m === "BUYXGETY" ? "Buy X Get Y" :
+    "Product at Fix Amount";
+
+  const fmtDisc = (r) =>
+    r.value_type === "PERCENT" ? `${Number(r.value).toFixed(2)}%` : `₹${Number(r.value).toFixed(2)}`;
+
+  async function onDelete(id) {
+    if (!window.confirm("Delete this discount?")) return;
+    try {
+      await deleteDiscount(id);
+      setMsg("Deleted from database.");
+      await load();
+    } catch (e) {
+      setMsg(e.message || "Unable to delete.");
+    }
+  }
 
   return (
     <div className="dp-wrap">
@@ -157,18 +212,16 @@ export default function DiscountPage() {
       <div className="dp-top">
         <div className="dp-left">
           <div className="dp-title">Discount</div>
-          <span className="material-icons dp-home" title="Home">
-            home
-          </span>
+          <span className="material-icons dp-home" title="Home">home</span>
         </div>
         <Select value={range} onChange={setRange} options={RANGE_OPTIONS} width={160} ariaLabel="Date Range" />
       </div>
 
-      {/* summary cards */}
+      {/* summary cards (kept as-is, demo numbers) */}
       <div className="dp-cards">
         {[
-          { n: 0, t: "Total Coupons" },
-          { n: 0, t: "Active Coupons" },
+          { n: rows.length || 0, t: "Total Coupons" },
+          { n: (rows.filter(r => r.status === "Active").length) || 0, t: "Active Coupons" },
           { n: 0, t: "Order with Coupons" },
           { n: 1, t: "Order without Coupons" },
           { n: 0, t: "Revenue from Coupons" },
@@ -183,7 +236,7 @@ export default function DiscountPage() {
 
       {/* main card */}
       <div className="dp-card box">
-        {/* toolbar (exact order like screenshot) */}
+        {/* toolbar */}
         <div className="dp-toolbar">
           <Select value={status} onChange={setStatus} options={STATUS_OPTIONS} width={110} ariaLabel="Status" />
 
@@ -204,11 +257,13 @@ export default function DiscountPage() {
           <LocationMultiSelect value={locations} onChange={setLocations} options={LOCATION_OPTIONS} />
 
           <button className="dp-btn primary" onClick={() => navigate("/crm/discount/new")}>
-            {/* ⬆️ navigate to New Discount */}
             <span className="material-icons">add</span>
             <span>New Discount</span>
           </button>
         </div>
+
+        {msg && <div className="alert info" style={{ marginBottom: 12 }}>{msg}</div>}
+        {loading && <div className="muted" style={{ padding: 12 }}>Loading…</div>}
 
         {/* table */}
         <div className="table-wrap">
@@ -233,33 +288,28 @@ export default function DiscountPage() {
                 <tr key={r.id || idx}>
                   <td className="col-sr">{idx + 1}</td>
                   <td>{r.title}</td>
-                  <td>{r.createdOn}</td>
-                  <td>{r.validity}</td>
-                  <td>{r.orders ?? 0}</td>
-                  <td>{r.revenue ?? 0}</td>
-                  <td>{r.discount ?? "-"}</td>
-                  <td>{r.discountType ?? "-"}</td>
+                  <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                  <td>{r.validity} days</td>
+                  <td></td>
+                  <td></td>
+                  <td>{fmtDisc(r)}</td>
+                  <td>{mapMode(r.mode)}</td>
                   <td>
                     <span className={`dp-status ${String(r.status).toUpperCase() === "ACTIVE" ? "on" : ""}`}>
-                      {r.status ?? "-"}
+                      {r.status}
                     </span>
                   </td>
-                  <td>{r.createdBy ?? "-"}</td>
+                  <td></td>
                   <td className="col-actions">
-                    <button className="ico" title="Edit">
-                      <span className="material-icons">edit</span>
-                    </button>
-                    <button className="ico" title="More">
-                      <span className="material-icons">more_vert</span>
+                    <button className="ico" title="Delete" onClick={() => onDelete(r.id)}>
+                      <span className="material-icons">delete</span>
                     </button>
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={11} className="dp-empty">
-                    No data available in table
-                  </td>
+                  <td colSpan={11} className="dp-empty">No data available in table</td>
                 </tr>
               )}
             </tbody>

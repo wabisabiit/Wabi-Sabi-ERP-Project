@@ -110,7 +110,7 @@
 .nd-btn{height:var(--ctrl-h);padding:0 16px;border-radius:8px;border:1px solid #facc15;background:#fff;font-weight:700;cursor:pointer;color: #facc15;}
 .nd-btn.cancel{color:white;height:35px;background-color: #e11d48;border: none;}
 .nd-btn.clear{background:#facc15;border-color:#eab308;color:#111;height: 35px;}
-.nd-btn.save{background:#0ea5e9;border-color:#0ea5e9;color:#fff;height: 35px;margin-left: 800px;}
+.nd-btn.save{background:#0ea5e9;border-color:#0ea5e9;color:#fff;height: 35px;margin-left: 725px;}
 .nd-btn.primary{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
 .nd-btn.warn{background:#fde68a;color:#111;border-color:#f59e0b}
 

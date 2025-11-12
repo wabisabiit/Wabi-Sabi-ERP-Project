@@ -19,7 +19,7 @@
 /* ===== Summary cards row — COMPACT like screenshot ===== */
 .dp-cards {
   display: grid;
-  grid-template-columns: repeat(6, 156px); /* fixed narrow width per card */
+  grid-template-columns: repeat(6, 150px); /* fixed narrow width per card */
   gap: 14px;                                /* tighter gaps */
   margin-bottom: 12px;
   align-items: start;

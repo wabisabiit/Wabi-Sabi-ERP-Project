@@ -182,6 +182,10 @@ export default {
   listDaywiseSalesSummary,
   listProductWiseSales,
   listCategoryWiseSales,       // <-- ADDED export
+
+  listDiscounts,
+  createDiscount,
+  deleteDiscount,
 };
 
 function sanitizeBarcode(v = "") {
@@ -510,4 +514,33 @@ export async function listCategoryWiseSales(params = {}) {
   }
   const qs = sp.toString();
   return http(`/reports/category-wise-sales/${qs ? `?${qs}` : ""}`);
+}
+
+/* ========= Discounts ========= */
+export async function listDiscounts(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.q) sp.append("q", params.q);
+  const qs = sp.toString();
+  return http(`/discounts/${qs ? `?${qs}` : ""}`);
+}
+
+export async function createDiscount(payload) {
+  // payload must match backend DiscountSerializer
+  // {
+  //   title, code, applicable: "PRODUCT"|"BILL",
+  //   mode: "NORMAL"|"RANGE"|"BUYXGETY"|"FIXPRICE",
+  //   value_type: "PERCENT"|"AMOUNT", value,
+  //   range_min_amount?, range_max_amount?, x_qty?, y_qty?,
+  //   min_amount_for_fix?, applies_category?,
+  //   start_date, end_date,
+  //   branch_ids: [<Location.id>, ...]
+  // }
+  return http(`/discounts/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteDiscount(id) {
+  return http(`/discounts/${id}/`, { method: "DELETE" });
 }

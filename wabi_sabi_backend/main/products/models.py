@@ -2,13 +2,18 @@
 from django.db import models,transaction
 from taskmaster.models import TaskItem,Location   # <-- your TaskItem
 from django.utils import timezone
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator,MinValueValidator
 
 
 
 alnum_validator = RegexValidator(
     regex=r"^[A-Za-z0-9]+$",
     message="Coupon name must be alphanumeric (A–Z, a–z, 0–9) without spaces.",
+)
+
+discount_code_validator = RegexValidator(
+    regex=r"^[A-Z0-9]{6}$",
+    message="Discount Code must be 6 characters, capital letters & digits (e.g. RDF214).",
 )
 
 class Product(models.Model):
@@ -476,3 +481,82 @@ class GeneratedCoupon(models.Model):
             "status", "redemption_date", "redeemed_invoice_no",
             "assigned_to", "customer_no"
         ])
+
+class Discount(models.Model):
+    """
+    Custom discount master. Ignores the UI's 'dummy' fields by design.
+    Applies to a category (TaskItem.category text) and selected branches.
+    """
+    # Basic
+    title = models.CharField(max_length=120)
+    code  = models.CharField(
+        max_length=6, unique=True, db_index=True, validators=[discount_code_validator]
+    )
+
+    # Where applied
+    APPLICABLE_PRODUCT = "PRODUCT"
+    APPLICABLE_BILL    = "BILL"
+    APPLICABLE_CHOICES = [
+        (APPLICABLE_PRODUCT, "Product wise"),
+        (APPLICABLE_BILL, "Entire bill"),
+    ]
+    applicable = models.CharField(max_length=16, choices=APPLICABLE_CHOICES, default=APPLICABLE_PRODUCT)
+
+    # Discount modes
+    MODE_NORMAL   = "NORMAL"     # percent/fixed off
+    MODE_RANGE    = "RANGE"      # active when amount in [min,max]
+    MODE_BUYGET   = "BUYXGETY"   # buy X get Y free
+    MODE_FIXPRICE = "FIXPRICE"   # product at fixed/min amount if threshold reached
+    MODE_CHOICES  = [
+        (MODE_NORMAL,   "Normal"),
+        (MODE_RANGE,    "Range wise"),
+        (MODE_BUYGET,   "Buy X Get Y"),
+        (MODE_FIXPRICE, "Product at Fix Amount"),
+    ]
+    mode = models.CharField(max_length=16, choices=MODE_CHOICES, default=MODE_NORMAL)
+
+    # Value type
+    VAL_PERCENT = "PERCENT"
+    VAL_AMOUNT  = "AMOUNT"
+    VAL_CHOICES = [(VAL_PERCENT, "%"), (VAL_AMOUNT, "₹")]
+    value_type  = models.CharField(max_length=8, choices=VAL_CHOICES, default=VAL_PERCENT)
+    value       = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+
+    # Range-wise guard
+    range_min_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    range_max_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Buy X Get Y
+    x_qty = models.PositiveIntegerField(default=0)  # “Buy X”
+    y_qty = models.PositiveIntegerField(default=0)  # “Get Y”
+
+    # Product at fixed amount — activates when >= threshold
+    min_amount_for_fix = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Applies to category text (TaskItem.category). Leave blank to apply to all.
+    applies_category = models.CharField(max_length=128, blank=True, default="")
+
+    # Branch scope
+    branches = models.ManyToManyField(Location, related_name="discounts")
+
+    # Validity (MANDATORY)
+    start_date = models.DateField()
+    end_date   = models.DateField()
+
+    # Meta
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    @property
+    def is_active(self):
+        today = timezone.localdate()
+        return self.start_date <= today <= self.end_date
+
+    @property
+    def validity_days(self):
+        return (self.end_date - self.start_date).days + 1  # inclusive
+
+    def __str__(self):
+        return f"{self.title} [{self.code}]"

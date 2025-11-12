@@ -1,18 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import "../styles/NewDiscountPage.css";
+import { listLocations, createDiscount } from "../api/client";
 
-/* ---------- Demo data ---------- */
-const BRANCHES = [
-  "WABI SABI SUSTAINABILITY LLP",
-  "Brands 4 less– Rajouri Garden Inside",
-  "Brands loot – Krishna Nagar",
-  "Brands 4 less – IFFCO Chowk",
-  "Brands Loot – Udyog Vihar",
-  "Brands 4 less– Rajouri Garden Outside",
-  "Brand4Less–Tilak Nagar",
-  "Brands 4 less– M3M Urbana",
-];
-
+/* ---------- Static lists (UI only) ---------- */
 const DISCOUNT_TYPES = ["Percentage", "Fixed amount", "Combo Fix Amount"];
 const APPLY_TO = ["Specific Category", "Specific Brand", "Specific Products"];
 const GIVEN_TO = ["Specific Category", "Specific Brand", "Specific Products", "Free", "Amount"];
@@ -31,19 +21,9 @@ const CATEGORIES = [
 ];
 
 const BRANDS = ["All Brand", "Adidas", "Nike", "Puma", "Levi’s", "H&M"];
-
-/* Demo product list for search dropdown */
 const PRODUCTS = [
-  "Men T-Shirt Cotton",
-  "Women Dress Floral",
-  "Kids Shirt Blue",
-  "Leather Belt Black",
-  "Sneakers White",
-  "Socks Pack of 3",
-  "Cap – Classic",
-  "Hoodie – Grey",
-  "Jeans – Slim Fit",
-  "Jacket – Winter Parka",
+  "Men T-Shirt Cotton","Women Dress Floral","Kids Shirt Blue","Leather Belt Black","Sneakers White",
+  "Socks Pack of 3","Cap – Classic","Hoodie – Grey","Jeans – Slim Fit","Jacket – Winter Parka",
 ];
 
 /* ── Reusable searchable dropdown (single pick) ── */
@@ -113,23 +93,19 @@ function SearchProduct({ value, onSelect, placeholder = "Search Product", width 
 /* ── Tiny multi-select (select + removable chips) ── */
 function MultiSelect({ options, selected, onChange, placeholder = "Select...", width = 360 }) {
   const [temp, setTemp] = useState("");
-
   const add = (v) => {
     if (!v) return;
     if (!selected.includes(v)) onChange([...selected, v]);
     setTemp("");
   };
   const remove = (v) => onChange(selected.filter((x) => x !== v));
-
   return (
     <div style={{ maxWidth: width }}>
       <div className="dp-select nd-cat" style={{ width }}>
         <select value={temp} onChange={(e) => add(e.target.value)}>
           <option value="">{placeholder}</option>
           {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
+            <option key={o} value={o}>{o}</option>
           ))}
         </select>
         <span className="material-icons">expand_more</span>
@@ -140,9 +116,7 @@ function MultiSelect({ options, selected, onChange, placeholder = "Select...", w
           {selected.map((s) => (
             <div key={s} className="nd-token">
               <span className="nd-token-text">{s}</span>
-              <button type="button" className="nd-token-x" onClick={() => remove(s)}>
-                ×
-              </button>
+              <button type="button" className="nd-token-x" onClick={() => remove(s)}>×</button>
             </div>
           ))}
         </div>
@@ -151,14 +125,10 @@ function MultiSelect({ options, selected, onChange, placeholder = "Select...", w
   );
 }
 
-/* ── Product multi add using the search dropdown + chips ── */
+/* ── Product multi add ── */
 function ProductPicker({ selected, onChange, width = 360 }) {
-  const add = (name) => {
-    if (!name) return;
-    if (!selected.includes(name)) onChange([...selected, name]);
-  };
+  const add = (name) => { if (name && !selected.includes(name)) onChange([...selected, name]); };
   const remove = (v) => onChange(selected.filter((x) => x !== v));
-
   return (
     <div style={{ maxWidth: width }}>
       <SearchProduct value="" onSelect={add} placeholder="Search Product" width={width} />
@@ -167,9 +137,7 @@ function ProductPicker({ selected, onChange, width = 360 }) {
           {selected.map((s) => (
             <div key={s} className="nd-token">
               <span className="nd-token-text">{s}</span>
-              <button type="button" className="nd-token-x" onClick={() => remove(s)}>
-                ×
-              </button>
+              <button type="button" className="nd-token-x" onClick={() => remove(s)}>×</button>
             </div>
           ))}
         </div>
@@ -186,22 +154,42 @@ export default function NewDiscountPage() {
   const [applicable, setApplicable] = useState("Product Wise"); // Product Wise | Entire Bill
   const isEntireBill = applicable === "Entire Bill";
 
-  // Discount mode (Normal | Range Wise | Buy X Get Y | Product at Fix Amount)
-  const [discountMode, setDiscountMode] = useState("Normal");
+  // Discount mode
+  const [discountMode, setDiscountMode] = useState("Normal"); // Normal | Range Wise | Buy X Get Y | Product at Fix Amount
   const isBXGY = discountMode === "Buy X Get Y";
   const isFixAmt = discountMode === "Product at Fix Amount";
   const isRangeWise = discountMode === "Range Wise";
 
-  const [discountType, setDiscountType] = useState("Percentage");
+  const [discountType, setDiscountType] = useState("Percentage"); // Percentage | Fixed amount | Combo Fix Amount
   const [discountValue, setDiscountValue] = useState("1");
 
   const [appliesTo, setAppliesTo] = useState("Specific Category");
   const [applyEntire, setApplyEntire] = useState(false);
 
-  const [branches, setBranches] = useState(["WABI SABI SUSTAINABILITY LLP"]);
+  /* ------- Branches (REAL from backend) ------- */
+  const [allBranches, setAllBranches] = useState([]); // [{id, name}, ...]
+  const [useAllBranches, setUseAllBranches] = useState(true); // default ON
+  const [selectedBranchIds, setSelectedBranchIds] = useState([]); // [id,...]
+  const selectedCount = useAllBranches ? "ALL" : String(selectedBranchIds.length);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await listLocations(); // expects array of {id, code?, name}
+        const arr = Array.isArray(data) ? data : [];
+        setAllBranches(arr.map(b => ({ id: b.id, name: b.name || b.display_name || b.code || `#${b.id}` })));
+      } catch {
+        setAllBranches([]);
+      }
+    })();
+  }, []);
+
+  const toggleBranch = (id) =>
+    setSelectedBranchIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
   const [category, setCategory] = useState("");
 
-  // Buy X Get Y state
+  // BXGY
   const [givenTo, setGivenTo] = useState("Specific Category");
   const [conditionOn, setConditionOn] = useState("Product Qty");
   const [selectQty, setSelectQty] = useState("1");
@@ -212,63 +200,35 @@ export default function NewDiscountPage() {
   const [gtProducts, setGtProducts] = useState([]);
   const [gtAmount, setGtAmount] = useState("");
 
-  // Excluding search (keep as-is for BXGY)
   const [excludeProduct, setExcludeProduct] = useState("");
 
   // Minimum Requirement (shared)
   const [minReq, setMinReq] = useState("None");
-  // Normal extra fields
   const [normalMinAmount, setNormalMinAmount] = useState("");
   const [normalMinQty, setNormalMinQty] = useState("");
-
-  // Range Wise extra inputs
   const [rangeMinAmount, setRangeMinAmount] = useState("");
   const [rangeMaxAmount, setRangeMaxAmount] = useState("");
 
-  // Product at Fix Amount specific
+  // Fix amount
   const [givenProduct, setGivenProduct] = useState("");
-  const [fixGivenTo] = useState("Specific Products");
   const [fixQty, setFixQty] = useState("1");
   const [minAmount, setMinAmount] = useState("");
 
   // Common
   const [eligible, setEligible] = useState("All");
-  /* NEW: Old Customer sub-options */
-  const [oldCustomerScope, setOldCustomerScope] = useState("Everyone"); // "Everyone" | "Specific Customers"
-
+  const [oldCustomerScope, setOldCustomerScope] = useState("Everyone");
   const [limitTotal, setLimitTotal] = useState(false);
   const [limitTotalValue, setLimitTotalValue] = useState("");
   const [limitPerCustomer, setLimitPerCustomer] = useState(false);
-
   const [hasEndDate, setHasEndDate] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("00:00");
   const [endDate, setEndDateVal] = useState("");
   const [endTime, setEndTime] = useState("00:00");
-
   const [discountCode, setDiscountCode] = useState("");
+  const [savingMsg, setSavingMsg] = useState("");
 
   const rangeMinRef = useRef(null);
-
-  /* ---------- Import modals state ---------- */
-  const [showImportPicker, setShowImportPicker] = useState(false);
-  const [importChoice, setImportChoice] = useState("Specific Products Given To");
-  const [showUploadModal, setShowUploadModal] = useState(false);
-
-  const fileInputRef = useRef(null);
-  const [fileObj, setFileObj] = useState(null);
-  const [fileName, setFileName] = useState("");
-  const [verifyMsg, setVerifyMsg] = useState("");
-  const [verifyOk, setVerifyOk] = useState(false);
-
-  const toggleBranch = (b) =>
-    setBranches((cur) => (cur.includes(b) ? cur.filter((x) => x !== b) : [...cur, b]));
-  const selectedCount = branches.length;
-
-  const handleSave = () => {
-    if (!discountCode.trim()) return;
-    alert("Saved (demo)");
-  };
 
   /* ---------- Mode-driven Minimum Requirement behaviour ---------- */
   useEffect(() => {
@@ -280,7 +240,7 @@ export default function NewDiscountPage() {
       setRangeMaxAmount("");
       setTimeout(() => rangeMinRef.current?.focus(), 0);
     } else if (discountMode === "Normal") {
-      setMinReq("None"); // back to None when Normal
+      setMinReq("None");
       setRangeMinAmount("");
       setRangeMaxAmount("");
     }
@@ -293,93 +253,128 @@ export default function NewDiscountPage() {
     }
   }, [discountMode, minReq]);
 
-  /* ---------- Import: helpers ---------- */
+  /* ---------- Helpers ---------- */
+  const codeValid = (code) => /^[A-Z0-9]{4,12}$/.test(code || "");
+  const toDateOnly = (d) => String(d || "").slice(0, 10);
+  const enumApplicable = applicable === "Entire Bill" ? "BILL" : "PRODUCT";
+  const enumMode =
+    discountMode === "Range Wise" ? "RANGE" :
+    discountMode === "Buy X Get Y" ? "BUYXGETY" :
+    discountMode === "Product at Fix Amount" ? "FIXPRICE" : "NORMAL";
+  const enumValueType = discountType === "Percentage" ? "PERCENT" : "AMOUNT";
+
+  /* ---------- Save to API ---------- */
+  async function handleSave() {
+    setSavingMsg("");
+    const code = (discountCode || "").toUpperCase();
+
+    if (!codeValid(code)) { setSavingMsg("Discount Code required (A–Z/0–9, 4–12 chars)."); return; }
+    if (!startDate) { setSavingMsg("Start Date is required."); return; }
+    const end = hasEndDate ? endDate : startDate;
+
+    // If not "All Branches", make sure at least 1 selected
+    if (!useAllBranches && selectedBranchIds.length === 0) {
+      setSavingMsg("Please select at least one branch or enable All Branches.");
+      return;
+    }
+
+    // Build payload exactly as your DiscountSerializer expects
+    const payload = {
+      title: `${discountMode} ${enumApplicable === "BILL" ? "(Bill)" : "(Product)"}`,
+      code,
+      applicable: enumApplicable,
+      mode: enumMode,
+      value_type: enumValueType,
+      value: Number(discountValue || 0),
+
+      range_min_amount: isRangeWise ? Number(rangeMinAmount || 0) : null,
+      range_max_amount: isRangeWise ? Number(rangeMaxAmount || 0) : null,
+
+      x_qty: isBXGY ? Number(selectQty || 0) : 0,
+      y_qty: isBXGY ? 1 : 0,
+
+      min_amount_for_fix: isFixAmt ? Number(minAmount || 0) : null,
+      applies_category: category || "",
+
+      start_date: toDateOnly(startDate),
+      end_date: toDateOnly(end),
+
+      // ⬇️ key part:
+      branch_ids: useAllBranches ? [] : selectedBranchIds,
+      all_branches: useAllBranches, // backend can treat true as “apply everywhere”
+    };
+
+    // simple guards
+    if (payload.value_type === "PERCENT" && payload.value > 100) {
+      setSavingMsg("Percentage cannot exceed 100.");
+      return;
+    }
+
+    try {
+      await createDiscount(payload);
+      setSavingMsg("Saved successfully.");
+      // minimal reset
+      setDiscountCode("");
+    } catch (e) {
+      setSavingMsg(e?.message || "Failed to save.");
+    }
+  }
+
+  /* ---------- Import modal state (unchanged demo) ---------- */
+  const [showImportPicker, setShowImportPicker] = useState(false);
+  const [importChoice, setImportChoice] = useState("Specific Products Given To");
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const fileInputRef = useRef(null);
+  const [fileObj, setFileObj] = useState(null);
+  const [fileName, setFileName] = useState("");
+  const [verifyMsg, setVerifyMsg] = useState("");
+  const [verifyOk, setVerifyOk] = useState(false);
+
   const openUpload = () => {
     setShowImportPicker(false);
     setShowUploadModal(true);
-    // reset
-    setFileObj(null);
-    setFileName("");
-    setVerifyOk(false);
-    setVerifyMsg("");
+    setFileObj(null); setFileName(""); setVerifyOk(false); setVerifyMsg("");
   };
-
   const onChooseFile = (e) => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
-    setFileObj(f);
-    setFileName(f.name);
-    setVerifyOk(false);
-    setVerifyMsg("");
+    setFileObj(f); setFileName(f.name); setVerifyOk(false); setVerifyMsg("");
   };
-
   const handleVerify = () => {
-    if (!fileObj) {
-      setVerifyOk(false);
-      setVerifyMsg("Please choose a file first.");
-      return;
-    }
-    // Basic client-side check: csv/xlsx allowed + if CSV ensure it has a plausible header
+    if (!fileObj) { setVerifyOk(false); setVerifyMsg("Please choose a file first."); return; }
     const name = fileObj.name.toLowerCase();
     if (!name.endsWith(".csv") && !name.endsWith(".xlsx") && !name.endsWith(".xls")) {
-      setVerifyOk(false);
-      setVerifyMsg("Only CSV or Excel files are supported.");
-      return;
+      setVerifyOk(false); setVerifyMsg("Only CSV or Excel files are supported."); return;
     }
-
     if (name.endsWith(".csv")) {
       const reader = new FileReader();
       reader.onload = () => {
         const text = String(reader.result || "");
         const firstLine = text.split(/\r?\n/)[0] || "";
         const norm = firstLine.toLowerCase();
-        // loose header check similar to typical templates
-        const ok =
-          norm.includes("sku") ||
-          norm.includes("product") ||
-          norm.includes("barcode") ||
-          norm.includes("category");
-        setVerifyOk(ok);
-        setVerifyMsg(ok ? "Verified successfully." : "Template headers not recognized.");
+        const ok = norm.includes("sku") || norm.includes("product") || norm.includes("barcode") || norm.includes("category");
+        setVerifyOk(ok); setVerifyMsg(ok ? "Verified successfully." : "Template headers not recognized.");
       };
       reader.readAsText(fileObj);
-    } else {
-      // Excel – trust for demo
-      setVerifyOk(true);
-      setVerifyMsg("Verified successfully.");
-    }
+    } else { setVerifyOk(true); setVerifyMsg("Verified successfully."); }
   };
-
   const handleUploadDemo = () => {
-    if (!fileObj) {
-      setVerifyOk(false);
-      setVerifyMsg("Please choose a file first.");
-      return;
-    }
-    if (!verifyOk) {
-      setVerifyMsg("Please verify the file before uploading.");
-      return;
-    }
-    alert("Uploaded (demo)");
-    setShowUploadModal(false);
+    if (!fileObj) { setVerifyOk(false); setVerifyMsg("Please choose a file first."); return; }
+    if (!verifyOk) { setVerifyMsg("Please verify the file before uploading."); return; }
+    alert("Uploaded (demo)"); setShowUploadModal(false);
   };
-
   const downloadDemo = () => {
-    // simple demo file based on choice
     let csv = "SKU,Product,Category\nSKU001,Sample Product,Accessories\n";
     if (importChoice.includes("Applies")) csv = "Category\nAccessories\nBoys & Girls – Shirt\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "demo.csv";
-    a.click();
+    a.href = url; a.download = "demo.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="dp-wrap">
-      {/* Breadcrumb */}
       <div className="nd-top">
         <div className="nd-bc">
           <span className="nd-title">New Discount</span>
@@ -389,52 +384,34 @@ export default function NewDiscountPage() {
         </div>
       </div>
 
-      {/* Card */}
       <div className="nd-card">
         <div className="nd-head">
           <span className="material-icons nd-gear">settings</span>
           <span>Discount Details</span>
         </div>
 
+        {savingMsg && <div className="alert info" style={{ margin: "10px 16px 0" }}>{savingMsg}</div>}
+
         <div className="nd-grid">
-          {/* ===== Left: Main ===== */}
+          {/* ===== Left ===== */}
           <div className="nd-main">
-            {/* Row: Auto Apply | Exclude* | Applicable */}
+            {/* Auto apply / exclude / applicable */}
             <div className="nd-row threecol">
               <div className="nd-block">
                 <label className="nd-label">Discount Auto Apply</label>
                 <div className="nd-toggle">
-                  <button
-                    type="button"
-                    className={`nd-tg-btn ${!autoApply ? "on" : ""}`}
-                    onClick={() => setAutoApply(false)}
-                  >
-                    NO
-                  </button>
-                  <button
-                    type="button"
-                    className={`nd-tg-btn ${autoApply ? "on" : ""}`}
-                    onClick={() => setAutoApply(true)}
-                  >
-                    YES
-                  </button>
+                  <button type="button" className={`nd-tg-btn ${!autoApply ? "on" : ""}`} onClick={() => setAutoApply(false)}>NO</button>
+                  <button type="button" className={`nd-tg-btn ${autoApply ? "on" : ""}`} onClick={() => setAutoApply(true)}>YES</button>
                 </div>
               </div>
 
               {!isEntireBill && (
                 <div className="nd-block">
-                  <label className="nd-label">
-                    Exclude Products Which Already have Discount Applied
-                  </label>
+                  <label className="nd-label">Exclude Products Which Already have Discount Applied</label>
                   <div className="nd-radio-inline nowrap">
                     {["Yes", "No"].map((v) => (
                       <label key={v} className="nd-radio">
-                        <input
-                          type="radio"
-                          name="exclude"
-                          checked={excludeAlreadyDiscounted === v}
-                          onChange={() => setExcludeAlreadyDiscounted(v)}
-                        />
+                        <input type="radio" name="exclude" checked={excludeAlreadyDiscounted === v} onChange={() => setExcludeAlreadyDiscounted(v)} />
                         <span>{v}</span>
                       </label>
                     ))}
@@ -447,12 +424,7 @@ export default function NewDiscountPage() {
                 <div className="nd-radio-inline nowrap">
                   {["Product Wise", "Entire Bill"].map((v) => (
                     <label key={v} className="nd-radio">
-                      <input
-                        type="radio"
-                        name="applicable"
-                        checked={applicable === v}
-                        onChange={() => setApplicable(v)}
-                      />
+                      <input type="radio" name="applicable" checked={applicable === v} onChange={() => setApplicable(v)} />
                       <span>{v}</span>
                     </label>
                   ))}
@@ -460,19 +432,14 @@ export default function NewDiscountPage() {
               </div>
             </div>
 
-            {/* Row: Discount options | Discount Code */}
+            {/* Mode + code */}
             <div className="nd-row discountline">
               <div className="nd-block">
                 <label className="nd-label">Discount</label>
                 <div className="nd-radio-inline">
                   {["Normal", "Range Wise", "Buy X Get Y", "Product at Fix Amount"].map((v) => (
                     <label key={v} className="nd-radio">
-                      <input
-                        type="radio"
-                        name="mode"
-                        checked={discountMode === v}
-                        onChange={() => setDiscountMode(v)}
-                      />
+                      <input type="radio" name="mode" checked={discountMode === v} onChange={() => setDiscountMode(v)} />
                       <span>{v}</span>
                     </label>
                   ))}
@@ -480,30 +447,19 @@ export default function NewDiscountPage() {
               </div>
 
               <div className="nd-code">
-                <label className="nd-label">
-                  Discount Code <span className="req">*</span>
-                </label>
-                <input
-                  className="nd-input"
-                  placeholder="Discount Code"
-                  value={discountCode}
-                  onChange={(e) => setDiscountCode(e.target.value)}
-                />
+                <label className="nd-label">Discount Code <span className="req">*</span></label>
+                <input className="nd-input" placeholder="Discount Code" value={discountCode} onChange={(e) => setDiscountCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase())} />
               </div>
             </div>
 
-            {/* Row: Type | Value (hide for BXGY & Fix Amount) */}
+            {/* Type/Value */}
             {!isBXGY && !isFixAmt && (
               <div className="nd-row twocol">
                 <div className="nd-block">
                   <label className="nd-label">Discount Type</label>
                   <div className="dp-select" style={{ width: 220 }}>
                     <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
-                      {DISCOUNT_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
+                      {DISCOUNT_TYPES.map((t) => (<option key={t} value={t}>{t}</option>))}
                     </select>
                     <span className="material-icons">expand_more</span>
                   </div>
@@ -512,154 +468,94 @@ export default function NewDiscountPage() {
                 <div className="nd-block">
                   <label className="nd-label">Discount Value</label>
                   <div className="nd-val">
-                    <span className="nd-val-unit">%</span>
-                    <input
-                      className="nd-val-input"
-                      value={discountValue}
-                      onChange={(e) => setDiscountValue(e.target.value)}
-                    />
+                    <span className="nd-val-unit">{discountType === "Percentage" ? "%" : "₹"}</span>
+                    <input className="nd-val-input" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ===== PRODUCT-WISE: Normal / Range Wise ===== */}
+            {/* PRODUCT-WISE: Normal / Range Wise */}
             {!isEntireBill && !isBXGY && !isFixAmt && (
               <>
                 <div className="nd-row">
-                  <label className="nd-label">
-                    Applies To <span className="req">*</span>
-                  </label>
+                  <label className="nd-label">Applies To <span className="req">*</span></label>
                   <div className="nd-radio-inline">
                     {APPLY_TO.map((v) => (
                       <label key={v} className="nd-radio">
-                        <input
-                          type="radio"
-                          name="applies"
-                          checked={appliesTo === v}
-                          onChange={() => setAppliesTo(v)}
-                        />
+                        <input type="radio" name="applies" checked={appliesTo === v} onChange={() => setAppliesTo(v)} />
                         <span>{v}</span>
                       </label>
                     ))}
                   </div>
 
                   <label className="nd-check mt6">
-                    <input
-                      type="checkbox"
-                      checked={applyEntire}
-                      onChange={(e) => setApplyEntire(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={applyEntire} onChange={(e) => setApplyEntire(e.target.checked)} />
                     <span>Apply to entire selection</span>
                     <span className="material-icons nd-help">help_outline</span>
                   </label>
                 </div>
 
                 <div className="nd-row">
-                  <label className="nd-label">
-                    Select Category and Subcategory <span className="req">*</span>
+                  <label className="nd-label">Select Category and Subcategory <span className="req">*</span>
                     <span className="material-icons nd-help">info</span>
                   </label>
                   <div className="dp-select nd-cat">
                     <select value={category} onChange={(e) => setCategory(e.target.value)}>
                       <option value="">Select Category</option>
-                      {CATEGORIES.map((c) => (
-                        <option key={c}>{c}</option>
-                      ))}
+                      {CATEGORIES.map((c) => (<option key={c}>{c}</option>))}
                     </select>
                     <span className="material-icons">expand_more</span>
                   </div>
                 </div>
 
-                {/* Minimum Requirement (exactly below Category) */}
                 <div className="nd-row">
-                  <label className="nd-label">
-                    Minimum Requirement <span className="req">*</span>
-                  </label>
+                  <label className="nd-label">Minimum Requirement <span className="req">*</span></label>
                   <div className="nd-radio-inline">
                     {["None", "Minimum Purchase Amount", "Minimum Quantity of Items"].map((v) => (
                       <label key={v} className="nd-radio">
-                        <input
-                          type="radio"
-                          name="minreq_normal"
-                          checked={minReq === v}
-                          onChange={() => setMinReq(v)}
-                        />
+                        <input type="radio" name="minreq_normal" checked={minReq === v} onChange={() => setMinReq(v)} />
                         <span>{v}</span>
                       </label>
                     ))}
                   </div>
 
-                  {/* Normal mode */}
                   {discountMode === "Normal" && minReq === "Minimum Purchase Amount" && (
                     <div className="mt8" style={{ maxWidth: 300 }}>
-                      <input
-                        className="nd-input"
-                        placeholder="Minimum Purchase Amount"
-                        value={normalMinAmount}
-                        onChange={(e) => setNormalMinAmount(e.target.value)}
-                      />
+                      <input className="nd-input" placeholder="Minimum Purchase Amount" value={normalMinAmount} onChange={(e) => setNormalMinAmount(e.target.value)} />
                     </div>
                   )}
                   {discountMode === "Normal" && minReq === "Minimum Quantity of Items" && (
                     <div className="mt8" style={{ maxWidth: 300 }}>
-                      <input
-                        className="nd-input"
-                        placeholder="Minimum Purchase Qty"
-                        value={normalMinQty}
-                        onChange={(e) => setNormalMinQty(e.target.value)}
-                      />
+                      <input className="nd-input" placeholder="Minimum Purchase Qty" value={normalMinQty} onChange={(e) => setNormalMinQty(e.target.value)} />
                     </div>
                   )}
 
-                  {/* Range Wise */}
                   {isRangeWise && minReq === "Minimum Purchase Amount" && (
                     <div className="nd-inline mt8">
-                      <input
-                        ref={rangeMinRef}
-                        className="nd-input nd-mini"
-                        placeholder="Minimum Amount"
-                        value={rangeMinAmount}
-                        onChange={(e) => setRangeMinAmount(e.target.value)}
-                      />
-                      <input
-                        className="nd-input nd-mini"
-                        placeholder="maximum Amount"
-                        value={rangeMaxAmount}
-                        onChange={(e) => setRangeMaxAmount(e.target.value)}
-                      />
+                      <input ref={rangeMinRef} className="nd-input nd-mini" placeholder="Minimum Amount" value={rangeMinAmount} onChange={(e) => setRangeMinAmount(e.target.value)} />
+                      <input className="nd-input nd-mini" placeholder="maximum Amount" value={rangeMaxAmount} onChange={(e) => setRangeMaxAmount(e.target.value)} />
                     </div>
                   )}
                 </div>
               </>
             )}
 
-            {/* ===== BUY X GET Y ===== */}
+            {/* BUY X GET Y */}
             {isBXGY && (
               <>
                 <div className="nd-row">
-                  <label className="nd-label">
-                    Applies To <span className="req">*</span>
-                  </label>
+                  <label className="nd-label">Applies To <span className="req">*</span></label>
                   <div className="nd-radio-inline">
                     {APPLY_TO.map((v) => (
                       <label key={v} className="nd-radio">
-                        <input
-                          type="radio"
-                          name="applies_bxgy"
-                          checked={appliesTo === v}
-                          onChange={() => setAppliesTo(v)}
-                        />
+                        <input type="radio" name="applies_bxgy" checked={appliesTo === v} onChange={() => setAppliesTo(v)} />
                         <span>{v}</span>
                       </label>
                     ))}
                   </div>
                   <label className="nd-check mt6">
-                    <input
-                      type="checkbox"
-                      checked={applyEntire}
-                      onChange={(e) => setApplyEntire(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={applyEntire} onChange={(e) => setApplyEntire(e.target.checked)} />
                     <span>Apply to entire selection</span>
                     <span className="material-icons nd-help">help_outline</span>
                   </label>
@@ -667,16 +563,13 @@ export default function NewDiscountPage() {
 
                 <div className="nd-row nd-grid-3">
                   <div className="nd-block">
-                    <label className="nd-label">
-                      Select Category and Subcategory <span className="req">*</span>
+                    <label className="nd-label">Select Category and Subcategory <span className="req">*</span>
                       <span className="material-icons nd-help">info</span>
                     </label>
                     <div className="dp-select nd-cat">
                       <select value={category} onChange={(e) => setCategory(e.target.value)}>
                         <option value="">Select Category</option>
-                        {CATEGORIES.map((c) => (
-                          <option key={c}>{c}</option>
-                        ))}
+                        {CATEGORIES.map((c) => (<option key={c}>{c}</option>))}
                       </select>
                       <span className="material-icons">expand_more</span>
                     </div>
@@ -686,9 +579,7 @@ export default function NewDiscountPage() {
                     <label className="nd-label">Condition On</label>
                     <div className="dp-select">
                       <select value={conditionOn} onChange={(e) => setConditionOn(e.target.value)}>
-                        {CONDITION_ON.map((c) => (
-                          <option key={c}>{c}</option>
-                        ))}
+                        {CONDITION_ON.map((c) => (<option key={c}>{c}</option>))}
                       </select>
                       <span className="material-icons">expand_more</span>
                     </div>
@@ -696,215 +587,116 @@ export default function NewDiscountPage() {
 
                   <div className="nd-block">
                     <label className="nd-label">Select Qty</label>
-                    <input
-                      className="nd-input"
-                      value={selectQty}
-                      onChange={(e) => setSelectQty(e.target.value)}
-                    />
+                    <input className="nd-input" value={selectQty} onChange={(e) => setSelectQty(e.target.value)} />
                   </div>
                 </div>
 
-                {/* Excluding stays for BXGY */}
                 <div className="nd-row">
                   <label className="nd-label">Excluding Products</label>
-                  <SearchProduct
-                    value={excludeProduct}
-                    onSelect={setExcludeProduct}
-                    placeholder="Search Product"
-                    width={360}
-                  />
+                  <SearchProduct value={excludeProduct} onSelect={setExcludeProduct} placeholder="Search Product" width={360} />
                 </div>
 
-                {/* Given To + side-by-side controls */}
                 <div className="nd-row">
-                  <label className="nd-label">
-                    Given To <span className="req">*</span>
-                  </label>
+                  <label className="nd-label">Given To <span className="req">*</span></label>
                   <div className="nd-radio-inline">
                     {GIVEN_TO.map((g) => (
                       <label key={g} className="nd-radio">
-                        <input
-                          type="radio"
-                          name="given_to"
-                          checked={givenTo === g}
-                          onChange={() => setGivenTo(g)}
-                        />
+                        <input type="radio" name="given_to" checked={givenTo === g} onChange={() => setGivenTo(g)} />
                         <span>{g}</span>
                       </label>
                     ))}
                   </div>
 
-                  {/* Two columns under Given To: Left control + Qty */}
                   <div className="nd-grid-2 mt8">
                     <div>
                       {givenTo === "Specific Category" && (
-                        <MultiSelect
-                          options={CATEGORIES}
-                          selected={gtCategories}
-                          onChange={setGtCategories}
-                          placeholder="Select Category"
-                          width={360}
-                        />
+                        <MultiSelect options={CATEGORIES} selected={gtCategories} onChange={setGtCategories} placeholder="Select Category" width={360} />
                       )}
-
                       {givenTo === "Specific Brand" && (
-                        <MultiSelect
-                          options={BRANDS}
-                          selected={gtBrands}
-                          onChange={setGtBrands}
-                          placeholder="Select Brand"
-                          width={360}
-                        />
+                        <MultiSelect options={BRANDS} selected={gtBrands} onChange={setGtBrands} placeholder="Select Brand" width={360} />
                       )}
-
                       {givenTo === "Specific Products" && (
-                        <ProductPicker
-                          selected={gtProducts}
-                          onChange={setGtProducts}
-                          width={360}
-                        />
+                        <ProductPicker selected={gtProducts} onChange={setGtProducts} width={360} />
                       )}
-
                       {givenTo === "Amount" && (
-                        <input
-                          className="nd-input"
-                          placeholder="Amount"
-                          value={gtAmount}
-                          onChange={(e) => setGtAmount(e.target.value)}
-                        />
+                        <input className="nd-input" placeholder="Amount" value={gtAmount} onChange={(e) => setGtAmount(e.target.value)} />
                       )}
-
                       {givenTo === "Free" && <div className="nd-ghost" />}
                     </div>
 
                     <div>
                       <label className="nd-small-label">Select Qty</label>
-                      <input
-                        className="nd-input"
-                        value={selectQty}
-                        onChange={(e) => setSelectQty(e.target.value)}
-                      />
+                      <input className="nd-input" value={selectQty} onChange={(e) => setSelectQty(e.target.value)} />
                     </div>
                   </div>
                 </div>
               </>
             )}
 
-            {/* ===== PRODUCT AT FIX AMOUNT ===== */}
+            {/* FIX AMOUNT */}
             {isFixAmt && (
               <>
                 <div className="nd-row">
-                  <label className="nd-label">
-                    Minimum Requirement <span className="req">*</span>
-                  </label>
+                  <label className="nd-label">Minimum Requirement <span className="req">*</span></label>
                   <div className="nd-radio-inline">
-                    {["Minimum Purchase Amount"].map((v) => (
-                      <label key={v} className="nd-radio">
-                        <input
-                          type="radio"
-                          name="minreq_fix"
-                          checked={minReq === v}
-                          onChange={() => setMinReq(v)}
-                        />
-                        <span>{v}</span>
-                      </label>
-                    ))}
+                    <label className="nd-radio">
+                      <input type="radio" name="minreq_fix" checked readOnly />
+                      <span>Minimum Purchase Amount</span>
+                    </label>
                   </div>
                   <div className="mt8" style={{ maxWidth: 300 }}>
-                    <input
-                      className="nd-input"
-                      placeholder="Minimum Purchase Amount"
-                      value={minAmount}
-                      onChange={(e) => setMinAmount(e.target.value)}
-                    />
+                    <input className="nd-input" placeholder="Minimum Purchase Amount" value={minAmount} onChange={(e) => setMinAmount(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="nd-row nd-grid-2">
                   <div className="nd-block">
-                    <label className="nd-label">
-                      Given To <span className="req">*</span>
-                    </label>
+                    <label className="nd-label">Given To <span className="req">*</span></label>
                     <div className="nd-radio-inline">
-                      {["Specific Products"].map((g) => (
-                        <label key={g} className="nd-radio">
-                          <input type="radio" name="fix_given_to" checked readOnly />
-                          <span>{g}</span>
-                        </label>
-                      ))}
+                      <label className="nd-radio">
+                        <input type="radio" name="fix_given_to" checked readOnly />
+                        <span>Specific Products</span>
+                      </label>
                     </div>
 
                     <div className="mt8">
-                      <SearchProduct
-                        value={givenProduct}
-                        onSelect={setGivenProduct}
-                        placeholder="Search Product"
-                        width={360}
-                      />
+                      <SearchProduct value={givenProduct} onSelect={setGivenProduct} placeholder="Search Product" width={360} />
                     </div>
                   </div>
 
                   <div className="nd-block">
                     <label className="nd-label">Select Qty</label>
-                    <input
-                      className="nd-input"
-                      value={fixQty}
-                      onChange={(e) => setFixQty(e.target.value)}
-                    />
+                    <input className="nd-input" value={fixQty} onChange={(e) => setFixQty(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="nd-row">
                   <label className="nd-label">Excluding Products</label>
-                  <SearchProduct
-                    value={excludeProduct}
-                    onSelect={setExcludeProduct}
-                    placeholder="Search Product"
-                    width={360}
-                  />
+                  <SearchProduct value={excludeProduct} onSelect={setExcludeProduct} placeholder="Search Product" width={360} />
                 </div>
               </>
             )}
 
-            {/* ===== Common rows ===== */}
+            {/* Common rows */}
             <div className="nd-row">
               <label className="nd-label">Customer Eligibility</label>
               <div className="nd-radio-inline">
                 {["All", "New Customer", "Old Customer"].map((v) => (
                   <label key={v} className="nd-radio">
-                    <input
-                      type="radio"
-                      name="elig"
-                      checked={eligible === v}
-                      onChange={() => {
-                        setEligible(v);
-                        if (v === "Old Customer") setOldCustomerScope("Everyone");
-                      }}
-                    />
+                    <input type="radio" name="elig" checked={eligible === v} onChange={() => { setEligible(v); if (v === "Old Customer") setOldCustomerScope("Everyone"); }} />
                     <span>{v}</span>
                   </label>
                 ))}
               </div>
 
-              {/* NEW: Old Customer sub-options */}
               {eligible === "Old Customer" && (
                 <div className="nd-radio-inline mt6">
                   <label className="nd-radio">
-                    <input
-                      type="radio"
-                      name="elig_old_scope"
-                      checked={oldCustomerScope === "Everyone"}
-                      onChange={() => setOldCustomerScope("Everyone")}
-                    />
+                    <input type="radio" name="elig_old_scope" checked={oldCustomerScope === "Everyone"} onChange={() => setOldCustomerScope("Everyone")} />
                     <span>Everyone</span>
                   </label>
                   <label className="nd-radio">
-                    <input
-                      type="radio"
-                      name="elig_old_scope"
-                      checked={oldCustomerScope === "Specific Customers"}
-                      onChange={() => setOldCustomerScope("Specific Customers")}
-                    />
+                    <input type="radio" name="elig_old_scope" checked={oldCustomerScope === "Specific Customers"} onChange={() => setOldCustomerScope("Specific Customers")} />
                     <span>Specific Customers</span>
                   </label>
                 </div>
@@ -916,32 +708,16 @@ export default function NewDiscountPage() {
 
               <div className="nd-limit-line">
                 <label className="nd-check">
-                  <input
-                    type="checkbox"
-                    checked={limitTotal}
-                    onChange={(e) => setLimitTotal(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={limitTotal} onChange={(e) => setLimitTotal(e.target.checked)} />
                   <span>Limit Number of Times This Discount can be Used in Total</span>
                 </label>
-
                 {limitTotal && (
-                  <input
-                    className="nd-input nd-limit-input"
-                    type="number"
-                    min="1"
-                    placeholder="Limit"
-                    value={limitTotalValue}
-                    onChange={(e) => setLimitTotalValue(e.target.value)}
-                  />
+                  <input className="nd-input nd-limit-input" type="number" min="1" placeholder="Limit" value={limitTotalValue} onChange={(e) => setLimitTotalValue(e.target.value)} />
                 )}
               </div>
 
               <label className="nd-check mt6">
-                <input
-                  type="checkbox"
-                  checked={limitPerCustomer}
-                  onChange={(e) => setLimitPerCustomer(e.target.checked)}
-                />
+                <input type="checkbox" checked={limitPerCustomer} onChange={(e) => setLimitPerCustomer(e.target.checked)} />
                 <span>Limit to One Use Per Customer</span>
               </label>
             </div>
@@ -951,37 +727,19 @@ export default function NewDiscountPage() {
                 <label className="nd-label">Active Dates</label>
                 <div className="nd-grid-2">
                   <div>
-                    <div className="nd-small-label">
-                      Start Date <span className="req">*</span>
-                    </div>
-                    <input
-                      type="date"
-                      className="nd-input"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
+                    <div className="nd-small-label">Start Date <span className="req">*</span></div>
+                    <input type="date" className="nd-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                   </div>
                   <div>
-                    <div className="nd-small-label">
-                      Start Time <span className="req">*</span>
-                    </div>
-                    <input
-                      type="time"
-                      className="nd-input"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                    />
+                    <div className="nd-small-label">Start Time <span className="req">*</span></div>
+                    <input type="time" className="nd-input" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                   </div>
                 </div>
               </div>
 
               <div className="nd-block">
                 <label className="nd-check">
-                  <input
-                    type="checkbox"
-                    checked={hasEndDate}
-                    onChange={(e) => setHasEndDate(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={hasEndDate} onChange={(e) => setHasEndDate(e.target.checked)} />
                   <span>Set End Date</span>
                 </label>
 
@@ -989,21 +747,11 @@ export default function NewDiscountPage() {
                   <div className="nd-grid-2 mt6">
                     <div>
                       <div className="nd-small-label">End Date</div>
-                      <input
-                        type="date"
-                        className="nd-input"
-                        value={endDate}
-                        onChange={(e) => setEndDateVal(e.target.value)}
-                      />
+                      <input type="date" className="nd-input" value={endDate} onChange={(e) => setEndDateVal(e.target.value)} />
                     </div>
                     <div>
                       <div className="nd-small-label">End Time</div>
-                      <input
-                        type="time"
-                        className="nd-input"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                      />
+                      <input type="time" className="nd-input" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                     </div>
                   </div>
                 )}
@@ -1017,79 +765,70 @@ export default function NewDiscountPage() {
 
             <div className="nd-field">
               <div className="nd-side-head">
-                <label className="nd-label">
-                  Branches <span className="req">*</span>
-                </label>
+                <label className="nd-label">Branches <span className="req">*</span></label>
                 <span className="nd-badge">{selectedCount}</span>
               </div>
 
-              <div className="nd-branches">
-                {BRANCHES.map((b) => (
-                  <label key={b} className="nd-branch">
+              <label className="nd-branch nd-all">
+                <input
+                  type="checkbox"
+                  checked={useAllBranches}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setUseAllBranches(on);
+                    if (on) setSelectedBranchIds([]);
+                  }}
+                />
+                <span>All Branches</span>
+              </label>
+
+              <div className={`nd-branches ${useAllBranches ? "nd-disabled" : ""}`}>
+                {allBranches.length === 0 && <div className="muted">No branches found.</div>}
+                {allBranches.map((b) => (
+                  <label key={b.id} className="nd-branch">
                     <input
                       type="checkbox"
-                      checked={branches.includes(b)}
-                      onChange={() => toggleBranch(b)}
+                      disabled={useAllBranches}
+                      checked={useAllBranches ? true : selectedBranchIds.includes(b.id)}
+                      onChange={() => toggleBranch(b.id)}
                     />
-                    <span>{b}</span>
+                    <span>{b.name}</span>
                   </label>
                 ))}
               </div>
+
+              {useAllBranches && <div className="muted" style={{ marginTop: 6 }}>Applying to all branches.</div>}
             </div>
           </aside>
         </div>
 
-        {/* Footer */}
         <div className="nd-foot">
-          <button className="nd-btn cancel" onClick={() => window.history.back()}>
-            Cancel
-          </button>
-          <button className="nd-btn clear" onClick={() => window.location.reload()}>
-            Clear
-          </button>
-          <button className="nd-btn save" onClick={handleSave}>
-            Save
-          </button>
+          <button className="nd-btn cancel" onClick={() => window.history.back()}>Cancel</button>
+          <button className="nd-btn clear" onClick={() => window.location.reload()}>Clear</button>
+          <button className="nd-btn save" onClick={handleSave}>Save</button>
         </div>
       </div>
 
-      {/* ------------ MODAL #1: Import Files (center) ------------ */}
+      {/* ------------ MODAL #1 ------------ */}
       {showImportPicker && (
         <div className="nd-overlay" onClick={() => setShowImportPicker(false)}>
           <div className="nd-modal" onClick={(e) => e.stopPropagation()}>
             <div className="nd-modal-head">
               <div className="nd-modal-title">Import Files</div>
-              <button className="nd-x" onClick={() => setShowImportPicker(false)}>
-                ×
-              </button>
+              <button className="nd-x" onClick={() => setShowImportPicker(false)}>×</button>
             </div>
 
             <div className="nd-modal-body">
               <label className="nd-radio nd-block">
-                <input
-                  type="radio"
-                  name="imp"
-                  checked={importChoice === "Specific Products Given To"}
-                  onChange={() => setImportChoice("Specific Products Given To")}
-                />
+                <input type="radio" name="imp" checked={importChoice === "Specific Products Given To"} onChange={() => setImportChoice("Specific Products Given To")} />
                 <span>Specific Products Given To</span>
               </label>
               <label className="nd-radio nd-block">
-                <input
-                  type="radio"
-                  name="imp"
-                  checked={importChoice === "Excluding Products For Applies To"}
-                  onChange={() => setImportChoice("Excluding Products For Applies To")}
-                />
+                <input type="radio" name="imp" checked={importChoice === "Excluding Products For Applies To"} onChange={() => setImportChoice("Excluding Products For Applies To")} />
                 <span>Excluding Products For Applies To</span>
               </label>
               <label className="nd-radio nd-block">
-                <input
-                  type="radio"
-                  name="imp"
-                  checked={importChoice === "Excluding Products For Givens To"}
-                  onChange={() => setImportChoice("Excluding Products For Givens To")}
-                />
+                <input type="radio" name="imp" checked={importChoice === "Excluding Products For Givens To"} onChange={() => setImportChoice("Excluding Products For Givens To")} />
                 <span>Excluding Products For Givens To</span>
               </label>
             </div>
@@ -1101,7 +840,7 @@ export default function NewDiscountPage() {
         </div>
       )}
 
-      {/* ------------ MODAL #2: Upload Product Sheet (top-center) ------------ */}
+      {/* ------------ MODAL #2 ------------ */}
       {showUploadModal && (
         <div className="nd-overlay top" onClick={() => setShowUploadModal(false)}>
           <div className="nd-modal wide" onClick={(e) => e.stopPropagation()}>
@@ -1116,27 +855,12 @@ export default function NewDiscountPage() {
                   Download <button className="nd-link" type="button" onClick={downloadDemo}>Demo</button> File
                 </span>
                 <div className="nd-file-row">
-                  <input
-                    className="nd-input"
-                    placeholder="Choose file"
-                    value={fileName}
-                    readOnly
-                  />
+                  <input className="nd-input" placeholder="Choose file" value={fileName} readOnly />
                   <div className="nd-file-icons">
-                    <button
-                      type="button"
-                      className="nd-iconbtn"
-                      title="Browse"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
+                    <button type="button" className="nd-iconbtn" title="Browse" onClick={() => fileInputRef.current?.click()}>
                       <span className="material-icons">folder_open</span>
                     </button>
-                    <button
-                      type="button"
-                      className="nd-iconbtn"
-                      title="Pick"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
+                    <button type="button" className="nd-iconbtn" title="Pick" onClick={() => fileInputRef.current?.click()}>
                       <span className="material-icons">attach_file</span>
                     </button>
                   </div>
@@ -1150,9 +874,7 @@ export default function NewDiscountPage() {
                 </div>
               </div>
 
-              {verifyMsg && (
-                <div className={`nd-verify ${verifyOk ? "ok" : "err"}`}>{verifyMsg}</div>
-              )}
+              {verifyMsg && (<div className={`nd-verify ${verifyOk ? "ok" : "err"}`}>{verifyMsg}</div>)}
             </div>
 
             <div className="nd-modal-foot">

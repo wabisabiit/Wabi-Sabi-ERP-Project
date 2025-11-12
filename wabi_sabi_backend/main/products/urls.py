@@ -20,6 +20,7 @@ from .views_coupons import (
     CouponLookup, CouponRedeem
 )
 from .views_reports import DaywiseSalesSummary, ProductWiseSalesReport, CategoryWiseSalesSummary
+from .views_discounts import DiscountListCreate, DiscountDetail
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -63,6 +64,10 @@ urlpatterns = [
     path("reports/daywise-sales/", DaywiseSalesSummary.as_view(), name="daywise-sales-summary"),
     path("reports/product-wise-sales/", ProductWiseSalesReport.as_view(), name="report-product-wise-sales"),
     path("reports/category-wise-sales/", CategoryWiseSalesSummary.as_view(), name="report-category-wise-sales"),
+
+    #custom Discount
+    path("discounts/", DiscountListCreate.as_view(), name="discount-list-create"),
+    path("discounts/<int:pk>/", DiscountDetail.as_view(), name="discount-detail"),
 ]
 
 urlpatterns += router.urls
