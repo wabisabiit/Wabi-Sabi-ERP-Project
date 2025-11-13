@@ -20,27 +20,57 @@ class ProductGridSerializer(serializers.ModelSerializer):
     # UI field names
     itemCode     = serializers.CharField(source="barcode")
     name         = serializers.SerializerMethodField()
-    category     = serializers.SerializerMethodField()  # null-safe
-    brand        = serializers.SerializerMethodField()  # null-safe
-    hsn          = serializers.SerializerMethodField()  # null-safe
+    category     = serializers.SerializerMethodField()   # null-safe
+    brand        = serializers.SerializerMethodField()   # null-safe
+    hsn          = serializers.SerializerMethodField()   # null-safe
     mrp          = serializers.DecimalField(max_digits=12, decimal_places=2)
-    sellingPrice = serializers.DecimalField(source="selling_price", max_digits=12, decimal_places=2)
-    image        = serializers.CharField(source="image_url", allow_blank=True, allow_null=True, default="")
-    qty          = serializers.SerializerMethodField()  # robust int
-    size         = serializers.CharField(allow_blank=True, default="")  # ⬅️ ADD THIS
+    sellingPrice = serializers.DecimalField(
+        source="selling_price", max_digits=12, decimal_places=2
+    )
+    image        = serializers.CharField(
+        source="image_url", allow_blank=True, allow_null=True, default=""
+    )
+    qty          = serializers.SerializerMethodField()   # robust int
+    size         = serializers.CharField(allow_blank=True, default="")
+
+    # actual Taskmaster item code (FK raw value)
+    taskItemCode = serializers.SerializerMethodField()
+
+    # ✅ NEW: destination location (from latest MasterPackLine for this product)
+    location     = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
-            "id", "itemCode", "category", "brand", "name",
-            "mrp", "sellingPrice", "hsn", "qty", "image", "size"  # ⬅️ ADD size HERE
+            "id",
+            "itemCode",
+            "name",
+            "taskItemCode",
+            "category",
+            "brand",
+            "mrp",
+            "sellingPrice",
+            "hsn",
+            "qty",
+            "image",
+            "size",
+            "location",      # 👈 include here
         ]
+
+    def get_taskItemCode(self, obj):
+        ti = getattr(obj, "task_item", None)
+        return getattr(ti, "item_code", "") if ti else ""
 
     def get_name(self, obj):
         ti = getattr(obj, "task_item", None)
         if not ti:
             return ""
-        return ti.item_vasy_name or ti.item_full_name or ti.item_print_friendly_name or ""
+        return (
+            ti.item_vasy_name
+            or ti.item_full_name
+            or ti.item_print_friendly_name
+            or ""
+        )
 
     def get_category(self, obj):
         ti = getattr(obj, "task_item", None)
@@ -63,7 +93,24 @@ class ProductGridSerializer(serializers.ModelSerializer):
             return int(obj.qty or 0)
         except Exception:
             return 0
-        
+
+    def get_location(self, obj):
+        """
+        Pick the MOST RECENT MasterPackLine for this product (i.e. last time
+        it was packed and destined to a location) and return that location name.
+        If never packed, return empty string.
+        """
+        line = (
+            MasterPackLine.objects
+            .filter(product=obj)
+            .select_related("location", "pack")
+            .order_by("-pack__created_at", "-id")
+            .first()
+        )
+        if not line or not line.location:
+            return ""
+        # You can choose `.code` instead if you want WSLLP / TN / etc.
+        return line.location.name or line.location.code or ""    
 
 class MasterPackLineInSerializer(serializers.Serializer):
     barcode = serializers.CharField()

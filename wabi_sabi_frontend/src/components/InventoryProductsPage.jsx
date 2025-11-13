@@ -83,6 +83,7 @@ function SearchSelect({ label, value, onChange, options, placeholder = "All", wi
 function toCSV(rows) {
   const headers = [
     "Sr. No.",
+    "Barcode Number",
     "Item Code",
     "Category",
     "Brand",
@@ -91,6 +92,7 @@ function toCSV(rows) {
     "Selling Price",
     "HSN",
     "Qty",
+    "Location",
     "Status",
     "Show Online",
   ];
@@ -100,6 +102,7 @@ function toCSV(rows) {
     ...rows.map((r, i) =>
       [
         i + 1,
+        r.barcodeNumber,
         r.itemCode,
         r.category,
         r.brand,
@@ -108,7 +111,8 @@ function toCSV(rows) {
         Number(r.sp || 0).toFixed(2),
         r.hsn,
         Number(r.qty || 0).toFixed(2),
-        r.active ? "ACTIVE" : "INACTIVE",
+        r.location || "",
+        (Number(r.qty) || 0) <= 0 ? "SOLD" : "ACTIVE",
         r.showOnline ? "Yes" : "No",
       ].map(esc).join(",")
     ),
@@ -136,42 +140,79 @@ async function exportRowsToPdf(rows, filename) {
     const pageH = doc.internal.pageSize.getHeight();
 
     const cols = [
-      ["Sr. No.", 54], ["Item Code", 90], ["Category", 100], ["Brand", 70],
-      ["Name", 300], ["MRP", 70], ["Selling Price", 90], ["HSN", 90],
-      ["Qty", 60], ["Status", 80], ["Show Online", 100],
+      ["Sr. No.", 54],
+      ["Barcode Number", 90],
+      ["Item Code", 90],
+      ["Category", 100],
+      ["Brand", 70],
+      ["Name", 260],
+      ["MRP", 70],
+      ["Selling Price", 90],
+      ["HSN", 90],
+      ["Qty", 50],
+      ["Location", 120],
+      ["Status", 70],
+      ["Show Online", 90],
     ];
 
-    const headerH = 26, rowH = 22;
+    const headerH = 26,
+      rowH = 22;
     let y = margin;
 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-    doc.text("Products", margin, y); y += 16;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Products", margin, y);
+    y += 16;
 
     const drawHeader = () => {
-      doc.setFillColor(245, 248, 253); doc.setDrawColor(230, 235, 243);
+      doc.setFillColor(245, 248, 253);
+      doc.setDrawColor(230, 235, 243);
       let x = margin;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-      cols.forEach(([label, w]) => { doc.rect(x, y, w, headerH, "FD"); doc.text(label, x + 6, y + 17); x += w; });
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      cols.forEach(([label, w]) => {
+        doc.rect(x, y, w, headerH, "FD");
+        doc.text(label, x + 6, y + 17);
+        x += w;
+      });
       y += headerH;
     };
     const drawRow = (r, idx) => {
       let x = margin;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
       const data = [
-        String(idx + 1), r.itemCode, r.category, r.brand, r.name,
-        Number(r.mrp || 0).toFixed(2), Number(r.sp || 0).toFixed(2), r.hsn, Number(r.qty || 0).toFixed(2),
-        r.active ? "ACTIVE" : "INACTIVE", r.showOnline ? "Yes" : "No",
+        String(idx + 1),
+        r.barcodeNumber,
+        r.itemCode,
+        r.category,
+        r.brand,
+        r.name,
+        Number(r.mrp || 0).toFixed(2),
+        Number(r.sp || 0).toFixed(2),
+        r.hsn,
+        Number(r.qty || 0).toFixed(2),
+        r.location || "",
+        (Number(r.qty) || 0) <= 0 ? "SOLD" : "ACTIVE",
+        r.showOnline ? "Yes" : "No",
       ];
       cols.forEach(([_, w], i) => {
-        if (idx % 2 === 1) { doc.setFillColor(252, 253, 255); doc.rect(x, y, w, rowH, "F"); }
-        doc.setDrawColor(238, 242, 247); doc.rect(x, y, w, rowH, "S");
+        if (idx % 2 === 1) {
+          doc.setFillColor(252, 253, 255);
+          doc.rect(x, y, w, rowH, "F");
+        }
+        doc.setDrawColor(238, 242, 247);
+        doc.rect(x, y, w, rowH, "S");
         let txt = data[i] ?? "";
-        if (i === 4) {
+        if (i === 5) {
           const maxChars = Math.floor((w - 10) / 6.2);
           if (txt.length > maxChars) txt = txt.slice(0, maxChars - 1) + "…";
         }
-        if ([5, 6, 8].includes(i)) { doc.text(txt, x + w - 6, y + 15, { align: "right" }); }
-        else { doc.text(txt, x + 6, y + 15); }
+        if ([6, 7, 9].includes(i)) {
+          doc.text(txt, x + w - 6, y + 15, { align: "right" });
+        } else {
+          doc.text(txt, x + 6, y + 15);
+        }
         x += w;
       });
       y += rowH;
@@ -179,7 +220,11 @@ async function exportRowsToPdf(rows, filename) {
 
     drawHeader();
     rows.forEach((r, i) => {
-      if (y + rowH > pageH - margin) { doc.addPage(); y = margin + 16; drawHeader(); }
+      if (y + rowH > pageH - margin) {
+        doc.addPage();
+        y = margin + 16;
+        drawHeader();
+      }
       drawRow(r, i);
     });
 
@@ -219,23 +264,40 @@ export default function InventoryProductsPage() {
   // image upload
   const fileInputRef = useRef(null);
   const uploadForRowRef = useRef(null);
-  const handlePickImages = (rowId) => { uploadForRowRef.current = rowId; fileInputRef.current?.click(); };
+  const handlePickImages = (rowId) => {
+    uploadForRowRef.current = rowId;
+    fileInputRef.current?.click();
+  };
   const handleFilesSelected = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !uploadForRowRef.current) return;
     const urls = files.map((f) => URL.createObjectURL(f));
-    setRows((list) => list.map((r) => (r.id === uploadForRowRef.current ? { ...r, images: [...(r.images || []), ...urls] } : r)));
+    setRows((list) =>
+      list.map((r) =>
+        r.id === uploadForRowRef.current ? { ...r, images: [...(r.images || []), ...urls] } : r
+      )
+    );
     e.target.value = "";
   };
-  useEffect(() => () => {
-    rows.forEach((r) => (r.images || []).forEach((u) => URL.revokeObjectURL(u)));
-  }, []); // eslint-disable-line
+  useEffect(
+    () => () => {
+      rows.forEach((r) => (r.images || []).forEach((u) => URL.revokeObjectURL(u)));
+    },
+    [] // eslint-disable-line
+  );
 
   // options
   const DEPT_OPTIONS = ["All", "Test", "S", "clothes", "Miscellaneous", "Sweater"];
   const TAX_OPTIONS = ["All", "Gst 15", "GST 28", "GST18", "GST12", "GST 5", "NON GST 0"];
 
-  const [filters, setFilters] = useState({ dept: "", category: "", brand: "", purchaseTax: "", salesTax: "", hsn: "" });
+  const [filters, setFilters] = useState({
+    dept: "",
+    category: "",
+    brand: "",
+    purchaseTax: "",
+    salesTax: "",
+    hsn: "",
+  });
 
   /* ===== Load ALL pages from backend ===== */
   useEffect(() => {
@@ -244,22 +306,20 @@ export default function InventoryProductsPage() {
       setLoading(true);
       setLoadErr("");
       try {
-        // First call via helper (works for both paginated + non-paginated)
         const first = await listProducts(search ? { q: search } : {});
         let list = [];
         let nextUrl = null;
 
         if (Array.isArray(first)) {
-          // Unpaginated API
           list = first;
         } else if (first && Array.isArray(first.results)) {
-          // Paginated API: collect first page, then follow `next`
           list = [...first.results];
           nextUrl = first.next || null;
-
           while (nextUrl) {
-            // fetch absolute `next` URL directly (keeps credentials)
-            const res = await fetch(nextUrl, { credentials: "include", headers: { "Accept": "application/json" } });
+            const res = await fetch(nextUrl, {
+              credentials: "include",
+              headers: { Accept: "application/json" },
+            });
             if (!res.ok) {
               const text = await res.text().catch(() => "");
               throw new Error(`Fetch next failed (${res.status}): ${text}`);
@@ -272,13 +332,15 @@ export default function InventoryProductsPage() {
           list = [];
         }
 
-        // map API rows to UI (ONLY change: take real qty, and mark sold if 0)
         const mapped = list.map((r) => ({
           id: r.id,
           images: r.image ? [r.image] : [],
-          itemCode: r.itemCode || r.item_code || r.barcode || "",
-          category: r.task_item?.category || r.category || "",
-          brand: "B4L",
+          // printed barcode number
+          barcodeNumber: r.itemCode || r.item_code || r.barcode || "",
+          // real Taskmaster item code
+          itemCode: r.taskItemCode || r.task_item_code || r.task_item_id || "",
+          category: r.category || "",
+          brand: r.brand || "B4L",
           name:
             r.name ||
             r.task_item?.item_print_friendly_name ||
@@ -288,7 +350,8 @@ export default function InventoryProductsPage() {
           mrp: Number(r.mrp || 0),
           sp: Number(r.sellingPrice || r.selling_price || 0),
           hsn: r.hsn || r.hsn_code || "",
-          qty: Number(r.qty ?? 0) || 0,   // ← REAL QTY (no default 1)
+          qty: Number(r.qty ?? 0) || 0, // real qty
+          location: r.location || "", // comes from serializer
           active: true,
           showOnline: false,
           createdOn: r.created_on || r.created_at || r.createdOn || r.created || "",
@@ -302,7 +365,9 @@ export default function InventoryProductsPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [search]);
 
   /* ===== Filtering/pagination ===== */
@@ -313,7 +378,9 @@ export default function InventoryProductsPage() {
       if (filters.brand && r.brand !== filters.brand) return false;
       if (filters.hsn && r.hsn !== filters.hsn) return false;
       if (!q) return true;
-      return `${r.itemCode} ${r.category} ${r.brand} ${r.name} ${r.mrp} ${r.sp} ${r.hsn}`.toLowerCase().includes(q);
+      return `${r.barcodeNumber} ${r.itemCode} ${r.category} ${r.brand} ${r.name} ${r.mrp} ${r.sp} ${r.hsn} ${r.location}`
+        .toLowerCase()
+        .includes(q);
     });
   }, [rows, search, filters]);
 
@@ -322,7 +389,9 @@ export default function InventoryProductsPage() {
   const start = (safePage - 1) * pageSize;
   const end = start + pageSize;
   const pageRows = filtered.slice(start, end);
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages, page]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
 
   useEffect(() => {
     if (!actionOpenId) return;
@@ -331,7 +400,9 @@ export default function InventoryProductsPage() {
       if (!host) return setActionOpenId(null);
       if (!host.contains(e.target)) setActionOpenId(null);
     };
-    const handleEsc = (e) => { if (e.key === "Escape") setActionOpenId(null); };
+    const handleEsc = (e) => {
+      if (e.key === "Escape") setActionOpenId(null);
+    };
     document.addEventListener("mousedown", handleDown);
     document.addEventListener("keydown", handleEsc);
     return () => {
@@ -343,11 +414,13 @@ export default function InventoryProductsPage() {
   /* ===== Delete (DB + UI) ===== */
   async function handleDeleteOne(row) {
     if (!row?.id) return;
-    const ok = window.confirm(`Delete product "${row.itemCode}" from database?`);
+    const ok = window.confirm(
+      `Delete product with barcode "${row.barcodeNumber}" from database?`
+    );
     if (!ok) return;
     try {
-      await deleteProduct(row.id);              // API call
-      setRows((prev) => prev.filter((r) => r.id !== row.id)); // remove from UI
+      await deleteProduct(row.id);
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
       alert("Deleted from database successfully.");
     } catch (e) {
       console.error(e);
@@ -372,16 +445,44 @@ export default function InventoryProductsPage() {
               </button>
               {exportOpen && (
                 <div className="pp-menu">
-                  <button onClick={() => { downloadBlob(toCSV(pageRows), "products_page.csv", "text/csv;charset=utf-8"); setExportOpen(false); }}>
+                  <button
+                    onClick={() => {
+                      downloadBlob(
+                        toCSV(pageRows),
+                        "products_page.csv",
+                        "text/csv;charset=utf-8"
+                      );
+                      setExportOpen(false);
+                    }}
+                  >
                     <span className="mi icon">table_chart</span>Excel
                   </button>
-                  <button onClick={async () => { await exportRowsToPdf(pageRows, "products_page.pdf"); setExportOpen(false); }}>
+                  <button
+                    onClick={async () => {
+                      await exportRowsToPdf(pageRows, "products_page.pdf");
+                      setExportOpen(false);
+                    }}
+                  >
                     <span className="mi icon">picture_as_pdf</span>PDF
                   </button>
-                  <button onClick={async () => { await exportRowsToPdf(filtered, "products_all.pdf"); setExportOpen(false); }}>
+                  <button
+                    onClick={async () => {
+                      await exportRowsToPdf(filtered, "products_all.pdf");
+                      setExportOpen(false);
+                    }}
+                  >
                     <span className="mi icon">picture_as_pdf</span>All Data PDF
                   </button>
-                  <button onClick={() => { downloadBlob(toCSV(filtered), "products_all.csv", "text/csv;charset=utf-8"); setExportOpen(false); }}>
+                  <button
+                    onClick={() => {
+                      downloadBlob(
+                        toCSV(filtered),
+                        "products_all.csv",
+                        "text/csv;charset=utf-8"
+                      );
+                      setExportOpen(false);
+                    }}
+                  >
                     <span className="mi icon">grid_on</span>All Data Excel
                   </button>
                 </div>
@@ -396,61 +497,153 @@ export default function InventoryProductsPage() {
               {psOpen && (
                 <div className="pp-menu">
                   {PAGE_SIZE_OPTIONS.map((n) => (
-                    <button key={n} onClick={() => { setPageSize(n); setPsOpen(false); setPage(1); }}>{n}</button>
+                    <button
+                      key={n}
+                      onClick={() => {
+                        setPageSize(n);
+                        setPsOpen(false);
+                        setPage(1);
+                      }}
+                    >
+                      {n}
+                    </button>
                   ))}
                 </div>
               )}
             </div>
 
-            <button className="pp-btn outline" onClick={() => setShowFilters((v) => !v)}>
+            <button
+              className="pp-btn outline"
+              onClick={() => setShowFilters((v) => !v)}
+            >
               <span className="mi">filter_list</span> Filter
             </button>
 
-            <button className="pp-btn outline" title="Import HSN Code" onClick={() => document.getElementById("hsn-file-input")?.click()}>
+            <button
+              className="pp-btn outline"
+              title="Import HSN Code"
+              onClick={() => document.getElementById("hsn-file-input")?.click()}
+            >
               <span className="mi">upload_file</span> Import HSN Code
             </button>
           </div>
 
           {/* hidden input for HSN CSV/TXT */}
-          <input id="hsn-file-input" type="file" accept=".csv,.txt,text/csv,text/plain" style={{ display: "none" }} />
+          <input
+            id="hsn-file-input"
+            type="file"
+            accept=".csv,.txt,text/csv,text/plain"
+            style={{ display: "none" }}
+          />
 
           <div className="pp-right">
             <div className="pp-search">
-              <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search List..." />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search List..."
+              />
               <span className="mi">search</span>
             </div>
-            <button className="pp-btn blue" onClick={() => navigate("/inventory/products/new")}>Create New</button>
+            <button
+              className="pp-btn blue"
+              onClick={() => navigate("/inventory/products/new")}
+            >
+              Create New
+            </button>
           </div>
         </div>
 
         {showFilters && (
           <div className="pp-filterbar">
-            <SearchSelect label="Department" value={filters.dept} onChange={(v) => setFilters((f) => ({ ...f, dept: v }))} options={DEPT_OPTIONS} width={240}/>
-            <SearchSelect label="Category" value={filters.category} onChange={(v) => setFilters((f) => ({ ...f, category: v }))} options={["All", ...new Set(rows.map(r => r.category).filter(Boolean))]} width={260}/>
-            <SearchSelect label="Brand" value={filters.brand} onChange={(v) => setFilters((f) => ({ ...f, brand: v }))} options={["All", "B4L"]} width={240}/>
-            <SearchSelect label="HSN" value={filters.hsn} onChange={(v) => setFilters((f) => ({ ...f, hsn: v }))} options={["All", ...new Set(rows.map(r => r.hsn).filter(Boolean))]} width={240}/>
-            <SearchSelect label="Purchase Tax" value={filters.purchaseTax} onChange={(v) => setFilters((f) => ({ ...f, purchaseTax: v }))} options={TAX_OPTIONS} width={240}/>
-            <SearchSelect label="Sales Tax" value={filters.salesTax} onChange={(v) => setFilters((f) => ({ ...f, salesTax: v }))} options={TAX_OPTIONS} width={240}/>
+            <SearchSelect
+              label="Department"
+              value={filters.dept}
+              onChange={(v) => setFilters((f) => ({ ...f, dept: v }))}
+              options={DEPT_OPTIONS}
+              width={240}
+            />
+            <SearchSelect
+              label="Category"
+              value={filters.category}
+              onChange={(v) => setFilters((f) => ({ ...f, category: v }))}
+              options={["All", ...new Set(rows.map((r) => r.category).filter(Boolean))]}
+              width={260}
+            />
+            <SearchSelect
+              label="Brand"
+              value={filters.brand}
+              onChange={(v) => setFilters((f) => ({ ...f, brand: v }))}
+              options={["All", "B4L"]}
+              width={240}
+            />
+            <SearchSelect
+              label="HSN"
+              value={filters.hsn}
+              onChange={(v) => setFilters((f) => ({ ...f, hsn: v }))}
+              options={["All", ...new Set(rows.map((r) => r.hsn).filter(Boolean))]}
+              width={240}
+            />
+            <SearchSelect
+              label="Purchase Tax"
+              value={filters.purchaseTax}
+              onChange={(v) =>
+                setFilters((f) => ({
+                  ...f,
+                  purchaseTax: v,
+                }))
+              }
+              options={TAX_OPTIONS}
+              width={240}
+            />
+            <SearchSelect
+              label="Sales Tax"
+              value={filters.salesTax}
+              onChange={(v) =>
+                setFilters((f) => ({
+                  ...f,
+                  salesTax: v,
+                }))
+              }
+              options={TAX_OPTIONS}
+              width={240}
+            />
           </div>
         )}
 
-        <div className="pp-bulk" style={{ display: selectedIds.size ? "block" : "none" }}>
+        <div
+          className="pp-bulk"
+          style={{ display: selectedIds.size ? "block" : "none" }}
+        >
           <div className="pp-bulk-left">
             Selected {selectedIds.size || 0} Records:
-            <button className="pp-btn danger" onClick={() => {
-              if (!selectedIds.size) return;
-              // UI-only bulk delete (single row delete hits DB)
-              setRows((l) => l.filter((r) => !selectedIds.has(r.id)));
-              setSelectedIds(new Set());
-            }}>
+            <button
+              className="pp-btn danger"
+              onClick={() => {
+                if (!selectedIds.size) return;
+                setRows((l) => l.filter((r) => !selectedIds.has(r.id)));
+                setSelectedIds(new Set());
+              }}
+            >
               <span className="mi">delete</span> Delete
             </button>
           </div>
         </div>
 
         <div className="pp-table-wrap">
-          {loading && <div className="empty" style={{ padding: 16 }}>Loading…</div>}
-          {loadErr && <div className="empty" style={{ padding: 16, color: "#c00" }}>{loadErr}</div>}
+          {loading && (
+            <div className="empty" style={{ padding: 16 }}>
+              Loading…
+            </div>
+          )}
+          {loadErr && (
+            <div className="empty" style={{ padding: 16, color: "#c00" }}>
+              {loadErr}
+            </div>
+          )}
 
           {!loading && !loadErr && (
             <table className="pp-table">
@@ -460,22 +653,45 @@ export default function InventoryProductsPage() {
                     <label className="pp-chk">
                       <input
                         type="checkbox"
-                        checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))}
+                        checked={
+                          pageRows.length > 0 &&
+                          pageRows.every((r) => selectedIds.has(r.id))
+                        }
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedIds(new Set([...selectedIds, ...pageRows.map((r) => r.id)]));
-                          else { const next = new Set(selectedIds); pageRows.forEach((r) => next.delete(r.id)); setSelectedIds(next); }
+                          if (e.target.checked)
+                            setSelectedIds(
+                              new Set([...selectedIds, ...pageRows.map((r) => r.id)])
+                            );
+                          else {
+                            const next = new Set(selectedIds);
+                            pageRows.forEach((r) => next.delete(r.id));
+                            setSelectedIds(next);
+                          }
                         }}
                       />
                       <span />
                     </label>
                   </th>
-                  <th>Sr. No.</th><th>Image</th><th>Item Code</th><th>Category</th><th>Brand</th>
-                  <th>Name</th><th>MRP</th><th>Selling Price</th><th>HSN</th><th>Qty</th><th>Status</th><th>Show Online</th><th className="act">Actions</th>
+                  <th>Sr. No.</th>
+                  <th>Image</th>
+                  <th>Name</th>
+                  <th>Barcode Number</th>
+                  <th>Item Code</th>
+                  <th>Category</th>
+                  <th>Brand</th>
+                  <th>MRP</th>
+                  <th>Selling Price</th>
+                  <th>HSN</th>
+                  <th>Qty</th>
+                  <th>Location</th>
+                  <th>Status</th>
+                  <th>Show Online</th>
+                  <th className="act">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.map((r, idx) => {
-                  const isSold = (Number(r.qty) || 0) <= 0; // ← decide badge by real qty
+                  const isSold = (Number(r.qty) || 0) <= 0;
                   return (
                     <tr key={r.id}>
                       <td className="chk">
@@ -485,7 +701,8 @@ export default function InventoryProductsPage() {
                             checked={selectedIds.has(r.id)}
                             onChange={(e) => {
                               const next = new Set(selectedIds);
-                              if (e.target.checked) next.add(r.id); else next.delete(r.id);
+                              if (e.target.checked) next.add(r.id);
+                              else next.delete(r.id);
                               setSelectedIds(next);
                             }}
                           />
@@ -493,53 +710,116 @@ export default function InventoryProductsPage() {
                         </label>
                       </td>
                       <td>{start + idx + 1}</td>
-                      <td onClick={() => { uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} style={{ cursor: "pointer" }} title="Click to add images">
+                      <td
+                        onClick={() => {
+                          uploadForRowRef.current = r.id;
+                          fileInputRef.current?.click();
+                        }}
+                        style={{ cursor: "pointer" }}
+                        title="Click to add images"
+                      >
                         {r.images?.length ? (
                           <div style={{ display: "flex", gap: 4 }}>
                             {r.images.slice(0, 3).map((u, i) => (
-                              <img key={i} src={u} alt="" style={{ width: 44, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid #cfd7e6", background: "#f9fbff" }}
-                                onClick={(e) => { e.stopPropagation(); uploadForRowRef.current = r.id; fileInputRef.current?.click(); }} />
+                              <img
+                                key={i}
+                                src={u}
+                                alt=""
+                                style={{
+                                  width: 44,
+                                  height: 36,
+                                  objectFit: "cover",
+                                  borderRadius: 8,
+                                  border: "1px solid #cfd7e6",
+                                  background: "#f9fbff",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  uploadForRowRef.current = r.id;
+                                  fileInputRef.current?.click();
+                                }}
+                              />
                             ))}
                             {r.images.length > 3 && (
-                              <div style={{ width: 44, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-                                border: "1px dashed #cfd7e6", borderRadius: 8, fontSize: 11, color: "#6b7280", background: "#f9fbff" }}>
+                              <div
+                                style={{
+                                  width: 44,
+                                  height: 36,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  border: "1px dashed #cfd7e6",
+                                  borderRadius: 8,
+                                  fontSize: 11,
+                                  color: "#6b7280",
+                                  background: "#f9fbff",
+                                }}
+                              >
                                 +{r.images.length - 3}
                               </div>
                             )}
                           </div>
-                        ) : (<div className="pp-img-skel"><span className="mi">image</span></div>)}
+                        ) : (
+                          <div className="pp-img-skel">
+                            <span className="mi">image</span>
+                          </div>
+                        )}
                       </td>
-                      <td className="mono">{r.itemCode}</td>
-                      <td>{r.category}</td>
-                      <td className="mono">B4L</td>
                       <td>
                         <button
                           className="pp-link blue"
-                          onClick={() => navigate(`/inventory/products/${r.id}`, { state: { row: r } })}
+                          onClick={() =>
+                            navigate(`/inventory/products/${r.id}`, { state: { row: r } })
+                          }
                           title="Open product details"
-                          style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
+                          style={{
+                            background: "transparent",
+                            border: 0,
+                            padding: 0,
+                            cursor: "pointer",
+                          }}
                         >
                           {r.name}
                         </button>
                       </td>
+                      <td className="mono">{r.barcodeNumber}</td>
+                      <td className="mono">{r.itemCode}</td>
+                      <td>{r.category}</td>
+                      <td className="mono">{r.brand}</td>
                       <td className="num">{Number(r.mrp || 0).toFixed(2)}</td>
                       <td className="num">{Number(r.sp || 0).toFixed(2)}</td>
                       <td className="mono">{r.hsn}</td>
-                      {/* Qty uses real number */}
                       <td className="num">{Number(r.qty ?? 0).toFixed(2)}</td>
-                      {/* Status badge based on qty */}
-                      <td><span className={`pp-badge ${isSold ? "danger" : "success"}`}>{isSold ? "SOLD" : "ACTIVE"}</span></td>
+                      <td>{r.location || "-"}</td>
+                      <td>
+                        <span className={`pp-badge ${isSold ? "danger" : "success"}`}>
+                          {isSold ? "SOLD" : "ACTIVE"}
+                        </span>
+                      </td>
                       <td>
                         <label className="pp-switch">
-                          <input type="checkbox" checked={!!r.showOnline} onChange={(e) => {
-                            const checked = e.target.checked;
-                            setRows((l) => l.map((row) => (row.id === r.id ? { ...row, showOnline: checked } : row)));
-                          }} />
+                          <input
+                            type="checkbox"
+                            checked={!!r.showOnline}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setRows((l) =>
+                                l.map((row) =>
+                                  row.id === r.id ? { ...row, showOnline: checked } : row
+                                )
+                              );
+                            }}
+                          />
                           <span className="slider" />
                         </label>
                       </td>
                       <td className="act">
-                        <div className="pp-actions" ref={(el) => { if (el) actionRefs.current[r.id] = el; }}>
+                        <div
+                          className="pp-actions"
+                          ref={(el) => {
+                            if (el) actionRefs.current[r.id] = el;
+                          }}
+                        >
                           <button
                             className={`pp-kebab ${actionOpenId === r.id ? "open" : ""}`}
                             onClick={(e) => {
@@ -549,19 +829,39 @@ export default function InventoryProductsPage() {
                             aria-label="Row actions"
                             aria-expanded={actionOpenId === r.id}
                           >
-                            <span className="dot" /><span className="dot" /><span className="dot" />
+                            <span className="dot" />
+                            <span className="dot" />
+                            <span className="dot" />
                           </button>
 
                           {actionOpenId === r.id && (
                             <div className="pp-menu right kebab">
-                              <button onClick={() => { alert("Edit Details"); setActionOpenId(null); }}>
-                                <span className="mi icon">open_in_new</span>Edit Details
+                              <button
+                                onClick={() => {
+                                  alert("Edit Details");
+                                  setActionOpenId(null);
+                                }}
+                              >
+                                <span className="mi icon">open_in_new</span>
+                                Edit Details
                               </button>
-                              <button onClick={async () => { setActionOpenId(null); await handleDeleteOne(r); }}>
-                                <span className="mi icon">delete</span>Delete
+                              <button
+                                onClick={async () => {
+                                  setActionOpenId(null);
+                                  await handleDeleteOne(r);
+                                }}
+                              >
+                                <span className="mi icon">delete</span>
+                                Delete
                               </button>
-                              <button onClick={() => { alert("Deactivate"); setActionOpenId(null); }}>
-                                <span className="mi icon">block</span>Deactivate
+                              <button
+                                onClick={() => {
+                                  alert("Deactivate");
+                                  setActionOpenId(null);
+                                }}
+                              >
+                                <span className="mi icon">block</span>
+                                Deactivate
                               </button>
                             </div>
                           )}
@@ -570,24 +870,63 @@ export default function InventoryProductsPage() {
                     </tr>
                   );
                 })}
-                {pageRows.length === 0 && (<tr><td colSpan={14} className="empty">No records found</td></tr>)}
+                {pageRows.length === 0 && (
+                  <tr>
+                    <td colSpan={16} className="empty">
+                      No records found
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
         </div>
 
         {/* hidden input for image uploads */}
-        <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleFilesSelected} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: "none" }}
+          onChange={handleFilesSelected}
+        />
 
         <div className="pp-foot">
-          <div className="pp-foot-left">Showing {Math.min(start + 1, filtered.length)} to {Math.min(end, filtered.length)} of {filtered.length.toLocaleString()} entries</div>
+          <div className="pp-foot-left">
+            Showing {Math.min(start + 1, filtered.length)} to{" "}
+            {Math.min(end, filtered.length)} of {filtered.length.toLocaleString()} entries
+          </div>
           <div className="pp-pagination">
-            <button className="pg-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
+            <button
+              className="pg-btn"
+              disabled={safePage === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Prev
+            </button>
             {paginate(totalPages, safePage).map((p, i) =>
-              p === "…" ? <span key={`e${i}`} className="pg-ellipsis">…</span> :
-              <button key={p} className={`pg-btn num ${p === safePage ? "active" : ""}`} onClick={() => setPage(p)}>{p}</button>
+              p === "…" ? (
+                <span key={`e${i}`} className="pg-ellipsis">
+                  …
+                </span>
+              ) : (
+                <button
+                  key={p}
+                  className={`pg-btn num ${p === safePage ? "active" : ""}`}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              )
             )}
-            <button className="pg-btn" disabled={safePage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+            <button
+              className="pg-btn"
+              disabled={safePage === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
