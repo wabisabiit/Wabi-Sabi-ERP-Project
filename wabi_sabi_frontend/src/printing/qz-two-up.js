@@ -52,13 +52,14 @@ const Y_TITLE_MM         = 1.0;
 const Y_NAME_MM          = 5.0;
 
 /* more air around SIZE */
-const SIZE_TOP_GAP_MM    = 2.2;  // ↑ was 1.8
-const SIZE_BOTTOM_GAP_MM = 4.0;  // ↑ was 2.3
+const SIZE_TOP_GAP_MM    = 0.8;  // reduced margin above size
+const SIZE_BOTTOM_GAP_MM = 3.5;  // increased space below size to prevent overlap
 
 /* gently push the whole lower block down */
-const Y_MRP_MM_BASE      = 10.0;  // ↑ was 8.9
-const Y_SP_MM            = 15.6; // ↑ was 12.8
-const Y_BC_MM            = 18.8; // ↑ was 17.0
+const Y_MRP_MM_BASE      = 10.0;  // minimum Y position for MRP
+const MRP_SP_GAP_MM      = 2.5;   // gap between MRP and SP
+const SP_BC_GAP_MM       = 1.8;   // gap between SP and barcode
+const Y_BC_MM            = 18.8;  // fallback barcode Y position
 
 const BARCODE_HEIGHT_MM  = 5.0;
 
@@ -123,18 +124,45 @@ function tsplOneLabel({ title, name, size, mrp, sp, code, location, date }, x0mm
   cmds.push(`TEXT ${t1x},${mm(Y_TITLE_MM)},"1",0,2,2,"${t1}"`);
   cmds.push(`TEXT ${t2x},${mm(Y_TITLE_MM)},"1",0,2,2,"${t2}"`);
 
-  /* Name */
-  const pname = name.length > 20 ? name.slice(0, 20) : name;
-  const pnameWidthMM = textWidthMM(pname, 1);
+  /* Name - wrap to multiple lines if needed */
   const nameY = mm(Y_NAME_MM);
-  cmds.push(`TEXT ${centerX - mm(pnameWidthMM / 2)},${nameY},"1",0,1,1,"${pname}"`);
+  const maxCharsPerLine = 20;
+  const nameLines = [];
+  
+  if (name.length <= maxCharsPerLine) {
+    nameLines.push(name);
+  } else {
+    // Split by words and fit into lines
+    const words = name.split(' ');
+    let currentLine = '';
+    
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      if (testLine.length <= maxCharsPerLine) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) nameLines.push(currentLine);
+        currentLine = word.length > maxCharsPerLine ? word.slice(0, maxCharsPerLine) : word;
+      }
+    }
+    if (currentLine) nameLines.push(currentLine);
+  }
+  
+  // Print each line centered
+  const lineHeightMM = 1.8;
+  nameLines.forEach((line, idx) => {
+    const lineWidthMM = textWidthMM(line, 1);
+    const lineY = nameY + mm(idx * lineHeightMM);
+    cmds.push(`TEXT ${centerX - mm(lineWidthMM / 2)},${lineY},"1",0,1,1,"${line}"`);
+  });
 
-  /* Size with margins */
-  let yCursor = nameY;
+  /* Size with margins - adjust position based on number of name lines */
+  const nameHeightMM = nameLines.length * 1.8;
+  let yCursor = nameY + mm(nameHeightMM);
   if (size) {
     const sizeText = `( ${size} )`;
     const sizeW = textWidthMM(sizeText, 1.3);
-    const ySize = nameY + mm(SIZE_TOP_GAP_MM);
+    const ySize = yCursor + mm(SIZE_TOP_GAP_MM);
     cmds.push(`TEXT ${centerX - mm(sizeW / 2)},${ySize},"1",0,1,2,"${sizeText}"`); // 1×2 for readability
     yCursor = ySize + mm(SIZE_BOTTOM_GAP_MM);
   }
@@ -148,13 +176,16 @@ function tsplOneLabel({ title, name, size, mrp, sp, code, location, date }, x0mm
   cmds.push(`TEXT ${mrpX},${mrpY},"1",0,${MRP_SCALE_X},${MRP_SCALE_Y},"${mrpStr}"`);
   cmds.push(`BAR ${mrpX},${mrpY + mm(0.8)},${mm(mrpWmm)},2`);
 
-  /* Selling Price (2×) */
+  /* Selling Price (2×) - position relative to MRP */
   const spStr = sp.toFixed(0);
   const spWmm = textWidthMM(spStr, 2);
-  cmds.push(`TEXT ${centerX - mm(spWmm / 2)},${mm(Y_SP_MM)},"1",0,2,2,"${spStr}"`);
+  const mrpHeight = mm(2.4); // approximate height of MRP text at 2× scale
+  const spY = mrpY + mrpHeight + mm(MRP_SP_GAP_MM);
+  cmds.push(`TEXT ${centerX - mm(spWmm / 2)},${spY},"1",0,2,2,"${spStr}"`);
 
-  /* Barcode (centered) */
-  const bcY = mm(Y_BC_MM);
+  /* Barcode (centered) - position relative to SP */
+  const spHeight = mm(2.4); // approximate height of SP text at 2× scale
+  const bcY = spY + spHeight + mm(SP_BC_GAP_MM);
   const estWmm = Math.max(22, Math.min(32, code128WidthMM(code)));
   const bcX = centerX - mm(estWmm / 2);
   cmds.push(`BARCODE ${bcX},${bcY},"128",${mm(BARCODE_HEIGHT_MM)},0,0,2,3,"${code}"`);
@@ -204,7 +235,24 @@ async function getQzConfig() {
 }
 
 /* =========== Public API =========== */
-export async function printTwoUpLabels(rows, opts = {}) {
+/* Small global queue so print jobs never overlap */
+let _printQueue = Promise.resolve();
+
+/**
+ * Public function – call this exactly as before:
+ *   await printTwoUpLabels(rows, opts)
+ */
+export function printTwoUpLabels(rows, opts = {}) {
+  // Chain this job onto the queue so jobs run strictly one after another
+  _printQueue = _printQueue.then(
+    () => innerPrintTwoUpLabels(rows, opts),
+    () => innerPrintTwoUpLabels(rows, opts)
+  );
+  return _printQueue;
+}
+
+/* Actual implementation (unchanged logic) */
+async function innerPrintTwoUpLabels(rows, opts = {}) {
   await qzConnectSafe();
   const cfg = await getQzConfig();
 
@@ -242,19 +290,37 @@ export async function printTwoUpLabels(rows, opts = {}) {
   });
 
   // 3) Pair up; if odd, last single goes LEFT
-  for (let i = 0; i < expanded.length; ) {
-    let left = null, right = null;
-    const remaining = expanded.length - i;
-    if (remaining >= 2) {
-      left  = expanded[i];
-      right = expanded[i + 1];
-      i += 2;
-    } else {
-      left = expanded[i];
-      right = null;
-      i += 1;
+  try {
+    for (let i = 0; i < expanded.length; ) {
+      let left = null, right = null;
+      const remaining = expanded.length - i;
+      if (remaining >= 2) {
+        left  = expanded[i];
+        right = expanded[i + 1];
+        i += 2;
+      } else {
+        left = expanded[i];
+        right = null;
+        i += 1;
+      }
+      const cmdsStr = tsplTwoUpPage(left, right).join("\r\n");
+      await window.qz.print(cfg, [{ type: "raw", format: "command", data: cmdsStr }]);
     }
-    const cmdsStr = tsplTwoUpPage(left, right).join("\r\n");
-    await window.qz.print(cfg, [{ type: "raw", format: "command", data: cmdsStr }]);
+    
+    // ✅ CRITICAL: Force flush the printer buffer to print the last label immediately
+    const flushCmd = "PRINT 1,1\r\n";
+    await window.qz.print(cfg, [{ type: "raw", format: "command", data: flushCmd }]);
+    
+  } finally {
+    // 🔁 Hard refresh of QZ after this job
+    try {
+      if (window.qz?.websocket?.isActive()) {
+        await window.qz.websocket.disconnect();
+      }
+    } catch (e) {
+      console.warn("QZ disconnect failed (ignored):", e);
+    }
+    // drop cached config so next job recreates it cleanly
+    _qzConfig = null;
   }
 }
