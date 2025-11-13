@@ -21,6 +21,7 @@ from .views_coupons import (
 )
 from .views_reports import DaywiseSalesSummary, ProductWiseSalesReport, CategoryWiseSalesSummary
 from .views_discounts import DiscountListCreate, DiscountDetail
+from .views_reports_masterpacking import master_packing_item_wise 
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -68,6 +69,9 @@ urlpatterns = [
     #custom Discount
     path("discounts/", DiscountListCreate.as_view(), name="discount-list-create"),
     path("discounts/<int:pk>/", DiscountDetail.as_view(), name="discount-detail"),
+
+    # ...existing paths...
+    path("reports/master-packing-item-wise/", master_packing_item_wise, name="master-packing-item-wise"),
 ]
 
 urlpatterns += router.urls

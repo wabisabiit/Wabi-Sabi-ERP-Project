@@ -186,6 +186,7 @@ export default {
   listDiscounts,
   createDiscount,
   deleteDiscount,
+  listMasterPackingItemWise,
 };
 
 function sanitizeBarcode(v = "") {
@@ -543,4 +544,16 @@ export async function createDiscount(payload) {
 
 export async function deleteDiscount(id) {
   return http(`/discounts/${id}/`, { method: "DELETE" });
+}
+
+// --- Master Packing Item-Wise (real) ---
+export async function listMasterPackingItemWise(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.date_from)      sp.append("date_from", params.date_from);
+  if (params.date_to)        sp.append("date_to", params.date_to);
+  if (params.from_location)  sp.append("from_location", params.from_location);
+  if (params.to_location)    sp.append("to_location", params.to_location);
+  if (params.status)         sp.append("status", params.status);
+  const qs = sp.toString();
+  return http(`/reports/master-packing-item-wise/${qs ? `?${qs}` : ""}`);
 }

@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import "../styles/MasterPackingItemWise.css";
+import { listMasterPackingItemWise } from "../api/client";
 
 /* ---------------- click-outside helper ---------------- */
 function useOnClickOutside(ref, handler) {
@@ -282,29 +283,46 @@ export default function InvMasterPackingWiseSummary() {
   const STATUS = ["Select Status", "OPEN", "CLOSED"];
   const [status, setStatus] = useState("Select Status");
 
-  /* exact dummy rows */
-  const makeRow = (code) => ({
-    "From Location": "WABI SABI SUSTAINABILITY LLP",
-    "Transfer Date": "06/10/2025",
-    "Document Number": "STF/WS/1452",
-    "HSN CODE": "63090000",
-    "To Location": "Brands 4 less- Rajouri Garden Inside",
-    "Branch status": "OPEN",
-    "Transfer In Date": "-",
-    "Product Name": "(508)(L) Formal Pant",
-    "Print Name": "(L) Formal Pant",
-    "Department Name": "T-Shirt",
-    "ItemCode": code,
-    "Quantity": "1",
-    "Value": "480.00",
-    "Unit Price": "480.00",
-    "Tax(%)": "12",
-    "Taxable value": "428.57",
-    "MRP": "2999.00",
-    "Sale Price": "1199.00",
+  // ======== LIVE ROWS (replaces old dummy rows) ========
+  const [rows, setRows] = useState([]);
+
+  // map API row -> UI object with the exact keys already used in the table
+  const mapToUiRow = (r) => ({
+    "From Location": r.from_location,
+    "Transfer Date": r.transfer_date,           // already dd/mm/yyyy from API
+    "Document Number": r.document_number,
+    "HSN CODE": r.hsn_code,
+    "To Location": r.to_location,
+    "Branch status": r.branch_status,           // "OPEN"
+    "Transfer In Date": r.transfer_in_date,     // "-"
+    "Product Name": r.product_name,
+    "Print Name": r.print_name,
+    "Department Name": r.department_name,
+    "ItemCode": r.item_code,                    // barcode
+    "Quantity": String(r.quantity ?? 1),
+    "Value": r.value ?? "",
+    "Unit Price": r.unit_price ?? "",
+    "Tax(%)": r.tax_percent ?? "",
+    "Taxable value": r.taxable_value ?? "",
+    "MRP": r.mrp ?? "",
+    "Sale Price": r.sale_price ?? "",
   });
-  const itemCodes = ["93358–30","93359–30","93360–30","93361–30","93362–30","93363–30","93364–30","93365–30","93366–30","93367–30"];
-  const rows = itemCodes.map(makeRow);
+
+  useEffect(() => {
+    const params = {
+      date_from: fromDate,
+      date_to: toDate,
+      from_location: fromLoc === "All" ? "" : fromLoc,
+      to_location: toLoc === "All" ? "" : toLoc,
+      status: status === "Select Status" ? "" : status,
+    };
+    listMasterPackingItemWise(params)
+      .then((data) => {
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        setRows(arr.map(mapToUiRow));
+      })
+      .catch(() => setRows([]));
+  }, [fromDate, toDate, fromLoc, toLoc, status]);
 
   const HEADERS = [
     "From Location","Transfer Date","Document Number","HSN CODE","To Location",
@@ -429,7 +447,7 @@ export default function InvMasterPackingWiseSummary() {
 
         {/* Footer / Pager */}
         <div className="mpw-foot">
-          <div className="mpw-showing">Showing 1 to 10 of 10 entries</div>
+          <div className="mpw-showing">Showing 1 to {Math.min(perPage, rows.length)} of {rows.length} entries</div>
           <div className="mpw-pager">
             <button className="mpw-page-btn" disabled aria-label="Previous">‹</button>
             <span className="mpw-page-num active">1</span>
