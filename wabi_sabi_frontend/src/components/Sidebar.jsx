@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import "../styles/Sidebar.css";
@@ -110,8 +111,8 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
 
         {/* items */}
         <nav className="sb-items">
-          {/* Dashboard */}
-          <NavLink to="/new" className="sb-item" onClick={handleNav}>
+          {/* Dashboard -> now points to /dashboard like partner code */}
+          <NavLink to="/dashboard" className="sb-item" onClick={handleNav}>
             <span className="material-icons sb-ic">dashboard</span>
             <span className="sb-text" style={textStyle}>Dashboard</span>
           </NavLink>
@@ -171,7 +172,7 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
               <NavLink to="/inventory/master-packaging" className={linkClass} onClick={handleNav}>
                 Master Packaging
               </NavLink>
-              {/* ✅ NEW: Material Consumption */}
+              {/* ✅ Material Consumption (already in your code, kept as-is) */}
               <NavLink to="/inventory/material-consumption" className={linkClass} onClick={handleNav}>
                 Material Consumption
               </NavLink>
@@ -227,7 +228,7 @@ export default function Sidebar({ open, onClose, persistent = false, miniHover =
             </div>
           </div>
 
-          {/* NEW: Sales */}
+          {/* Sales */}
           <div className="sb-group">
             <button
               className="sb-item"

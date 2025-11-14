@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { Suspense, lazy, useMemo, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
@@ -9,9 +10,17 @@ import RightPanel from "./components/RightPanel";
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
 import PosPage from "./components/PosPage";
+import Dashboard from "./components/Dashboard"; // 🔹 from partner co
+
+// /* Theme tokens (partner) */
+// import "./styles/theme-typography.css";
 
 /* Keep base styles LAST so they win the cascade */
 import "./App.css";
+
+/* ---------- Auth (from partner) ---------- */
+import { AuthProvider } from "./auth/AuthContext";
+import ProtectedRoute from "./auth/ProtectedRoute";
 
 /* ---------- Lazy pages ---------- */
 // CRM
@@ -112,8 +121,12 @@ const MaterialConsumptionListPage = lazy(() => import("./components/MaterialCons
 const NewMaterialConsumptionPage = lazy(() => import("./components/NewMaterialConsumptionPage"));
 const MaterialConsumptionDetailPage = lazy(() => import("./components/MaterialConsumptionDetailPage"));
 
+/* 🔹 Auth pages from partner code */
+const Login = lazy(() => import("./components/Login"));
+// const Signup = lazy(() => import("./components/Signup"));
+
 /* ---------- Layouts ---------- */
-// POS layout with cart state (kept from Code1)
+// POS layout with cart state (kept from YOUR code)
 function POSLayout() {
   const [items, setItems] = useState([]);
 
@@ -135,13 +148,18 @@ function POSLayout() {
 
   const totals = useMemo(() => {
     const totalQty = items.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const amount = items.reduce((s, r) => s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0), 0);
+    const amount = items.reduce(
+      (s, r) => s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0),
+      0
+    );
     return { totalQty, amount };
   }, [items]);
 
   const handleReset = (res) => {
     if (res?.invoice_no) {
-      try { alert(`Payment successful.\nInvoice: ${res.invoice_no}`); } catch (_) { }
+      try {
+        alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
+      } catch (_) {}
     }
     setItems([]); // clear cart for next customer
   };
@@ -192,135 +210,154 @@ export default function App() {
   const navigate = useNavigate();
 
   return (
-    <Suspense fallback={null}>
-      <Routes>
-        <Route path="/" element={<Navigate to="/new" replace />} />
-        <Route path="/new" element={<POSLayout />} />
-        <Route path="/pos" element={<PosPage />} />
+    <AuthProvider>
+      <Suspense fallback={null}>
+        <Routes>
+          {/* 🔹 Auth routes from partner code (added, no change to your existing ones) */}
+          <Route path="/login" element={<Login />} />
+          {/* <Route path="/signup" element={<Signup />} /> */}
 
-        {/* Contact */}
-        <Route path="/contact" element={<SidebarLayout><ContactPage /></SidebarLayout>} />
+          {/* 🔹 Dashboard route from partner code (protected) */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <SidebarLayout>
+                  <Dashboard />
+                </SidebarLayout>
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Admin */}
-        <Route path="/admin/employee" element={<SidebarLayout><EmployeePage /></SidebarLayout>} />
-        <Route path="/admin/employee/new" element={<SidebarLayout><EmployeeCreatePage /></SidebarLayout>} />
-        <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
-        <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
+          {/* Your original routes start here (unchanged) */}
+          <Route path="/" element={<Navigate to="/new" replace />} />
+          <Route path="/new" element={<POSLayout />} />
+          <Route path="/pos" element={<PosPage />} />
 
-        {/* Inventory */}
-        <Route path="/inventory/products" element={<SidebarLayout><ProductsPage /></SidebarLayout>} />
-        <Route path="/inventory/products/new" element={<SidebarLayout><NewInventoryProductPage /></SidebarLayout>} />
-        <Route path="/inventory/stock-transfer" element={<SidebarLayout><StockTransferPage /></SidebarLayout>} />
-        <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
-        <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
+          {/* Contact */}
+          <Route path="/contact" element={<SidebarLayout><ContactPage /></SidebarLayout>} />
 
-        {/* ✅ NEW: Material Consumption */}
-        <Route path="/inventory/material-consumption" element={<SidebarLayout><MaterialConsumptionListPage /></SidebarLayout>} />
-        <Route path="/inventory/material-consumption/new" element={<SidebarLayout><NewMaterialConsumptionPage /></SidebarLayout>} />
-        <Route path="/inventory/material-consumption/:consNo" element={<SidebarLayout><MaterialConsumptionDetailPage /></SidebarLayout>} />
+          {/* Admin */}
+          <Route path="/admin/employee" element={<SidebarLayout><EmployeePage /></SidebarLayout>} />
+          <Route path="/admin/employee/new" element={<SidebarLayout><EmployeeCreatePage /></SidebarLayout>} />
+          <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
+          <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
 
-        {/* CRM */}
-        <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
-        <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
-        <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
+          {/* Inventory */}
+          <Route path="/inventory/products" element={<SidebarLayout><ProductsPage /></SidebarLayout>} />
+          <Route path="/inventory/products/new" element={<SidebarLayout><NewInventoryProductPage /></SidebarLayout>} />
+          <Route path="/inventory/stock-transfer" element={<SidebarLayout><StockTransferPage /></SidebarLayout>} />
+          <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
+          <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
 
-        <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
-        <Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
+          {/* ✅ NEW: Material Consumption */}
+          <Route path="/inventory/material-consumption" element={<SidebarLayout><MaterialConsumptionListPage /></SidebarLayout>} />
+          <Route path="/inventory/material-consumption/new" element={<SidebarLayout><NewMaterialConsumptionPage /></SidebarLayout>} />
+          <Route path="/inventory/material-consumption/:consNo" element={<SidebarLayout><MaterialConsumptionDetailPage /></SidebarLayout>} />
 
-        <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
-        {/* Use whichever filename you really have (see note below) */}
-        <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
+          {/* CRM */}
+          <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
+          <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
+          <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
 
-        <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
+          <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
+          <Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
 
-        {/* Multipay */}
-        <Route
-          path="/multiple-pay"
-          element={
-            <MultiplePay
-              cart={{
-                customerType: "Walk In Customer",
-                items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
-                roundoff: 0,
-              }}
-              onBack={() => navigate(-1)}
-              onProceed={() => navigate("/new")}
-            />
-          }
-        />
+          <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
+          {/* Use whichever filename you really have (see note below) */}
+          <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
 
-        {/* 🔹 Cash payment route */}
-        <Route path="/cash-pay" element={<CashPayment />} />
+          <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
 
-        {/* Inventory -> report routes */}
-        <Route path="/inventory/master-packing-itemwise-summary" element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>} />
-        <Route path="/inventory/sales-register" element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>} />
-        <Route path="/inventory/inventory-report" element={<SidebarLayout><InvInventoryReport /></SidebarLayout>} />
-        <Route path="/inventory/stock-summary" element={<SidebarLayout><InvStockSummary /></SidebarLayout>} />
+          {/* Multipay */}
+          <Route
+            path="/multiple-pay"
+            element={
+              <MultiplePay
+                cart={{
+                  customerType: "Walk In Customer",
+                  items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
+                  roundoff: 0,
+                }}
+                onBack={() => navigate(-1)}
+                onProceed={() => navigate("/new")}
+              />
+            }
+          />
 
-        {/* Bank / Cash */}
-        <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
-        <Route path="/bank/:slug" element={<SidebarLayout><BankDetailPage /></SidebarLayout>} />
-        <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />
-        <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
-        <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
-        <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
-        <Route path="/bank/expense" element={<SidebarLayout><ExpensePage /></SidebarLayout>} />
-        <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
-        <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
+          {/* 🔹 Cash payment route */}
+          <Route path="/cash-pay" element={<CashPayment />} />
 
-        {/* Settings */}
-        <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
-        <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
-        <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
-        <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
-        <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
-        <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
-        <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
+          {/* Inventory -> report routes */}
+          <Route path="/inventory/master-packing-itemwise-summary" element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>} />
+          <Route path="/inventory/sales-register" element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>} />
+          <Route path="/inventory/inventory-report" element={<SidebarLayout><InvInventoryReport /></SidebarLayout>} />
+          <Route path="/inventory/stock-summary" element={<SidebarLayout><InvStockSummary /></SidebarLayout>} />
 
-        {/* Sales */}
-        {/* ✅ Canonical Sales List path */}
-        <Route path="/sales/sale-list" element={<SidebarLayout><SaleListPage /></SidebarLayout>} />
-        {/* ♻️ Backward-compat: old /order-list → redirect */}
-        <Route path="/order-list" element={<Navigate to="/sales/sale-list" replace />} />
+          {/* Bank / Cash */}
+          <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
+          <Route path="/bank/:slug" element={<SidebarLayout><BankDetailPage /></SidebarLayout>} />
+          <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />
+          <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
+          <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
+          <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
+          <Route path="/bank/expense" element={<SidebarLayout><ExpensePage /></SidebarLayout>} />
+          <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
+          <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
 
-        {/* Sales → Invoice */}
-        <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
-        <Route path="/sales/invoice/new" element={<SidebarLayout><NewInvoicePage /></SidebarLayout>} />
-        <Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
-        <Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
+          {/* Settings */}
+          <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
+          <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
+          <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
+          <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
+          <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
+          <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
+          <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
 
-        {/* Sales Register (existing) */}
-        <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
+          {/* Sales */}
+          {/* ✅ Canonical Sales List path */}
+          <Route path="/sales/sale-list" element={<SidebarLayout><SaleListPage /></SidebarLayout>} />
+          {/* ♻️ Backward-compat: old /order-list → redirect */}
+          <Route path="/order-list" element={<Navigate to="/sales/sale-list" replace />} />
 
-        {/* Utilities */}
-        <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
-        <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
-        <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
+          {/* Sales → Invoice */}
+          <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
+          <Route path="/sales/invoice/new" element={<SidebarLayout><NewInvoicePage /></SidebarLayout>} />
+          <Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
+          <Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
 
-        {/* Reports */}
-        <Route path="/reports" element={<SidebarLayout><ReportsPage /></SidebarLayout>} />
-        <Route path="/reports/day-wise-sales-summary" element={<SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>} />
-        <Route path="/reports/sales-register" element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>} />
-        <Route path="/reports/category-wise-sales-summary" element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>} />
-        <Route path="/reports/credit-note-item-register" element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>} />
-        <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
-        <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
-        <Route path="/reports/wow-bill-report" element={<SidebarLayout><WowBillReport /></SidebarLayout>} />
-        <Route path="/reports/tax-wise-sales-summary" element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>} />
-        <Route path="/reports/sales-summary" element={<SidebarLayout><ReportSalesSummary /></SidebarLayout>} />
-        <Route path="/reports/customer-wise-sales-order-report" element={<MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>} />
+          {/* Sales Register (existing) */}
+          <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
 
-        {/* Accounting */}
-        <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
-        <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
+          {/* Utilities */}
+          <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
+          <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
+          <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
 
-        {/* Credit Note */ }
-        <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
+          {/* Reports */}
+          <Route path="/reports" element={<SidebarLayout><ReportsPage /></SidebarLayout>} />
+          <Route path="/reports/day-wise-sales-summary" element={<SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>} />
+          <Route path="/reports/sales-register" element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>} />
+          <Route path="/reports/category-wise-sales-summary" element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>} />
+          <Route path="/reports/credit-note-item-register" element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>} />
+          <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
+          <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
+          <Route path="/reports/wow-bill-report" element={<SidebarLayout><WowBillReport /></SidebarLayout>} />
+          <Route path="/reports/tax-wise-sales-summary" element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>} />
+          <Route path="/reports/sales-summary" element={<SidebarLayout><ReportSalesSummary /></SidebarLayout>} />
+          <Route path="/reports/customer-wise-sales-order-report" element={<MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>} />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/new" replace />} />
-      </Routes>
-    </Suspense>
+          {/* Accounting */}
+          <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
+          <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
+
+          {/* Credit Note */ }
+          <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/new" replace />} />
+        </Routes>
+      </Suspense>
+    </AuthProvider>
   );
 }
