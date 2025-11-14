@@ -187,6 +187,10 @@ export default {
   createDiscount,
   deleteDiscount,
   listMasterPackingItemWise,
+
+  apiLogin,
+  apiLogout,
+  apiMe,
 };
 
 function sanitizeBarcode(v = "") {
@@ -556,4 +560,23 @@ export async function listMasterPackingItemWise(params = {}) {
   if (params.status)         sp.append("status", params.status);
   const qs = sp.toString();
   return http(`/reports/master-packing-item-wise/${qs ? `?${qs}` : ""}`);
+}
+
+// --- Auth helpers (session based) ---
+export async function apiLogin(credentials) {
+  // credentials = { username, password }
+  return http(`/auth/login/`, {
+    method: "POST",
+    body: JSON.stringify(credentials),
+  });
+}
+
+export async function apiLogout() {
+  return http(`/auth/logout/`, {
+    method: "POST",
+  });
+}
+
+export async function apiMe() {
+  return http(`/auth/me/`);
 }

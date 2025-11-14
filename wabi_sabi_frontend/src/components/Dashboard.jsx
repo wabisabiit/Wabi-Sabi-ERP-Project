@@ -1,6 +1,8 @@
-
+// src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/Dashboard.css";
+import { useAuth } from "../auth/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 /* -------------------- Static filters -------------------- */
 const LOCATIONS = [
@@ -276,19 +278,16 @@ function exportPNG({ title, svgEl }){
   const w = Math.max(900, rect.width) * scale;
   const h = Math.max(360, rect.height) * scale;
 
-  // Serialize SVG
   const clone = svgEl.cloneNode(true);
   clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
   const svgStr = new XMLSerializer().serializeToString(clone);
   const svg64 = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
 
-  // Draw to canvas
   const img = new Image();
   img.onload = () => {
     const canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext("2d");
-    // white background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0,0,w,h);
     ctx.drawImage(img, 0, 0, w, h);
@@ -465,6 +464,9 @@ function TableCard({ title, rangeValue, onRangeChange, columns, rows, rightSide=
 
 /* -------------------- Main Dashboard -------------------- */
 export default function Dashboard(){
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const todayDMY=useMemo(()=>{ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`; },[]);
   const startDMY=useMemo(()=>{ const d=new Date(); d.setDate(1); const p=n=>String(n).padStart(2,"0"); return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`; },[]);
   const defaultRange=`${startDMY} - ${todayDMY}`;
@@ -488,8 +490,34 @@ export default function Dashboard(){
   const [profileOpen,setProfileOpen]=useState(false);
   const profileBtnRef=useRef(null);
   const profilePopRef=useRef(null);
-  const user = { name:"IT Account", role:"IT" };
-  const initials = useMemo(()=>user.name.split(" ").map(p=>p[0]).join("").slice(0,2).toUpperCase(),[user.name]);
+
+  const displayName = useMemo(() => {
+    if (!user) return "Guest";
+    if (user.full_name && user.full_name.trim()) return user.full_name;
+    if (user.first_name || user.last_name) {
+      return `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    }
+    return user.username || "User";
+  }, [user]);
+
+  const displayRole = useMemo(() => {
+    if (!user) return "";
+    if (user.role_label) return user.role_label;
+    if (user.is_superuser) return "Admin";
+    return user.role || "";
+  }, [user]);
+
+  const initials = useMemo(() => {
+    const src = displayName || "";
+    return src
+      .split(" ")
+      .filter(Boolean)
+      .map(p => p[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "US";
+  }, [displayName]);
+
   useEffect(()=>{
     function away(e){
       if(!profileOpen) return;
@@ -658,23 +686,40 @@ export default function Dashboard(){
 
           {/* Right: profile avatar */}
           <div className="toolbar-right">
-            <button ref={profileBtnRef} className="avatar-btn" onClick={()=>setProfileOpen(v=>!v)} aria-haspopup="menu" aria-expanded={profileOpen}>
+            <button
+              ref={profileBtnRef}
+              className="avatar-btn"
+              onClick={()=>setProfileOpen(v=>!v)}
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+            >
               <span className="avatar-dot">{initials}</span>
             </button>
 
             {profileOpen && (
               <div className="profile-pop" ref={profilePopRef} role="menu">
                 <div className="profile-head">
-                  <div className="profile-title">IT Account</div>
-                  <div className="profile-sub">IT</div>
+                  <div className="profile-title">{displayName}</div>
+                  <div className="profile-sub">{displayRole}</div>
                 </div>
                 <a className="profile-link" href="#profile" role="menuitem">
                   <span className="profile-ico">👤</span>
                   <span>My Profile</span>
                 </a>
                 <div className="profile-actions">
-                  <button className="btn ghost wfull">🔑 Change Password</button>
-                  <button className="btn danger wfull">↪ Logout</button>
+                  <button className="btn ghost wfull">
+                    🔑 Change Password
+                  </button>
+                  <button
+                    className="btn danger wfull"
+                    onClick={async () => {
+                      await logout();
+                      setProfileOpen(false);
+                      navigate("/login");
+                    }}
+                  >
+                    ↪ Logout
+                  </button>
                 </div>
               </div>
             )}

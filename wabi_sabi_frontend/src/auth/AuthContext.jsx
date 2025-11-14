@@ -1,5 +1,6 @@
-
+// src/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { apiLogin, apiLogout, apiMe } from "../api/client";
 
 const Ctx = createContext(null);
 export const useAuth = () => useContext(Ctx);
@@ -8,31 +9,46 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
 
+  // On app load, ask backend "who am I?"
   useEffect(() => {
-  // seed demo user once if not present
-  if (!localStorage.getItem("demo_user")) {
-    localStorage.setItem(
-      "demo_user",
-      JSON.stringify({ username: "ishikagupta", email: "ishikagupta@example.com" })
-    );
-  }
+    let cancelled = false;
 
-  const u = localStorage.getItem("demo_user");
-  if (u) setUser(JSON.parse(u));
-  setBooting(false);
-}, []);
+    (async () => {
+      try {
+        const me = await apiMe();    // GET /api/auth/me/
+        if (!cancelled) setUser(me);
+      } catch (e) {
+        // 401 = not logged in -> ignore
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setBooting(false);
+      }
+    })();
 
-  const login = async (username /*, password */) => {
-    const u = JSON.parse(localStorage.getItem("demo_user") || "null");
-    if (!u || u.username !== username) throw new Error("Invalid credentials");
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = async (username, password) => {
+    const u = await apiLogin({ username, password }); // POST /api/auth/login/
     setUser(u);
+    return u;
   };
 
-  const register = async ({ username, email }) => {
-    localStorage.setItem("demo_user", JSON.stringify({ username, email }));
+  const logout = async () => {
+    try {
+      await apiLogout(); // POST /api/auth/logout/
+    } catch {
+      // even if backend fails, clear frontend state
+    }
+    setUser(null);
   };
 
-  const logout = async () => setUser(null);
+  // register is optional now (you create employees from backend form)
+  const register = async () => {
+    throw new Error("Registration is managed from the Employee screen.");
+  };
 
   return (
     <Ctx.Provider value={{ user, booting, login, logout, register }}>
