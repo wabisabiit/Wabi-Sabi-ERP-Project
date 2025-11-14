@@ -17,7 +17,12 @@
 
 *{ box-sizing:border-box }
 html,body,#root{ height:100% }
-body{ margin:0; font-family:Poppins, ui-sans-serif,system-ui,Arial; background:#0f1623; color:#0f1e2e; }
+body{
+  margin:0;
+  font-family:Poppins, ui-sans-serif,system-ui,Arial;
+  background:#ffffff;   /* ya jo bhi tumhari default color thi */
+  color:#0f1e2e;
+}
 
 /* ===== Shell ===== */
 .fx-auth-wrap{

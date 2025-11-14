@@ -217,6 +217,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           {/* <Route path="/signup" element={<Signup />} /> */}
 
+          {/* 🔹 Root → Login (login page first) */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
           {/* 🔹 Dashboard route from partner code (protected) */}
           <Route
             path="/dashboard"
@@ -229,10 +232,23 @@ export default function App() {
             }
           />
 
-          {/* Your original routes start here (unchanged) */}
-          <Route path="/" element={<Navigate to="/new" replace />} />
-          <Route path="/new" element={<POSLayout />} />
-          <Route path="/pos" element={<PosPage />} />
+          {/* Your original POS routes, now protected */}
+          <Route
+            path="/new"
+            element={
+              <ProtectedRoute>
+                <POSLayout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pos"
+            element={
+              <ProtectedRoute>
+                <PosPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Contact */}
           <Route path="/contact" element={<SidebarLayout><ContactPage /></SidebarLayout>} />
@@ -351,11 +367,11 @@ export default function App() {
           <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
           <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
 
-          {/* Credit Note */ }
+          {/* Credit Note */}
           <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/new" replace />} />
+          {/* Fallback → Login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
     </AuthProvider>
