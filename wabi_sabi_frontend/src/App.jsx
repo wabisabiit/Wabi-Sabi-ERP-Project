@@ -12,15 +12,12 @@ import Sidebar from "./components/Sidebar";
 import PosPage from "./components/PosPage";
 import Dashboard from "./components/Dashboard"; // 🔹 from partner co
 
-// /* Theme tokens (partner) */
-// import "./styles/theme-typography.css";
-
 /* Keep base styles LAST so they win the cascade */
 import "./App.css";
 
-/* ---------- Auth (from partner) ---------- */
+/* ---------- Auth ---------- */
 import { AuthProvider } from "./auth/AuthContext";
-import ProtectedRoute from "./auth/ProtectedRoute";
+import RoleRoute from "./auth/RoleRoute";
 
 /* ---------- Lazy pages ---------- */
 // CRM
@@ -36,7 +33,6 @@ const PointSetupPage = lazy(() => import("./components/PointSetupPage"));
 // Sales / POS extras
 const MultiplePay = lazy(() => import("./components/MultiplePay"));
 const CreditNotePage = lazy(() => import("./components/CreditNotePage"));
-/* ✅ Renamed: use SaleListPage instead of OrderListPage */
 const SaleListPage = lazy(() => import("./components/SalesListPage"));
 const InvoicePage = lazy(() => import("./components/InvoicePage"));
 const NewInvoicePage = lazy(() => import("./components/NewInvoicePage"));
@@ -114,7 +110,7 @@ const OpeningBalancePage = lazy(() => import("./components/OpeningBalancePage"))
 const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceCustomerDetailPage"));
 
 /* 🔹 Cash payment screen */
-const CashPayment = lazy(() => import("./components/CashPayment")); // (file name as provided)
+const CashPayment = lazy(() => import("./components/CashPayment"));
 
 /* 🔹 NEW: Material Consumption */
 const MaterialConsumptionListPage = lazy(() => import("./components/MaterialConsumptionListPage"));
@@ -213,162 +209,583 @@ export default function App() {
     <AuthProvider>
       <Suspense fallback={null}>
         <Routes>
-          {/* 🔹 Auth routes from partner code (added, no change to your existing ones) */}
+          {/* Auth routes */}
           <Route path="/login" element={<Login />} />
           {/* <Route path="/signup" element={<Signup />} /> */}
 
-          {/* 🔹 Root → Login (login page first) */}
+          {/* Root → Login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* 🔹 Dashboard route from partner code (protected) */}
+          {/* 🔹 Dashboard: ADMIN only */}
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <RoleRoute allowed={["ADMIN"]}>
                 <SidebarLayout>
                   <Dashboard />
                 </SidebarLayout>
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
 
-          {/* Your original POS routes, now protected */}
+          {/* 🔹 POS ROUTES — Admin + Manager */}
           <Route
             path="/new"
             element={
-              <ProtectedRoute>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <POSLayout />
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
           <Route
             path="/pos"
             element={
-              <ProtectedRoute>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <PosPage />
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
-
-          {/* Contact */}
-          <Route path="/contact" element={<SidebarLayout><ContactPage /></SidebarLayout>} />
-
-          {/* Admin */}
-          <Route path="/admin/employee" element={<SidebarLayout><EmployeePage /></SidebarLayout>} />
-          <Route path="/admin/employee/new" element={<SidebarLayout><EmployeeCreatePage /></SidebarLayout>} />
-          <Route path="/admin/outlet" element={<SidebarLayout><OutletPage /></SidebarLayout>} />
-          <Route path="/admin/outlet/new" element={<SidebarLayout><OutletCreatePage /></SidebarLayout>} />
-
-          {/* Inventory */}
-          <Route path="/inventory/products" element={<SidebarLayout><ProductsPage /></SidebarLayout>} />
-          <Route path="/inventory/products/new" element={<SidebarLayout><NewInventoryProductPage /></SidebarLayout>} />
-          <Route path="/inventory/stock-transfer" element={<SidebarLayout><StockTransferPage /></SidebarLayout>} />
-          <Route path="/inventory/products/:id" element={<SidebarLayout><InventoryProductDetailPage /></SidebarLayout>} />
-          <Route path="/inventory/master-packaging" element={<SidebarLayout><MasterPackagingPage /></SidebarLayout>} />
-
-          {/* ✅ NEW: Material Consumption */}
-          <Route path="/inventory/material-consumption" element={<SidebarLayout><MaterialConsumptionListPage /></SidebarLayout>} />
-          <Route path="/inventory/material-consumption/new" element={<SidebarLayout><NewMaterialConsumptionPage /></SidebarLayout>} />
-          <Route path="/inventory/material-consumption/:consNo" element={<SidebarLayout><MaterialConsumptionDetailPage /></SidebarLayout>} />
-
-          {/* CRM */}
-          <Route path="/crm/loyalty" element={<SidebarLayout><LoyaltyPage /></SidebarLayout>} />
-          <Route path="/crm/loyalty/point-setup" element={<SidebarLayout><PointSetupPage /></SidebarLayout>} />
-          <Route path="/crm/loyalty/campaign/new" element={<SidebarLayout><CampaignCreatePage /></SidebarLayout>} />
-
-          <Route path="/crm/discount" element={<SidebarLayout><DiscountPage /></SidebarLayout>} />
-          <Route path="/crm/discount/new" element={<SidebarLayout><NewDiscountPage /></SidebarLayout>} />
-
-          <Route path="/crm/coupon" element={<SidebarLayout><CouponPage /></SidebarLayout>} />
-          {/* Use whichever filename you really have (see note below) */}
-          <Route path="/crm/coupon/new" element={<SidebarLayout><NewCoupounPage /></SidebarLayout>} />
-
-          <Route path="/crm/feedback" element={<SidebarLayout><FeedbackPage /></SidebarLayout>} />
-
-          {/* Multipay */}
           <Route
             path="/multiple-pay"
             element={
-              <MultiplePay
-                cart={{
-                  customerType: "Walk In Customer",
-                  items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
-                  roundoff: 0,
-                }}
-                onBack={() => navigate(-1)}
-                onProceed={() => navigate("/new")}
-              />
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <MultiplePay
+                  cart={{
+                    customerType: "Walk In Customer",
+                    items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
+                    roundoff: 0,
+                  }}
+                  onBack={() => navigate(-1)}
+                  onProceed={() => navigate("/new")}
+                />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/cash-pay"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <CashPayment />
+              </RoleRoute>
+            }
+          />
+          {/* I’m assuming Credit Note screen is POS-related */}
+          <Route
+            path="/credit-note"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <CreditNotePage />
+                </SidebarLayout>
+              </RoleRoute>
             }
           />
 
-          {/* 🔹 Cash payment route */}
-          <Route path="/cash-pay" element={<CashPayment />} />
+          {/* 🔹 EVERYTHING BELOW = ADMIN ONLY 🔒 */}
 
-          {/* Inventory -> report routes */}
-          <Route path="/inventory/master-packing-itemwise-summary" element={<SidebarLayout><InvMasterPackingItemWiseSummary /></SidebarLayout>} />
-          <Route path="/inventory/sales-register" element={<MiniSidebarLayout><InvSalesRegister /></MiniSidebarLayout>} />
-          <Route path="/inventory/inventory-report" element={<SidebarLayout><InvInventoryReport /></SidebarLayout>} />
-          <Route path="/inventory/stock-summary" element={<SidebarLayout><InvStockSummary /></SidebarLayout>} />
+          {/* Contact */}
+          <Route
+            path="/contact"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ContactPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
-          {/* Bank / Cash */}
-          <Route path="/bank" element={<SidebarLayout><BankPage /></SidebarLayout>} />
-          <Route path="/bank/:slug" element={<SidebarLayout><BankDetailPage /></SidebarLayout>} />
-          <Route path="/bank/:slug/edit" element={<SidebarLayout><BankEditPage /></SidebarLayout>} />
-          <Route path="/bank/transactions" element={<SidebarLayout><BankTransactionPage /></SidebarLayout>} />
-          <Route path="/bank/payment" element={<SidebarLayout><PaymentPage /></SidebarLayout>} />
-          <Route path="/bank/receipt" element={<SidebarLayout><ReceiptPage /></SidebarLayout>} />
-          <Route path="/bank/expense" element={<SidebarLayout><ExpensePage /></SidebarLayout>} />
-          <Route path="/bank/new" element={<SidebarLayout><NewBankPage /></SidebarLayout>} />
-          <Route path="/bank/payment/new" element={<SidebarLayout><PaymentCreatePage /></SidebarLayout>} />
+          {/* Admin */}
+          <Route
+            path="/admin/employee"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><EmployeePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/employee/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><EmployeeCreatePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/outlet"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><OutletPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/outlet/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><OutletCreatePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
-          {/* Settings */}
-          <Route path="/settings" element={<SidebarLayout><SettingsHome /></SidebarLayout>} />
-          <Route path="/settings/general" element={<SidebarLayout><GeneralSettingsPage /></SidebarLayout>} />
-          <Route path="/settings/general/profile/edit" element={<SidebarLayout><EditProfilePage /></SidebarLayout>} />
-          <Route path="/settings/general/roles/new" element={<SidebarLayout><NewUserRolePage /></SidebarLayout>} />
-          <Route path="/settings/pos" element={<SidebarLayout><PosSettingPage /></SidebarLayout>} />
-          <Route path="/settings/notification" element={<SidebarLayout><NotificationSettingsPage /></SidebarLayout>} />
-          <Route path="/settings/integration" element={<SidebarLayout><IntegrationPage /></SidebarLayout>} />
+          {/* Inventory */}
+          <Route
+            path="/inventory/products"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ProductsPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/inventory/products/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NewInventoryProductPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/inventory/stock-transfer"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><StockTransferPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/inventory/products/:id"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><InventoryProductDetailPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/inventory/master-packaging"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><MasterPackagingPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
-          {/* Sales */}
-          {/* ✅ Canonical Sales List path */}
-          <Route path="/sales/sale-list" element={<SidebarLayout><SaleListPage /></SidebarLayout>} />
-          {/* ♻️ Backward-compat: old /order-list → redirect */}
-          <Route path="/order-list" element={<Navigate to="/sales/sale-list" replace />} />
+          {/* Material Consumption */}
+          <Route
+            path="/inventory/material-consumption"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><MaterialConsumptionListPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/inventory/material-consumption/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NewMaterialConsumptionPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/inventory/material-consumption/:consNo"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><MaterialConsumptionDetailPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
-          {/* Sales → Invoice */}
-          <Route path="/sales/invoice" element={<SidebarLayout><InvoicePage /></SidebarLayout>} />
-          <Route path="/sales/invoice/new" element={<SidebarLayout><NewInvoicePage /></SidebarLayout>} />
-          <Route path="/sales/invoice/:invNo" element={<SidebarLayout><InvoiceDetailPage /></SidebarLayout>} />
-          <Route path="/customer/:slug" element={<SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>} />
+          {/* CRM */}
+          <Route
+            path="/crm/loyalty"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><LoyaltyPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/crm/loyalty/point-setup"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><PointSetupPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/crm/loyalty/campaign/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><CampaignCreatePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/crm/discount"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><DiscountPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/crm/discount/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NewDiscountPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/crm/coupon"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><CouponPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/crm/coupon/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NewCoupounPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/crm/feedback"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><FeedbackPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          {/* Sales List & Invoice screens */}
+          <Route
+            path="/sales/sale-list"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><SaleListPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/order-list"
+            element={<Navigate to="/sales/sale-list" replace />}
+          />
+
+          <Route
+            path="/sales/invoice"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><InvoicePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/sales/invoice/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NewInvoicePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/sales/invoice/:invNo"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><InvoiceDetailPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/customer/:slug"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
           {/* Sales Register (existing) */}
-          <Route path="/sales-register" element={<SidebarLayout><SalesRegisterPage /></SidebarLayout>} />
+          <Route
+            path="/sales-register"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><SalesRegisterPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
           {/* Utilities */}
-          <Route path="/utilities/barcode2" element={<SidebarLayout><BarcodeUtility2Page /></SidebarLayout>} />
-          <Route path="/utilities/barcode2/confirm" element={<SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>} />
-          <Route path="/utilities/barcode2/expanded" element={<SidebarLayout><ExpandedLabelsPage /></SidebarLayout>} />
+          <Route
+            path="/utilities/barcode2"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><BarcodeUtility2Page /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/utilities/barcode2/confirm"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/utilities/barcode2/expanded"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ExpandedLabelsPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
           {/* Reports */}
-          <Route path="/reports" element={<SidebarLayout><ReportsPage /></SidebarLayout>} />
-          <Route path="/reports/day-wise-sales-summary" element={<SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>} />
-          <Route path="/reports/sales-register" element={<MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>} />
-          <Route path="/reports/category-wise-sales-summary" element={<SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>} />
-          <Route path="/reports/credit-note-item-register" element={<MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>} />
-          <Route path="/reports/product-wise-sales-summary" element={<SidebarLayout><ReportProductWiseSales /></SidebarLayout>} />
-          <Route path="/reports/salesman" element={<SidebarLayout><ReportSalesMan /></SidebarLayout>} />
-          <Route path="/reports/wow-bill-report" element={<SidebarLayout><WowBillReport /></SidebarLayout>} />
-          <Route path="/reports/tax-wise-sales-summary" element={<SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>} />
-          <Route path="/reports/sales-summary" element={<SidebarLayout><ReportSalesSummary /></SidebarLayout>} />
-          <Route path="/reports/customer-wise-sales-order-report" element={<MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>} />
+          <Route
+            path="/reports"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ReportsPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/day-wise-sales-summary"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/sales-register"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/category-wise-sales-summary"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/credit-note-item-register"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/product-wise-sales-summary"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ReportProductWiseSales /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/salesman"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ReportSalesMan /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/wow-bill-report"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><WowBillReport /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/tax-wise-sales-summary"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/sales-summary"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ReportSalesSummary /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/customer-wise-sales-order-report"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          {/* Bank / Cash */}
+          <Route
+            path="/bank"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><BankPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/:slug"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><BankDetailPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/:slug/edit"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><BankEditPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/transactions"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><BankTransactionPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/payment"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><PaymentPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/receipt"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ReceiptPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/expense"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><ExpensePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NewBankPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/payment/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><PaymentCreatePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          {/* Settings */}
+          <Route
+            path="/settings"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><SettingsHome /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/settings/general"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><GeneralSettingsPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/settings/general/profile/edit"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><EditProfilePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/settings/general/roles/new"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NewUserRolePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/settings/pos"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><PosSettingPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/settings/notification"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><NotificationSettingsPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/settings/integration"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><IntegrationPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
           {/* Accounting */}
-          <Route path="/accounting/account" element={<SidebarLayout><AccountPage /></SidebarLayout>} />
-          <Route path="/accounting/opening-balance" element={<SidebarLayout><OpeningBalancePage /></SidebarLayout>} />
-
-          {/* Credit Note */}
-          <Route path="/credit-note" element={<SidebarLayout><CreditNotePage /></SidebarLayout>} />
+          <Route
+            path="/accounting/account"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><AccountPage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/accounting/opening-balance"
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout><OpeningBalancePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
 
           {/* Fallback → Login */}
           <Route path="*" element={<Navigate to="/login" replace />} />

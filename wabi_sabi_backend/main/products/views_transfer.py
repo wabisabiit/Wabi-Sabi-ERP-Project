@@ -54,7 +54,7 @@ def print_and_transfer(request):
 def transfer_list(request):
     """
     GET /api/products/transfers/?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&to=CODE
-    Returns list with qty and net_amount (sum of line.sp * qty).
+    Returns list with qty (sum of line.qty) and net_amount (sum of line.sp * qty).
     """
     qs = StockTransfer.objects.select_related("from_location", "to_location")
 
@@ -75,24 +75,27 @@ def transfer_list(request):
     )
 
     qs = qs.annotate(
-        qty=Count("lines"),
+        # 👇 real quantity = sum of line.qty
+        qty=Coalesce(Sum("lines__qty"), Value(0)),
         net_amount=Coalesce(
             Sum(amount_expr),
             Value(Decimal("0.00"), output_field=DecimalField(max_digits=14, decimal_places=2)),
         ),
     ).order_by("-created_at", "number")
 
-    data = [{
-        "number": t.number,
-        "created_at": t.created_at,
-        "from": t.from_location.code,
-        "to": t.to_location.code,
-        "qty": t.qty,
-        "net_amount": str(t.net_amount),
-    } for t in qs]
+    data = [
+        {
+            "number": t.number,
+            "created_at": t.created_at,
+            "from": t.from_location.code,
+            "to": t.to_location.code,
+            "qty": t.qty,
+            "net_amount": str(t.net_amount),
+        }
+        for t in qs
+    ]
 
     return Response(data)
-
 
 @api_view(["GET"])
 @permission_classes([AllowAny])

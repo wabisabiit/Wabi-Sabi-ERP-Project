@@ -71,6 +71,14 @@ class LoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # 🔴 IMPORTANT: only Admin (superuser) or MANAGER can use this POS app
+        emp = getattr(user, "employee", None)
+        if not (user.is_superuser or (emp and emp.role == "MANAGER")):
+            return Response(
+                {"detail": "You are not allowed to login to this application."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         dj_login(request, user)
         return Response(_serialize_user(user))
 
