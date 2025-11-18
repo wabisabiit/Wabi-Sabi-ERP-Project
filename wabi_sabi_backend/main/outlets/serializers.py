@@ -1,7 +1,7 @@
 # outlets/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Outlet, Employee
+from .models import Outlet, Employee , LoginLog
 from taskmaster.models import Location
 
 class OutletSerializer(serializers.ModelSerializer):
@@ -81,3 +81,24 @@ class EmployeeSerializer(serializers.ModelSerializer):
             user.set_password(validated.pop("password"))
         user.save()
         return super().update(instance, validated)
+
+class LoginLogSerializer(serializers.ModelSerializer):
+    user_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LoginLog
+        fields = [
+            "id",
+            "user_display",
+            "username",
+            "login_time",
+            "ip_address",
+            "system_details",
+            "outlet_code",
+            "outlet_name",
+        ]
+
+    def get_user_display(self, obj):
+        if obj.user and obj.user.get_full_name():
+            return obj.user.get_full_name()
+        return obj.username

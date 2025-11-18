@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from taskmaster.models import Location
+from django.contrib.auth.models import User
 
 class Outlet(models.Model):
     location = models.OneToOneField(Location, on_delete=models.CASCADE, related_name="outlet")
@@ -47,3 +48,45 @@ class Employee(models.Model):
 
     def __str__(self):
         return f"{self.user.username} ({self.role}) - {self.outlet}"
+
+
+class LoginLog(models.Model):
+    """हर successful login का audit-log."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="login_logs",
+    )
+    # snapshot ताकि user delete/rename होने पर भी पुराना नाम बचा रहे
+    username = models.CharField(max_length=150)
+
+    login_time = models.DateTimeField(auto_now_add=True)
+
+    # IP + port भी आ सकता है, इसलिये CharField
+    ip_address = models.CharField(max_length=64, blank=True)
+
+    # raw user-agent
+    user_agent = models.TextField(blank=True)
+
+    # nicely formatted text – table में यही दिखाएँगे
+    system_details = models.CharField(max_length=255, blank=True)
+
+    # outlet info (optional)
+    outlet = models.ForeignKey(
+        "outlets.Outlet",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="login_logs",
+    )
+    outlet_code = models.CharField(max_length=20, blank=True)
+    outlet_name = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        ordering = ["-login_time"]
+
+    def __str__(self):
+        return f"{self.username} @ {self.login_time:%Y-%m-%d %H:%M:%S}"

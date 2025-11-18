@@ -191,6 +191,9 @@ export default {
   apiLogin,
   apiLogout,
   apiMe,
+
+  // 🔵 new
+  listLoginLogs,
 };
 
 function sanitizeBarcode(v = "") {
@@ -580,3 +583,21 @@ export async function apiLogout() {
 export async function apiMe() {
   return http(`/auth/me/`);
 }
+
+// --- Login Logs ---
+export async function listLoginLogs(params = {}) {
+  const sp = new URLSearchParams();
+
+  // multi-select location support
+  if (Array.isArray(params.location)) {
+    params.location.forEach((l) => sp.append("location", l));
+  } else if (params.location) {
+    sp.append("location", params.location);
+  }
+
+  if (params.limit) sp.append("limit", params.limit);
+
+  const qs = sp.toString();
+  return http(`/login-logs/${qs ? `?${qs}` : ""}`);
+}
+
