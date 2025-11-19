@@ -3,6 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import OutletViewSet, EmployeeViewSet
 from .views_auth import LoginView, LogoutView, MeView, LoginLogListView
+from .views_wowbill import WowBillEntryListCreateView
 
 router = DefaultRouter()
 router.register(r"outlets", OutletViewSet, basename="outlets")
@@ -15,6 +16,9 @@ urlpatterns = [
 
     # 🔵 नया endpoint
     path("login-logs/", LoginLogListView.as_view(), name="login-log-list"),
+
+     # 🔵 WOW Bill entries
+    path("wow-bills/", WowBillEntryListCreateView.as_view(), name="wowbill-list-create"),
 
     path("", include(router.urls)),
 ]

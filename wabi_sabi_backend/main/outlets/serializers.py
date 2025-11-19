@@ -1,7 +1,7 @@
 # outlets/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Outlet, Employee , LoginLog
+from .models import Outlet, Employee , LoginLog, WowBillEntry
 from taskmaster.models import Location
 
 class OutletSerializer(serializers.ModelSerializer):
@@ -102,3 +102,42 @@ class LoginLogSerializer(serializers.ModelSerializer):
         if obj.user and obj.user.get_full_name():
             return obj.user.get_full_name()
         return obj.username
+
+class WowBillEntrySerializer(serializers.ModelSerializer):
+    outlet_name = serializers.SerializerMethodField(read_only=True)
+    employee_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = WowBillEntry
+        fields = [
+            "id",
+            "outlet",
+            "outlet_name",
+            "employee",
+            "employee_name",
+            "sale_amount",
+            "wow_min_value",
+            "payout_per_wow",
+            "wow_count",
+            "total_payout",
+            "exclude_returns",
+            "created_at",
+        ]
+        read_only_fields = ["wow_count", "total_payout", "created_at"]
+
+    def get_outlet_name(self, obj):
+        if obj.outlet.display_name:
+            return obj.outlet.display_name
+        loc = getattr(obj.outlet, "location", None)
+        if loc and loc.name:
+            return loc.name
+        if loc and loc.code:
+            return loc.code
+        return ""
+
+    def get_employee_name(self, obj):
+        user = getattr(obj.employee, "user", None)
+        if not user:
+            return ""
+        full = (user.get_full_name() or "").strip()
+        return full or user.username

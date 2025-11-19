@@ -194,6 +194,10 @@ export default {
 
   // 🔵 new
   listLoginLogs,
+
+  // 🔵 NEW
+  listWowBills,
+  createWowBill,
 };
 
 function sanitizeBarcode(v = "") {
@@ -601,3 +605,20 @@ export async function listLoginLogs(params = {}) {
   return http(`/login-logs/${qs ? `?${qs}` : ""}`);
 }
 
+// --- WOW Bill Entries ---
+export async function listWowBills(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.outlet) sp.append("outlet", params.outlet);
+  if (params.employee) sp.append("employee", params.employee);
+  const qs = sp.toString();
+  return http(`/wow-bills/${qs ? `?${qs}` : ""}`);
+}
+
+export async function createWowBill(payload) {
+  // payload example:
+  // { outlet, employee, sale_amount, wow_min_value, payout_per_wow, exclude_returns }
+  return http(`/wow-bills/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

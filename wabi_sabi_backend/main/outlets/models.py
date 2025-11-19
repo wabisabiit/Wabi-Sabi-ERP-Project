@@ -90,3 +90,45 @@ class LoginLog(models.Model):
 
     def __str__(self):
         return f"{self.username} @ {self.login_time:%Y-%m-%d %H:%M:%S}"
+
+class WowBillEntry(models.Model):
+    """
+    One WOW-Bill calculation row for a salesperson.
+    We store the raw inputs (sale_amount, wow_min_value, payout_per_wow)
+    plus the derived numbers (wow_count, total_payout).
+    """
+
+    outlet = models.ForeignKey(
+        Outlet,
+        on_delete=models.PROTECT,
+        related_name="wow_entries",
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.PROTECT,
+        related_name="wow_entries",
+    )
+
+    sale_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    wow_min_value = models.DecimalField(max_digits=12, decimal_places=2)
+    payout_per_wow = models.DecimalField(max_digits=12, decimal_places=2)
+
+    wow_count = models.PositiveIntegerField(default=0)
+    total_payout = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    exclude_returns = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wowbill_entries",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.employee} – WOW {self.wow_count} – ₹{self.total_payout}"
