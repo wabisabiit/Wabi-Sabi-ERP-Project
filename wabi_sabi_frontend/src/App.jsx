@@ -155,7 +155,7 @@ function POSLayout() {
     if (res?.invoice_no) {
       try {
         alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
-      } catch (_) {}
+      } catch (_) { }
     }
     setItems([]); // clear cart for next customer
   };
@@ -323,6 +323,63 @@ export default function App() {
             element={
               <RoleRoute allowed={["ADMIN"]}>
                 <SidebarLayout><OutletCreatePage /></SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          {/* Inventory -> Reports (from Inventory tab cards) */}
+          <Route
+            path="/inventory/master-packing-itemwise-summary"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <InvMasterPackingItemWiseSummary />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/inventory/sales-register"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <InvSalesRegister />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/inventory/inventory-report"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <InvInventoryReport />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/inventory/stock-summary"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <InvStockSummary />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
+          {/* 🔹 NEW: match Inventory → Stock Register menu */}
+          <Route
+            path="/inventory/stock-register"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <InvStockSummary />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
