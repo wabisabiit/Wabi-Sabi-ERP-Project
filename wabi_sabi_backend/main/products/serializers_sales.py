@@ -3,8 +3,8 @@ from django.db import transaction
 from django.db.models import F
 from rest_framework import serializers
 from django.utils import timezone
-# from .models import Customer, Product, Sale, SaleLine
-from .models import Customer, Product, Sale, SaleLine  # CreditNote not used here now
+from .models import Customer, Product, Sale, SaleLine
+
 
 class CustomerInSerializer(serializers.Serializer):
     name  = serializers.CharField(max_length=120)
@@ -18,16 +18,15 @@ class SaleLineInSerializer(serializers.Serializer):
     qty     = serializers.IntegerField(min_value=1)
 
 
-# products/serializers_sales.py  (PaymentInSerializer)
 class PaymentInSerializer(serializers.Serializer):
     method = serializers.ChoiceField(choices=[m[0] for m in Sale.PAYMENT_METHODS])
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     reference         = serializers.CharField(required=False, allow_blank=True)
     card_holder       = serializers.CharField(required=False, allow_blank=True)
-    card_holder_phone = serializers.CharField(required=False, allow_blank=True)  # <-- NEW
+    card_holder_phone = serializers.CharField(required=False, allow_blank=True)
     customer_bank     = serializers.CharField(required=False, allow_blank=True)
     account           = serializers.CharField(required=False, allow_blank=True)
-    # POS terminal/account used
+
 
 class SaleCreateSerializer(serializers.Serializer):
     customer = CustomerInSerializer()
@@ -144,6 +143,7 @@ class SaleCreateSerializer(serializers.Serializer):
             "totals": {"subtotal": str(sale.subtotal), "discount": str(sale.discount_total), "grand_total": str(sale.grand_total)},
             "payments": pays_in,
         }
+
 
 # ---- List / table serializer (read-only) ----
 class SaleListSerializer(serializers.ModelSerializer):

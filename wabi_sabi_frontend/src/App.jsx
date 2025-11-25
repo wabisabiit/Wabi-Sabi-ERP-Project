@@ -220,7 +220,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN","MANAGER"]}>
                 <SidebarLayout>
                   <Dashboard />
                 </SidebarLayout>
@@ -287,7 +287,7 @@ export default function App() {
           <Route
             path="/contact"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN","MANAGER"]}>
                 <SidebarLayout><ContactPage /></SidebarLayout>
               </RoleRoute>
             }

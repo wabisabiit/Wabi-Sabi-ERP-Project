@@ -58,25 +58,49 @@ class DaywiseSalesSummary(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        loc = (request.GET.get("location") or "").strip()
+        # UI may send multiple ?location= values (multi-select)
+        locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
+
+        # Manager → force to their own outlet’s location code
         loc_code = _get_user_location_code(request)
+
+        # For response metadata only (string to avoid breaking existing UI)
         if loc_code:
-            loc = loc_code
+            loc_filter_label = loc_code
+        elif locs:
+            loc_filter_label = ", ".join(locs)
+        else:
+            loc_filter_label = ""
 
         # ---- CASH (sum of line amounts per day) ----
         sl_qs = (
             SaleLine.objects
             .select_related("sale")
-            .filter(sale__transaction_date__date__gte=df,
-                    sale__transaction_date__date__lte=dt)
+            .filter(
+                sale__transaction_date__date__gte=df,
+                sale__transaction_date__date__lte=dt
+            )
         )
-        if loc:
-            sl_qs = sl_qs.filter(sale__store__icontains=loc)
+
+        if loc_code:
+            # 🔒 MANAGER: only their location
+            sl_qs = sl_qs.filter(sale__store__icontains=loc_code)
+        elif locs and "All" not in locs:
+            # ADMIN: allow one or many locations
+            loc_q = Q()
+            for label in locs:
+                loc_q |= Q(sale__store__icontains=label)
+            sl_qs = sl_qs.filter(loc_q)
 
         cash_rows = (
             sl_qs.annotate(sday=TruncDate("sale__transaction_date"))
                  .values("sday")
-                 .annotate(cash=Sum(F("sp") * F("qty"), output_field=DecimalField(max_digits=16, decimal_places=2)))
+                 .annotate(
+                     cash=Sum(
+                         F("sp") * F("qty"),
+                         output_field=DecimalField(max_digits=16, decimal_places=2),
+                     )
+                 )
         )
         cash_by_day = {r["sday"]: (r["cash"] or Decimal("0.00")) for r in cash_rows}
 
@@ -85,8 +109,14 @@ class DaywiseSalesSummary(APIView):
             note_date__date__gte=df,
             note_date__date__lte=dt,
         )
-        if loc:
-            cn_qs = cn_qs.filter(sale__store__icontains=loc)
+
+        if loc_code:
+            cn_qs = cn_qs.filter(sale__store__icontains=loc_code)
+        elif locs and "All" not in locs:
+            loc_q = Q()
+            for label in locs:
+                loc_q |= Q(sale__store__icontains=label)
+            cn_qs = cn_qs.filter(loc_q)
 
         cn_rows = (
             cn_qs.annotate(sday=TruncDate("note_date"))
@@ -122,7 +152,7 @@ class DaywiseSalesSummary(APIView):
             "filters": {
                 "date_from": df.isoformat(),
                 "date_to": dt.isoformat(),
-                "location": loc,
+                "location": loc_filter_label,
             },
             "rows": rows,
             "totals": {
