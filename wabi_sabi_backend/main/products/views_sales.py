@@ -6,8 +6,20 @@ from django.db import transaction
 from django.utils.dateparse import parse_date, parse_datetime
 from django.db.models import Q
 # Assuming these imports are correct based on your snippet
-from .serializers_sales import SaleCreateSerializer, SaleListSerializer 
+from .serializers_sales import SaleCreateSerializer, SaleListSerializer
 from .models import Sale
+from outlets.models import Employee  # outlet scoping
+
+
+def _get_user_location_code(request):
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated or user.is_superuser:
+        return None
+    emp = getattr(user, "employee", None)
+    outlet = getattr(emp, "outlet", None) if emp else None
+    loc = getattr(outlet, "location", None) if outlet else None
+    return getattr(loc, "code", None) or None
+
 
 class SalesView(APIView):
     """
@@ -22,6 +34,11 @@ class SalesView(APIView):
     """
     def get(self, request):
         qs = Sale.objects.select_related("customer").order_by("-transaction_date", "-id")
+
+        # 🔒 MANAGER → restrict to own outlet (store contains location code)
+        loc_code = _get_user_location_code(request)
+        if loc_code:
+            qs = qs.filter(store__icontains=loc_code)
 
         # --- filters (leave optional) ---
         q = (request.GET.get("query") or "").strip()
@@ -44,9 +61,6 @@ class SalesView(APIView):
         df = request.GET.get("date_from")
         dt = request.GET.get("date_to")
         if df and dt:
-            # Re-importing inside the method is redundant if it's imported globally, 
-            # but kept for exactness to the provided code logic.
-            # from django.utils.dateparse import parse_date, parse_datetime 
             dfrom = parse_datetime(df) or parse_date(df)
             dto   = parse_datetime(dt) or parse_date(dt)
             if dfrom and dto:
@@ -83,7 +97,6 @@ class SalesView(APIView):
             {"results": data, "total": total, "page": page, "page_size": page_size},
             status=status.HTTP_200_OK
         )
-
 
     def post(self, request):
         ser = SaleCreateSerializer(data=request.data)

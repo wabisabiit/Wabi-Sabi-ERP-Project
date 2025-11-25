@@ -24,6 +24,10 @@ function DateRangePicker({ value, onChange }) {
   const [temp, setTemp] = useState({ start: value.start, end: value.end });
 
   useEffect(() => {
+    setTemp({ start: value.start, end: value.end });
+  }, [value.start, value.end]);
+
+  useEffect(() => {
     function onDoc(e) {
       if (!rootRef.current) return;
       if (!rootRef.current.contains(e.target)) setOpen(false);
@@ -64,7 +68,7 @@ function DateRangePicker({ value, onChange }) {
               <div className="st-input-ico">
                 <input
                   type="date"
-                  value={value.start}
+                  value={temp.start}
                   onChange={(e) => setTemp((t) => ({ ...t, start: e.target.value }))}
                 />
                 <span className="material-icons">event</span>
@@ -72,7 +76,7 @@ function DateRangePicker({ value, onChange }) {
               <div className="st-input-ico">
                 <input
                   type="date"
-                  value={value.end}
+                  value={temp.end}
                   onChange={(e) => setTemp((t) => ({ ...t, end: e.target.value }))}
                 />
                 <span className="material-icons">event</span>

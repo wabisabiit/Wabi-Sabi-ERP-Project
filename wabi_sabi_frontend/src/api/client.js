@@ -1,7 +1,7 @@
 // src/api/client.js
 
 /* ========= TaskItem lookup (used on Image-1) ========= */
-const BASE = "http://127.0.0.1:8000"; // if frontend is proxied to Django, you can set ""
+const BASE = "http://localhost:8000"; // if frontend is proxied to Django, you can set ""
 
 export async function getItemByCode(code) {
   // DRF endpoint: /api/taskitems/<item_code>/
@@ -27,7 +27,7 @@ export async function getItemByCode(code) {
 }
 
 /* ========= Generic JSON HTTP helper (used by Product APIs) ========= */
-const API_BASE = import.meta?.env?.VITE_API_BASE || "http://127.0.0.1:8000/api";
+const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8000/api";
 
 // Minimal cookie reader for CSRF (only needed with SessionAuthentication)
 function getCookie(name) {

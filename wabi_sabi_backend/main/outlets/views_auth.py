@@ -1,4 +1,3 @@
-# outlets/views_auth.py
 from django.contrib.auth import authenticate, login as dj_login, logout as dj_logout
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -6,13 +5,13 @@ from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication  # ⬅️ नया
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
 from django.contrib.auth.models import User
 from .models import Employee, LoginLog
 from .serializers import LoginLogSerializer
+from .utils import get_user_location_code
 from django.utils import timezone
-
 
 
 def _serialize_user(user: User):
@@ -54,7 +53,6 @@ def _serialize_user(user: User):
     }
 
 
-@method_decorator(csrf_exempt, name="dispatch")  # simple JSON login (you can remove if you prefer CSRF)
 @method_decorator(csrf_exempt, name="dispatch")
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -85,7 +83,7 @@ class LoginView(APIView):
 
         dj_login(request, user)
 
-        # 🔵 यहां login log save करें
+        # Log the login
         ip = _get_client_ip(request)
         ua = request.META.get("HTTP_USER_AGENT", "") or ""
         system_details = _build_system_details(ua)
@@ -112,7 +110,6 @@ class LoginView(APIView):
         return Response(_serialize_user(user))
 
 
-
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -128,8 +125,45 @@ class LogoutView(APIView):
         dj_logout(request)
         return Response({"detail": "Logged out."}, status=status.HTTP_200_OK)
 
+
+# ✅ FIXED: IsAuthenticated required + Manager sees only their outlet's logs
+@method_decorator(csrf_exempt, name="dispatch")
+class LoginLogListView(APIView):
+    """
+    GET /api/login-logs/?location=TN&location=UV&limit=100
+    
+    MANAGER: Only sees login logs from their outlet
+    ADMIN: Can filter by location
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        qs = LoginLog.objects.select_related("user", "outlet").all()
+
+        loc_codes = request.query_params.getlist("location")
+        limit_raw = request.query_params.get("limit")
+
+        # ✅ Manager sees only their location
+        user_loc_code = get_user_location_code(request.user)
+        if user_loc_code:
+            # Manager: force their location
+            qs = qs.filter(outlet_code=user_loc_code)
+        elif loc_codes:
+            # Admin: can filter by any location
+            qs = qs.filter(outlet_code__in=loc_codes)
+
+        try:
+            limit = int(limit_raw) if limit_raw else 200
+        except (TypeError, ValueError):
+            limit = 200
+
+        qs = qs.order_by("-login_time")[:limit]
+        ser = LoginLogSerializer(qs, many=True)
+        return Response(ser.data)
+
+
 def _get_client_ip(request):
-    """X-Forwarded-For को भी handle करे."""
+    """Handle X-Forwarded-For header"""
     xff = request.META.get("HTTP_X_FORWARDED_FOR")
     if xff:
         return xff.split(",")[0].strip()
@@ -137,7 +171,7 @@ def _get_client_ip(request):
 
 
 def _build_system_details(user_agent: str) -> str:
-    """बहुत simple UA parsing – Windows/Mac/Android + Chrome/Edge/Firefox वगैरह."""
+    """Parse UA for OS and browser"""
     ua = (user_agent or "").lower()
 
     os = "Desktop"
@@ -163,30 +197,3 @@ def _build_system_details(user_agent: str) -> str:
         browser = "Safari"
 
     return f"{os} {browser}"
-
-@method_decorator(csrf_exempt, name="dispatch")
-@method_decorator(csrf_exempt, name="dispatch")
-class LoginLogListView(APIView):
-    """
-    GET /api/login-logs/?location=TN&location=UV&limit=100
-    """
-
-    # ❌ IsAuthenticated हटाकर…
-    permission_classes = [permissions.AllowAny]   # ✅ अब auth की जरूरत नहीं
-
-    def get(self, request, *args, **kwargs):
-        qs = LoginLog.objects.select_related("user", "outlet").all()
-
-        loc_codes = request.query_params.getlist("location")
-        if loc_codes:
-            qs = qs.filter(outlet_code__in=loc_codes)
-
-        limit_raw = request.query_params.get("limit")
-        try:
-            limit = int(limit_raw)
-        except (TypeError, ValueError):
-            limit = 200
-
-        qs = qs.order_by("-login_time")[:limit]
-        ser = LoginLogSerializer(qs, many=True)
-        return Response(ser.data)

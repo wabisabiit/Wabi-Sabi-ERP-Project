@@ -1,4 +1,5 @@
 # products/views.py
+from rest_framework import permissions
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,17 +7,23 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
-from .models import Product
+# 👇 NEW
+from django.db.models import OuterRef, Subquery
+
+from .models import Product, StockTransferLine
 from .serializers import ProductSerializer, ProductGridSerializer
 from taskmaster.models import TaskItem
+from outlets.models import Employee  # for outlet/location scoping
 
 # ------------------ BARCODE GENERATOR HELPERS (local) ------------------
 import re
 
 _BAR_RE = re.compile(r'^[A-Z]-\d{3}$')  # e.g., A-001
 
+
 def _fmt(letter: str, num: int) -> str:
     return f"{letter}-{num:03d}"
+
 
 def _bump(letter: str, num: int):
     """A-001..A-999, then B-001..Z-999, wrap to A-001."""
@@ -31,6 +38,7 @@ def _bump(letter: str, num: int):
     idx = (ord(letter) - ord('A') + 1) % 26
     return chr(ord('A') + idx), num
 
+
 def _parse(code: str):
     if not code or not _BAR_RE.match(code):
         return None
@@ -38,6 +46,7 @@ def _parse(code: str):
         return code[0], int(code[2:])
     except Exception:
         return None
+
 
 def _last_seen_letter_num():
     """
@@ -54,6 +63,7 @@ def _last_seen_letter_num():
     parsed = _parse(last) if last else None
     return parsed if parsed else ("A", 0)
 
+
 def _next_available(letter: str, num: int):
     """
     From the given (letter,num) cursor, find the next free code.
@@ -65,6 +75,17 @@ def _next_available(letter: str, num: int):
         if not Product.objects.filter(barcode=candidate).exists():
             return letter, num, candidate
     raise RuntimeError("Exhausted barcode space unexpectedly")
+
+
+# ---- helper: current user's outlet location code (for MANAGER) --------
+def _get_user_location_code(request):
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated or user.is_superuser:
+        return None
+    emp = getattr(user, "employee", None)
+    outlet = getattr(emp, "outlet", None) if emp else None
+    loc = getattr(outlet, "location", None) if outlet else None
+    return getattr(loc, "code", None) or None
 # ----------------------------------------------------------------------
 
 
@@ -78,7 +99,37 @@ class ProductViewSet(viewsets.ModelViewSet):
     /api/products/bulk-upsert/   POST -> create/update many (from Print step payload)
     /api/products/by-barcode/<barcode>/   GET -> fetch minimal product info by barcode
     """
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Product.objects.select_related("task_item")
+
+    # 👇 NEW: manager-level outlet scoping
+    def get_queryset(self):
+        """
+        ADMIN / superuser  -> all products
+        MANAGER            -> only products whose *latest* stock transfer
+                              is to their own location.
+        """
+        qs = Product.objects.select_related("task_item")
+
+        loc_code = _get_user_location_code(self.request)
+        if not loc_code:
+            # admin / unaffiliated user => no branch filter
+            return qs
+
+        # Subquery: for each product, get the last transfer's to_location.code
+        last_to_code_subq = Subquery(
+            StockTransferLine.objects
+            .filter(product=OuterRef("pk"))
+            .select_related("transfer", "transfer__to_location")
+            .order_by("-transfer__created_at")
+            .values("transfer__to_location__code")[:1]
+        )
+
+        qs = qs.annotate(
+            last_to_code=last_to_code_subq
+        ).filter(last_to_code=loc_code)
+
+        return qs
 
     def get_serializer_class(self):
         return ProductGridSerializer if self.action in ["list"] else ProductSerializer
@@ -92,7 +143,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         q = request.query_params.get("q", "").strip()
         qs = self.get_queryset()
         if q:
-            qs = qs.filter(Q(barcode__icontains=q) | Q(task_item__item_vasy_name__icontains=q))
+            qs = qs.filter(
+                Q(barcode__icontains=q) |
+                Q(task_item__item_vasy_name__icontains=q)
+            )
 
         page = self.paginate_queryset(qs)
         ser = self.get_serializer(page or qs, many=True)
@@ -106,8 +160,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         Accepts a list of rows (from your Expanded/Print step), each like:
           {
-            "itemCode": "100-W",            # REQUIRED: TaskItem.item_code
-            "barcodeNumber": "",            # OPTIONAL: if LETTER-NNN & unused, accepted; else server generates
+            "itemCode": "100-W",
+            "barcodeNumber": "",
             "salesPrice": 1999,
             "mrp": 3500,
             "size": "M",
@@ -115,20 +169,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             "qty": 1,
             "discountPercent": 0
           }
-
-        Creates/updates Product rows. If no valid barcodeNumber is supplied, the server
-        generates the next code in a global sequence:
-          A-001..A-999, B-001..Z-999, then wraps to A-001 (skipping used).
-
-        Returns:
-          {
-            created, updated, errors: [...],
-            results: [{ row, id, itemCode, barcode }]
-          }
+        ...
         """
         items = request.data if isinstance(request.data, list) else request.data.get("rows", [])
         if not isinstance(items, list):
-            return Response({"detail": "Expected a list or {rows: [...]}."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Expected a list or {rows: [...]}."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         created, updated, errors = 0, 0, []
         results = []
@@ -183,7 +229,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                         "row": i,
                         "id": obj.id,
                         "itemCode": item_code,
-                        "barcode": obj.barcode,  # <- the actual A-xxx code to use for printing
+                        "barcode": obj.barcode,
                     })
 
                 except TaskItem.DoesNotExist:
@@ -201,10 +247,10 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     def by_barcode(self, request, barcode=None):
         """
-        GET /api/products/by-barcode/<barcode>/
-        Look up a product by barcode and return minimal fields
-        that the frontend needs (including TaskItem 'vasy' name).
-        Also robust to unicode dashes & case.
+        ...
+        🔒 For MANAGER users, this is restricted to their own outlet:
+        it checks the latest StockTransferLine for that barcode and
+        only allows if transfer.to_location.code == manager's location code.
         """
         def clean_barcode(v: str) -> str:
             if not v:
@@ -214,14 +260,38 @@ class ProductViewSet(viewsets.ModelViewSet):
             return v.strip().upper()
 
         clean = clean_barcode(barcode)
+
+        # --- outlet restriction for MANAGER ---
+        loc_code = _get_user_location_code(request)
+        if loc_code:
+            last_line = (
+                StockTransferLine.objects
+                .select_related("transfer", "transfer__to_location")
+                .filter(barcode=clean)
+                .order_by("-transfer__created_at")
+                .first()
+            )
+            if not last_line or not getattr(last_line, "transfer", None):
+                return Response(
+                    {"detail": "This barcode is not for this branch."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            to_loc = getattr(last_line.transfer, "to_location", None)
+            to_code = getattr(to_loc, "code", None)
+            if not to_code or to_code != loc_code:
+                return Response(
+                    {"detail": "This barcode is not for this branch."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         p = Product.objects.select_related("task_item").filter(barcode__iexact=clean).first()
         if not p:
-            return Response({"detail": f"Product {clean} not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": f"Product {clean} not found."},
+                            status=status.HTTP_404_NOT_FOUND)
 
         data = {
             "id": p.id,
             "barcode": p.barcode,
-            # Cast Decimals to string to avoid JSON float precision issues on the client:
             "mrp": str(p.mrp) if p.mrp is not None else "0",
             "selling_price": str(p.selling_price) if p.selling_price is not None else "0",
             "size": getattr(p, "size", "") or "",

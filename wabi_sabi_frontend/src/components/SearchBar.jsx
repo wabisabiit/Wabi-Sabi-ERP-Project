@@ -201,26 +201,45 @@ export default function SearchBar({ onAddItem }) {
   }, []);
 
   // Live search
+    // Live search
   useEffect(() => {
     let alive = true;
+
     const run = async () => {
       const q = query.trim();
-      if (!q) { setMatches([]); return; }
+      if (!q) {
+        setMatches([]);
+        return;
+      }
+
       try {
         const res = await searchCustomers(q);
         if (!alive) return;
-        setMatches(res?.results || []);
+
+        // 🔴 IMPORTANT: normalize backend response shape
+        const arr = Array.isArray(res)
+          ? res
+          : res?.results || res?.data || res?.items || [];
+
+        setMatches(arr);
       } catch (e) {
-        console.error(e);
+        console.error("customer search error:", e);
         const ql = q.toLowerCase();
-        setMatches(MOCK_CUSTOMERS.filter(
-          (c) => c.name.toLowerCase().includes(ql) || c.phone.includes(q)
-        ));
+        setMatches(
+          MOCK_CUSTOMERS.filter(
+            (c) =>
+              c.name.toLowerCase().includes(ql) || c.phone.includes(q)
+          )
+        );
       }
     };
+
     run();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [query]);
+
 
   // ==== Add-to-cart from a barcode (with pre-flight de-dupe + inflight) ====
   const addByBarcode = useCallback(async (raw) => {

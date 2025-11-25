@@ -331,7 +331,7 @@ export default function App() {
           <Route
             path="/inventory/master-packing-itemwise-summary"
             element={
-              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+              <RoleRoute allowed={["ADMIN"]}>
                 <SidebarLayout>
                   <InvMasterPackingItemWiseSummary />
                 </SidebarLayout>
@@ -388,7 +388,7 @@ export default function App() {
           <Route
             path="/inventory/products"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><ProductsPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -396,7 +396,7 @@ export default function App() {
           <Route
             path="/inventory/products/new"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><NewInventoryProductPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -404,7 +404,7 @@ export default function App() {
           <Route
             path="/inventory/stock-transfer"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><StockTransferPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -412,7 +412,7 @@ export default function App() {
           <Route
             path="/inventory/products/:id"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><InventoryProductDetailPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -420,7 +420,7 @@ export default function App() {
           <Route
             path="/inventory/master-packaging"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><MasterPackagingPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -430,7 +430,7 @@ export default function App() {
           <Route
             path="/inventory/material-consumption"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><MaterialConsumptionListPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -438,7 +438,7 @@ export default function App() {
           <Route
             path="/inventory/material-consumption/new"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><NewMaterialConsumptionPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -446,7 +446,7 @@ export default function App() {
           <Route
             path="/inventory/material-consumption/:consNo"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><MaterialConsumptionDetailPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -525,7 +525,7 @@ export default function App() {
           <Route
             path="/sales/sale-list"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN","MANAGER"]}>
                 <SidebarLayout><SaleListPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -538,7 +538,7 @@ export default function App() {
           <Route
             path="/sales/invoice"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN","MANAGER"]}>
                 <SidebarLayout><InvoicePage /></SidebarLayout>
               </RoleRoute>
             }
@@ -572,7 +572,7 @@ export default function App() {
           <Route
             path="/sales-register"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN","MANAGER"]}>
                 <SidebarLayout><SalesRegisterPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -608,7 +608,7 @@ export default function App() {
           <Route
             path="/reports"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><ReportsPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -616,7 +616,7 @@ export default function App() {
           <Route
             path="/reports/day-wise-sales-summary"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -624,7 +624,7 @@ export default function App() {
           <Route
             path="/reports/sales-register"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>
               </RoleRoute>
             }
@@ -632,7 +632,7 @@ export default function App() {
           <Route
             path="/reports/category-wise-sales-summary"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>
               </RoleRoute>
             }
@@ -640,7 +640,7 @@ export default function App() {
           <Route
             path="/reports/credit-note-item-register"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>
               </RoleRoute>
             }
@@ -648,7 +648,7 @@ export default function App() {
           <Route
             path="/reports/product-wise-sales-summary"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><ReportProductWiseSales /></SidebarLayout>
               </RoleRoute>
             }
@@ -656,7 +656,7 @@ export default function App() {
           <Route
             path="/reports/salesman"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><ReportSalesMan /></SidebarLayout>
               </RoleRoute>
             }
@@ -664,7 +664,7 @@ export default function App() {
           <Route
             path="/reports/wow-bill-report"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><WowBillReport /></SidebarLayout>
               </RoleRoute>
             }
@@ -672,7 +672,7 @@ export default function App() {
           <Route
             path="/reports/tax-wise-sales-summary"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>
               </RoleRoute>
             }
@@ -680,7 +680,7 @@ export default function App() {
           <Route
             path="/reports/sales-summary"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout><ReportSalesSummary /></SidebarLayout>
               </RoleRoute>
             }
@@ -688,7 +688,7 @@ export default function App() {
           <Route
             path="/reports/customer-wise-sales-order-report"
             element={
-              <RoleRoute allowed={["ADMIN"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>
               </RoleRoute>
             }

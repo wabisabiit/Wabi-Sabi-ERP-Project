@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import SaleLine, CreditNote
+from outlets.models import Employee  # for outlet/location scoping
 
 
 def _parse_date(s: str):
@@ -25,6 +26,16 @@ def _parse_date(s: str):
         return None
 
 
+def _get_user_location_code(request):
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated or user.is_superuser:
+        return None
+    emp = getattr(user, "employee", None)
+    outlet = getattr(emp, "outlet", None) if emp else None
+    loc = getattr(outlet, "location", None) if outlet else None
+    return getattr(loc, "code", None) or None
+
+
 class DaywiseSalesSummary(APIView):
     """
     GET /api/reports/daywise-sales/?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&location=<text>
@@ -33,6 +44,9 @@ class DaywiseSalesSummary(APIView):
     - credit_notes = count of CreditNote created that day
     - total = cash + credit_notes (per your spec)
     - location filters by Sale.store/CreditNote.sale.store (icontains)
+
+    For MANAGER users, location is automatically forced to their outlet
+    (using location code in sale.store).
     """
 
     def get(self, request):
@@ -45,6 +59,9 @@ class DaywiseSalesSummary(APIView):
             )
 
         loc = (request.GET.get("location") or "").strip()
+        loc_code = _get_user_location_code(request)
+        if loc_code:
+            loc = loc_code
 
         # ---- CASH (sum of line amounts per day) ----
         sl_qs = (
@@ -119,7 +136,7 @@ class DaywiseSalesSummary(APIView):
 # ========= Product Wise Sales =========
 class ProductWiseSalesReport(APIView):
     """
-    (unchanged from your version)
+    (unchanged from your version, but location is forced for MANAGER)
     """
 
     def _format_ddmmyyyy(self, d):
@@ -146,6 +163,11 @@ class ProductWiseSalesReport(APIView):
 
         # --- Locations (multi or single) ---
         locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
+
+        loc_code = _get_user_location_code(request)
+        if loc_code:
+            locs = [loc_code]
+
         if locs and "All" not in locs:
             if len(locs) == 1:
                 qs = qs.filter(sale__store__icontains=locs[0])
@@ -261,14 +283,7 @@ class CategoryWiseSalesSummary(APIView):
       - location  (multi allowed; ?location=A&location=B) — icontains if single
       - category  (exact match to TaskItem.category; optional)
 
-    Output rows (per your UI keys):
-      { sr, category, location, qty, taxable, tax, total }
-
-    Rules:
-      - Category comes from TaskItem.category
-      - Qty is number of products sold for that category at that location (sum of SaleLine.qty)
-      - Total sums SaleLine.sp * qty, across all barcodes that share the same TaskItem
-      - Taxable and Tax are empty strings for each row (as requested)
+    For MANAGER users, location is forced to their outlet.
     """
 
     def get(self, request):
@@ -298,6 +313,11 @@ class CategoryWiseSalesSummary(APIView):
 
         # locations
         locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
+
+        loc_code = _get_user_location_code(request)
+        if loc_code:
+            locs = [loc_code]
+
         if locs and "All" not in locs:
             if len(locs) == 1:
                 # fuzzy match for a single location (the UI passes names with symbols like en-dash)
