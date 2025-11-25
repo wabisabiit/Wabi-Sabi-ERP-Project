@@ -4,21 +4,15 @@ import "../styles/SearchBar.css";
 import {
   getProductByBarcode,
   getSaleLinesByInvoice,
-  // customer APIs + POS session helpers
   searchCustomers,
   createCustomer,
   getSelectedCustomer,
   setSelectedCustomer,
-  // NOTE: we no longer force-clearing on mount
-  // clearSelectedCustomer,
 } from "../api/client";
 
-// Track barcodes already added to cart (session-scoped here)
 const ADDED_BARCODES = new Set();
-// Track scans currently being processed to prevent race duplicates
 const INFLIGHT = new Set();
 
-// (fallback only if API fails)
 const MOCK_CUSTOMERS = [
   { id: 1, name: "ishika", phone: "9131054736", address: "", verified: false },
   { id: 2, name: "IShika", phone: "7417449691", address: "", verified: false },
@@ -176,22 +170,20 @@ export default function SearchBar({ onAddItem }) {
   const [query, setQuery] = useState("");
   const [openDrop, setOpenDrop] = useState(false);
   const [matches, setMatches] = useState([]);
+  const [isSearching, setIsSearching] = useState(false); // ✅ NEW: track search state
   const [showModal, setShowModal] = useState(false);
   const [prefillName, setPrefillName] = useState("");
   const [invoice, setInvoice] = useState("");
-  const [customer, setCustomer] = useState(() => getSelectedCustomer()); // POS session
+  const [customer, setCustomer] = useState(() => getSelectedCustomer());
   const wrapRef = useRef(null);
   const scanInputRef = useRef(null);
 
-  // tiny guard to suppress input handlers right after a global scan fires
   const scanLockRef = useRef(0);
   const markScanHandled = () => { scanLockRef.current = Date.now(); };
   const recentlyHandled = (ms = 200) => Date.now() - scanLockRef.current < ms;
 
-  // Autofocus the scan box so it's ready for the scanner
   useEffect(() => { scanInputRef.current?.focus(); }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const onClick = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpenDrop(false);
@@ -200,53 +192,65 @@ export default function SearchBar({ onAddItem }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // Live search
-    // Live search
+  // ✅ FIXED: Live search with loading state
   useEffect(() => {
     let alive = true;
-
-    const run = async () => {
+    const timeoutId = setTimeout(async () => {
       const q = query.trim();
+      
+      // ✅ Clear matches when query is empty
       if (!q) {
         setMatches([]);
+        setIsSearching(false);
         return;
       }
 
+      setIsSearching(true); // ✅ Show loading state
+
       try {
+        console.log("🔍 Searching for:", q); // Debug log
         const res = await searchCustomers(q);
+        
         if (!alive) return;
 
-        // 🔴 IMPORTANT: normalize backend response shape
+        console.log("📦 API Response:", res); // Debug log
+
+        // ✅ Normalize backend response shape
         const arr = Array.isArray(res)
           ? res
           : res?.results || res?.data || res?.items || [];
 
+        console.log("✅ Matched customers:", arr.length, "results"); // Debug log
+        console.log("Dropdown should be visible. openDrop =", true);
         setMatches(arr);
+        setIsSearching(false);
       } catch (e) {
-        console.error("customer search error:", e);
-        const ql = q.toLowerCase();
-        setMatches(
-          MOCK_CUSTOMERS.filter(
-            (c) =>
-              c.name.toLowerCase().includes(ql) || c.phone.includes(q)
-          )
-        );
-      }
-    };
+        console.error("❌ Customer search error:", e);
+        
+        if (!alive) return;
 
-    run();
+        // Fallback to mock data
+        const ql = q.toLowerCase();
+        const mockResults = MOCK_CUSTOMERS.filter(
+          (c) => c.name.toLowerCase().includes(ql) || c.phone.includes(q)
+        );
+        
+        console.log("📋 Using mock data:", mockResults.length, "results"); // Debug log
+        setMatches(mockResults);
+        setIsSearching(false);
+      }
+    }, 150); // Debounce 150ms
+
     return () => {
       alive = false;
+      clearTimeout(timeoutId);
     };
   }, [query]);
 
-
-  // ==== Add-to-cart from a barcode (with pre-flight de-dupe + inflight) ====
   const addByBarcode = useCallback(async (raw) => {
     const code = String(raw || "").trim();
     if (!code) return;
 
-    // Already added or currently being processed?
     if (ADDED_BARCODES.has(code) || INFLIGHT.has(code)) {
       alert(`Already in cart: ${code}`);
       setScan("");
@@ -264,7 +268,7 @@ export default function SearchBar({ onAddItem }) {
       }
 
       onAddItem?.(p);
-      ADDED_BARCODES.add(code); // remember it so it won't be added twice later
+      ADDED_BARCODES.add(code);
       setScan("");
     } catch (err) {
       console.error(err);
@@ -274,15 +278,13 @@ export default function SearchBar({ onAddItem }) {
     }
   }, [onAddItem]);
 
-  // Manual entry handler
   const handleScanSubmit = useCallback(async () => {
-    if (recentlyHandled()) return; // global scan just handled it
+    if (recentlyHandled()) return;
     const code = scan.trim();
     if (!code) return;
     addByBarcode(code);
   }, [scan, addByBarcode]);
 
-  // ==== USB scanner as keyboard (global listener) ====
   useEffect(() => {
     const suffixKey = "Enter";
     const minLength = 5;
@@ -296,7 +298,6 @@ export default function SearchBar({ onAddItem }) {
       const gap = now - (lastTs || 0);
       lastTs = now;
 
-      // If gap is large, treat as a new stream
       if (gap > charTimeoutMs) buf = "";
 
       if (e.key === suffixKey) {
@@ -304,15 +305,13 @@ export default function SearchBar({ onAddItem }) {
         buf = "";
         if (code.length >= minLength) {
           e.preventDefault?.();
-          markScanHandled();       // suppress input-level submit/blur echo
+          markScanHandled();
           addByBarcode(code);
         }
         return;
       }
 
-      // ignore control keys (Shift, Alt, etc.)
       if (e.key.length !== 1) return;
-
       buf += e.key;
     };
 
@@ -320,7 +319,6 @@ export default function SearchBar({ onAddItem }) {
     return () => document.removeEventListener("keydown", onKeyDown, true);
   }, [addByBarcode]);
 
-  // Invoice load (return mode) — de-dupe each line by barcode as well
   async function loadInvoice(inv) {
     try {
       const res = await getSaleLinesByInvoice(inv);
@@ -355,8 +353,8 @@ export default function SearchBar({ onAddItem }) {
     }
   }
 
-  // Select customer from dropdown → persists & notifies Footer
   const pickCustomer = (c) => {
+    console.log("✅ Selected customer:", c); // Debug log
     setCustomer(c);
     setSelectedCustomer(c);
     setQuery("");
@@ -372,7 +370,6 @@ export default function SearchBar({ onAddItem }) {
   return (
     <div className="search-row">
       <div className="container search-bar">
-        {/* LEFT: scan barcode / product name */}
         <input
           ref={scanInputRef}
           className="scan"
@@ -384,28 +381,89 @@ export default function SearchBar({ onAddItem }) {
             if (e.key === "Enter") handleScanSubmit();
           }}
           onBlur={(e) => {
-            if (recentlyHandled()) return; // avoid double after global scan causes blur
+            if (recentlyHandled()) return;
             if (e.target.value.trim()) handleScanSubmit();
           }}
         />
 
-        {/* Walk in Customer */}
-        <div className="customer-input" ref={wrapRef}>
+        {/* ✅ FIXED: Customer dropdown */}
+        <div className="customer-input" ref={wrapRef} style={{ position: 'relative' }}>
           <input
             type="text"
             placeholder={customer?.id ? `${customer.name} (${customer.phone})` : "Walk in Customer"}
             value={query}
-            onFocus={() => setOpenDrop(true)}
-            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => {
+              console.log("🔵 Input focused, opening dropdown");
+              setOpenDrop(true);
+            }}
+            onChange={(e) => {
+              const newQuery = e.target.value;
+              console.log("✏️ Query changed:", newQuery);
+              setQuery(newQuery);
+              if (newQuery.trim()) {
+                setOpenDrop(true); // ✅ Ensure dropdown stays open when typing
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setOpenDrop(false);
+              }
+            }}
           />
-          <button className="edit-btn" type="button" aria-label="Edit" onClick={() => setOpenDrop(v => !v)}>
+          <button 
+            className="edit-btn" 
+            type="button" 
+            aria-label="Edit" 
+            onClick={() => {
+              const newState = !openDrop;
+              console.log("🖊️ Edit button clicked, openDrop:", newState);
+              setOpenDrop(newState);
+            }}
+          >
             <span className="material-icons">edit</span>
           </button>
 
+          {/* Debug indicator */}
           {openDrop && (
-            <div className="dropdown">
+            <div style={{
+              position: 'absolute',
+              top: '-20px',
+              right: 0,
+              background: '#22c55e',
+              color: 'white',
+              padding: '2px 8px',
+              borderRadius: '3px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              zIndex: 10000
+            }}>
+              DROPDOWN OPEN
+            </div>
+          )}
+
+          {openDrop && (
+            <div className="dropdown" style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              backgroundColor: 'white',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              zIndex: 9999,
+              maxHeight: '400px',
+              overflowY: 'auto',
+              marginTop: '4px'
+            }}>
               {query.trim().length < 1 ? (
-                <div className="dropdown-note">Please enter 1 or more characters</div>
+                <div className="dropdown-note" style={{ padding: '12px', color: '#666' }}>
+                  Please enter 1 or more characters
+                </div>
+              ) : isSearching ? (
+                <div className="dropdown-note" style={{ padding: '12px', color: '#666' }}>
+                  Searching...
+                </div>
               ) : (
                 <>
                   <div
@@ -413,26 +471,72 @@ export default function SearchBar({ onAddItem }) {
                     onClick={() => openAddContact(query.trim())}
                     role="button"
                     tabIndex={0}
+                    style={{
+                      padding: '12px',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      backgroundColor: '#f8f9fa'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e9ecef'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                   >
-                    Add Contact
-                    <div className="muted">Address :</div>
+                    <div style={{ fontWeight: 500, marginBottom: '4px' }}>
+                      ➕ Add New Contact: "{query.trim()}"
+                    </div>
+                    <div className="muted" style={{ fontSize: '12px', color: '#888' }}>
+                      Click to create new customer
+                    </div>
                   </div>
 
                   {matches.length > 0 ? (
                     matches.map((c) => (
-                      <div key={c.id} className="customer-item" onClick={() => pickCustomer(c)}>
-                        <div className="cust-line">
-                          <span className="cust-name">{c.name}</span>&nbsp;
-                          <span className="cust-phone">{c.phone}</span>
+                      <div 
+                        key={c.id} 
+                        className="customer-item" 
+                        onClick={() => pickCustomer(c)}
+                        style={{
+                          padding: '12px',
+                          borderBottom: '1px solid #eee',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f8ff'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                      >
+                        <div className="cust-line" style={{ marginBottom: '4px' }}>
+                          <span className="cust-name" style={{ fontWeight: 500 }}>
+                            {c.name}
+                          </span>
+                          &nbsp;
+                          <span className="cust-phone" style={{ color: '#666' }}>
+                            {c.phone}
+                          </span>
                         </div>
-                        <div className="cust-sub">
-                          <span>Address : {c.address || ""}</span>
-                          {!c.verified && <span className="unverified">Un-verified</span>}
+                        <div className="cust-sub" style={{ fontSize: '12px', color: '#888' }}>
+                          <span>Address: {c.address || "Not provided"}</span>
+                          {!c.verified && (
+                            <span className="unverified" style={{ 
+                              marginLeft: '8px',
+                              color: '#dc3545',
+                              fontSize: '11px'
+                            }}>
+                              ⚠️ Un-verified
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="no-results">No matching customers</div>
+                    <div className="no-results" style={{ 
+                      padding: '16px',
+                      textAlign: 'center',
+                      color: '#999'
+                    }}>
+                      🔍 No matching customers found
+                      <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                        Click "Add New Contact" above to create one
+                      </div>
+                    </div>
                   )}
                 </>
               )}
@@ -440,7 +544,6 @@ export default function SearchBar({ onAddItem }) {
           )}
         </div>
 
-        {/* Scan Sales Invoice */}
         <input
           className="invoice"
           type="text"
@@ -456,7 +559,6 @@ export default function SearchBar({ onAddItem }) {
         />
       </div>
 
-      {/* Modal */}
       <NewCustomerModal
         open={showModal}
         onClose={() => setShowModal(false)}
