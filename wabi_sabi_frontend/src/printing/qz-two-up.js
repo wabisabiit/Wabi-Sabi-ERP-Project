@@ -276,7 +276,10 @@ async function innerPrintTwoUpLabels(rows, opts = {}) {
       location: (r.location || r.location_code || "").toString(),
       date,
     };
-    if (!safe.code) { console.warn("Skipping row with empty code:", r); continue; }
+    if (!safe.code) {
+      console.warn("Skipping row with empty code:", r);
+      continue;
+    }
     for (let i = 0; i < copies; i++) expanded.push({ ...safe });
   }
   if (!expanded.length) throw new Error("No valid barcodes to print.");
@@ -289,30 +292,31 @@ async function innerPrintTwoUpLabels(rows, opts = {}) {
     return na - nb;
   });
 
-  // 3) Pair up; if odd, last single goes LEFT
-  try {
-    for (let i = 0; i < expanded.length; ) {
-      let left = null, right = null;
-      const remaining = expanded.length - i;
-      if (remaining >= 2) {
-        left  = expanded[i];
-        right = expanded[i + 1];
-        i += 2;
-      } else {
-        left = expanded[i];
-        right = null;
-        i += 1;
-      }
-      const cmdsStr = tsplTwoUpPage(left, right).join("\r\n");
-      await window.qz.print(cfg, [{ type: "raw", format: "command", data: cmdsStr }]);
+  // 3) Build ONE big print payload (all two-up pages)
+  const printPayload = [];
+  for (let i = 0; i < expanded.length; ) {
+    let left = null, right = null;
+    const remaining = expanded.length - i;
+    if (remaining >= 2) {
+      left  = expanded[i];
+      right = expanded[i + 1];
+      i += 2;
+    } else {
+      left = expanded[i];
+      right = null;
+      i += 1;
     }
-    
-    // ✅ CRITICAL: Force flush the printer buffer to print the last label immediately
-    const flushCmd = "PRINT 1,1\r\n";
-    await window.qz.print(cfg, [{ type: "raw", format: "command", data: flushCmd }]);
-    
+    const cmdsStr = tsplTwoUpPage(left, right).join("\r\n");
+    printPayload.push({ type: "raw", format: "command", data: cmdsStr });
+  }
+
+  // optional: extra flush inside same job (no extra security prompt)
+  printPayload.push({ type: "raw", format: "command", data: "PRINT 1,1\r\n" });
+
+  try {
+    // ✅ ONE print call → ONE QZ security prompt per click
+    await window.qz.print(cfg, printPayload);
   } finally {
-    // 🔁 Hard refresh of QZ after this job
     try {
       if (window.qz?.websocket?.isActive()) {
         await window.qz.websocket.disconnect();
@@ -320,7 +324,7 @@ async function innerPrintTwoUpLabels(rows, opts = {}) {
     } catch (e) {
       console.warn("QZ disconnect failed (ignored):", e);
     }
-    // drop cached config so next job recreates it cleanly
     _qzConfig = null;
   }
 }
+

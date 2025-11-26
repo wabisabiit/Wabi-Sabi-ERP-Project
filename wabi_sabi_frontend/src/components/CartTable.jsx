@@ -1,11 +1,28 @@
-import React, { useState } from "react";
+// src/components/CartTable.jsx
+import React, { useState, useEffect } from "react";
 import "../styles/CartTable.css";
 
 const money = (v) =>
   typeof v === "number" && isFinite(v) ? `₹${v.toFixed(2)}` : "---";
 
-export default function CartTable({ items = [] }) {
+export default function CartTable({ items = [], onRowsChange }) {
   const [remarks, setRemarks] = useState("");
+  const [rows, setRows] = useState(items || []);
+
+  // keep local rows in sync if parent changes items
+  useEffect(() => {
+    setRows(items || []);
+  }, [items]);
+
+  const handleDelete = (idx) => {
+  setRows((prev) => {
+    const next = prev.filter((_, i) => i !== idx);
+    if (typeof onRowsChange === "function") onRowsChange(next);
+    return next;
+  });
+};
+
+
 
   return (
     <div className="cart-container">
@@ -21,13 +38,16 @@ export default function CartTable({ items = [] }) {
             <th className="num">Add Disc</th>
             <th className="num">Unit Cost</th>
             <th className="num">Net Amount</th>
+            <th className="num"></th>
           </tr>
         </thead>
 
         <tbody>
-          {items.length > 0 ? (
-            items.map((row, idx) => {
-              const qty = Number.isFinite(Number(row.qty)) ? Number(row.qty) : 1;
+          {rows.length > 0 ? (
+            rows.map((row, idx) => {
+              const qty = Number.isFinite(Number(row.qty))
+                ? Number(row.qty)
+                : 1;
               const lineAmount = (Number(row.netAmount) || 0) * qty;
 
               return (
@@ -38,7 +58,6 @@ export default function CartTable({ items = [] }) {
                   <td className="num">{qty}</td>
                   <td className="num">{money(row.mrp)}</td>
 
-                  {/* ── ONLY CHANGE: show a simple search input instead of '---' ── */}
                   <td className="num">
                     <input type="text" placeholder="..." />
                   </td>
@@ -48,22 +67,29 @@ export default function CartTable({ items = [] }) {
                   <td className="num">
                     <input type="text" placeholder="..." />
                   </td>
-                  {/* ────────────────────────────────────────────────────────────── */}
 
                   <td className="num">{money(lineAmount)}</td>
+
+                  <td className="num">
+                    <button
+                      type="button"
+                      className="cart-delete-btn"
+                      onClick={() => handleDelete(idx)}
+                    >
+                      ✕
+                    </button>
+                  </td>
                 </tr>
               );
             })
           ) : (
-            // Empty white area (no text), like your reference screenshot
             <tr className="empty-spacer">
-              <td colSpan={9} />
+              <td colSpan={10} />
             </tr>
           )}
         </tbody>
       </table>
 
-      {/* Remarks box with bright blue border */}
       <div className="remarks-wrap">
         <textarea
           className="remarks-input"

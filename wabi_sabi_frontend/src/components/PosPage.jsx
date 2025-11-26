@@ -1,10 +1,29 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import SearchBar from "./SearchBar";
 import CartTable from "./CartTable";
 import Footer from "./Footer";
 
+const CART_KEY = "pos.cartItems";
+
 export default function PosPage() {
-  const [items, setItems] = useState([]);
+  // ✅ Single source of truth for cart items (hydrate from localStorage if present)
+  const [items, setItems] = useState(() => {
+    try {
+      const raw = localStorage.getItem(CART_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // ✅ Keep localStorage in sync – add & delete both update storage
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(items));
+    } catch {
+      // ignore errors
+    }
+  }, [items]);
 
   const handleAddItem = (p) => {
     const row = {
@@ -19,6 +38,11 @@ export default function PosPage() {
       netAmount: p.sellingPrice ?? 0,
     };
     setItems((prev) => [...prev, row]);
+  };
+
+  // 🔄 Called by CartTable when user deletes rows
+  const handleRowsChange = (nextRows) => {
+    setItems(nextRows); // <- this will recompute totals & footer amount
   };
 
   const totals = useMemo(() => {
@@ -41,19 +65,25 @@ export default function PosPage() {
         );
       }
     } catch (_) {}
-    setItems([]); // clear cart for next customer
+
+    // 🧹 Clear cart in memory + storage
+    setItems([]);
+    try {
+      localStorage.removeItem(CART_KEY);
+    } catch {}
   };
 
   return (
     <div className="pos-page">
       <SearchBar onAddItem={handleAddItem} />
-      <CartTable items={items} />
+      {/* ✅ CartTable tells PosPage when rows change (delete) */}
+      <CartTable items={items} onRowsChange={handleRowsChange} />
       <Footer
-        items={items}                 // <-- IMPORTANT: pass cart rows
+        items={items}                 // <-- cart rows
         totalQty={totals.totalQty}
-        amount={totals.amount}
-        onReset={handleReset}         // <-- Footer will call this on success
-        customer={someCustomer}  // (optional) pass real customer if you have it
+        amount={totals.amount}        // <-- will now change on delete
+        onReset={handleReset}
+        customer={someCustomer}       // (keep whatever you had here)
       />
     </div>
   );

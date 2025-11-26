@@ -1,10 +1,11 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils.dateparse import parse_datetime, parse_date
 from django.db.models import Prefetch, Sum, F, DecimalField, ExpressionWrapper, Value
 from django.db.models.functions import Coalesce
+from django.views.decorators.csrf import csrf_exempt
 
 from .services import create_transfer_for_print
 from .models import StockTransfer, StockTransferLine
@@ -13,9 +14,9 @@ from outlets.utils import get_user_location_code
 
 from decimal import Decimal
 
-
+@csrf_exempt
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def print_and_transfer(request):
     """
     POST /api/products/print-barcodes/
@@ -52,7 +53,7 @@ def print_and_transfer(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-
+@csrf_exempt
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def transfer_list(request):
