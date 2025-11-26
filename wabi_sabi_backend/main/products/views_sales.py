@@ -115,6 +115,14 @@ class SalesView(APIView):
         ser = SaleCreateSerializer(data=request.data)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # 🔐 Force store to manager's own location code
+        extra = {}
+        loc_code = _get_user_location_code(request)
+        if loc_code and not request.user.is_superuser:
+            extra["store"] = loc_code   # change "store" if your field name is different
+
         with transaction.atomic():
-            result = ser.save()
+            result = ser.save(**extra)
+
         return Response(result, status=status.HTTP_201_CREATED)

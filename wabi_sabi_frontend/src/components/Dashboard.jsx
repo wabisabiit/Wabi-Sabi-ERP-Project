@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { listTransfers, listLoginLogs } from "../api/client";
+import { listSales, listLoginLogs } from "../api/client";
 import "../styles/Dashboard.css";
 import { useAuth } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -923,6 +923,7 @@ export default function Dashboard() {
     return { from: toISO(a), to: toISO(b) };
   };
 
+  /* ===== KPI loader (Sales, Invoices, Qty, Customers) ===== */
   useEffect(() => {
     const { from, to } = parseRange(globalRange);
     let cancelled = false;
@@ -935,24 +936,65 @@ export default function Dashboard() {
         const params = {
           date_from: from,
           date_to: to,
+          all: "1",
         };
 
-        if (locationIds.length === 1) {
-          params.to = locationIds[0];
-        }
-
-        const transfers = await listTransfers(params);
+        // backend already scopes by manager outlet (SalesView)
+        const res = await listSales(params);
+        const sales = Array.isArray(res?.results)
+          ? res.results
+          : Array.isArray(res)
+          ? res
+          : [];
 
         let totalSales = 0;
-        let totalInvoice = transfers.length;
+        let totalInvoice = sales.length;
         let soldQty = 0;
+        const customerKeys = new Set();
 
-        for (const t of transfers) {
-          const amt = Number(t.net_amount || 0);
-          const q = Number(t.qty || 0);
+        for (const s of sales) {
+          const amt = Number(
+            s.net_amount ??
+              s.total_amount ??
+              s.grand_total ??
+              0
+          );
           if (Number.isFinite(amt)) totalSales += amt;
-          if (Number.isFinite(q)) soldQty += q;
+
+          // try to use real per-invoice quantity
+          const q = Number(
+            s.total_qty ??
+              s.total_items ??
+              s.qty ??
+              0
+          );
+          if (Number.isFinite(q) && q > 0) {
+            soldQty += q;
+          }
+
+          const key =
+            s.customer_id ??
+            s.customer ??
+            (s.customer_name || s.customer_phone
+              ? `${s.customer_name || ""}|${
+                  s.customer_phone || ""
+                }`
+              : null);
+          if (
+            key !== null &&
+            key !== undefined &&
+            String(key).trim() !== ""
+          ) {
+            customerKeys.add(String(key));
+          }
         }
+
+        // fallback: if backend didn't send qty, treat each invoice as qty 1
+        if (soldQty <= 0) {
+          soldQty = totalInvoice;
+        }
+
+        const totalCustomers = customerKeys.size;
 
         const baseCards = computeMetricsMock({
           from,
@@ -970,6 +1012,9 @@ export default function Dashboard() {
           }
           if (card.label === "Sold Qty") {
             return { ...card, value: soldQty };
+          }
+          if (card.label === "Total Customers") {
+            return { ...card, value: totalCustomers };
           }
           return card;
         });
@@ -1017,7 +1062,7 @@ export default function Dashboard() {
 
   /* ---------- LOGIN LOG location filter ---------- */
   const [logLocOpen, setLogLocOpen] = useState(false);
-  const [logLocIds, setLogLocIds] = useState([])
+  const [logLocIds, setLogLocIds] = useState([]);
   const [logLocQuery, setLogLocQuery] = useState("");
   const logBtnRef = useRef(null);
   const logDropStyle = useSmartDropdown(logLocOpen, logBtnRef);
