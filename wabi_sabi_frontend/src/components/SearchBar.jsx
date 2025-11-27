@@ -473,7 +473,8 @@ export default function SearchBar({ onAddItem }) {
                     tabIndex={0}
                     style={{
                       padding: '12px',
-                      borderBottom: '1px solid #eee',
+                      borderBottom: '1px solid ' +
+                        '#eee',
                       cursor: 'pointer',
                       backgroundColor: '#f8f9fa'
                     }}

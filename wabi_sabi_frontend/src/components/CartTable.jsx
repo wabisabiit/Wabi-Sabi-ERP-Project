@@ -6,23 +6,43 @@ const money = (v) =>
   typeof v === "number" && isFinite(v) ? `₹${v.toFixed(2)}` : "---";
 
 export default function CartTable({ items = [], onRowsChange }) {
+  console.log("🔥 CART TABLE FILE LOADED FROM:", import.meta.url);
   const [remarks, setRemarks] = useState("");
   const [rows, setRows] = useState(items || []);
 
-  // keep local rows in sync if parent changes items
+  // parent se aane wale items ko sync me rakho
   useEffect(() => {
     setRows(items || []);
   }, [items]);
 
   const handleDelete = (idx) => {
-  setRows((prev) => {
-    const next = prev.filter((_, i) => i !== idx);
-    if (typeof onRowsChange === "function") onRowsChange(next);
-    return next;
-  });
-};
+    console.log("🗑️ CartTable: delete clicked", {
+      idx,
+      rowsBefore: rows.length,
+      itemsPropLength: items ? items.length : 0,
+    });
 
+    setRows((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      console.log("✅ CartTable: rows after local delete", next);
 
+      if (typeof onRowsChange === "function") {
+        try {
+          console.log("📤 CartTable: calling onRowsChange with", next);
+          onRowsChange(next);
+        } catch (e) {
+          console.error("❌ CartTable: error while calling onRowsChange", e);
+        }
+      } else {
+        console.warn(
+          "⚠️ CartTable: onRowsChange is missing or not a function. Got:",
+          onRowsChange
+        );
+      }
+
+      return next;
+    });
+  };
 
   return (
     <div className="cart-container">

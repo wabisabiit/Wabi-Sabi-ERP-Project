@@ -123,8 +123,12 @@ const Login = lazy(() => import("./components/Login"));
 
 /* ---------- Layouts ---------- */
 // POS layout with cart state (kept from YOUR code)
+// POS layout with cart state (kept from YOUR code)
 function POSLayout() {
   const [items, setItems] = useState([]);
+
+  // debug: har render pe items length dekho
+  console.log("POSLayout render, items length =", items.length);
 
   const handleAddItem = (p) => {
     // p => { id, barcode, mrp, sellingPrice, vasyName }
@@ -142,6 +146,16 @@ function POSLayout() {
     setItems((prev) => [...prev, row]);
   };
 
+  // 🔄 yahi parent ko CartTable se updates milenge
+  const handleRowsChange = (nextRows) => {
+    console.log(
+      "POSLayout.handleRowsChange called, new length =",
+      nextRows.length,
+      nextRows
+    );
+    setItems(nextRows);
+  };
+
   const totals = useMemo(() => {
     const totalQty = items.reduce((s, r) => s + (Number(r.qty) || 0), 0);
     const amount = items.reduce(
@@ -155,7 +169,7 @@ function POSLayout() {
     if (res?.invoice_no) {
       try {
         alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
-      } catch (_) { }
+      } catch (_) {}
     }
     setItems([]); // clear cart for next customer
   };
@@ -167,7 +181,8 @@ function POSLayout() {
       <main className="main">
         <div className="left-section">
           <div className="table-wrap">
-            <CartTable items={items} />
+            {/* 🔧 yaha onRowsChange pass karo */}
+            <CartTable items={items} onRowsChange={handleRowsChange} />
           </div>
         </div>
         <RightPanel />
@@ -181,6 +196,7 @@ function POSLayout() {
     </div>
   );
 }
+
 
 function SidebarLayout({ children }) {
   return (

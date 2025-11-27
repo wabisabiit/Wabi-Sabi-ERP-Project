@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import SearchBar from "./SearchBar";
 import CartTable from "./CartTable";
@@ -6,7 +7,8 @@ import Footer from "./Footer";
 const CART_KEY = "pos.cartItems";
 
 export default function PosPage() {
-  // ✅ Single source of truth for cart items (hydrate from localStorage if present)
+  console.log("📌 POSPAGE FILE LOADED FROM:", import.meta.url);
+  // cart state (hydrate from localStorage)
   const [items, setItems] = useState(() => {
     try {
       const raw = localStorage.getItem(CART_KEY);
@@ -16,19 +18,19 @@ export default function PosPage() {
     }
   });
 
-  // ✅ Keep localStorage in sync – add & delete both update storage
+  // keep localStorage in sync whenever items change
   useEffect(() => {
     try {
       localStorage.setItem(CART_KEY, JSON.stringify(items));
     } catch {
-      // ignore errors
+      // ignore
     }
   }, [items]);
 
   const handleAddItem = (p) => {
     const row = {
       id: crypto.randomUUID?.() || `${p.id}-${Date.now()}`,
-      itemcode: p.barcode,             // Footer/buildLines will read this
+      itemcode: p.barcode,
       product: p.vasyName || "",
       qty: 1,
       mrp: p.mrp,
@@ -40,21 +42,25 @@ export default function PosPage() {
     setItems((prev) => [...prev, row]);
   };
 
-  // 🔄 Called by CartTable when user deletes rows
+  // 🔄 called by CartTable on delete (and any row changes)
   const handleRowsChange = (nextRows) => {
-    setItems(nextRows); // <- this will recompute totals & footer amount
+    setItems(nextRows);     // ← parent state update
   };
 
+  // totals always derived from current items
   const totals = useMemo(() => {
-    const totalQty = items.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const totalQty = items.reduce(
+      (s, r) => s + (Number(r.qty) || 0),
+      0
+    );
     const amount = items.reduce(
-      (s, r) => s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0),
+      (s, r) =>
+        s + (Number(r.netAmount) || 0) * (Number(r.qty) || 0),
       0
     );
     return { totalQty, amount, discount: 0 };
   }, [items]);
 
-  // Called by Footer after a successful payment
   const handleReset = (res) => {
     try {
       if (res?.invoice_no) {
@@ -66,24 +72,28 @@ export default function PosPage() {
       }
     } catch (_) {}
 
-    // 🧹 Clear cart in memory + storage
     setItems([]);
     try {
       localStorage.removeItem(CART_KEY);
     } catch {}
   };
 
+  // you’ll replace this with your actual customer object
+  const someCustomer = null; // or whatever you already had
+
   return (
     <div className="pos-page">
       <SearchBar onAddItem={handleAddItem} />
-      {/* ✅ CartTable tells PosPage when rows change (delete) */}
+
+      {/* CartTable can delete, and parent updates items */}
       <CartTable items={items} onRowsChange={handleRowsChange} />
+
       <Footer
-        items={items}                 // <-- cart rows
+        items={items}
         totalQty={totals.totalQty}
-        amount={totals.amount}        // <-- will now change on delete
+        amount={totals.amount}   // ← this will drop when you delete a row
         onReset={handleReset}
-        customer={someCustomer}       // (keep whatever you had here)
+        customer={someCustomer}
       />
     </div>
   );
