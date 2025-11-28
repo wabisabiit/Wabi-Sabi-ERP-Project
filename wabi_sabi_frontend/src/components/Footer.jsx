@@ -1,13 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// src/components/Footer.jsx
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
 import {
   createSale,
   createSalesReturn,
   redeemCreditNote,
-  redeemCoupon,            // ← mark coupon redeemed after sale
+  redeemCoupon, // ← mark coupon redeemed after sale
   getSelectedCustomer,
   clearSelectedCustomer,
+  createHoldBill, // ← NEW
 } from "../api/client";
 import { useNavigate } from "react-router-dom";
 import CashPayment from "./CashPayment";
@@ -18,7 +26,8 @@ function UpiModal({ amount = 0, onClose, onSubmit }) {
   const [txnId, setTxnId] = useState("");
 
   useEffect(() => {
-    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    const scrollY =
+      window.scrollY || document.documentElement.scrollTop || 0;
     document.body.classList.add("modal-open");
     document.body.style.top = `-${scrollY}px`;
     return () => {
@@ -93,7 +102,7 @@ export default function Footer({
   items = [],
   customer,
   totalQty = 0,
-  amount = 0,          // cart total BEFORE coupon/credit
+  amount = 0, // cart total BEFORE coupon/credit
   onReset,
 }) {
   const navigate = useNavigate();
@@ -110,7 +119,10 @@ export default function Footer({
       delete timersRef.current[id];
     }, 2000);
   }, []);
-  useEffect(() => () => Object.values(timersRef.current).forEach(clearTimeout), []);
+  useEffect(
+    () => () => Object.values(timersRef.current).forEach(clearTimeout),
+    []
+  );
 
   // Modals
   const [showCard, setShowCard] = useState(false);
@@ -132,7 +144,9 @@ export default function Footer({
   const [creditUse, setCreditUse] = useState(null);
 
   // 🔔 CURRENT CUSTOMER (reactive to selection)
-  const [currentCustomer, setCurrentCustomer] = useState(() => getSelectedCustomer());
+  const [currentCustomer, setCurrentCustomer] = useState(() =>
+    getSelectedCustomer()
+  );
   useEffect(() => {
     const handleCust = () => setCurrentCustomer(getSelectedCustomer());
     window.addEventListener("pos:customer", handleCust);
@@ -158,7 +172,10 @@ export default function Footer({
   // Apply coupon like a discount (cap so it never exceeds baseAfterFlat)
   const afterCoupon = useMemo(() => {
     const c = Number(couponUse?.amount || 0);
-    return Math.max(0, Math.round(baseAfterFlat - Math.max(0, Math.min(c, baseAfterFlat))));
+    return Math.max(
+      0,
+      Math.round(baseAfterFlat - Math.max(0, Math.min(c, baseAfterFlat)))
+    );
   }, [baseAfterFlat, couponUse]);
 
   // Payable BEFORE credit
@@ -175,12 +192,7 @@ export default function Footer({
     return (items || [])
       .map((r) => {
         const code =
-          r.itemcode ??
-          r.itemCode ??
-          r.barcode ??
-          r.code ??
-          r.id ??
-          "";
+          r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
         const qtyNum = Number(
           r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1
         );
@@ -191,7 +203,10 @@ export default function Footer({
   }, [items]);
 
   // Resolve customer: prefer prop, else session (legacy)
-  const effectiveCustomer = (customer && (customer.name || customer.phone)) ? customer : currentCustomer;
+  const effectiveCustomer =
+    customer && (customer.name || customer.phone)
+      ? customer
+      : currentCustomer;
 
   // Finalize: include COUPON + CREDIT row (if any) + chosen payment method row
   async function finalizeSale({ method, paymentDetails, andPrint = false }) {
@@ -208,12 +223,24 @@ export default function Footer({
       // Treat coupon as a payment row so backend sum matches
       const couponRow =
         couponUse && Number(couponUse.amount) > 0
-          ? [{ method: "COUPON", amount: Number(couponUse.amount), reference: couponUse.code || "" }]
+          ? [
+              {
+                method: "COUPON",
+                amount: Number(couponUse.amount),
+                reference: couponUse.code || "",
+              },
+            ]
           : [];
 
       const creditRow =
         creditUse && Number(creditUse.amount) > 0
-          ? [{ method: "CREDIT", amount: Number(creditUse.amount), reference: creditUse.noteNo }]
+          ? [
+              {
+                method: "CREDIT",
+                amount: Number(creditUse.amount),
+                reference: creditUse.noteNo,
+              },
+            ]
           : [];
 
       const payRow = {
@@ -240,13 +267,18 @@ export default function Footer({
       const customerPayload = {
         name:
           (effectiveCustomer && effectiveCustomer.name) ||
-          (method === "CARD" ? (paymentDetails?.cardHolder || "").trim() : "") ||
+          (method === "CARD"
+            ? (paymentDetails?.cardHolder || "").trim()
+            : "") ||
           "Guest",
         phone:
           (effectiveCustomer && effectiveCustomer.phone) ||
-          (method === "CARD" ? (paymentDetails?.cardHolderPhone || "").trim() : "") ||
+          (method === "CARD"
+            ? (paymentDetails?.cardHolderPhone || "").trim()
+            : "") ||
           "",
-        email: (effectiveCustomer && effectiveCustomer.email) || "",
+        email:
+          (effectiveCustomer && effectiveCustomer.email) || "",
       };
 
       const payload = {
@@ -303,6 +335,61 @@ export default function Footer({
     }
   }
 
+  // Save bill on hold (no payment)
+  const saveHoldBill = useCallback(
+    async (andPrint = false) => {
+      try {
+        const lines = buildLines();
+        if (!lines.length) {
+          addToast("Add minimum 1 product.");
+          return;
+        }
+
+        const customerPayload = {
+          name:
+            (effectiveCustomer && effectiveCustomer.name) ||
+            "Walk In Customer",
+          phone: (effectiveCustomer && effectiveCustomer.phone) || "",
+          email: (effectiveCustomer && effectiveCustomer.email) || "",
+        };
+
+        const payload = {
+          customer: customerPayload,
+          lines,
+        };
+
+        const res = await createHoldBill(payload);
+
+        if (!res || res.ok === false) {
+          addToast(res?.message || "Hold bill not saved.");
+          return;
+        }
+
+        addToast(
+          res.message || `Bill saved on hold as ${res.number}.`
+        );
+
+        if (andPrint) {
+          // optional: print current screen
+          window.print();
+        }
+
+        // clear selected customer & cart
+        clearSelectedCustomer();
+
+        if (typeof onReset === "function") {
+          onReset({ type: "HOLD", number: res.number });
+        } else {
+          window.location.reload();
+        }
+      } catch (err) {
+        console.error(err);
+        addToast("Error: hold bill not saved.");
+      }
+    },
+    [buildLines, effectiveCustomer, onReset, addToast]
+  );
+
   // Return-mode actions
   const returnMode = !!window.__RETURN_MODE__;
   const actions = useMemo(
@@ -356,7 +443,11 @@ export default function Footer({
           try {
             const res = await createSalesReturn(inv);
             const ok = !!res?.ok;
-            const msg = res?.msg || (ok ? "Credit note created." : "Failed to create credit note.");
+            const msg =
+              res?.msg ||
+              (ok
+                ? "Credit note created."
+                : "Failed to create credit note.");
             addToast(msg);
             if (ok && Array.isArray(res?.notes) && res.notes.length) {
               alert(`Credit Note(s): ${res.notes.join(", ")}`);
@@ -406,7 +497,13 @@ export default function Footer({
       if (label.startsWith("Multiple Pay")) {
         const cartItems = (items || []).map((r, i) => {
           const qty =
-            Number(r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1) || 1;
+            Number(
+              r.qty ??
+                r.quantity ??
+                r.qtyOrdered ??
+                r.qty_ordered ??
+                1
+            ) || 1;
 
           const unit =
             Number(
@@ -417,7 +514,7 @@ export default function Footer({
                 r.sp ??
                 r.mrp
             ) ||
-            (Number(r.netAmount ?? r.amount ?? 0) / qty) ||
+            Number(r.netAmount ?? r.amount ?? 0) / qty ||
             0;
 
           return {
@@ -434,9 +531,16 @@ export default function Footer({
               "Item",
             qty,
             price: +unit.toFixed(2),
-            netAmount: Number(r.netAmount ?? r.amount ?? qty * unit),
+            netAmount: Number(
+              r.netAmount ?? r.amount ?? qty * unit
+            ),
             tax: Number(r.tax ?? r.taxAmount ?? 0),
-            barcode: r.barcode ?? r.itemCode ?? r.itemcode ?? r.code ?? "",
+            barcode:
+              r.barcode ??
+              r.itemCode ??
+              r.itemcode ??
+              r.code ??
+              "",
           };
         });
 
@@ -444,7 +548,8 @@ export default function Footer({
         navigate("/multiple-pay", {
           state: {
             cart: {
-              customerType: (effectiveCustomer?.name || "Walk In Customer"),
+              customerType:
+                effectiveCustomer?.name || "Walk In Customer",
               items: cartItems,
               roundoff: 0,
               amount: Number(remainingAfterCredit), // remaining after credit
@@ -483,21 +588,33 @@ export default function Footer({
         return;
       }
 
-      // Stubs
+      // Hold (save to DB, clear cart)
       if (label === "Hold (F6)") {
-        addToast("Hold: coming soon");
+        saveHoldBill(false);
         return;
       }
+
+      if (label === "Hold & Print (F7)") {
+        saveHoldBill(true);
+        return;
+      }
+
       if (label === "Pay Later (F11)") {
         addToast("Pay Later: coming soon");
         return;
       }
-      if (label === "Hold & Print (F7)") {
-        addToast("Hold & Print: coming soon");
-        return;
-      }
     },
-    [navigate, items, effectiveCustomer, remainingAfterCredit, creditUse, couponUse, canPay]
+    [
+      navigate,
+      items,
+      effectiveCustomer,
+      remainingAfterCredit,
+      creditUse,
+      couponUse,
+      canPay,
+      addToast,
+      saveHoldBill,
+    ]
   );
 
   return (
@@ -558,11 +675,17 @@ export default function Footer({
             </div>
             <div className="label">
               Amount
-              {couponUse?.amount ? ` (after ₹${Number(couponUse.amount).toFixed(2)} coupon` : ""}
-              {creditUse?.amount
-                ? `${couponUse?.amount ? " & " : " (after "}₹${Number(creditUse.amount).toFixed(2)} credit`
+              {couponUse?.amount
+                ? ` (after ₹${Number(couponUse.amount).toFixed(
+                    2
+                  )} coupon`
                 : ""}
-              {(couponUse?.amount || creditUse?.amount) ? ")" : ""}
+              {creditUse?.amount
+                ? `${
+                    couponUse?.amount ? " & " : " (after "
+                  }₹${Number(creditUse.amount).toFixed(2)} credit`
+                : ""}
+              {couponUse?.amount || creditUse?.amount ? ")" : ""}
             </div>
           </div>
         </div>
@@ -582,21 +705,28 @@ export default function Footer({
                 className="kbtn"
                 onClick={() => handleActionClick(text)}
                 disabled={isPaymentBtn && !canPay}
-                title={isPaymentBtn && !canPay ? "Select the customer first" : ""}
+                title={
+                  isPaymentBtn && !canPay
+                    ? "Select the customer first"
+                    : ""
+                }
               >
                 {text.includes("Card") && (
                   <span className="material-icons">credit_card</span>
                 )}
                 {text.includes("Cash") && (
-                  <span className="material-icons">currency_rupee</span>
+                  <span className="material-icons">
+                    currency_rupee
+                  </span>
                 )}
                 {text.includes("UPI") && (
                   <span className="material-icons">near_me</span>
                 )}
-                {text.includes("Hold") &&
-                  !text.includes("Multiple") && (
-                    <span className="material-icons">pause_presentation</span>
-                  )}
+                {text.includes("Hold") && !text.includes("Multiple") && (
+                  <span className="material-icons">
+                    pause_presentation
+                  </span>
+                )}
                 {text.includes("Multiple") && (
                   <span className="material-icons">view_week</span>
                 )}
@@ -615,8 +745,15 @@ export default function Footer({
         {toasts.length > 0 && (
           <div className="toast-stack" role="region" aria-live="assertive">
             {toasts.map((t) => (
-              <div key={t.id} className="toast-item toast-error" role="alert">
-                <span className="icon" aria-hidden>❗</span> {t.text}
+              <div
+                key={t.id}
+                className="toast-item toast-error"
+                role="alert"
+              >
+                <span className="icon" aria-hidden>
+                  ❗
+                </span>{" "}
+                {t.text}
               </div>
             ))}
           </div>
@@ -648,7 +785,9 @@ export default function Footer({
       {showRedeem && (
         <RedeemCreditModal
           initialMode={redeemMode}
-          invoiceBalance={redeemMode === "credit" ? payableAmount : baseAfterFlat}
+          invoiceBalance={
+            redeemMode === "credit" ? payableAmount : baseAfterFlat
+          }
           onClose={() => setShowRedeem(false)}
           onApply={({ mode, noteNo, amount, code }) => {
             if (mode === "credit") {
@@ -658,7 +797,9 @@ export default function Footer({
                 return;
               }
               setCreditUse({ noteNo, amount: Number(amount) });
-              addToast(`Credit applied: ₹${Number(amount).toFixed(2)}`);
+              addToast(
+                `Credit applied: ₹${Number(amount).toFixed(2)}`
+              );
             } else {
               if (!code || !amount) {
                 addToast("No coupon used");
@@ -666,7 +807,9 @@ export default function Footer({
                 return;
               }
               setCouponUse({ code, amount: Number(amount) });
-              addToast(`Coupon applied: ₹${Number(amount).toFixed(2)}`);
+              addToast(
+                `Coupon applied: ₹${Number(amount).toFixed(2)}`
+              );
             }
             setShowRedeem(false);
           }}
@@ -688,7 +831,11 @@ export default function Footer({
             finalizeSale({
               method: "CASH",
               paymentDetails: {
-                cashReference: `Tendered:${Number(payload?.tendered || 0).toFixed(2)}|Change:${Number(payload?.change || 0).toFixed(2)}`,
+                cashReference: `Tendered:${Number(
+                  payload?.tendered || 0
+                ).toFixed(2)}|Change:${Number(
+                  payload?.change || 0
+                ).toFixed(2)}`,
               },
               andPrint: printFlag,
             });

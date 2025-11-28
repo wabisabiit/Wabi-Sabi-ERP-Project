@@ -22,6 +22,7 @@ from .views_coupons import (
 from .views_reports import DaywiseSalesSummary, ProductWiseSalesReport, CategoryWiseSalesSummary
 from .views_discounts import DiscountListCreate, DiscountDetail
 from .views_reports_masterpacking import master_packing_item_wise 
+from .views_holdbills import HoldBillView, HoldBillRestore
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -72,6 +73,10 @@ urlpatterns = [
 
     # ...existing paths...
     path("reports/master-packing-item-wise/", master_packing_item_wise, name="master-packing-item-wise"),
+
+    # Hold Bills
+    path("hold-bills/", HoldBillView.as_view(), name="hold-bill-list-create"),
+    path("hold-bills/<str:number>/restore/", HoldBillRestore.as_view(), name="hold-bill-restore"),
 ]
 
 urlpatterns += router.urls

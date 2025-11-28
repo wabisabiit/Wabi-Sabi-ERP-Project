@@ -560,3 +560,98 @@ class Discount(models.Model):
 
     def __str__(self):
         return f"{self.title} [{self.code}]"
+    
+# --- Hold Bill Sequence & Models ---
+
+class HoldBillSequence(models.Model):
+    prefix = models.CharField(max_length=16, unique=True, default="HB")
+    next_number = models.PositiveIntegerField(default=1)
+    pad_width = models.PositiveSmallIntegerField(default=0)  # no padding by default
+
+    def __str__(self):
+        return f"{self.prefix} next={self.next_number}"
+
+    @classmethod
+    def next_no(cls, prefix="HB"):
+        """
+        Concurrency-safe number generator: HB1, HB2, HB3...
+        """
+        with transaction.atomic():
+            seq, _ = cls.objects.select_for_update().get_or_create(
+                prefix=prefix, defaults={"next_number": 1}
+            )
+            num = seq.next_number
+            seq.next_number = num + 1
+            seq.save(update_fields=["next_number"])
+
+            if (seq.pad_width or 0) > 0:
+                return f"{prefix}{str(num).zfill(seq.pad_width)}"
+            return f"{prefix}{num}"
+
+
+class HoldBill(models.Model):
+    """
+    POS Hold Bill header.
+    """
+    number = models.CharField(max_length=32, unique=True, db_index=True)  # HB1, HB2...
+    customer = models.ForeignKey(
+        Customer, null=True, blank=True, on_delete=models.SET_NULL, related_name="hold_bills"
+    )
+    customer_name = models.CharField(max_length=120, blank=True, default="")
+    customer_phone = models.CharField(max_length=20, blank=True, default="")
+
+    location = models.ForeignKey(
+        Location, on_delete=models.PROTECT, related_name="hold_bills"
+    )
+
+    # only active ones will be shown in JSX
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        "outlets.Employee", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="hold_bills"
+    )
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return self.number
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = HoldBillSequence.next_no(prefix="HB")
+        super().save(*args, **kwargs)
+
+
+class HoldBillLine(models.Model):
+    """
+    Lines on a hold bill. Used to restore cart later.
+    """
+    bill = models.ForeignKey(
+        HoldBill, on_delete=models.CASCADE, related_name="lines"
+    )
+    product = models.ForeignKey("Product", on_delete=models.PROTECT)
+    barcode = models.CharField(max_length=64, db_index=True)
+    qty = models.PositiveIntegerField(default=1)
+
+    # snapshot for info (not used in JSX now, but useful later)
+    mrp = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    sp = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["id"]
+        indexes = [models.Index(fields=["barcode"])]
+
+    def __str__(self):
+        return f"{self.bill.number} - {self.barcode} x{self.qty}"
+
+    def save(self, *args, **kwargs):
+        if self.product_id:
+            self.barcode = self.product.barcode
+            if not self.mrp:
+                self.mrp = self.product.mrp
+            if not self.sp:
+                self.sp = self.product.selling_price
+        super().save(*args, **kwargs)

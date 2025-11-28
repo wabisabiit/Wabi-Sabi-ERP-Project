@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { Suspense, lazy, useMemo, useState } from "react";
+import React, { Suspense, lazy, useMemo, useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 /* ---------- Eager core (POS shell + sidebar) ---------- */
@@ -18,6 +18,9 @@ import "./App.css";
 /* ---------- Auth ---------- */
 import { AuthProvider } from "./auth/AuthContext";
 import RoleRoute from "./auth/RoleRoute";
+
+/* 🔹 API helper (for restoring hold bills) */
+import { getProductByBarcode } from "./api/client";
 
 /* ---------- Lazy pages ---------- */
 // CRM
@@ -107,22 +110,29 @@ const IntegrationPage = lazy(() => import("./components/IntegrationPage"));
 const AccountPage = lazy(() => import("./components/AccountPage"));
 const OpeningBalancePage = lazy(() => import("./components/OpeningBalancePage"));
 
-const InvoiceCustomerDetailPage = React.lazy(() => import("./components/InvoiceCustomerDetailPage"));
+const InvoiceCustomerDetailPage = React.lazy(() =>
+  import("./components/InvoiceCustomerDetailPage")
+);
 
 /* 🔹 Cash payment screen */
 const CashPayment = lazy(() => import("./components/CashPayment"));
 
 /* 🔹 NEW: Material Consumption */
-const MaterialConsumptionListPage = lazy(() => import("./components/MaterialConsumptionListPage"));
-const NewMaterialConsumptionPage = lazy(() => import("./components/NewMaterialConsumptionPage"));
-const MaterialConsumptionDetailPage = lazy(() => import("./components/MaterialConsumptionDetailPage"));
+const MaterialConsumptionListPage = lazy(() =>
+  import("./components/MaterialConsumptionListPage")
+);
+const NewMaterialConsumptionPage = lazy(() =>
+  import("./components/NewMaterialConsumptionPage")
+);
+const MaterialConsumptionDetailPage = lazy(() =>
+  import("./components/MaterialConsumptionDetailPage")
+);
 
 /* 🔹 Auth pages from partner code */
 const Login = lazy(() => import("./components/Login"));
 // const Signup = lazy(() => import("./components/Signup"));
 
 /* ---------- Layouts ---------- */
-// POS layout with cart state (kept from YOUR code)
 // POS layout with cart state (kept from YOUR code)
 function POSLayout() {
   const [items, setItems] = useState([]);
@@ -174,6 +184,57 @@ function POSLayout() {
     setItems([]); // clear cart for next customer
   };
 
+  // 🔁 Listen for restored hold bills (from HoldBillPanel)
+  useEffect(() => {
+    const handler = (e) => {
+      const payload = e.detail || {};
+      const lines = Array.isArray(payload.lines) ? payload.lines : [];
+      if (!lines.length) return;
+
+      (async () => {
+        const rebuilt = [];
+        for (const ln of lines) {
+          const barcode = (ln.barcode || "").trim();
+          if (!barcode) continue;
+
+          try {
+            const p = await getProductByBarcode(barcode);
+            const qty = Number(ln.qty || 1) || 1;
+
+            rebuilt.push({
+              id:
+                crypto.randomUUID?.() ||
+                `${p.id || barcode}-${Date.now()}-${Math.random()}`,
+              itemcode: p.barcode,
+              product: p.vasyName || "",
+              qty,
+              mrp: p.mrp,
+              discount: undefined,
+              addDisc: undefined,
+              unitCost: undefined,
+              netAmount: p.sellingPrice ?? 0,
+            });
+          } catch (err) {
+            console.error("Failed to restore hold line", barcode, err);
+          }
+        }
+
+        if (rebuilt.length) {
+          setItems(rebuilt);
+          try {
+            alert(
+              payload.message ||
+                `${payload.number || "Hold bill"} restored into cart.`
+            );
+          } catch (_) {}
+        }
+      })();
+    };
+
+    window.addEventListener("pos:hold-loaded", handler);
+    return () => window.removeEventListener("pos:hold-loaded", handler);
+  }, []);
+
   return (
     <div className="app">
       <Header />
@@ -197,11 +258,10 @@ function POSLayout() {
   );
 }
 
-
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -211,8 +271,10 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => { }} />
-      <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>{children}</div>
+      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>
+        {children}
+      </div>
     </>
   );
 }
@@ -236,7 +298,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <RoleRoute allowed={["ADMIN","MANAGER"]}>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout>
                   <Dashboard />
                 </SidebarLayout>
@@ -268,7 +330,15 @@ export default function App() {
                 <MultiplePay
                   cart={{
                     customerType: "Walk In Customer",
-                    items: [{ id: 1, name: "(120)(G) Shirt & Blouse", qty: 1, price: 285, tax: 14.29 }],
+                    items: [
+                      {
+                        id: 1,
+                        name: "(120)(G) Shirt & Blouse",
+                        qty: 1,
+                        price: 285,
+                        tax: 14.29,
+                      },
+                    ],
                     roundoff: 0,
                   }}
                   onBack={() => navigate(-1)}
@@ -303,8 +373,10 @@ export default function App() {
           <Route
             path="/contact"
             element={
-              <RoleRoute allowed={["ADMIN","MANAGER"]}>
-                <SidebarLayout><ContactPage /></SidebarLayout>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <ContactPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -314,7 +386,9 @@ export default function App() {
             path="/admin/employee"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><EmployeePage /></SidebarLayout>
+                <SidebarLayout>
+                  <EmployeePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -322,7 +396,9 @@ export default function App() {
             path="/admin/employee/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><EmployeeCreatePage /></SidebarLayout>
+                <SidebarLayout>
+                  <EmployeeCreatePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -330,7 +406,9 @@ export default function App() {
             path="/admin/outlet"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><OutletPage /></SidebarLayout>
+                <SidebarLayout>
+                  <OutletPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -338,7 +416,9 @@ export default function App() {
             path="/admin/outlet/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><OutletCreatePage /></SidebarLayout>
+                <SidebarLayout>
+                  <OutletCreatePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -405,7 +485,9 @@ export default function App() {
             path="/inventory/products"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><ProductsPage /></SidebarLayout>
+                <SidebarLayout>
+                  <ProductsPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -413,7 +495,9 @@ export default function App() {
             path="/inventory/products/new"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><NewInventoryProductPage /></SidebarLayout>
+                <SidebarLayout>
+                  <NewInventoryProductPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -421,7 +505,9 @@ export default function App() {
             path="/inventory/stock-transfer"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><StockTransferPage /></SidebarLayout>
+                <SidebarLayout>
+                  <StockTransferPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -429,7 +515,9 @@ export default function App() {
             path="/inventory/products/:id"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><InventoryProductDetailPage /></SidebarLayout>
+                <SidebarLayout>
+                  <InventoryProductDetailPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -437,7 +525,9 @@ export default function App() {
             path="/inventory/master-packaging"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><MasterPackagingPage /></SidebarLayout>
+                <SidebarLayout>
+                  <MasterPackagingPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -447,7 +537,9 @@ export default function App() {
             path="/inventory/material-consumption"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><MaterialConsumptionListPage /></SidebarLayout>
+                <SidebarLayout>
+                  <MaterialConsumptionListPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -455,7 +547,9 @@ export default function App() {
             path="/inventory/material-consumption/new"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><NewMaterialConsumptionPage /></SidebarLayout>
+                <SidebarLayout>
+                  <NewMaterialConsumptionPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -463,7 +557,9 @@ export default function App() {
             path="/inventory/material-consumption/:consNo"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><MaterialConsumptionDetailPage /></SidebarLayout>
+                <SidebarLayout>
+                  <MaterialConsumptionDetailPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -473,7 +569,9 @@ export default function App() {
             path="/crm/loyalty"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><LoyaltyPage /></SidebarLayout>
+                <SidebarLayout>
+                  <LoyaltyPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -481,7 +579,9 @@ export default function App() {
             path="/crm/loyalty/point-setup"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><PointSetupPage /></SidebarLayout>
+                <SidebarLayout>
+                  <PointSetupPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -489,7 +589,9 @@ export default function App() {
             path="/crm/loyalty/campaign/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><CampaignCreatePage /></SidebarLayout>
+                <SidebarLayout>
+                  <CampaignCreatePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -498,7 +600,9 @@ export default function App() {
             path="/crm/discount"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><DiscountPage /></SidebarLayout>
+                <SidebarLayout>
+                  <DiscountPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -506,7 +610,9 @@ export default function App() {
             path="/crm/discount/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><NewDiscountPage /></SidebarLayout>
+                <SidebarLayout>
+                  <NewDiscountPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -515,7 +621,9 @@ export default function App() {
             path="/crm/coupon"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><CouponPage /></SidebarLayout>
+                <SidebarLayout>
+                  <CouponPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -523,7 +631,9 @@ export default function App() {
             path="/crm/coupon/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><NewCoupounPage /></SidebarLayout>
+                <SidebarLayout>
+                  <NewCoupounPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -532,7 +642,9 @@ export default function App() {
             path="/crm/feedback"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><FeedbackPage /></SidebarLayout>
+                <SidebarLayout>
+                  <FeedbackPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -541,8 +653,10 @@ export default function App() {
           <Route
             path="/sales/sale-list"
             element={
-              <RoleRoute allowed={["ADMIN","MANAGER"]}>
-                <SidebarLayout><SaleListPage /></SidebarLayout>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <SaleListPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -554,8 +668,10 @@ export default function App() {
           <Route
             path="/sales/invoice"
             element={
-              <RoleRoute allowed={["ADMIN","MANAGER"]}>
-                <SidebarLayout><InvoicePage /></SidebarLayout>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <InvoicePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -563,7 +679,9 @@ export default function App() {
             path="/sales/invoice/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><NewInvoicePage /></SidebarLayout>
+                <SidebarLayout>
+                  <NewInvoicePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -571,7 +689,9 @@ export default function App() {
             path="/sales/invoice/:invNo"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><InvoiceDetailPage /></SidebarLayout>
+                <SidebarLayout>
+                  <InvoiceDetailPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -579,7 +699,9 @@ export default function App() {
             path="/customer/:slug"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><InvoiceCustomerDetailPage /></SidebarLayout>
+                <SidebarLayout>
+                  <InvoiceCustomerDetailPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -588,8 +710,10 @@ export default function App() {
           <Route
             path="/sales-register"
             element={
-              <RoleRoute allowed={["ADMIN","MANAGER"]}>
-                <SidebarLayout><SalesRegisterPage /></SidebarLayout>
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <SalesRegisterPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -599,7 +723,9 @@ export default function App() {
             path="/utilities/barcode2"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><BarcodeUtility2Page /></SidebarLayout>
+                <SidebarLayout>
+                  <BarcodeUtility2Page />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -607,7 +733,9 @@ export default function App() {
             path="/utilities/barcode2/confirm"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><BarcodePrintConfirmPage /></SidebarLayout>
+                <SidebarLayout>
+                  <BarcodePrintConfirmPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -615,7 +743,9 @@ export default function App() {
             path="/utilities/barcode2/expanded"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><ExpandedLabelsPage /></SidebarLayout>
+                <SidebarLayout>
+                  <ExpandedLabelsPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -625,7 +755,9 @@ export default function App() {
             path="/reports"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><ReportsPage /></SidebarLayout>
+                <SidebarLayout>
+                  <ReportsPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -633,7 +765,9 @@ export default function App() {
             path="/reports/day-wise-sales-summary"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><DayWiseSalesSummaryPage /></SidebarLayout>
+                <SidebarLayout>
+                  <DayWiseSalesSummaryPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -641,7 +775,9 @@ export default function App() {
             path="/reports/sales-register"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <MiniSidebarLayout><ReportSalesRegister /></MiniSidebarLayout>
+                <MiniSidebarLayout>
+                  <ReportSalesRegister />
+                </MiniSidebarLayout>
               </RoleRoute>
             }
           />
@@ -649,7 +785,9 @@ export default function App() {
             path="/reports/category-wise-sales-summary"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><ReportCategoryWiseSales /></SidebarLayout>
+                <SidebarLayout>
+                  <ReportCategoryWiseSales />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -657,7 +795,9 @@ export default function App() {
             path="/reports/credit-note-item-register"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <MiniSidebarLayout><ReportCreditNoteItemRegister /></MiniSidebarLayout>
+                <MiniSidebarLayout>
+                  <ReportCreditNoteItemRegister />
+                </MiniSidebarLayout>
               </RoleRoute>
             }
           />
@@ -665,7 +805,9 @@ export default function App() {
             path="/reports/product-wise-sales-summary"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><ReportProductWiseSales /></SidebarLayout>
+                <SidebarLayout>
+                  <ReportProductWiseSales />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -673,7 +815,9 @@ export default function App() {
             path="/reports/salesman"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><ReportSalesMan /></SidebarLayout>
+                <SidebarLayout>
+                  <ReportSalesMan />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -681,7 +825,9 @@ export default function App() {
             path="/reports/wow-bill-report"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><WowBillReport /></SidebarLayout>
+                <SidebarLayout>
+                  <WowBillReport />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -689,7 +835,9 @@ export default function App() {
             path="/reports/tax-wise-sales-summary"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><TaxWiseSalesSummaryPage /></SidebarLayout>
+                <SidebarLayout>
+                  <TaxWiseSalesSummaryPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -697,7 +845,9 @@ export default function App() {
             path="/reports/sales-summary"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <SidebarLayout><ReportSalesSummary /></SidebarLayout>
+                <SidebarLayout>
+                  <ReportSalesSummary />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -705,7 +855,9 @@ export default function App() {
             path="/reports/customer-wise-sales-order-report"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <MiniSidebarLayout><ReportCustomerWiseSalesOrder /></MiniSidebarLayout>
+                <MiniSidebarLayout>
+                  <ReportCustomerWiseSalesOrder />
+                </MiniSidebarLayout>
               </RoleRoute>
             }
           />
@@ -715,7 +867,9 @@ export default function App() {
             path="/bank"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><BankPage /></SidebarLayout>
+                <SidebarLayout>
+                  <BankPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -723,7 +877,9 @@ export default function App() {
             path="/bank/:slug"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><BankDetailPage /></SidebarLayout>
+                <SidebarLayout>
+                  <BankDetailPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -731,7 +887,9 @@ export default function App() {
             path="/bank/:slug/edit"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><BankEditPage /></SidebarLayout>
+                <SidebarLayout>
+                  <BankEditPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -739,7 +897,9 @@ export default function App() {
             path="/bank/transactions"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><BankTransactionPage /></SidebarLayout>
+                <SidebarLayout>
+                  <BankTransactionPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -747,7 +907,9 @@ export default function App() {
             path="/bank/payment"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><PaymentPage /></SidebarLayout>
+                <SidebarLayout>
+                  <PaymentPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -755,7 +917,9 @@ export default function App() {
             path="/bank/receipt"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><ReceiptPage /></SidebarLayout>
+                <SidebarLayout>
+                  <ReceiptPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -763,7 +927,9 @@ export default function App() {
             path="/bank/expense"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><ExpensePage /></SidebarLayout>
+                <SidebarLayout>
+                  <ExpensePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -771,7 +937,9 @@ export default function App() {
             path="/bank/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><NewBankPage /></SidebarLayout>
+                <SidebarLayout>
+                  <NewBankPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -779,7 +947,9 @@ export default function App() {
             path="/bank/payment/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><PaymentCreatePage /></SidebarLayout>
+                <SidebarLayout>
+                  <PaymentCreatePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -789,7 +959,9 @@ export default function App() {
             path="/settings"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><SettingsHome /></SidebarLayout>
+                <SidebarLayout>
+                  <SettingsHome />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -797,7 +969,9 @@ export default function App() {
             path="/settings/general"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><GeneralSettingsPage /></SidebarLayout>
+                <SidebarLayout>
+                  <GeneralSettingsPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -805,7 +979,9 @@ export default function App() {
             path="/settings/general/profile/edit"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><EditProfilePage /></SidebarLayout>
+                <SidebarLayout>
+                  <EditProfilePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -813,7 +989,9 @@ export default function App() {
             path="/settings/general/roles/new"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><NewUserRolePage /></SidebarLayout>
+                <SidebarLayout>
+                  <NewUserRolePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -821,7 +999,9 @@ export default function App() {
             path="/settings/pos"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><PosSettingPage /></SidebarLayout>
+                <SidebarLayout>
+                  <PosSettingPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -829,7 +1009,9 @@ export default function App() {
             path="/settings/notification"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><NotificationSettingsPage /></SidebarLayout>
+                <SidebarLayout>
+                  <NotificationSettingsPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -837,7 +1019,9 @@ export default function App() {
             path="/settings/integration"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><IntegrationPage /></SidebarLayout>
+                <SidebarLayout>
+                  <IntegrationPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -847,7 +1031,9 @@ export default function App() {
             path="/accounting/account"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><AccountPage /></SidebarLayout>
+                <SidebarLayout>
+                  <AccountPage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />
@@ -855,7 +1041,9 @@ export default function App() {
             path="/accounting/opening-balance"
             element={
               <RoleRoute allowed={["ADMIN"]}>
-                <SidebarLayout><OpeningBalancePage /></SidebarLayout>
+                <SidebarLayout>
+                  <OpeningBalancePage />
+                </SidebarLayout>
               </RoleRoute>
             }
           />

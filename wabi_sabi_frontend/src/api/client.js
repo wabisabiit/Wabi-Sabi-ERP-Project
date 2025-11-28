@@ -198,6 +198,11 @@ export default {
   // 🔵 NEW
   listWowBills,
   createWowBill,
+
+   // 🔵 Hold Bills
+  listHoldBills,
+  createHoldBill,
+  restoreHoldBill,
 };
 
 function sanitizeBarcode(v = "") {
@@ -620,5 +625,25 @@ export async function createWowBill(payload) {
   return http(`/wow-bills/`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+// --- Hold Bills (POS) ---
+export async function listHoldBills() {
+  const res = await http(`/hold-bills/`);
+  return asArray(res);
+}
+
+export async function createHoldBill(payload) {
+  // payload: { customer: {name, phone, email?}, lines: [{barcode, qty}] }
+  return http(`/hold-bills/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function restoreHoldBill(number) {
+  return http(`/hold-bills/${encodeURIComponent(number)}/restore/`, {
+    method: "POST",
   });
 }
