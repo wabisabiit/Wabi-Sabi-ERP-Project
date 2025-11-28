@@ -160,6 +160,7 @@ export default {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  getEmployee, 
 
   createMasterPack,
   listMasterPacks,
@@ -646,4 +647,9 @@ export async function restoreHoldBill(number) {
   return http(`/hold-bills/${encodeURIComponent(number)}/restore/`, {
     method: "POST",
   });
+}
+
+
+export async function getEmployee(id) {
+  return http(`/employees/${id}/`);
 }

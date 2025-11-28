@@ -32,6 +32,7 @@ class Employee(models.Model):
     outlet = models.ForeignKey(Outlet, on_delete=models.CASCADE, related_name="employees")
     role   = models.CharField(max_length=16, choices=ROLE_CHOICES, default="STAFF")
     is_active = models.BooleanField(default=True)
+    mobile = models.CharField(max_length=20, blank=True, default="")
 
     # ── NEW mandatory KYC/bank fields ───────────────────────────────────────────
     aadhaar = models.CharField(max_length=12, validators=[aadhaar_validator], unique=True,blank=True,default="")

@@ -293,4 +293,4 @@ export default function StockTransferPage() {
       </div>
     </div>
   );
-}
+}       

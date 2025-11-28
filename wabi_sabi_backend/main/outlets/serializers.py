@@ -43,6 +43,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "id", "user",
             "username", "password", "first_name", "last_name", "email",
             "outlet", "role", "is_active",
+            "mobile",                      # 🔹 NEW
             "aadhaar", "pan", "bank_name", "bank_branch", "account_number",
         ]
 

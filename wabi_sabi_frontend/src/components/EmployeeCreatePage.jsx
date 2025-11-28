@@ -1,20 +1,28 @@
+// src/pages/EmployeeCreatePage.jsx
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "../styles/EmployeeCreatePage.css";
-import { listOutlets, createEmployee } from "../api/client";
+import {
+  listOutlets,
+  createEmployee,
+  getEmployee,
+  updateEmployee,
+} from "../api/client";
 
 export default function EmployeeCreatePage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
 
   // basics
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [pan, setPan] = useState("");
-  const [aadhaar, setAadhaar] = useState("");               // NEW (required)
-  const [bankName, setBankName] = useState("");             // NEW (required)
-  const [bankBranch, setBankBranch] = useState("");         // NEW (required)
-  const [accountNumber, setAccountNumber] = useState("");   // NEW (required)
+  const [aadhaar, setAadhaar] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
 
   const [address, setAddress] = useState("");
 
@@ -27,10 +35,10 @@ export default function EmployeeCreatePage() {
   // business (branch from backend)
   const [branch, setBranch] = useState(""); // will be outlet.id
   const [branchOptions, setBranchOptions] = useState([]); // [{id, label}]
-  const [salary, setSalary] = useState(""); // ✅ FIX: this was missing and caused the white screen
+  const [salary, setSalary] = useState("");
 
   // auth
-  const [showAuth, setShowAuth] = useState(false);
+  const [showAuth, setShowAuth] = useState(isEdit);
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState(""); // keep your UI values; map to backend later
@@ -40,67 +48,129 @@ export default function EmployeeCreatePage() {
     (async () => {
       try {
         const data = await listOutlets();
-        const list = (data?.results ?? data ?? []).map(o => ({
+        const list = (data?.results ?? data ?? []).map((o) => ({
           id: o.id,
           label: o.name || o.display_name || o.code,
         }));
         setBranchOptions(list);
-        if (list.length && !branch) setBranch(String(list[0].id));
+        if (list.length && !branch && !isEdit) setBranch(String(list[0].id));
       } catch (e) {
         console.error("Failed to load outlets:", e);
       }
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [branch, isEdit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load existing employee for edit
+  useEffect(() => {
+    if (!isEdit) return;
+    (async () => {
+      try {
+        const data = await getEmployee(id);
+        const fullName =
+          [data.user?.first_name, data.user?.last_name]
+            .filter(Boolean)
+            .join(" ") || data.user?.username || "";
+
+        setName(fullName);
+        setEmail(data.user?.email || "");
+        setMobile(data.mobile || "");
+        setPan(data.pan || "");
+        setAadhaar(data.aadhaar || "");
+        setBankName(data.bank_name || "");
+        setBankBranch(data.bank_branch || "");
+        setAccountNumber(data.account_number || "");
+        if (data.outlet) setBranch(String(data.outlet));
+
+        if (data.role === "MANAGER") setRole("store_manager");
+        else setRole("cashier");
+
+        setUserName(data.user?.username || "");
+      } catch (e) {
+        console.error("Failed to load employee:", e);
+        alert("Failed to load employee details.");
+      }
+    })();
+  }, [id, isEdit]);
 
   // Local validation matching backend rules
   function validate() {
-    if (!userName.trim() || !password.trim()) return "Username and Password are required.";
     if (!branch) return "Please select a Branch.";
+
+    if (!pan.trim()) return "PAN is required.";
     const panOk = /^[A-Za-z0-9]{10}$/.test(pan.trim());
     if (!panOk) return "PAN must be exactly 10 alphanumeric characters.";
+
+    if (!aadhaar.trim()) return "Aadhaar is required.";
     const aadhaarOk = /^\d{12}$/.test(aadhaar.trim());
     if (!aadhaarOk) return "Aadhaar must be exactly 12 digits.";
+
+    if (!accountNumber.trim()) return "Account number is required.";
     const acctOk = /^\d{9,18}$/.test(accountNumber.trim());
     if (!acctOk) return "Account number must be 9–18 digits.";
-    if (!bankName.trim() || !bankBranch.trim()) return "Bank name and branch are required.";
+
+    if (!bankName.trim() || !bankBranch.trim())
+      return "Bank name and branch are required.";
+
+    // For CREATE only: username + password mandatory
+    if (!isEdit) {
+      if (!userName.trim() || !password.trim())
+        return "Username and Password are required.";
+    }
+
     return null;
   }
 
   const save = async () => {
     const err = validate();
-    if (err) { alert(err); return; }
+    if (err) {
+      alert(err);
+      return;
+    }
 
     // Map your UI role to backend expected role (MANAGER/STAFF)
     let backendRole = "STAFF";
     if (role === "store_manager") backendRole = "MANAGER";
 
-    // Split full name into first/last (nice-to-have)
+    // Split full name into first/last
     const first = name.trim().split(" ")[0] || "";
     const last = name.trim().split(" ").slice(1).join(" ") || "";
 
+    const basePayload = {
+      first_name: first,
+      last_name: last,
+      email: email.trim(),
+      role: backendRole,
+      outlet: Number(branch),
+      aadhaar: aadhaar.trim(),
+      pan: pan.trim().toUpperCase(),
+      bank_name: bankName.trim(),
+      bank_branch: bankBranch.trim(),
+      account_number: accountNumber.trim(),
+      mobile: mobile.trim(),
+    };
+
     try {
-      await createEmployee({
-        username: userName.trim(),
-        password: password,
-        first_name: first,
-        last_name: last,
-        email: email.trim(),
-        role: backendRole,
-        outlet: Number(branch),            // HQ can choose; non-HQ ignored by backend
-        aadhaar: aadhaar.trim(),
-        pan: pan.trim().toUpperCase(),
-        bank_name: bankName.trim(),
-        bank_branch: bankBranch.trim(),
-        account_number: accountNumber.trim(),
-      });
-      alert("Employee created successfully.");
+      if (isEdit) {
+        const payload = { ...basePayload };
+        if (password.trim()) payload.password = password; // password optional on edit
+        await updateEmployee(id, payload);
+        alert("Employee updated successfully.");
+      } else {
+        const payload = {
+          ...basePayload,
+          username: userName.trim(),
+          password,
+        };
+        await createEmployee(payload);
+        alert("Employee created successfully.");
+      }
       navigate("/admin/employee");
     } catch (e) {
       const msg = String(e?.message || "");
       if (/403/.test(msg)) {
         alert("Only Head Office can add employees.");
       } else {
-        alert("Create failed: " + msg);
+        alert((isEdit ? "Update" : "Create") + " failed: " + msg);
       }
     }
   };
@@ -108,7 +178,7 @@ export default function EmployeeCreatePage() {
   return (
     <div className="emp-wrap emp-create">
       <div className="emp-pagebar">
-        <h1>New Employee</h1>
+        <h1>{isEdit ? "Edit Employee" : "New Employee"}</h1>
         <span className="material-icons home-ico">home</span>
       </div>
 
@@ -119,7 +189,12 @@ export default function EmployeeCreatePage() {
             <label>
               Name <span className="req">*</span>
             </label>
-            <input className="inp" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <input
+              className="inp"
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
           <div className="f">
             <label>
@@ -134,11 +209,23 @@ export default function EmployeeCreatePage() {
           </div>
           <div className="f">
             <label>Email</label>
-            <input className="inp" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input
+              className="inp"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="f">
-            <label>PAN No. <span className="req">*</span></label>
-            <input className="inp" placeholder="PAN No." value={pan} onChange={(e) => setPan(e.target.value)} />
+            <label>
+              PAN No. <span className="req">*</span>
+            </label>
+            <input
+              className="inp"
+              placeholder="PAN No."
+              value={pan}
+              onChange={(e) => setPan(e.target.value)}
+            />
           </div>
 
           {/* Row 2 */}
@@ -154,7 +241,11 @@ export default function EmployeeCreatePage() {
           </div>
           <div className="f">
             <label>Select Country</label>
-            <select className="inp" value={country} onChange={(e) => setCountry(e.target.value)}>
+            <select
+              className="inp"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+            >
               <option>India</option>
             </select>
           </div>
@@ -162,7 +253,11 @@ export default function EmployeeCreatePage() {
             <label>
               Select State <span className="req">*</span>
             </label>
-            <select className="inp" value={state} onChange={(e) => setState(e.target.value)}>
+            <select
+              className="inp"
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+            >
               <option>Haryana</option>
               <option>Delhi</option>
               <option>Uttar Pradesh</option>
@@ -174,7 +269,11 @@ export default function EmployeeCreatePage() {
             <label>
               Select City <span className="req">*</span>
             </label>
-            <select className="inp" value={city} onChange={(e) => setCity(e.target.value)}>
+            <select
+              className="inp"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            >
               <option>Gurugram</option>
               <option>New Delhi</option>
               <option>Noida</option>
@@ -193,56 +292,99 @@ export default function EmployeeCreatePage() {
           {/* Row 4 — Salary, Branch */}
           <div className="f">
             <label>Salary</label>
-            <input className="inp" placeholder="Salary" value={salary} onChange={(e) => setSalary(e.target.value)} />
+            <input
+              className="inp"
+              placeholder="Salary"
+              value={salary}
+              onChange={(e) => setSalary(e.target.value)}
+            />
           </div>
 
           <div className="f">
-            <label>Select Branch <span className="req">*</span></label>
-            <select className="inp" value={branch} onChange={(e) => setBranch(e.target.value)}>
+            <label>
+              Select Branch <span className="req">*</span>
+            </label>
+            <select
+              className="inp"
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+            >
               {branchOptions.length === 0 ? (
                 <option value="">Loading…</option>
               ) : (
                 branchOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
                 ))
               )}
             </select>
           </div>
 
-          {/* NEW KYC/BANK row */}
+          {/* KYC/BANK row */}
           <div className="f">
-            <label>Aadhaar (12 digits) <span className="req">*</span></label>
+            <label>
+              Aadhaar (12 digits) <span className="req">*</span>
+            </label>
             <input
               className="inp"
               placeholder="Aadhaar"
               value={aadhaar}
               maxLength={12}
-              onChange={(e) => setAadhaar(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) =>
+                setAadhaar(e.target.value.replace(/\D/g, ""))
+              }
             />
           </div>
           <div className="f">
-            <label>Bank Name <span className="req">*</span></label>
-            <input className="inp" placeholder="Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+            <label>
+              Bank Name <span className="req">*</span>
+            </label>
+            <input
+              className="inp"
+              placeholder="Bank Name"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+            />
           </div>
           <div className="f">
-            <label>Bank Branch <span className="req">*</span></label>
-            <input className="inp" placeholder="Bank Branch" value={bankBranch} onChange={(e) => setBankBranch(e.target.value)} />
+            <label>
+              Bank Branch <span className="req">*</span>
+            </label>
+            <input
+              className="inp"
+              placeholder="Bank Branch"
+              value={bankBranch}
+              onChange={(e) => setBankBranch(e.target.value)}
+            />
           </div>
           <div className="f">
-            <label>Account Number <span className="req">*</span></label>
+            <label>
+              Account Number <span className="req">*</span>
+            </label>
             <input
               className="inp"
               placeholder="Account Number"
               value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) =>
+                setAccountNumber(e.target.value.replace(/\D/g, ""))
+              }
             />
           </div>
 
           <div className="f f-empty" />
         </div>
 
-        <button type="button" className="link-auth" onClick={() => setShowAuth((v) => !v)}>
-          {showAuth ? "Hide Authentication Details" : "Add Authentication Details"}
+        <button
+          type="button"
+          className="link-auth"
+          onClick={() => setShowAuth((v) => !v)}
+        >
+          {showAuth
+            ? "Hide Authentication Details"
+            : isEdit
+            ? "Edit Authentication Details"
+            : "Add Authentication Details"}
         </button>
 
         {showAuth && (
@@ -256,16 +398,19 @@ export default function EmployeeCreatePage() {
                 placeholder="User name"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
+                disabled={isEdit}
               />
             </div>
             <div className="f">
               <label>
-                Password <span className="req">*</span>
+                Password {isEdit ? "" : <span className="req">*</span>}
               </label>
               <input
                 className="inp"
                 type="password"
-                placeholder="Password"
+                placeholder={
+                  isEdit ? "Leave blank to keep same" : "Password"
+                }
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -274,7 +419,11 @@ export default function EmployeeCreatePage() {
               <label>
                 Select Role <span className="req">*</span>
               </label>
-              <select className="inp" value={role} onChange={(e) => setRole(e.target.value)}>
+              <select
+                className="inp"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
                 <option value="">Select Role</option>
                 <option value="admin">Admin</option>
                 <option value="store_manager">Store Manager</option>
@@ -285,7 +434,10 @@ export default function EmployeeCreatePage() {
         )}
 
         <div className="emp-form-actions">
-          <button className="btn ghost" onClick={() => navigate("/admin/employee")}>
+          <button
+            className="btn ghost"
+            onClick={() => navigate("/admin/employee")}
+          >
             Cancel
           </button>
           <button className="btn primary" onClick={save}>
