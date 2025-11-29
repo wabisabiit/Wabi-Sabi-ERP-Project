@@ -1382,9 +1382,12 @@ export default function Dashboard() {
             ⚠ {err}
           </div>
         )}
+
+        {/* 🔵 Dashboard loading spinner */}
         {loading && (
           <div className="dash-loading">
-            Loading…
+            <div className="dash-spinner" />
+            <span>Loading dashboard…</span>
           </div>
         )}
 
@@ -1644,12 +1647,14 @@ export default function Dashboard() {
               showDate={false}
               rightSide={LoginLogRightSide}
             />
+            {/* 🔵 Login log loading spinner */}
             {loginLogLoading && (
               <div
                 className="dash-loading"
                 style={{ marginTop: 4 }}
               >
-                Loading login logs…
+                <div className="dash-spinner" />
+                <span>Loading login logs…</span>
               </div>
             )}
             {loginLogErr && (

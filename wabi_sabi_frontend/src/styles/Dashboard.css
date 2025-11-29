@@ -232,3 +232,32 @@
 .dash-page .gridchart-svg .x-tick {
   fill: #0e378a !important;
 }
+
+/* Status */
+.dash-error,
+.dash-loading {
+  margin-top:10px;
+  font-size:13px;
+  color:#374151;
+}
+
+/* 🔵 dashboard & login-log loading spinner layout */
+.dash-loading{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* Spinner circle (matches barcode spinner style) */
+.dash-spinner{
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:3px solid rgba(37,99,235,.2);
+  border-top-color:#2563eb;
+  animation:dash-spin .8s linear infinite;
+}
+
+@keyframes dash-spin{
+  to { transform:rotate(360deg); }
+}

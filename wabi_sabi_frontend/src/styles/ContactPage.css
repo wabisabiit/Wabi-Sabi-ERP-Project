@@ -297,3 +297,27 @@ input[type="checkbox"]{ width:16px; height:16px; accent-color:#0ea5e9; }
 }
 
 .con-status-verified { color: #16a34a; font-weight: 600; }
+
+/* ---------- Loading spinner for Contact table ---------- */
+
+.con-loading{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-size:13px;
+  color:#374151;
+}
+
+.con-spinner{
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:3px solid rgba(37,99,235,.2);
+  border-top-color:#2563eb;
+  animation:con-spin .8s linear infinite;
+}
+
+@keyframes con-spin{
+  to { transform:rotate(360deg); }
+}

@@ -429,7 +429,13 @@ export default function ContactPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={1 + shownCols.length} className="con-empty">Loading…</td>
+                  <td colSpan={1 + shownCols.length} className="con-empty">
+                    {/* 🔵 spinner + message (same pattern as dashboard) */}
+                    <div className="con-loading">
+                      <div className="con-spinner" />
+                      <span>Loading contacts…</span>
+                    </div>
+                  </td>
                 </tr>
               ) : filtered.slice(0, pageSize).length > 0 ? (
                 filtered.slice(0, pageSize).map((r) => (
