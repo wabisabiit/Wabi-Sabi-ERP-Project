@@ -232,6 +232,36 @@ class CreditNote(models.Model):
     note_no         = models.CharField(max_length=32, unique=True, db_index=True)
     sale            = models.ForeignKey('Sale', on_delete=models.PROTECT, related_name='credit_notes')
     customer        = models.ForeignKey('Customer', on_delete=models.PROTECT, related_name='credit_notes')
+
+    # 🔵 NEW: location for outlet-based scoping
+    location        = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="credit_notes",
+        null=True,
+        blank=True,
+    )
+
+    date = models.DateTimeField(default=timezone.now) 
+    product         = models.ForeignKey('Product', on_delete=models.PROTECT)
+    barcode         = models.CharField(max_length=64, db_index=True)
+    qty             = models.PositiveIntegerField(default=1)  # always 1 as requested
+    amount          = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # product.selling_price
+    created_at      = models.DateTimeField(auto_now_add=True)
+    note_date       = models.DateTimeField()  # equal to sale.transaction_date
+    is_redeemed     = models.BooleanField(default=False)
+    redeemed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    redeemed_at     = models.DateTimeField(null=True, blank=True)
+    redeemed_invoice= models.CharField(max_length=32, blank=True, default="")
+    ...
+
+
+    """
+    One row per product that reached qty==0 due to a successful sale.
+    """
+    note_no         = models.CharField(max_length=32, unique=True, db_index=True)
+    sale            = models.ForeignKey('Sale', on_delete=models.PROTECT, related_name='credit_notes')
+    customer        = models.ForeignKey('Customer', on_delete=models.PROTECT, related_name='credit_notes')
     date = models.DateTimeField(default=timezone.now) 
     product         = models.ForeignKey('Product', on_delete=models.PROTECT)
     barcode         = models.CharField(max_length=64, db_index=True)

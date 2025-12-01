@@ -62,6 +62,7 @@ const BankTransactionPage = lazy(() => import("./components/BankTransactionPage"
 const PaymentPage = lazy(() => import("./components/PaymentPage"));
 const ReceiptPage = lazy(() => import("./components/ReceiptPage"));
 const ExpensePage = lazy(() => import("./components/ExpensePage"));
+const NewExpensePage = lazy(() => import("./components/NewExpense")); // ✅ ADDED
 const NewBankPage = lazy(() => import("./components/NewBankPage"));
 const PaymentCreatePage = lazy(() => import("./components/PaymentCreatePage"));
 const BankDetailPage = lazy(() => import("./components/BankDetailPage"));
@@ -69,15 +70,21 @@ const BankEditPage = lazy(() => import("./components/BankEditPage"));
 
 // Inventory core
 const ProductsPage = lazy(() => import("./components/InventoryProductsPage"));
-const NewInventoryProductPage = lazy(() => import("./components/NewInventoryProductPage"));
-const InventoryProductDetailPage = lazy(() => import("./components/InventoryProductDetailPage"));
+const NewInventoryProductPage = lazy(() =>
+  import("./components/NewInventoryProductPage")
+);
+const InventoryProductDetailPage = lazy(() =>
+  import("./components/InventoryProductDetailPage")
+);
 
 // Stock Transfer
 const StockTransferPage = lazy(() => import("./components/StockTransferPage"));
 const MasterPackagingPage = lazy(() => import("./components/MasterPackagingPage"));
 
 // Inventory -> report
-const InvMasterPackingItemWiseSummary = lazy(() => import("./components/InvMasterPackingItemWiseSummary"));
+const InvMasterPackingItemWiseSummary = lazy(() =>
+  import("./components/InvMasterPackingItemWiseSummary")
+);
 const InvSalesRegister = lazy(() => import("./components/InvSalesRegister"));
 const InvInventoryReport = lazy(() => import("./components/InvInventoryReport"));
 const InvStockSummary = lazy(() => import("./components/InvStockSummary"));
@@ -85,30 +92,50 @@ const InvStockSummary = lazy(() => import("./components/InvStockSummary"));
 // Reports
 const ReportsPage = lazy(() => import("./components/ReportsPage"));
 const DayWiseSalesSummaryPage = lazy(() =>
-  import("./components/ReportsPage").then((m) => ({ default: m.DayWiseSalesSummaryPage }))
+  import("./components/ReportsPage").then((m) => ({
+    default: m.DayWiseSalesSummaryPage,
+  }))
 );
-const ReportSalesRegister = lazy(() => import("./components/ReportSalesRegister"));
-const ReportCategoryWiseSales = lazy(() => import("./components/ReportCategoryWiseSales"));
+const ReportSalesRegister = lazy(() =>
+  import("./components/ReportSalesRegister")
+);
+const ReportCategoryWiseSales = lazy(() =>
+  import("./components/ReportCategoryWiseSales")
+);
 const ReportSalesMan = lazy(() => import("./components/ReportSalesMan"));
-const ReportCreditNoteItemRegister = lazy(() => import("./components/ReportCreditNoteItemRegister"));
-const ReportProductWiseSales = lazy(() => import("./components/ReportProductWiseSales"));
+const ReportCreditNoteItemRegister = lazy(() =>
+  import("./components/ReportCreditNoteItemRegister")
+);
+const ReportProductWiseSales = lazy(() =>
+  import("./components/ReportProductWiseSales")
+);
 const WowBillReport = lazy(() => import("./components/WowBillReport"));
-const TaxWiseSalesSummaryPage = lazy(() => import("./components/TaxWiseSalesSummaryPage"));
+const TaxWiseSalesSummaryPage = lazy(() =>
+  import("./components/TaxWiseSalesSummaryPage")
+);
 const ReportSalesSummary = lazy(() => import("./components/ReportSalesSummary"));
-const ReportCustomerWiseSalesOrder = lazy(() => import("./components/ReportCustomerWiseSalesOrder"));
+const ReportCustomerWiseSalesOrder = lazy(() =>
+  import("./components/ReportCustomerWiseSalesOrder")
+);
 
 // Settings
 const SettingsHome = lazy(() => import("./components/SettingsHome"));
-const GeneralSettingsPage = lazy(() => import("./components/GeneralSettingsPage"));
+const GeneralSettingsPage = lazy(() =>
+  import("./components/GeneralSettingsPage")
+);
 const EditProfilePage = lazy(() => import("./components/EditProfilePage"));
 const NewUserRolePage = lazy(() => import("./components/NewUserRolePage"));
 const PosSettingPage = lazy(() => import("./components/PosSettingPage"));
-const NotificationSettingsPage = lazy(() => import("./components/NotificationSettingsPage"));
+const NotificationSettingsPage = lazy(() =>
+  import("./components/NotificationSettingsPage")
+);
 const IntegrationPage = lazy(() => import("./components/IntegrationPage"));
 
 // Accounting
 const AccountPage = lazy(() => import("./components/AccountPage"));
-const OpeningBalancePage = lazy(() => import("./components/OpeningBalancePage"));
+const OpeningBalancePage = lazy(() =>
+  import("./components/OpeningBalancePage")
+);
 
 const InvoiceCustomerDetailPage = React.lazy(() =>
   import("./components/InvoiceCustomerDetailPage")
@@ -179,7 +206,7 @@ function POSLayout() {
     if (res?.invoice_no) {
       try {
         alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
-      } catch (_) { }
+      } catch (_) {}
     }
     setItems([]); // clear cart for next customer
   };
@@ -224,9 +251,9 @@ function POSLayout() {
           try {
             alert(
               payload.message ||
-              `${payload.number || "Hold bill"} restored into cart.`
+                `${payload.number || "Hold bill"} restored into cart.`
             );
-          } catch (_) { }
+          } catch (_) {}
         }
       })();
     };
@@ -261,7 +288,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -271,7 +298,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => { }} />
+      <Sidebar open={true} persistent miniHover onClose={() => {}} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>
         {children}
       </div>
@@ -941,6 +968,16 @@ export default function App() {
               <RoleRoute allowed={["ADMIN"]}>
                 <SidebarLayout>
                   <ExpensePage />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bank/expense/new" // ✅ NEW ROUTE
+            element={
+              <RoleRoute allowed={["ADMIN"]}>
+                <SidebarLayout>
+                  <NewExpensePage />
                 </SidebarLayout>
               </RoleRoute>
             }

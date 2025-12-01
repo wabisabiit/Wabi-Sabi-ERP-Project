@@ -7,7 +7,7 @@ from .views_transfer import (
     barcode_last_transfer, transfer_barcodes,
 )
 from .views_sales import SalesView   # <-- add this
-from .views_credit import CreditNoteView, CreditNoteDetail, CreditNoteRedeem
+from .views_credit import CreditNoteView, CreditNoteDetail, CreditNoteRedeem, CreditNoteDelete
 from .views_sales_return import SaleLinesByInvoice, SalesReturn
 from .views_customers import CustomerListCreate
 from .views_masterpack import MasterPackView, MasterPackDetail, MasterPackBulkDelete
@@ -40,6 +40,8 @@ urlpatterns = [
     path("credit-notes/", CreditNoteView.as_view(), name="credit-notes"),
     path("credit-notes/<str:note_no>/", CreditNoteDetail.as_view(), name="credit-note-detail"),
     path("credit-notes/<str:note_no>/redeem/", CreditNoteRedeem.as_view(), name="credit-note-redeem"),
+    path("credit-notes/<str:note_no>/delete/", CreditNoteDelete.as_view(), name="credit-note-delete"),
+
 
     # NEW for returns
     path("sales/<str:invoice_no>/lines/", SaleLinesByInvoice.as_view(), name="sale-lines-by-invoice"),

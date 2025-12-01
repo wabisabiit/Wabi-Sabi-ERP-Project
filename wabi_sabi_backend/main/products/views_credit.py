@@ -1,12 +1,18 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
+# products/views_credit.py
+from datetime import datetime
+
+from django.db import transaction, DatabaseError
 from django.db.models import Q
-from django.db import transaction, DatabaseError   # ← ADD
-from datetime import datetime 
-from .models import CreditNote
 from django.utils import timezone
+from rest_framework import status, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from taskmaster.models import Location
+from outlets.models import Employee
+from .models import CreditNote
 from .serializers_credit import CreditNoteListSerializer
+
 
 class CreditNoteView(APIView):
     """
@@ -15,17 +21,47 @@ class CreditNoteView(APIView):
       - start_date/end_date: filter on note.date (inclusive)
       - customer: partial match on customer name
       - status: active | not_active (optional)
+
+    Location scoping:
+      - HQ (superuser or role=ADMIN) can see all locations
+      - Others (e.g. MANAGER) are auto-limited to their own location.
     """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _user_location(self, user):
+        """
+        Helper: returns Location instance for the current user via Employee → Outlet → Location,
+        or None if not mapped.
+        """
+        emp = getattr(user, "employee", None)
+        if emp and getattr(emp, "outlet", None):
+            return getattr(emp.outlet, "location", None)
+        return None
+
     def get(self, request):
         qs = CreditNote.objects.select_related("customer").order_by("-date", "-id")
+
+        user = request.user
+        emp = getattr(user, "employee", None)
+        role = getattr(emp, "role", "") if emp else ""
+
+        # 🔹 HQ / Admin see all locations
+        # 🔹 Others are restricted to their own location (+ legacy notes without location)
+        if not user.is_superuser and role != "ADMIN":
+            loc = self._user_location(user)
+            if loc:
+                # Manager: credit notes of their own location OR old notes where location is null
+                qs = qs.filter(Q(location=loc) | Q(location__isnull=True))
+
+        # -------------- existing filters --------------
 
         # text query
         q = (request.GET.get("query") or "").strip()
         if q and q.lower() not in ("undefined", "null"):
             qs = qs.filter(
-                Q(note_no__icontains=q) |
-                Q(customer__name__icontains=q) |
-                Q(barcode__icontains=q)
+                Q(note_no__icontains=q)
+                | Q(customer__name__icontains=q)
+                | Q(barcode__icontains=q)
             )
 
         # date range (inclusive)
@@ -36,13 +72,17 @@ class CreditNoteView(APIView):
                 return None
 
         start = _parse((request.GET.get("start_date") or "").strip())
-        end   = _parse((request.GET.get("end_date") or "").strip())
+        end = _parse((request.GET.get("end_date") or "").strip())
         if start:
             qs = qs.filter(date__gte=start)
         if end:
             # include the whole day if only a date is passed (no time)
             if end.hour == 0 and end.minute == 0 and end.second == 0:
-                qs = qs.filter(date__lt=end.replace(hour=23, minute=59, second=59, microsecond=999999))
+                qs = qs.filter(
+                    date__lt=end.replace(
+                        hour=23, minute=59, second=59, microsecond=999999
+                    )
+                )
             else:
                 qs = qs.filter(date__lte=end)
 
@@ -57,12 +97,19 @@ class CreditNoteView(APIView):
             qs = qs.filter(is_redeemed=(st == "not_active"))
 
         # all=1 support
-        want_all = (request.GET.get("all") or "").lower() in ("1", "true", "yes", "on") \
+        want_all = (
+            (request.GET.get("all") or "").lower() in ("1", "true", "yes", "on")
             or (request.GET.get("page_size") or "").lower() == "all"
+        )
         if want_all:
             data = CreditNoteListSerializer(qs, many=True).data
             return Response(
-                {"results": data, "total": len(data), "page": 1, "page_size": len(data)},
+                {
+                    "results": data,
+                    "total": len(data),
+                    "page": 1,
+                    "page_size": len(data),
+                },
                 status=status.HTTP_200_OK,
             )
 
@@ -78,25 +125,38 @@ class CreditNoteView(APIView):
 
         total = qs.count()
         start_ix = (page - 1) * page_size
-        end_ix   = start_ix + page_size
+        end_ix = start_ix + page_size
         items = qs[start_ix:end_ix]
 
         data = CreditNoteListSerializer(items, many=True).data
         return Response(
-            {"results": data, "total": total, "page": page, "page_size": page_size},
+            {
+                "results": data,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+            },
             status=status.HTTP_200_OK,
         )
+
 
 class CreditNoteDetail(APIView):
     """
     GET /api/credit-notes/<note_no>/
     """
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, note_no: str):
         note_no = (note_no or "").strip()
         try:
-            cn = CreditNote.objects.select_related("customer").get(note_no__iexact=note_no)
+            cn = CreditNote.objects.select_related("customer").get(
+                note_no__iexact=note_no
+            )
         except CreditNote.DoesNotExist:
-            return Response({"ok": False, "msg": "Credit note not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"ok": False, "msg": "Credit note not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         data = {
             "ok": True,
@@ -115,35 +175,108 @@ class CreditNoteRedeem(APIView):
     POST /api/credit-notes/<note_no>/redeem/
     body: { "invoice_no": "TRANS0007", "amount": 123.45 }
     """
-    @transaction.atomic   # ← ensure select_for_update runs inside a transaction
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
     def post(self, request, note_no: str):
         note_no = (note_no or "").strip()
 
         try:
-            cn = CreditNote.objects.select_for_update().get(note_no__iexact=note_no)
+            cn = CreditNote.objects.select_for_update().get(
+                note_no__iexact=note_no
+            )
         except CreditNote.DoesNotExist:
-            return Response({"ok": False, "msg": "Credit note not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"ok": False, "msg": "Credit note not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         if cn.is_redeemed:
-            return Response({"ok": False, "msg": "Credit note already redeemed."}, status=status.HTTP_409_CONFLICT)
+            return Response(
+                {"ok": False, "msg": "Credit note already redeemed."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         try:
             amt = float(request.data.get("amount", 0))
         except Exception:
-            return Response({"ok": False, "msg": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"ok": False, "msg": "Invalid amount."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if amt <= 0:
-            return Response({"ok": False, "msg": "Amount must be > 0."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"ok": False, "msg": "Amount must be > 0."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         total = float(cn.amount or 0)
         if amt - total > 1e-6:
-            return Response({"ok": False, "msg": "Amount exceeds credit note value."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"ok": False, "msg": "Amount exceeds credit note value."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # mark redeemed
         cn.is_redeemed = True
         cn.redeemed_amount = amt
         cn.redeemed_at = timezone.now()
         cn.redeemed_invoice = (request.data.get("invoice_no") or "").strip()
-        cn.save(update_fields=["is_redeemed", "redeemed_amount", "redeemed_at", "redeemed_invoice"])
+        cn.save(
+            update_fields=[
+                "is_redeemed",
+                "redeemed_amount",
+                "redeemed_at",
+                "redeemed_invoice",
+            ]
+        )
 
-        return Response({"ok": True, "msg": "Credit note redeemed."}, status=status.HTTP_200_OK)
+        return Response(
+            {"ok": True, "msg": "Credit note redeemed."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class CreditNoteDelete(APIView):
+    """
+    DELETE /api/credit-notes/<note_no>/delete/
+
+    - HQ (superuser / ADMIN) can delete any credit note
+    - Manager / other roles can delete only notes belonging to their own location
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _user_location(self, user):
+        emp = getattr(user, "employee", None)
+        if emp and getattr(emp, "outlet", None):
+            return getattr(emp.outlet, "location", None)
+        return None
+
+    def delete(self, request, note_no: str):
+        note_no = (note_no or "").strip()
+
+        try:
+            cn = CreditNote.objects.get(note_no__iexact=note_no)
+        except CreditNote.DoesNotExist:
+            return Response(
+                {"ok": False, "msg": "Credit note not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        user = request.user
+        emp = getattr(user, "employee", None)
+        role = getattr(emp, "role", "") if emp else ""
+
+        # HQ (superuser / ADMIN) -> can delete anything
+        if not user.is_superuser and role != "ADMIN":
+            loc = self._user_location(user)
+            # if credit note is linked to a location and it doesn't match manager's location → block
+            if cn.location_id and loc and cn.location_id != loc.id:
+                return Response(
+                    {"ok": False, "msg": "Not allowed to delete this credit note."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        cn.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
