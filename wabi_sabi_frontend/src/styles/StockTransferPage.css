@@ -230,3 +230,27 @@
   .st-cal{ width: 100%; }
   .st-drp-cals{ gap:8px; }
 }
+
+/* ---------- Loading spinner for Stock Transfer table ---------- */
+
+.st-loading{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-size:13px;
+  color:#374151;
+}
+
+.st-spinner{
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:3px solid rgba(37,99,235,.2);
+  border-top-color:#2563eb;
+  animation:st-spin .8s linear infinite;
+}
+
+@keyframes st-spin{
+  to { transform:rotate(360deg); }
+}

@@ -248,3 +248,27 @@
 @media (max-width: 720px){
   .emp-search input{ width:160px; }
 }
+
+/* ---------- Loading spinner for Employee table ---------- */
+
+.emp-loading{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-size:13px;
+  color:#374151;
+}
+
+.emp-spinner{
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:3px solid rgba(37,99,235,.2);
+  border-top-color:#2563eb;
+  animation:emp-spin .8s linear infinite;
+}
+
+@keyframes emp-spin{
+  to{ transform:rotate(360deg); }
+}

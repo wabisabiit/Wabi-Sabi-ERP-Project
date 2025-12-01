@@ -605,7 +605,10 @@ export default function EmployeePage() {
               {loading && (
                 <tr>
                   <td colSpan={7} className="empty-row">
-                    Loading…
+                    <div className="emp-loading">
+                      <div className="emp-spinner" />
+                      <span>Loading employees…</span>
+                    </div>
                   </td>
                 </tr>
               )}

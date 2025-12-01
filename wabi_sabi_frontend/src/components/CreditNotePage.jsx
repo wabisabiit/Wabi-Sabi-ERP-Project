@@ -9,6 +9,16 @@ import { listCreditNotes } from "../api/client";
 const fmtMoney = (v) => Number(v || 0).toFixed(2);
 const isoDate = (d) => (d ? new Date(d).toLocaleDateString() : "");
 
+/* 🔹 Inline loading spinner for table */
+function CreditNoteLoadingInline() {
+  return (
+    <span className="cnp-loading-inline">
+      <span className="cnp-spinner" />
+      Loading…
+    </span>
+  );
+}
+
 export default function CreditNotePage() {
   // toolbar popovers
   const [exportOpen, setExportOpen] = useState(false);
@@ -38,14 +48,22 @@ export default function CreditNotePage() {
 
   // dummy customers (replace with API if needed)
   const customers = [
-    "John Doe", "Jane Parker", "Krishna Pandit", "IT Account", "Rajdeep",
-  ].filter((n) => n.toLowerCase().includes((custQuery || "").toLowerCase()));
+    "John Doe",
+    "Jane Parker",
+    "Krishna Pandit",
+    "IT Account",
+    "Rajdeep",
+  ].filter((n) =>
+    n.toLowerCase().includes((custQuery || "").toLowerCase())
+  );
 
   // outside click / esc handlers
   useEffect(() => {
     function onDocClick(e) {
-      if (exportRef.current && !exportRef.current.contains(e.target)) setExportOpen(false);
-      if (custRef.current && !custRef.current.contains(e.target)) setCustOpen(false);
+      if (exportRef.current && !exportRef.current.contains(e.target))
+        setExportOpen(false);
+      if (custRef.current && !custRef.current.contains(e.target))
+        setCustOpen(false);
     }
     function onEsc(e) {
       if (e.key === "Escape") {
@@ -101,16 +119,25 @@ export default function CreditNotePage() {
   // export (simple CSV/XLSX stub; keeping same UX, generating an empty file)
   function handleExport(type) {
     const filename =
-      type === "excel" ? "credit-notes.xlsx" :
-        type === "csv" ? "credit-notes.csv" : "credit-notes.pdf";
+      type === "excel"
+        ? "credit-notes.xlsx"
+        : type === "csv"
+        ? "credit-notes.csv"
+        : "credit-notes.pdf";
     const mime =
-      type === "excel" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" :
-        type === "csv" ? "text/csv" : "application/pdf";
+      type === "excel"
+        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        : type === "csv"
+        ? "text/csv"
+        : "application/pdf";
     const blob = new Blob([""], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     URL.revokeObjectURL(url);
     setExportOpen(false);
   }
@@ -130,20 +157,27 @@ export default function CreditNotePage() {
     fetchList({ goPage: 1 });
   }
 
-  const showingFrom = useMemo(() => (total === 0 ? 0 : (page - 1) * pageSize + 1), [total, page, pageSize]);
-  const showingTo = useMemo(() => Math.min(total, page * pageSize), [total, page, pageSize]);
+  const showingFrom = useMemo(
+    () => (total === 0 ? 0 : (page - 1) * pageSize + 1),
+    [total, page, pageSize]
+  );
+  const showingTo = useMemo(
+    () => Math.min(total, page * pageSize),
+    [total, page, pageSize]
+  );
 
   return (
     <div className="cnp-page">
       {/* Header */}
       <div className="cnp-head">
         <h1>POS Credit Note</h1>
-        <span className="material-icons cnp-bc-home" aria-hidden>home</span>
+        <span className="material-icons cnp-bc-home" aria-hidden>
+          home
+        </span>
       </div>
 
       {/* Card */}
       <section className="cnp-card">
-
         {/* Toolbar */}
         <div className="cnp-toolbar">
           <div className="cnp-spacer" />
@@ -153,7 +187,7 @@ export default function CreditNotePage() {
             <button
               type="button"
               className="cnp-btn cnp-btn-blue cnp-btn-export"
-              onClick={() => setExportOpen(v => !v)}
+              onClick={() => setExportOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={exportOpen}
             >
@@ -162,8 +196,22 @@ export default function CreditNotePage() {
             </button>
             {exportOpen && (
               <div role="menu" className="cnp-menu">
-                <button type="button" role="menuitem" className="cnp-menu-item" onClick={() => handleExport("excel")}>Excel</button>
-                <button type="button" role="menuitem" className="cnp-menu-item" onClick={() => handleExport("pdf")}>PDF</button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="cnp-menu-item"
+                  onClick={() => handleExport("excel")}
+                >
+                  Excel
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="cnp-menu-item"
+                  onClick={() => handleExport("pdf")}
+                >
+                  PDF
+                </button>
               </div>
             )}
           </div>
@@ -173,7 +221,11 @@ export default function CreditNotePage() {
             <select
               className="cnp-control cnp-select"
               value={String(pageSize)}
-              onChange={(e) => { setPageSize(Number(e.target.value)); fetchList({ goPage: 1, goPageSize: Number(e.target.value) }); }}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setPageSize(v);
+                fetchList({ goPage: 1, goPageSize: v });
+              }}
               aria-label="Display rows"
             >
               <option value="100">100</option>
@@ -186,8 +238,11 @@ export default function CreditNotePage() {
           {/* Filter button */}
           <button
             type="button"
-            className={"cnp-btn cnp-btn-blue cnp-btn-filter" + (filterOpen ? " is-active" : "")}
-            onClick={() => setFilterOpen(v => !v)}
+            className={
+              "cnp-btn cnp-btn-blue cnp-btn-filter" +
+              (filterOpen ? " is-active" : "")
+            }
+            onClick={() => setFilterOpen((v) => !v)}
             aria-controls="cnp-filters"
             aria-expanded={filterOpen}
           >
@@ -203,10 +258,19 @@ export default function CreditNotePage() {
               aria-label="Search list"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") fetchList({ goPage: 1 }); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") fetchList({ goPage: 1 });
+              }}
             />
-            <button type="button" className="cnp-search-btn" aria-label="Search" onClick={() => fetchList({ goPage: 1 })}>
-              <span className="material-icons" aria-hidden>search</span>
+            <button
+              type="button"
+              className="cnp-search-btn"
+              aria-label="Search"
+              onClick={() => fetchList({ goPage: 1 })}
+            >
+              <span className="material-icons" aria-hidden>
+                search
+              </span>
             </button>
           </div>
         </div>
@@ -238,7 +302,12 @@ export default function CreditNotePage() {
             {/* Select Customer */}
             <div className="cnp-field cnp-field-cust" ref={custRef}>
               <label className="cnp-label">Select Customer</label>
-              <div className={"cnp-selectwrap cnp-custdd" + (custOpen ? " is-open" : "")}>
+              <div
+                className={
+                  "cnp-selectwrap cnp-custdd" +
+                  (custOpen ? " is-open" : "")
+                }
+              >
                 <input
                   className="cnp-control cnp-input-cust"
                   placeholder="Search Customer"
@@ -246,7 +315,12 @@ export default function CreditNotePage() {
                   onFocus={() => setCustOpen(true)}
                   readOnly
                 />
-                <span className="material-icons cnp-dd-caret" aria-hidden>arrow_drop_down</span>
+                <span
+                  className="material-icons cnp-dd-caret"
+                  aria-hidden
+                >
+                  arrow_drop_down
+                </span>
                 {custOpen && (
                   <div className="cnp-cust-panel" role="listbox">
                     <div className="cnp-cust-search">
@@ -260,7 +334,9 @@ export default function CreditNotePage() {
                       />
                     </div>
                     {custQuery.length < 1 ? (
-                      <div className="cnp-cust-msg">Please enter 1 or more characters</div>
+                      <div className="cnp-cust-msg">
+                        Please enter 1 or more characters
+                      </div>
                     ) : customers.length === 0 ? (
                       <div className="cnp-cust-empty">No matches</div>
                     ) : (
@@ -287,8 +363,20 @@ export default function CreditNotePage() {
 
             {/* Actions */}
             <div className="cnp-filter-actions">
-              <button type="button" className="cnp-btn cnp-btn-apply" onClick={onApply}>Apply</button>
-              <button type="button" className="cnp-btn cnp-btn-reset" onClick={onReset}>Reset</button>
+              <button
+                type="button"
+                className="cnp-btn cnp-btn-apply"
+                onClick={onApply}
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                className="cnp-btn cnp-btn-reset"
+                onClick={onReset}
+              >
+                Reset
+              </button>
             </div>
           </div>
         )}
@@ -303,25 +391,38 @@ export default function CreditNotePage() {
                 <th>Date</th>
                 <th>Customer Name</th>
                 <th>Total Amount</th>
-                <th>Credits Used</th>        {/* left empty per your request */}
-                <th>Credits Remaining</th>    {/* computed */}
-                <th>Status</th>               {/* Active / Not Active */}
-                <th>Created By</th>           {/* left empty */}
+                <th>Credits Used</th> {/* left empty per your request */}
+                <th>Credits Remaining</th> {/* computed */}
+                <th>Status</th> {/* Active / Not Active */}
+                <th>Created By</th> {/* left empty */}
                 <th>Action</th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
-                <tr><td colSpan={10}>Loading…</td></tr>
+                <tr>
+                  <td colSpan={10}>
+                    <CreditNoteLoadingInline />
+                  </td>
+                </tr>
               ) : errorMsg ? (
-                <tr><td colSpan={10} style={{ color: "crimson" }}>{errorMsg}</td></tr>
+                <tr>
+                  <td colSpan={10} style={{ color: "crimson" }}>
+                    {errorMsg}
+                  </td>
+                </tr>
               ) : rows.length === 0 ? (
-                <tr className="cnp-empty"><td colSpan={10}>No data available in table</td></tr>
+                <tr className="cnp-empty">
+                  <td colSpan={10}>No data available in table</td>
+                </tr>
               ) : (
                 rows.map((r, idx) => {
-                  const used = Number(r?.redeemed_amount || 0);               // will show blank in UI
-                  const remaining = Math.max(0, Number(r?.amount || 0) - used);
+                  const used = Number(r?.redeemed_amount || 0); // will show blank in UI
+                  const remaining = Math.max(
+                    0,
+                    Number(r?.amount || 0) - used
+                  );
                   const isActive = !r?.is_redeemed;
                   return (
                     <tr key={r.id}>
@@ -333,7 +434,12 @@ export default function CreditNotePage() {
                       <td>{"" /* left empty intentionally */}</td>
                       <td>{fmtMoney(remaining)}</td>
                       <td>
-                        <span className={"cnp-status " + (isActive ? "is-active" : "is-inactive")}>
+                        <span
+                          className={
+                            "cnp-status " +
+                            (isActive ? "is-active" : "is-inactive")
+                          }
+                        >
                           {isActive ? "AVAILABLE" : "USED"}
                         </span>
                       </td>
@@ -342,7 +448,9 @@ export default function CreditNotePage() {
                         <button
                           className="cnp-link"
                           type="button"
-                          onClick={() => navigator.clipboard?.writeText(r.note_no)}
+                          onClick={() =>
+                            navigator.clipboard?.writeText(r.note_no)
+                          }
                           title="Copy Credit Note No."
                         >
                           Copy No.
@@ -367,22 +475,33 @@ export default function CreditNotePage() {
               disabled={page <= 1 || loading}
               title="Previous"
               type="button"
-              onClick={() => { const p = Math.max(1, page - 1); setPage(p); fetchList({ goPage: p }); }}
+              onClick={() => {
+                const p = Math.max(1, page - 1);
+                setPage(p);
+                fetchList({ goPage: p });
+              }}
             >
-              <span className="material-icons" aria-hidden>chevron_left</span>
+              <span className="material-icons" aria-hidden>
+                chevron_left
+              </span>
             </button>
             <button
               className="cnp-pgbtn"
               disabled={page * pageSize >= total || loading}
               title="Next"
               type="button"
-              onClick={() => { const p = page + 1; setPage(p); fetchList({ goPage: p }); }}
+              onClick={() => {
+                const p = page + 1;
+                setPage(p);
+                fetchList({ goPage: p });
+              }}
             >
-              <span className="material-icons" aria-hidden>chevron_right</span>
+              <span className="material-icons" aria-hidden>
+                chevron_right
+              </span>
             </button>
           </div>
         </div>
-
       </section>
     </div>
   );

@@ -14,6 +14,10 @@ export default function EmployeeCreatePage() {
   const { id } = useParams();
   const isEdit = !!id;
 
+  // loading + saving
+  const [loading, setLoading] = useState(isEdit);   // only true for edit
+  const [saving, setSaving] = useState(false);
+
   // basics
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -65,6 +69,7 @@ export default function EmployeeCreatePage() {
     if (!isEdit) return;
     (async () => {
       try {
+        setLoading(true);
         const data = await getEmployee(id);
         const fullName =
           [data.user?.first_name, data.user?.last_name]
@@ -88,6 +93,8 @@ export default function EmployeeCreatePage() {
       } catch (e) {
         console.error("Failed to load employee:", e);
         alert("Failed to load employee details.");
+      } finally {
+        setLoading(false);
       }
     })();
   }, [id, isEdit]);
@@ -121,11 +128,14 @@ export default function EmployeeCreatePage() {
   }
 
   const save = async () => {
+    if (saving) return;
     const err = validate();
     if (err) {
       alert(err);
       return;
     }
+
+    setSaving(true);
 
     // Map your UI role to backend expected role (MANAGER/STAFF)
     let backendRole = "STAFF";
@@ -172,6 +182,8 @@ export default function EmployeeCreatePage() {
       } else {
         alert((isEdit ? "Update" : "Create") + " failed: " + msg);
       }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -183,6 +195,14 @@ export default function EmployeeCreatePage() {
       </div>
 
       <div className="emp-card">
+        {/* inline loader for edit mode */}
+        {loading && (
+          <div className="emp-create-loading">
+            <div className="emp-create-spinner" />
+            <span>Loading employee details…</span>
+          </div>
+        )}
+
         <div className="emp-create-grid">
           {/* Row 1 */}
           <div className="f">
@@ -437,11 +457,16 @@ export default function EmployeeCreatePage() {
           <button
             className="btn ghost"
             onClick={() => navigate("/admin/employee")}
+            disabled={saving}
           >
             Cancel
           </button>
-          <button className="btn primary" onClick={save}>
-            Save
+          <button
+            className="btn primary"
+            onClick={save}
+            disabled={saving || loading}
+          >
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

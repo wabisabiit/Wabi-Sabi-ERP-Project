@@ -105,6 +105,9 @@ export default function StockTransferPage() {
 
   const [rows, setRows] = useState([]); // API data
 
+  // 🔵 NEW: loading state for transfers
+  const [loading, setLoading] = useState(false);
+
   // load locations
   useEffect(() => {
     (async () => {
@@ -120,17 +123,24 @@ export default function StockTransferPage() {
 
   // load transfers whenever filters change
   useEffect(() => {
+    let alive = true;
     (async () => {
       try {
+        setLoading(true); // 🔵 start spinner
         const params = { date_from: range.start, date_to: range.end };
         if (toLoc !== "All") params.to = toLoc;
         const data = await listTransfers(params);
-        setRows(data);
+        if (alive) setRows(data);
       } catch (e) {
         console.error(e);
-        alert("Failed to load stock transfers.");
+        if (alive) alert("Failed to load stock transfers.");
+      } finally {
+        if (alive) setLoading(false); // 🔵 stop spinner
       }
     })();
+    return () => {
+      alive = false;
+    };
   }, [range, toLoc]);
 
   const nameByCode = useMemo(() => {
@@ -240,7 +250,16 @@ export default function StockTransferPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={9} className="st-empty">
+                  <div className="st-loading">
+                    <div className="st-spinner" />
+                    <span>Loading stock transfers…</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={9} className="st-empty">No data available in table</td>
               </tr>
@@ -293,4 +312,4 @@ export default function StockTransferPage() {
       </div>
     </div>
   );
-}       
+}

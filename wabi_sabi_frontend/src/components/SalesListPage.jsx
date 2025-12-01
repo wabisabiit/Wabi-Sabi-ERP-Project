@@ -24,6 +24,16 @@ const COLS = [
 const DEFAULT_VISIBLE = COLS.map((c) => c.id);
 const MAX_VISIBLE = null;
 
+/* 🔹 Inline loading spinner for table */
+function SaleListLoadingInline() {
+    return (
+        <span className="loading-inline">
+            <span className="spinner" />
+            Loading…
+        </span>
+    );
+}
+
 /* =========================
    Small UI helper components
    ========================= */
@@ -288,7 +298,9 @@ function DiscountSelect({
         if (e.key === "ArrowDown") {
             e.preventDefault();
             setHover((h) => Math.min(h + 1, Math.max(filtered.length - 1, 0)));
-            listRef.current?.children[Math.min(hover + 1, Math.max(filtered.length - 1, 0))]?.scrollIntoView({ block: "nearest" });
+            listRef.current?.children[Math.min(hover + 1, Math.max(filtered.length - 1, 0))]?.scrollIntoView({
+                block: "nearest",
+            });
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setHover((h) => Math.max(h - 1, 0));
@@ -439,7 +451,8 @@ function ExportMenu() {
     const wrapRef = React.useRef(null);
 
     useEffect(() => {
-        const onDoc = (e) => wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
+        const onDoc = (e) =>
+            wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
         const onKey = (e) => e.key === "Escape" && setOpen(false);
         document.addEventListener("mousedown", onDoc);
         document.addEventListener("keydown", onKey);
@@ -528,7 +541,8 @@ function OrderStatusSelect({ value, onChange }) {
     }, [query]);
 
     useEffect(() => {
-        const onDoc = (e) => wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
+        const onDoc = (e) =>
+            wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
         const onKey = (e) => e.key === "Escape" && setOpen(false);
         document.addEventListener("mousedown", onDoc);
         document.addEventListener("keydown", onKey);
@@ -554,7 +568,9 @@ function OrderStatusSelect({ value, onChange }) {
         if (e.key === "ArrowDown") {
             e.preventDefault();
             setHover((h) => Math.min(h + 1, filtered.length - 1));
-            listRef.current?.children[Math.min(hover + 1, filtered.length - 1)]?.scrollIntoView({ block: "nearest" });
+            listRef.current?.children[Math.min(hover + 1, filtered.length - 1)]?.scrollIntoView({
+                block: "nearest",
+            });
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setHover((h) => Math.max(h - 1, 0));
@@ -971,7 +987,16 @@ export default function SaleListPage() {
                                         setPayMode(val);
                                         setPage(1);
                                     }}
-                                    options={["All", "Cash", "Cheque", "Pay Later", "Bank", "Card", "Upi", "Wallet"]}
+                                    options={[
+                                        "All",
+                                        "Cash",
+                                        "Cheque",
+                                        "Pay Later",
+                                        "Bank",
+                                        "Card",
+                                        "Upi",
+                                        "Wallet",
+                                    ]}
                                 />
                             </div>
 
@@ -1011,7 +1036,11 @@ export default function SaleListPage() {
 
                             <div className="ol-field">
                                 <label className="ol-label">Store</label>
-                                <SearchableSelect value={store} onChange={setStore} options={["All", "In-Store", "Online"]} />
+                                <SearchableSelect
+                                    value={store}
+                                    onChange={setStore}
+                                    options={["All", "In-Store", "Online"]}
+                                />
                             </div>
 
                             <div className="ol-field">
@@ -1019,7 +1048,15 @@ export default function SaleListPage() {
                                 <SearchableSelect
                                     value={channel}
                                     onChange={setChannel}
-                                    options={["All", "Woo Commerce", "Shopify", "Vasy Ecommerce", "MPOS", "POS", "VORDER"]}
+                                    options={[
+                                        "All",
+                                        "Woo Commerce",
+                                        "Shopify",
+                                        "Vasy Ecommerce",
+                                        "MPOS",
+                                        "POS",
+                                        "VORDER",
+                                    ]}
                                 />
                             </div>
 
@@ -1033,7 +1070,14 @@ export default function SaleListPage() {
                                 <SearchableSelect
                                     value={paymentStatus}
                                     onChange={setPaymentStatus}
-                                    options={["All", "Paid", "Due", "Overdue", "Refunded", "Credit Note Generated"]}
+                                    options={[
+                                        "All",
+                                        "Paid",
+                                        "Due",
+                                        "Overdue",
+                                        "Refunded",
+                                        "Credit Note Generated",
+                                    ]}
                                 />
                             </div>
 
@@ -1136,7 +1180,9 @@ export default function SaleListPage() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={colSpan}>Loading…</td>
+                                    <td colSpan={colSpan}>
+                                        <SaleListLoadingInline />
+                                    </td>
                                 </tr>
                             ) : rows.length === 0 ? (
                                 <tr className="ol-empty">
@@ -1154,11 +1200,17 @@ export default function SaleListPage() {
                                         {visible.has("date") && <td>{fmtDateCell(r.transaction_date)}</td>}
                                         {visible.has("cust") && <td>{r.customer_name}</td>}
                                         {visible.has("custNo") && <td>{r.customer_phone || ""}</td>}
-                                        {visible.has("total") && <td>{Number(r.total_amount || 0).toFixed(2)}</td>}
-                                        {visible.has("dueAmt") && <td>{Number(r.due_amount || 0).toFixed(2)}</td>}
+                                        {visible.has("total") && (
+                                            <td>{Number(r.total_amount || 0).toFixed(2)}</td>
+                                        )}
+                                        {visible.has("dueAmt") && (
+                                            <td>{Number(r.due_amount || 0).toFixed(2)}</td>
+                                        )}
                                         {visible.has("mode") && <td>{r.payment_method}</td>}
                                         {visible.has("pstatus") && <td>{r.payment_status}</td>}
-                                        {visible.has("credit") && <td>{Number(r.credit_applied || 0).toFixed(2)}</td>}
+                                        {visible.has("credit") && (
+                                            <td>{Number(r.credit_applied || 0).toFixed(2)}</td>
+                                        )}
                                         {visible.has("otype") && <td>{r.order_type}</td>}
                                         {visible.has("fb") && <td>{r.feedback ?? ""}</td>}
                                     </tr>
@@ -1176,8 +1228,12 @@ export default function SaleListPage() {
                             : "Showing 0 to 0 of 0 entries"}
                     </div>
                     <div className="ol-pager">
-                        <button className="ol-pagebtn" disabled><span className="material-icons">chevron_left</span></button>
-                        <button className="ol-pagebtn" disabled><span className="material-icons">chevron_right</span></button>
+                        <button className="ol-pagebtn" disabled>
+                            <span className="material-icons">chevron_left</span>
+                        </button>
+                        <button className="ol-pagebtn" disabled>
+                            <span className="material-icons">chevron_right</span>
+                        </button>
                     </div>
                 </div>
             </section>

@@ -636,7 +636,10 @@ export default function InventoryProductsPage() {
         <div className="pp-table-wrap">
           {loading && (
             <div className="empty" style={{ padding: 16 }}>
-              Loading…
+              <div className="pp-loading">
+                <div className="pp-spinner" />
+                <span>Loading products…</span>
+              </div>
             </div>
           )}
           {loadErr && (

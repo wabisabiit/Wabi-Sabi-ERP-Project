@@ -989,3 +989,29 @@
 }
 /* make sure custom scrollbar (if any) never appears */
 .loc-text::-webkit-scrollbar{ display: none; }
+
+/* SalesListPage.css – spinner reused like other pages */
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.loading-inline .spinner,
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #d1d5db;
+  border-top-color: #2563eb;
+  animation: ol-spin 0.6s linear infinite;
+}
+
+@keyframes ol-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -142,3 +142,203 @@
 /* Material Icons base */
 .material-icons,
 .material-icons-outlined{ font-size:14px; line-height:1; vertical-align:middle; }
+
+/* ---------- Filter strip (top) ---------- */
+
+.out-filterstrip {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.out-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 260px;
+}
+
+.out-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* ---------- Select Location pill ---------- */
+
+.out-loc {
+  position: relative;
+  min-width: 240px;
+}
+
+.out-loc-pill {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #111827;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.out-loc-pill:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.08);
+  background: #f9fafb;
+}
+
+.out-loc-text {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.out-loc-badge {
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.out-loc-caret {
+  font-size: 18px;
+  color: #6b7280;
+}
+
+/* ---------- Dropdown popup ---------- */
+
+.out-loc-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  width: 260px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  z-index: 20;
+  overflow: hidden;
+}
+
+.out-loc-search {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.out-loc-search input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.out-loc-search input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.08);
+}
+
+/* list */
+
+.out-loc-list {
+  max-height: 220px;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.out-loc-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.out-loc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.out-loc-item:hover {
+  background: #f3f4f6;
+}
+
+.out-loc-item input {
+  cursor: pointer;
+}
+
+.out-loc-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Optional: tighten on small screens */
+@media (max-width: 768px) {
+  .out-filterstrip {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .out-field {
+    width: 100%;
+  }
+
+  .out-loc {
+    width: 100%;
+  }
+}
+/* Inline loading (spinner + text) inside table cells */
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280; /* muted gray */
+}
+
+/* Small circular spinner */
+.loading-inline .spinner,
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #d1d5db;      /* light ring */
+  border-top-color: #2563eb;       /* accent color */
+  animation: out-spin 0.6s linear infinite;
+}
+
+/* Spin animation */
+@keyframes out-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* (Optional, in case it's not already there) */
+.out-table .empty-row {
+  text-align: center;
+}

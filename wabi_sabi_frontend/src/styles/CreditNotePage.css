@@ -560,3 +560,28 @@
   cursor:pointer;
 }
 .cnp-link:hover{ background: var(--blue-dark); }
+
+/* ---------- Inline table loading spinner ---------- */
+
+.cnp-loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.cnp-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  border-top-color: #2563eb;
+  animation: cnp-spin 0.8s linear infinite;
+}
+
+@keyframes cnp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

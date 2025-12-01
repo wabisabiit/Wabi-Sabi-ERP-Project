@@ -254,3 +254,27 @@
   display: inline-flex;
   align-items: center;
 }
+
+/* ---------- Inline loading state on edit ---------- */
+
+.emp-create-loading{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  color:#374151;
+  padding:8px 0 12px;
+}
+
+.emp-create-spinner{
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:3px solid rgba(37,99,235,.2);
+  border-top-color:#2563eb;
+  animation:emp-create-spin .8s linear infinite;
+}
+
+@keyframes emp-create-spin{
+  to{ transform:rotate(360deg); }
+}
