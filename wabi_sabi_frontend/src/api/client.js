@@ -205,6 +205,10 @@ export default {
   listHoldBills,
   createHoldBill,
   restoreHoldBill,
+
+
+  listSuppliers,
+  createSupplier,
 };
 
 function sanitizeBarcode(v = "") {
@@ -658,5 +662,21 @@ export async function getEmployee(id) {
 export async function deleteCreditNote(noteNo) {
   return http(`/credit-notes/${encodeURIComponent(noteNo)}/delete/`, {
     method: "DELETE",
+  });
+}
+
+// --- Suppliers / Vendors ---
+export async function listSuppliers(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.q) sp.append("q", params.q);
+  const qs = sp.toString();
+  return http(`/suppliers/${qs ? `?${qs}` : ""}`);
+}
+
+export async function createSupplier(payload) {
+  // payload: { company_name, gstin, contact_name?, phone?, email?, ... }
+  return http(`/suppliers/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

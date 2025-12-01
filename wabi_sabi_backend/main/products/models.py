@@ -685,3 +685,30 @@ class HoldBillLine(models.Model):
             if not self.sp:
                 self.sp = self.product.selling_price
         super().save(*args, **kwargs)
+
+
+class Supplier(models.Model):
+    """
+    Supplier / Vendor master.
+    Only company_name and gstin are mandatory as per requirement.
+    """
+    company_name = models.CharField(max_length=255)
+    gstin        = models.CharField(max_length=15, unique=True)
+
+    contact_name = models.CharField(max_length=120, blank=True)
+    phone        = models.CharField(max_length=20, blank=True)
+    email        = models.EmailField(blank=True)
+
+    address1     = models.CharField(max_length=255, blank=True)
+    address2     = models.CharField(max_length=255, blank=True)
+    city         = models.CharField(max_length=64, blank=True)
+    state        = models.CharField(max_length=64, blank=True)
+    pin          = models.CharField(max_length=12, blank=True)
+
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["company_name"]
+
+    def __str__(self):
+        return f"{self.company_name} ({self.gstin})"
