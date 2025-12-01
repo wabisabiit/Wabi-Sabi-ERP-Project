@@ -96,6 +96,11 @@ export default function MultiplePay({
   const [banner, setBanner] = useState(null); // {type:'success'|'error', text}
   const [busy, setBusy] = useState(false);
 
+  // Small helper to show popup
+  const showBanner = (type, text) => {
+    setBanner({ type, text });
+  };
+
   // ===== Proceed -> save =====
   const handleProceed = async () => {
     if (busy) return;
@@ -103,14 +108,13 @@ export default function MultiplePay({
     // ✅ Accept either id OR (name/phone)
     const hasCustomer = !!(customer?.id || customer?.phone || customer?.name);
     if (!hasCustomer) {
-      setBanner({ type: "error", text: "Please select the customer first." });
-      try { alert("Select the customer first"); } catch {}
+      showBanner("error", "Please select the customer first.");
       return;
     }
 
     // Must equal backend total
     if (Math.round(totalReceived * 100) !== Math.round(totals.payableAmount * 100)) {
-      setBanner({ type: "error", text: "Payments total must equal payable amount." });
+      showBanner("error", "Payments total must equal payable amount.");
       return;
     }
 
@@ -124,7 +128,7 @@ export default function MultiplePay({
       .filter(Boolean);
 
     if (!lines.length) {
-      setBanner({ type: "error", text: "No items in cart." });
+      showBanner("error", "No items in cart.");
       return;
     }
 
@@ -187,8 +191,7 @@ export default function MultiplePay({
         `Payment successful. Invoice: ${res?.invoice_no || "—"}` +
         (firstRef ? ` | Txn: ${firstRef}` : "");
 
-      setBanner({ type: "success", text: msg });
-      try { window.alert(msg); } catch {}
+      showBanner("success", msg);
       clearSelectedCustomer();
 
       setTimeout(() => {
@@ -219,8 +222,7 @@ export default function MultiplePay({
           }
         }
       }
-      setBanner({ type: "error", text: msg });
-      try { window.alert(msg); } catch {}
+      showBanner("error", msg);
       setBusy(false);
     }
   };
@@ -419,22 +421,28 @@ export default function MultiplePay({
             )}
           </div>
 
+          {/* ✅ Proceed button with spinner */}
           <button
             style={{ backgroundColor: "black", color: "white" }}
             className="mp-proceed"
             onClick={handleProceed}
             disabled={busy}
           >
-            {busy ? "Processing..." : "Proceed To Pay →"}
+            {busy && <span className="mp-spinner" aria-hidden="true" />}
+            <span>{busy ? "Processing Payment..." : "Proceed To Pay →"}</span>
           </button>
 
+          {/* ✅ Popup (toast) for success / error */}
           {banner && (
             <div
               className={`mp-banner ${banner.type === "success" ? "ok" : "err"}`}
               role="status"
               aria-live="polite"
             >
-              {banner.text}
+              <div className="mp-banner-icon">
+                {banner.type === "success" ? "✅" : "⚠️"}
+              </div>
+              <div className="mp-banner-text">{banner.text}</div>
             </div>
           )}
         </main>

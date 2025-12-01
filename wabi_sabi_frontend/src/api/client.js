@@ -161,6 +161,7 @@ export default {
   updateEmployee,
   deleteEmployee,
   getEmployee, 
+  deleteCreditNote, 
 
   createMasterPack,
   listMasterPacks,
@@ -652,4 +653,10 @@ export async function restoreHoldBill(number) {
 
 export async function getEmployee(id) {
   return http(`/employees/${id}/`);
+}
+
+export async function deleteCreditNote(noteNo) {
+  return http(`/credit-notes/${encodeURIComponent(noteNo)}/delete/`, {
+    method: "DELETE",
+  });
 }

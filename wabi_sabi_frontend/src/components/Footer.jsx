@@ -12,16 +12,16 @@ import {
   createSale,
   createSalesReturn,
   redeemCreditNote,
-  redeemCoupon, // ← mark coupon redeemed after sale
+  redeemCoupon,
   getSelectedCustomer,
   clearSelectedCustomer,
-  createHoldBill, // ← NEW
+  createHoldBill,
 } from "../api/client";
 import { useNavigate } from "react-router-dom";
 import CashPayment from "./CashPayment";
 import RedeemCreditModal from "./RedeemCreditModal";
 
-function UpiModal({ amount = 0, onClose, onSubmit }) {
+function UpiModal({ amount = 0, onClose, onSubmit, busy = false }) {
   const [upiAmount, setUpiAmount] = useState(Number(amount || 0).toFixed(2));
   const [txnId, setTxnId] = useState("");
 
@@ -41,6 +41,7 @@ function UpiModal({ amount = 0, onClose, onSubmit }) {
 
   const submit = (e) => {
     e.preventDefault();
+    if (busy) return;
     onSubmit?.({
       amount: parseFloat(upiAmount || 0),
       reference: txnId.trim(),
@@ -76,6 +77,7 @@ function UpiModal({ amount = 0, onClose, onSubmit }) {
               min="0"
               value={upiAmount}
               onChange={(e) => setUpiAmount(e.target.value)}
+              disabled={busy}
             />
           </label>
           <label className="cd-field">
@@ -85,11 +87,13 @@ function UpiModal({ amount = 0, onClose, onSubmit }) {
               placeholder="e.g. 2351AXYZ984"
               value={txnId}
               onChange={(e) => setTxnId(e.target.value)}
+              disabled={busy}
             />
           </label>
           <div className="cd-actions">
-            <button type="submit" className="cd-primary">
-              Finalize Payment
+            <button type="submit" className="cd-primary" disabled={busy}>
+              {busy && <span className="cd-spinner" aria-hidden="true" />}
+              <span>{busy ? "Processing..." : "Finalize Payment"}</span>
             </button>
           </div>
         </form>
@@ -102,7 +106,7 @@ export default function Footer({
   items = [],
   customer,
   totalQty = 0,
-  amount = 0, // cart total BEFORE coupon/credit
+  amount = 0,
   onReset,
 }) {
   const navigate = useNavigate();
@@ -111,9 +115,9 @@ export default function Footer({
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef({});
   const idRef = useRef(0);
-  const addToast = useCallback((text) => {
+  const addToast = useCallback((text, type = "error") => {
     const id = ++idRef.current;
-    setToasts((prev) => [{ id, text }, ...prev].slice(0, 3));
+    setToasts((prev) => [{ id, text, type }, ...prev].slice(0, 3));
     timersRef.current[id] = setTimeout(() => {
       setToasts((p) => p.filter((t) => t.id !== id));
       delete timersRef.current[id];
@@ -129,21 +133,25 @@ export default function Footer({
   const [showCash, setShowCash] = useState(false);
   const [showUpi, setShowUpi] = useState(false);
   const [showRedeem, setShowRedeem] = useState(false);
-  const [redeemMode, setRedeemMode] = useState("credit"); // "credit" | "coupon"
+  const [redeemMode, setRedeemMode] = useState("credit");
 
-  // Discount UI (applied BEFORE coupon/credit)
+  // UPI-specific busy flag
+  const [upiBusy, setUpiBusy] = useState(false);
+
+  // Hold-bill busy flag
+  const [holdBusy, setHoldBusy] = useState(false);
+
+  // Discount UI
   const [flatDisc, setFlatDisc] = useState("0.00");
   const [isPercent, setIsPercent] = useState(true);
 
-  // Coupon usage (treat like extra discount)
-  // shape: { code, amount }
+  // Coupon usage
   const [couponUse, setCouponUse] = useState(null);
 
-  // Credit usage (one note per sale)
-  // shape: { noteNo, amount }
+  // Credit usage
   const [creditUse, setCreditUse] = useState(null);
 
-  // 🔔 CURRENT CUSTOMER (reactive to selection)
+  // Current customer
   const [currentCustomer, setCurrentCustomer] = useState(() =>
     getSelectedCustomer()
   );
@@ -169,7 +177,7 @@ export default function Footer({
     return Math.max(0, Math.round(baseAmount - discCapped));
   }, [amount, flatDisc, isPercent]);
 
-  // Apply coupon like a discount (cap so it never exceeds baseAfterFlat)
+  // Apply coupon
   const afterCoupon = useMemo(() => {
     const c = Number(couponUse?.amount || 0);
     return Math.max(
@@ -178,10 +186,9 @@ export default function Footer({
     );
   }, [baseAfterFlat, couponUse]);
 
-  // Payable BEFORE credit
   const payableAmount = afterCoupon;
 
-  // Remaining after applying credit note (never negative)
+  // Remaining after credit
   const remainingAfterCredit = useMemo(() => {
     const credit = Number(creditUse?.amount || 0);
     return Math.max(0, Math.round(payableAmount - credit));
@@ -202,13 +209,12 @@ export default function Footer({
       .filter(Boolean);
   }, [items]);
 
-  // Resolve customer: prefer prop, else session (legacy)
   const effectiveCustomer =
     customer && (customer.name || customer.phone)
       ? customer
       : currentCustomer;
 
-  // Finalize: include COUPON + CREDIT row (if any) + chosen payment method row
+  // Finalize sale
   async function finalizeSale({ method, paymentDetails, andPrint = false }) {
     try {
       const lines = buildLines();
@@ -217,10 +223,8 @@ export default function Footer({
         return;
       }
 
-      // Grand total before credit (after discounts + coupon)
       const grandTotal = Number(payableAmount) || 0;
 
-      // Treat coupon as a payment row so backend sum matches
       const couponRow =
         couponUse && Number(couponUse.amount) > 0
           ? [
@@ -257,7 +261,6 @@ export default function Footer({
         account: paymentDetails?.paymentAccount || "",
       };
 
-      // If nothing remains after coupon/credit, don't send a zero row
       const payments = [
         ...couponRow,
         ...creditRow,
@@ -287,13 +290,11 @@ export default function Footer({
         payments,
         store: "Wabi - Sabi",
         note: paymentDetails?.note || "",
-        // you can also attach { coupon: couponUse } here if backend wants it
       };
 
       const res = await createSale(payload);
-      addToast(`Payment successful. Invoice: ${res?.invoice_no || "—"}`);
+      addToast(`Payment successful. Invoice: ${res?.invoice_no || "—"}`, "success");
 
-      // Mark credit note redeemed so it can't be reused
       if (creditUse?.noteNo && creditUse.amount > 0 && res?.invoice_no) {
         try {
           await redeemCreditNote(creditUse.noteNo, {
@@ -305,7 +306,6 @@ export default function Footer({
         }
       }
 
-      // Mark coupon redeemed (link it with invoice & customer)
       if (couponUse?.code && couponUse.amount > 0 && res?.invoice_no) {
         try {
           await redeemCoupon(couponUse.code, {
@@ -324,7 +324,6 @@ export default function Footer({
 
       if (andPrint) window.print();
 
-      // end POS session so next bill requires picking customer again
       clearSelectedCustomer();
 
       if (typeof onReset === "function") onReset(res);
@@ -335,13 +334,16 @@ export default function Footer({
     }
   }
 
-  // Save bill on hold (no payment)
+  // Save bill on hold
   const saveHoldBill = useCallback(
     async (andPrint = false) => {
+      setHoldBusy(true);
+
       try {
         const lines = buildLines();
         if (!lines.length) {
           addToast("Add minimum 1 product.");
+          setHoldBusy(false);
           return;
         }
 
@@ -362,19 +364,19 @@ export default function Footer({
 
         if (!res || res.ok === false) {
           addToast(res?.message || "Hold bill not saved.");
+          setHoldBusy(false);
           return;
         }
 
         addToast(
-          res.message || `Bill saved on hold as ${res.number}.`
+          res.message || `Bill saved on hold as ${res.number}.`,
+          "success"
         );
 
         if (andPrint) {
-          // optional: print current screen
           window.print();
         }
 
-        // clear selected customer & cart
         clearSelectedCustomer();
 
         if (typeof onReset === "function") {
@@ -385,6 +387,8 @@ export default function Footer({
       } catch (err) {
         console.error(err);
         addToast("Error: hold bill not saved.");
+      } finally {
+        setHoldBusy(false);
       }
     },
     [buildLines, effectiveCustomer, onReset, addToast]
@@ -415,7 +419,6 @@ export default function Footer({
 
   const handleActionClick = useCallback(
     (label) => {
-      // ⛔ Block payments until a customer is selected
       const isPaymentAction =
         label.includes("Card") ||
         label.includes("Cash") ||
@@ -428,7 +431,6 @@ export default function Footer({
         return;
       }
 
-      // Return-mode
       if (label === "Refund") {
         addToast("Refund: coming soon");
         return;
@@ -448,7 +450,7 @@ export default function Footer({
               (ok
                 ? "Credit note created."
                 : "Failed to create credit note.");
-            addToast(msg);
+            addToast(msg, ok ? "success" : "error");
             if (ok && Array.isArray(res?.notes) && res.notes.length) {
               alert(`Credit Note(s): ${res.notes.join(", ")}`);
             }
@@ -461,7 +463,6 @@ export default function Footer({
         return;
       }
 
-      // Payments
       if (label === "Card (F3)") {
         setShowCard(true);
         return;
@@ -476,7 +477,6 @@ export default function Footer({
         return;
       }
 
-      // Print variants
       if (label === "Card & Print (F9)") {
         setShowCard(true);
         window.__AND_PRINT__ = true;
@@ -493,7 +493,6 @@ export default function Footer({
         return;
       }
 
-      // Multiple Pay
       if (label.startsWith("Multiple Pay")) {
         const cartItems = (items || []).map((r, i) => {
           const qty =
@@ -544,7 +543,6 @@ export default function Footer({
           };
         });
 
-        // 🔧 PASS FULL CUSTOMER INCLUDING ID
         navigate("/multiple-pay", {
           state: {
             cart: {
@@ -552,7 +550,7 @@ export default function Footer({
                 effectiveCustomer?.name || "Walk In Customer",
               items: cartItems,
               roundoff: 0,
-              amount: Number(remainingAfterCredit), // remaining after credit
+              amount: Number(remainingAfterCredit),
             },
             customer: {
               id: effectiveCustomer?.id || null,
@@ -566,7 +564,6 @@ export default function Footer({
         return;
       }
 
-      // Redeem Credit (credit note path)
       if (label === "Redeem Credit") {
         if (creditUse?.noteNo) {
           addToast("A credit note is already applied.");
@@ -577,7 +574,6 @@ export default function Footer({
         return;
       }
 
-      // Apply Coupon (coupon path)
       if (label === "Apply Coupon") {
         if (couponUse?.code) {
           addToast("A coupon is already applied.");
@@ -588,13 +584,14 @@ export default function Footer({
         return;
       }
 
-      // Hold (save to DB, clear cart)
       if (label === "Hold (F6)") {
+        if (holdBusy) return;
         saveHoldBill(false);
         return;
       }
 
       if (label === "Hold & Print (F7)") {
+        if (holdBusy) return;
         saveHoldBill(true);
         return;
       }
@@ -614,6 +611,7 @@ export default function Footer({
       canPay,
       addToast,
       saveHoldBill,
+      holdBusy,
     ]
   );
 
@@ -668,7 +666,6 @@ export default function Footer({
             <div className="label">Round OFF</div>
           </div>
 
-          {/* Amount now shows remaining after credit; shows coupon & credit badges for clarity */}
           <div className="amount">
             <div className="amount-value">
               {Number(remainingAfterCredit).toLocaleString()}
@@ -699,12 +696,18 @@ export default function Footer({
               text.startsWith("Multiple Pay") ||
               text === "Redeem Credit";
 
+            const isHoldBtn =
+              text === "Hold (F6)" || text === "Hold & Print (F7)";
+
             return (
               <button
                 key={text}
                 className="kbtn"
                 onClick={() => handleActionClick(text)}
-                disabled={isPaymentBtn && !canPay}
+                disabled={
+                  (isPaymentBtn && !canPay) ||
+                  (isHoldBtn && holdBusy)
+                }
                 title={
                   isPaymentBtn && !canPay
                     ? "Select the customer first"
@@ -736,6 +739,15 @@ export default function Footer({
                 {text.includes("Pay Later") && (
                   <span className="material-icons">event</span>
                 )}
+
+                {isHoldBtn && holdBusy && (
+                  <span
+                    className="cd-spinner"
+                    style={{ marginLeft: 6 }}
+                    aria-hidden="true"
+                  />
+                )}
+
                 {text}
               </button>
             );
@@ -747,11 +759,13 @@ export default function Footer({
             {toasts.map((t) => (
               <div
                 key={t.id}
-                className="toast-item toast-error"
+                className={`toast-item ${
+                  t.type === "success" ? "toast-success" : "toast-error"
+                }`}
                 role="alert"
               >
                 <span className="icon" aria-hidden>
-                  ❗
+                  {t.type === "success" ? "✅" : "❗"}
                 </span>{" "}
                 {t.text}
               </div>
@@ -760,7 +774,6 @@ export default function Footer({
         )}
       </footer>
 
-      {/* Card */}
       {showCard && (
         <CardDetail
           amount={remainingAfterCredit}
@@ -781,7 +794,6 @@ export default function Footer({
         />
       )}
 
-      {/* Redeem Credit / Apply Coupon (same modal; initialMode controls tab) */}
       {showRedeem && (
         <RedeemCreditModal
           initialMode={redeemMode}
@@ -798,7 +810,8 @@ export default function Footer({
               }
               setCreditUse({ noteNo, amount: Number(amount) });
               addToast(
-                `Credit applied: ₹${Number(amount).toFixed(2)}`
+                `Credit applied: ₹${Number(amount).toFixed(2)}`,
+                "success"
               );
             } else {
               if (!code || !amount) {
@@ -808,7 +821,8 @@ export default function Footer({
               }
               setCouponUse({ code, amount: Number(amount) });
               addToast(
-                `Coupon applied: ₹${Number(amount).toFixed(2)}`
+                `Coupon applied: ₹${Number(amount).toFixed(2)}`,
+                "success"
               );
             }
             setShowRedeem(false);
@@ -816,7 +830,6 @@ export default function Footer({
         />
       )}
 
-      {/* Cash */}
       {showCash && (
         <CashPayment
           amount={remainingAfterCredit}
@@ -843,23 +856,29 @@ export default function Footer({
         />
       )}
 
-      {/* UPI */}
       {showUpi && (
         <UpiModal
           amount={remainingAfterCredit}
+          busy={upiBusy}
           onClose={() => {
+            if (upiBusy) return;
             setShowUpi(false);
             window.__AND_PRINT__ = false;
           }}
-          onSubmit={(payload) => {
+          onSubmit={async (payload) => {
             const printFlag = !!window.__AND_PRINT__;
             window.__AND_PRINT__ = false;
-            setShowUpi(false);
-            finalizeSale({
-              method: "UPI",
-              paymentDetails: payload,
-              andPrint: printFlag,
-            });
+            setUpiBusy(true);
+            try {
+              await finalizeSale({
+                method: "UPI",
+                paymentDetails: payload,
+                andPrint: printFlag,
+              });
+              setShowUpi(false);
+            } finally {
+              setUpiBusy(false);
+            }
           }}
         />
       )}

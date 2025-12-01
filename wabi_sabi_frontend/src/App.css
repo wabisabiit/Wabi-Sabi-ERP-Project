@@ -90,3 +90,24 @@ body {
 
 /* Utility: keep consistent card background inside sections */
 .left-section, .right-section { background-clip: padding-box; }
+
+/* Generic success message styling (light green) */
+
+.toast-success,
+.msg-success,
+.banner-success,
+.pos-success,
+.alert-success {
+  background-color: #dcfce7 !important; /* light green */
+  color: #166534 !important;            /* dark green text */
+  border: 1px solid #bbf7d0 !important; /* soft border */
+}
+
+/* If you had them red before, make sure error uses red and success uses green */
+.toast-error,
+.msg-error,
+.alert-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}

@@ -21,6 +21,9 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
     transactionNo: "",
   });
 
+  // NEW: local busy state
+  const [busy, setBusy] = useState(false);
+
   // lock body scroll while modal is open
   useEffect(() => {
     const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
@@ -38,19 +41,28 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
   const update = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const finalize = (e) => {
+  const finalize = async (e) => {
     e.preventDefault();
-    onSubmit?.({
-      paymentAccount: form.paymentAccount.trim(),
-      customerBankName: form.customerBankName.trim(),
-      amount: parseFloat(form.cardAmount || 0),
-      cardHolder: form.cardHolder.trim(),
-      cardHolderPhone: form.cardHolderPhone.trim(),
-      transactionNo: form.transactionNo.trim(),
-    });
+    if (busy) return;
+
+    setBusy(true);
+    try {
+      await onSubmit?.({
+        paymentAccount: form.paymentAccount.trim(),
+        customerBankName: form.customerBankName.trim(),
+        amount: parseFloat(form.cardAmount || 0),
+        cardHolder: form.cardHolder.trim(),
+        cardHolderPhone: form.cardHolderPhone.trim(),
+        transactionNo: form.transactionNo.trim(),
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const close = () => {
+    // don’t allow closing while processing
+    if (busy) return;
     if (onClose) onClose();
     else window.history.back();
   };
@@ -72,7 +84,12 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
       >
         <div className="cd-header">
           <h3 id="cd-title">Card Details</h3>
-          <button className="cd-close" aria-label="Close" onClick={close}>
+          <button
+            className="cd-close"
+            aria-label="Close"
+            onClick={close}
+            disabled={busy}
+          >
             ×
           </button>
         </div>
@@ -83,6 +100,7 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
             <select
               value={form.paymentAccount}
               onChange={update("paymentAccount")}
+              disabled={busy}
             >
               <option>AXIS BANK UDYOG VIHAR</option>
               <option>HDFC POS MAIN</option>
@@ -97,6 +115,7 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
               placeholder="Customer bank name"
               value={form.customerBankName}
               onChange={update("customerBankName")}
+              disabled={busy}
             />
           </label>
 
@@ -108,6 +127,7 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
               min="0"
               value={form.cardAmount}
               onChange={update("cardAmount")}
+              disabled={busy}
             />
           </label>
 
@@ -118,6 +138,7 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
               placeholder="Card holder name"
               value={form.cardHolder}
               onChange={update("cardHolder")}
+              disabled={busy}
             />
           </label>
 
@@ -131,6 +152,7 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
               onChange={update("cardHolderPhone")}
               pattern="[0-9]{10,}"
               title="Enter a valid mobile number"
+              disabled={busy}
             />
           </label>
 
@@ -141,12 +163,14 @@ export default function CardDetail({ amount = 0, onClose, onSubmit }) {
               placeholder="POS RRN / Auth code"
               value={form.transactionNo}
               onChange={update("transactionNo")}
+              disabled={busy}
             />
           </label>
 
           <div className="cd-actions">
-            <button type="submit" className="cd-primary">
-              Finalize Payment
+            <button type="submit" className="cd-primary" disabled={busy}>
+              {busy && <span className="cd-spinner" aria-hidden="true" />}
+              <span>{busy ? "Processing..." : "Finalize Payment"}</span>
             </button>
           </div>
         </form>

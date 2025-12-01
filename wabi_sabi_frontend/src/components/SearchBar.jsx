@@ -170,11 +170,16 @@ export default function SearchBar({ onAddItem }) {
   const [query, setQuery] = useState("");
   const [openDrop, setOpenDrop] = useState(false);
   const [matches, setMatches] = useState([]);
-  const [isSearching, setIsSearching] = useState(false); // ✅ NEW: track search state
+  const [isSearching, setIsSearching] = useState(false); // customer search
   const [showModal, setShowModal] = useState(false);
   const [prefillName, setPrefillName] = useState("");
   const [invoice, setInvoice] = useState("");
   const [customer, setCustomer] = useState(() => getSelectedCustomer());
+
+  // ✅ NEW: loading spinners
+  const [isBarcodeLoading, setIsBarcodeLoading] = useState(false);
+  const [isInvoiceLoading, setIsInvoiceLoading] = useState(false);
+
   const wrapRef = useRef(null);
   const scanInputRef = useRef(null);
 
@@ -198,30 +203,27 @@ export default function SearchBar({ onAddItem }) {
     const timeoutId = setTimeout(async () => {
       const q = query.trim();
       
-      // ✅ Clear matches when query is empty
       if (!q) {
         setMatches([]);
         setIsSearching(false);
         return;
       }
 
-      setIsSearching(true); // ✅ Show loading state
+      setIsSearching(true);
 
       try {
-        console.log("🔍 Searching for:", q); // Debug log
+        console.log("🔍 Searching for:", q);
         const res = await searchCustomers(q);
         
         if (!alive) return;
 
-        console.log("📦 API Response:", res); // Debug log
+        console.log("📦 API Response:", res);
 
-        // ✅ Normalize backend response shape
         const arr = Array.isArray(res)
           ? res
           : res?.results || res?.data || res?.items || [];
 
-        console.log("✅ Matched customers:", arr.length, "results"); // Debug log
-        console.log("Dropdown should be visible. openDrop =", true);
+        console.log("✅ Matched customers:", arr.length, "results");
         setMatches(arr);
         setIsSearching(false);
       } catch (e) {
@@ -229,17 +231,16 @@ export default function SearchBar({ onAddItem }) {
         
         if (!alive) return;
 
-        // Fallback to mock data
         const ql = q.toLowerCase();
         const mockResults = MOCK_CUSTOMERS.filter(
           (c) => c.name.toLowerCase().includes(ql) || c.phone.includes(q)
         );
         
-        console.log("📋 Using mock data:", mockResults.length, "results"); // Debug log
+        console.log("📋 Using mock data:", mockResults.length, "results");
         setMatches(mockResults);
         setIsSearching(false);
       }
-    }, 150); // Debounce 150ms
+    }, 150);
 
     return () => {
       alive = false;
@@ -247,6 +248,7 @@ export default function SearchBar({ onAddItem }) {
     };
   }, [query]);
 
+  // ✅ BARCODE: show spinner until product is added / error
   const addByBarcode = useCallback(async (raw) => {
     const code = String(raw || "").trim();
     if (!code) return;
@@ -257,6 +259,7 @@ export default function SearchBar({ onAddItem }) {
       return;
     }
 
+    setIsBarcodeLoading(true);
     INFLIGHT.add(code);
     try {
       const p = await getProductByBarcode(code);
@@ -275,6 +278,7 @@ export default function SearchBar({ onAddItem }) {
       alert(`Not found: ${code}`);
     } finally {
       INFLIGHT.delete(code);
+      setIsBarcodeLoading(false);
     }
   }, [onAddItem]);
 
@@ -285,6 +289,7 @@ export default function SearchBar({ onAddItem }) {
     addByBarcode(code);
   }, [scan, addByBarcode]);
 
+  // Global scanner listener
   useEffect(() => {
     const suffixKey = "Enter";
     const minLength = 5;
@@ -319,9 +324,14 @@ export default function SearchBar({ onAddItem }) {
     return () => document.removeEventListener("keydown", onKeyDown, true);
   }, [addByBarcode]);
 
+  // ✅ INVOICE: show spinner while loading & pushing all items
   async function loadInvoice(inv) {
+    const trimmed = inv.trim();
+    if (!trimmed) return;
+
+    setIsInvoiceLoading(true);
     try {
-      const res = await getSaleLinesByInvoice(inv);
+      const res = await getSaleLinesByInvoice(trimmed);
       const lines = Array.isArray(res?.lines) ? res.lines : [];
       if (!lines.length) {
         alert("No lines for this invoice.");
@@ -350,11 +360,13 @@ export default function SearchBar({ onAddItem }) {
     } catch (e) {
       console.error(e);
       alert("Invoice not found.");
+    } finally {
+      setIsInvoiceLoading(false);
     }
   }
 
   const pickCustomer = (c) => {
-    console.log("✅ Selected customer:", c); // Debug log
+    console.log("✅ Selected customer:", c);
     setCustomer(c);
     setSelectedCustomer(c);
     setQuery("");
@@ -370,23 +382,28 @@ export default function SearchBar({ onAddItem }) {
   return (
     <div className="search-row">
       <div className="container search-bar">
-        <input
-          ref={scanInputRef}
-          className="scan"
-          type="text"
-          placeholder="Scan Barcode/Enter Product Name"
-          value={scan}
-          onChange={(e) => setScan(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleScanSubmit();
-          }}
-          onBlur={(e) => {
-            if (recentlyHandled()) return;
-            if (e.target.value.trim()) handleScanSubmit();
-          }}
-        />
+        {/* ✅ Barcode with spinner */}
+        <div className="scan-wrap">
+          <input
+            ref={scanInputRef}
+            className="scan"
+            type="text"
+            placeholder="Scan Barcode/Enter Product Name"
+            value={scan}
+            onChange={(e) => setScan(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleScanSubmit();
+            }}
+            onBlur={(e) => {
+              if (recentlyHandled()) return;
+              if (e.target.value.trim()) handleScanSubmit();
+            }}
+            disabled={isBarcodeLoading}
+          />
+          {isBarcodeLoading && <span className="sb-spinner" aria-hidden="true" />}
+        </div>
 
-        {/* ✅ FIXED: Customer dropdown */}
+        {/* Customer dropdown */}
         <div className="customer-input" ref={wrapRef} style={{ position: 'relative' }}>
           <input
             type="text"
@@ -401,7 +418,7 @@ export default function SearchBar({ onAddItem }) {
               console.log("✏️ Query changed:", newQuery);
               setQuery(newQuery);
               if (newQuery.trim()) {
-                setOpenDrop(true); // ✅ Ensure dropdown stays open when typing
+                setOpenDrop(true);
               }
             }}
             onKeyDown={(e) => {
@@ -423,7 +440,6 @@ export default function SearchBar({ onAddItem }) {
             <span className="material-icons">edit</span>
           </button>
 
-          {/* Debug indicator */}
           {openDrop && (
             <div style={{
               position: 'absolute',
@@ -473,8 +489,7 @@ export default function SearchBar({ onAddItem }) {
                     tabIndex={0}
                     style={{
                       padding: '12px',
-                      borderBottom: '1px solid ' +
-                        '#eee',
+                      borderBottom: '1px solid #eee',
                       cursor: 'pointer',
                       backgroundColor: '#f8f9fa'
                     }}
@@ -545,19 +560,24 @@ export default function SearchBar({ onAddItem }) {
           )}
         </div>
 
-        <input
-          className="invoice"
-          type="text"
-          placeholder="Scan Sales Invoice"
-          value={invoice}
-          onChange={(e) => setInvoice(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && invoice.trim()) loadInvoice(invoice.trim());
-          }}
-          onBlur={(e) => {
-            if (e.target.value.trim()) loadInvoice(e.target.value.trim());
-          }}
-        />
+        {/* ✅ Invoice with spinner */}
+        <div className="invoice-wrap">
+          <input
+            className="invoice"
+            type="text"
+            placeholder="Scan Sales Invoice"
+            value={invoice}
+            onChange={(e) => setInvoice(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && invoice.trim()) loadInvoice(invoice.trim());
+            }}
+            onBlur={(e) => {
+              if (e.target.value.trim()) loadInvoice(e.target.value.trim());
+            }}
+            disabled={isInvoiceLoading}
+          />
+          {isInvoiceLoading && <span className="sb-spinner" aria-hidden="true" />}
+        </div>
       </div>
 
       <NewCustomerModal

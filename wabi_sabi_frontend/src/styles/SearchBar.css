@@ -112,3 +112,37 @@ select.field{
 @media (max-width: 780px){
   .modal-grid.grid-3{grid-template-columns:1fr !important;}
 }
+
+/* ====== POS search bar loading spinners ====== */
+
+.scan-wrap,
+.invoice-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+}
+
+/* keep existing look, just add padding-right so spinner has space */
+.scan-wrap .scan,
+.invoice-wrap .invoice {
+  padding-right: 32px;
+}
+
+/* small circular loader */
+.sb-spinner {
+  position: absolute;
+  right: 10px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #2563eb;
+  animation: sb-spin 0.7s linear infinite;
+}
+
+@keyframes sb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

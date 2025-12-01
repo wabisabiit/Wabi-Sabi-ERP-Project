@@ -1,4 +1,3 @@
-// src/components/HoldBillPanel.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import "../styles/HoldBillPanel.css";
 import { listHoldBills, restoreHoldBill } from "../api/client";
@@ -7,6 +6,7 @@ export default function HoldBillPanel({ open, onClose, onLoadBill }) {
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false); // 🔵 NEW: restore spinner
   const [error, setError] = useState("");
 
   // load active hold bills when panel opens
@@ -54,17 +54,19 @@ export default function HoldBillPanel({ open, onClose, onLoadBill }) {
 
   const handleRowClick = async (row) => {
     try {
+      setRestoring(true); // 🔵 show restoring spinner
+
       const res = await restoreHoldBill(row.number);
       if (!res || res.ok === false) {
         alert(res?.message || "Failed to restore hold bill.");
+        setRestoring(false);
         return;
       }
 
-      // send to parent (PosPage) so it can rebuild cart
+      // send to parent (PosPage)
       if (typeof onLoadBill === "function") {
         onLoadBill(res);
       } else {
-        // fallback: broadcast event so parent can listen if it wants
         try {
           window.dispatchEvent(
             new CustomEvent("pos:hold-loaded", { detail: res })
@@ -74,10 +76,12 @@ export default function HoldBillPanel({ open, onClose, onLoadBill }) {
         }
       }
 
+      setRestoring(false);
       onClose?.();
     } catch (e) {
       console.error(e);
       alert("Error while restoring hold bill.");
+      setRestoring(false);
     }
   };
 
@@ -86,12 +90,11 @@ export default function HoldBillPanel({ open, onClose, onLoadBill }) {
   return (
     <div className="holdbill-overlay">
       <aside className="holdbill-panel">
+
         {/* Header */}
         <div className="holdbill-header">
           <h3>On Hold</h3>
-          <button className="close-btn" onClick={onClose}>
-            ✕
-          </button>
+          <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 
         {/* Search */}
@@ -107,13 +110,35 @@ export default function HoldBillPanel({ open, onClose, onLoadBill }) {
           </button>
         </div>
 
-        {/* Body: only Serial, HoldBill No, Customer (name + number) */}
+        {/* Body */}
         <div className="holdbill-body">
-          {loading && <p>Loading...</p>}
-          {!loading && error && <p>{error}</p>}
+
+          {/* 🔵 GLOBAL LOADING SPINNER */}
+          {loading && (
+            <div className="hb-center">
+              <div className="hb-spinner"></div>
+              <p>Loading...</p>
+            </div>
+          )}
+
+          {!loading && error && <p className="hb-error">{error}</p>}
+
+          {/* 🔵 No Data */}
           {!loading && !error && filtered.length === 0 && (
             <p>No Data Available</p>
           )}
+
+          {/* 🔵 RESTORING SPINNER OVER TABLE */}
+          {restoring && (
+            <div className="hb-restore-overlay">
+              <div className="hb-restore-box">
+                <div className="hb-spinner"></div>
+                <div>Restoring bill...</div>
+              </div>
+            </div>
+          )}
+
+          {/* Table */}
           {!loading && !error && filtered.length > 0 && (
             <table className="holdbill-table">
               <thead>
@@ -123,6 +148,7 @@ export default function HoldBillPanel({ open, onClose, onLoadBill }) {
                   <th>Customer</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.map((row) => (
                   <tr
@@ -131,7 +157,10 @@ export default function HoldBillPanel({ open, onClose, onLoadBill }) {
                     onClick={() => handleRowClick(row)}
                   >
                     <td>{row.serial}</td>
-                    <td>{row.number}</td>
+
+                    {/* 🔵 clickable + blue link */}
+                    <td className="hb-link">{row.number}</td>
+
                     <td>
                       {(row.customer_name || "Walk In") +
                         (row.customer_phone

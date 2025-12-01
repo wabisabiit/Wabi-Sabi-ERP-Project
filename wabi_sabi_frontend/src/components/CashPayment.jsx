@@ -7,7 +7,6 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // When opened via routing from Footer we receive state: { cart:{items:[]}, customer:{}, amount, andPrint }
   const routedAmount = Number(state?.amount ?? amount) || 0;
   const routedCart   = state?.cart || { items: [] };
   const routedCustomer = state?.customer || getSelectedCustomer() || { name: "", phone: "", email: "" };
@@ -17,6 +16,13 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   const [due] = useState(routedAmount);
   const [tendered, setTendered] = useState(routedAmount);
   const inputRef = useRef(null);
+
+  const [busy, setBusy] = useState(false);
+  const [banner, setBanner] = useState(null);
+
+  const showBanner = (type, text) => {
+    setBanner({ type, text });
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -49,7 +55,6 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
     if (!s.includes(".")) setTendered(Number(s + "."));
   };
 
-  // Build sale lines from routed cart
   const buildLines = () =>
     (routedCart.items || [])
       .map((r) => {
@@ -60,19 +65,17 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
       .filter(Boolean);
 
   const submitToServer = async () => {
-    // 🔒 customer required
     if (!routedCustomer?.id) {
-      try { window.alert("Select the customer first"); } catch {}
+      showBanner("error", "Select the customer first.");
       return;
     }
 
     const lines = buildLines();
     if (!lines.length) {
-      try { window.alert("No items in cart."); } catch {}
+      showBanner("error", "No items in cart.");
       return;
     }
 
-    // Payment amount MUST equal server-side total. Use due (net amount), not tendered.
     const pays = [
       {
         method: "CASH",
@@ -97,18 +100,36 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
       note: "",
     };
 
-    const res = await createSale(payload);
+    try {
+      setBusy(true);
+      setBanner(null);
 
-    const msg = `Payment successful. Invoice: ${res?.invoice_no || "—"}`;
-    try { window.alert(msg); } catch {}
-    clearSelectedCustomer();
-    if (andPrint) {
-      try { window.print(); } catch {}
+      // Add a small delay to ensure UI updates before API call
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const res = await createSale(payload);
+
+      const msg = `Payment successful. Invoice: ${res?.invoice_no || "—"}`;
+      showBanner("success", msg);
+      clearSelectedCustomer();
+
+      if (andPrint) {
+        try { window.print(); } catch {}
+      }
+
+      // Keep showing success message longer
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      navigate(redirectPath, {
+        replace: true,
+        state: { flash: { type: "success", text: msg } },
+      });
+    } catch (e) {
+      console.error(e);
+      const msg = "Payment failed: could not update the database. Please try again.";
+      showBanner("error", msg);
+      setBusy(false);
     }
-    navigate(redirectPath, {
-      replace: true,
-      state: { flash: { type: "success", text: msg } },
-    });
   };
 
   const handleSubmit = () => {
@@ -125,7 +146,8 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
     submitToServer().catch((e) => {
       console.error(e);
       const msg = "Payment failed: could not update the database. Please try again.";
-      try { window.alert(msg); } catch {}
+      showBanner("error", msg);
+      setBusy(false);
     });
   };
 
@@ -135,80 +157,112 @@ export default function CashPayment({ amount = 0, onClose, onSubmit }) {
   };
 
   return (
-    <div className="cpay-overlay" role="dialog" aria-modal="true">
-      <div className="cpay-modal">
-        {/* Top fields row */}
-        <div className="cpay-head">
-          <div className="cpay-col">
-            <div className="cpay-label">Due Amount</div>
-            <input
-              className="cpay-input cpay-green"
-              value={due.toFixed(2)}
-              readOnly
-              aria-label="Due amount"
-            />
+    <>
+      <div className="cpay-overlay" role="dialog" aria-modal="true">
+        <div className="cpay-modal">
+          <div className="cpay-head">
+            <div className="cpay-col">
+              <div className="cpay-label">Due Amount</div>
+              <input
+                className="cpay-input cpay-green"
+                value={due.toFixed(2)}
+                readOnly
+                aria-label="Due amount"
+              />
+            </div>
+
+            <div className="cpay-col">
+              <div className="cpay-label">Tendered</div>
+              <input
+                ref={inputRef}
+                className="cpay-input cpay-green"
+                value={(Number(tendered || 0)).toFixed(2)}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9.]/g, "");
+                  const cleaned = v === "" ? "0" : v;
+                  if (/^\d*\.?\d{0,2}$/.test(cleaned)) setTendered(Number(cleaned));
+                }}
+                aria-label="Tendered amount"
+              />
+            </div>
+
+            <div className="cpay-col">
+              <div className="cpay-label">Change</div>
+              <input
+                className="cpay-input cpay-purple"
+                value={change.toFixed(2)}
+                readOnly
+                aria-label="Change amount"
+              />
+            </div>
           </div>
 
-          <div className="cpay-col">
-            <div className="cpay-label">Tendered</div>
-            <input
-              ref={inputRef}
-              className="cpay-input cpay-green"
-              value={(Number(tendered || 0)).toFixed(2)}
-              onChange={(e) => {
-                const v = e.target.value.replace(/[^0-9.]/g, "");
-                const cleaned = v === "" ? "0" : v;
-                if (/^\d*\.?\d{0,2}$/.test(cleaned)) setTendered(Number(cleaned));
-              }}
-              aria-label="Tendered amount"
-            />
+          <div className="cpay-body">
+            <div className="cpay-pad">
+              <button className="cpay-key" onClick={() => appendDigit(1)} disabled={busy}>1</button>
+              <button className="cpay-key" onClick={() => appendDigit(2)} disabled={busy}>2</button>
+              <button className="cpay-key" onClick={() => appendDigit(3)} disabled={busy}>3</button>
+              <button className="cpay-key" onClick={() => addBump(5)} disabled={busy}>+05</button>
+              <button className="cpay-key" onClick={() => addBump(100)} disabled={busy}>+100</button>
+
+              <button className="cpay-key" onClick={() => appendDigit(4)} disabled={busy}>4</button>
+              <button className="cpay-key" onClick={() => appendDigit(5)} disabled={busy}>5</button>
+              <button className="cpay-key" onClick={() => appendDigit(6)} disabled={busy}>6</button>
+              <button className="cpay-key" onClick={() => addBump(10)} disabled={busy}>+10</button>
+              <button className="cpay-key" onClick={() => addBump(500)} disabled={busy}>+500</button>
+
+              <button className="cpay-key" onClick={() => appendDigit(7)} disabled={busy}>7</button>
+              <button className="cpay-key" onClick={() => appendDigit(8)} disabled={busy}>8</button>
+              <button className="cpay-key" onClick={() => appendDigit(9)} disabled={busy}>9</button>
+              <button className="cpay-key" onClick={() => addBump(20)} disabled={busy}>+20</button>
+              <button className="cpay-key" onClick={() => addBump(2000)} disabled={busy}>+2000</button>
+
+              <button className="cpay-key" onClick={clearAll} disabled={busy}>C</button>
+              <button className="cpay-key" onClick={dot} disabled={busy}>.</button>
+              <button className="cpay-key" onClick={() => appendDigit(0)} disabled={busy}>0</button>
+              <button className="cpay-key" onClick={() => addBump(50)} disabled={busy}>+50</button>
+              <button className="cpay-key" onClick={backspace} disabled={busy}><span aria-hidden>⌫</span></button>
+            </div>
+
+            <div className="cpay-actions">
+              <button
+                className="cpay-btn cpay-submit"
+                onClick={handleSubmit}
+                disabled={busy}
+              >
+                {busy && <span className="cpay-spinner" aria-hidden="true" />}
+                <span>{busy ? "Processing Payment..." : "Submit"}</span>
+              </button>
+              <button className="cpay-btn cpay-cancel" onClick={handleClose} disabled={busy}>
+                Cancel
+              </button>
+            </div>
           </div>
 
-          <div className="cpay-col">
-            <div className="cpay-label">Change</div>
-            <input
-              className="cpay-input cpay-purple"
-              value={change.toFixed(2)}
-              readOnly
-              aria-label="Change amount"
-            />
-          </div>
-        </div>
-
-        {/* Keypad + Actions */}
-        <div className="cpay-body">
-          <div className="cpay-pad">
-            <button className="cpay-key" onClick={() => appendDigit(1)}>1</button>
-            <button className="cpay-key" onClick={() => appendDigit(2)}>2</button>
-            <button className="cpay-key" onClick={() => appendDigit(3)}>3</button>
-            <button className="cpay-key" onClick={() => addBump(5)}>+05</button>
-            <button className="cpay-key" onClick={() => addBump(100)}>+100</button>
-
-            <button className="cpay-key" onClick={() => appendDigit(4)}>4</button>
-            <button className="cpay-key" onClick={() => appendDigit(5)}>5</button>
-            <button className="cpay-key" onClick={() => appendDigit(6)}>6</button>
-            <button className="cpay-key" onClick={() => addBump(10)}>+10</button>
-            <button className="cpay-key" onClick={() => addBump(500)}>+500</button>
-
-            <button className="cpay-key" onClick={() => appendDigit(7)}>7</button>
-            <button className="cpay-key" onClick={() => appendDigit(8)}>8</button>
-            <button className="cpay-key" onClick={() => appendDigit(9)}>9</button>
-            <button className="cpay-key" onClick={() => addBump(20)}>+20</button>
-            <button className="cpay-key" onClick={() => addBump(2000)}>+2000</button>
-
-            <button className="cpay-key" onClick={clearAll}>C</button>
-            <button className="cpay-key" onClick={dot}>.</button>
-            <button className="cpay-key" onClick={() => appendDigit(0)}>0</button>
-            <button className="cpay-key" onClick={() => appendDigit(50)}>+50</button>
-            <button className="cpay-key" onClick={backspace}><span aria-hidden>⌫</span></button>
-          </div>
-
-          <div className="cpay-actions">
-            <button className="cpay-btn cpay-submit" onClick={handleSubmit}>Submit</button>
-            <button className="cpay-btn cpay-cancel" onClick={handleClose}>Cancel</button>
-          </div>
+          {banner && (
+            <div
+              className={`cpay-banner ${banner.type === "success" ? "ok" : "err"}`}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="cpay-banner-icon">
+                {banner.type === "success" ? "✅" : "⚠️"}
+              </div>
+              <div className="cpay-banner-text">{banner.text}</div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Processing Overlay - moved outside main modal */}
+      {busy && (
+        <div className="cpay-processing-overlay">
+          <div className="cpay-processing-card">
+            <div className="cpay-processing-spinner"></div>
+            <div className="cpay-processing-text">Payment Processing...</div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
