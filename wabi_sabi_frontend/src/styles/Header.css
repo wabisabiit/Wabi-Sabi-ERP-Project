@@ -141,3 +141,43 @@
 @media (max-width: 900px){
   .salesman .ws-dd-menu{ top:110%; left:0; width:100%; }
 }
+
+/* 🔵 Small blue spinner for salesman load */
+.hdr-sales-spinner {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border-radius: 999px;
+  border: 2px solid rgba(37, 99, 235, 0.28); /* light blue ring */
+  border-top-color: #2563eb;                 /* solid blue arc */
+  animation: hdr-spin 0.6s linear infinite;
+}
+
+@keyframes hdr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dropdown list: only ~3 employees visible, rest scroll */
+.ws-dd-options {
+  max-height: 132px;       /* ≈ 3 items (3 * 40-44px) */
+  overflow-y: auto;
+}
+
+/* Blue spinner used for loading salesman */
+.ws-dd-blue-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #e0e7ff;       /* light blue background */
+  border-top-color: #2563eb;       /* blue spinner line */
+  border-radius: 50%;
+  animation: ws-spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes ws-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

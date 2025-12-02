@@ -99,30 +99,38 @@ export default function EmployeeCreatePage() {
     })();
   }, [id, isEdit]);
 
-  // Local validation matching backend rules
+  // ✅ Only Name + Mobile (and branch/auth) are compulsory
   function validate() {
+    if (!name.trim()) return "Name is required.";
+    if (!mobile.trim()) return "Mobile number is required.";
     if (!branch) return "Please select a Branch.";
 
-    if (!pan.trim()) return "PAN is required.";
-    const panOk = /^[A-Za-z0-9]{10}$/.test(pan.trim());
-    if (!panOk) return "PAN must be exactly 10 alphanumeric characters.";
+    // Optional PAN: validate only if filled
+    if (pan.trim()) {
+      const panOk = /^[A-Za-z0-9]{10}$/.test(pan.trim());
+      if (!panOk) return "PAN must be exactly 10 alphanumeric characters.";
+    }
 
-    if (!aadhaar.trim()) return "Aadhaar is required.";
-    const aadhaarOk = /^\d{12}$/.test(aadhaar.trim());
-    if (!aadhaarOk) return "Aadhaar must be exactly 12 digits.";
+    // Optional Aadhaar
+    if (aadhaar.trim()) {
+      const aadhaarOk = /^\d{12}$/.test(aadhaar.trim());
+      if (!aadhaarOk) return "Aadhaar must be exactly 12 digits.";
+    }
 
-    if (!accountNumber.trim()) return "Account number is required.";
-    const acctOk = /^\d{9,18}$/.test(accountNumber.trim());
-    if (!acctOk) return "Account number must be 9–18 digits.";
+    // Optional Account number
+    if (accountNumber.trim()) {
+      const acctOk = /^\d{9,18}$/.test(accountNumber.trim());
+      if (!acctOk) return "Account number must be 9–18 digits.";
+    }
 
-    if (!bankName.trim() || !bankBranch.trim())
-      return "Bank name and branch are required.";
+    // Optional bank name/branch – no strict rule, so no error
 
-    // For CREATE only: username + password mandatory
+    // For CREATE only: username + password mandatory; role mandatory
     if (!isEdit) {
       if (!userName.trim() || !password.trim())
         return "Username and Password are required.";
     }
+    if (!role) return "Please select a Role.";
 
     return null;
   }
@@ -151,11 +159,11 @@ export default function EmployeeCreatePage() {
       email: email.trim(),
       role: backendRole,
       outlet: Number(branch),
-      aadhaar: aadhaar.trim(),
-      pan: pan.trim().toUpperCase(),
-      bank_name: bankName.trim(),
-      bank_branch: bankBranch.trim(),
-      account_number: accountNumber.trim(),
+      aadhaar: aadhaar.trim(),           // may be empty
+      pan: pan.trim().toUpperCase(),     // may be empty
+      bank_name: bankName.trim(),        // may be empty
+      bank_branch: bankBranch.trim(),    // may be empty
+      account_number: accountNumber.trim(), // may be empty
       mobile: mobile.trim(),
     };
 
@@ -237,9 +245,7 @@ export default function EmployeeCreatePage() {
             />
           </div>
           <div className="f">
-            <label>
-              PAN No. <span className="req">*</span>
-            </label>
+            <label>PAN No.</label>
             <input
               className="inp"
               placeholder="PAN No."
@@ -341,11 +347,9 @@ export default function EmployeeCreatePage() {
             </select>
           </div>
 
-          {/* KYC/BANK row */}
+          {/* KYC/BANK row (all OPTIONAL now) */}
           <div className="f">
-            <label>
-              Aadhaar (12 digits) <span className="req">*</span>
-            </label>
+            <label>Aadhaar (12 digits)</label>
             <input
               className="inp"
               placeholder="Aadhaar"
@@ -357,9 +361,7 @@ export default function EmployeeCreatePage() {
             />
           </div>
           <div className="f">
-            <label>
-              Bank Name <span className="req">*</span>
-            </label>
+            <label>Bank Name</label>
             <input
               className="inp"
               placeholder="Bank Name"
@@ -368,9 +370,7 @@ export default function EmployeeCreatePage() {
             />
           </div>
           <div className="f">
-            <label>
-              Bank Branch <span className="req">*</span>
-            </label>
+            <label>Bank Branch</label>
             <input
               className="inp"
               placeholder="Bank Branch"
@@ -379,9 +379,7 @@ export default function EmployeeCreatePage() {
             />
           </div>
           <div className="f">
-            <label>
-              Account Number <span className="req">*</span>
-            </label>
+            <label>Account Number</label>
             <input
               className="inp"
               placeholder="Account Number"

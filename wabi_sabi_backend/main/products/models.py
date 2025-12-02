@@ -712,3 +712,50 @@ class Supplier(models.Model):
 
     def __str__(self):
         return f"{self.company_name} ({self.gstin})"
+
+
+# -------------------- Chart of Account --------------------
+
+
+class Account(models.Model):
+    """
+    Simple ledger account used in 'Chart of Account' screen.
+    Only text fields + opening balance, with default location name.
+    """
+
+    NATURE_ASSETS      = "Assets"
+    NATURE_LIABILITIES = "Liabilities"
+    NATURE_EXPENSES    = "Expenses"
+    NATURE_INCOME      = "Income"
+
+    NATURE_CHOICES = [
+        (NATURE_ASSETS, "Assets"),
+        (NATURE_LIABILITIES, "Liabilities"),
+        (NATURE_EXPENSES, "Expenses"),
+        (NATURE_INCOME, "Income"),
+    ]
+
+    name          = models.CharField(max_length=255)  # "Account Name"
+    group_name    = models.CharField(max_length=120)  # "Sundry Debtors"
+    group_nature  = models.CharField(
+        max_length=32, choices=NATURE_CHOICES, default=NATURE_ASSETS
+    )  # Assets / Liabilities / Expenses / Income
+    account_type  = models.CharField(max_length=32, default="customers")
+
+    opening_debit  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    opening_credit = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # we keep this as TEXT with the same default shown in JSX
+    location_name = models.CharField(
+        max_length=255,
+        default="Brands 4 less - IFFCO Chowk",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.CharField(max_length=120, blank=True, default="")
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name

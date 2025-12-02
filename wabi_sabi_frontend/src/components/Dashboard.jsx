@@ -797,6 +797,8 @@ export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const isSuper = !!user?.is_superuser; // 🔵 only superuser gets filters
+
   const todayDMY = useMemo(() => {
     const d = new Date();
     const p = (n) => String(n).padStart(2, "0");
@@ -1181,141 +1183,145 @@ export default function Dashboard() {
           </div>
 
           <div className="toolbar-center">
-            <div className="select-wrap">
-              <button
-                ref={locBtnRef}
-                className="pill"
-                onClick={() => {
-                  setLocOpen((v) => !v);
-                  setChanOpen(false);
-                }}
-              >
-                <span className="pill-label">
-                  Select Location
-                </span>
-                <span className="pill-count">
-                  {locationIds.length}
-                </span>
-              </button>
-              {locOpen && (
-                <div
-                  className="dropdown"
-                  style={locDropStyle}
-                >
-                  <div className="dd-search">
-                    <input
-                      placeholder="Search locations…"
-                      value={locQuery}
-                      onChange={(e) =>
-                        setLocQuery(e.target.value)
-                      }
-                      autoFocus
-                    />
-                  </div>
-                  <div className="dd-list">
-                    {filteredLocations.map((l) => (
-                      <label
-                        key={l.id}
-                        className="opt"
-                      >
+            {isSuper && (
+              <>
+                <div className="select-wrap">
+                  <button
+                    ref={locBtnRef}
+                    className="pill"
+                    onClick={() => {
+                      setLocOpen((v) => !v);
+                      setChanOpen(false);
+                    }}
+                  >
+                    <span className="pill-label">
+                      Select Location
+                    </span>
+                    <span className="pill-count">
+                      {locationIds.length}
+                    </span>
+                  </button>
+                  {locOpen && (
+                    <div
+                      className="dropdown"
+                      style={locDropStyle}
+                    >
+                      <div className="dd-search">
                         <input
-                          type="checkbox"
-                          checked={locationIds.includes(
-                            l.id
-                          )}
-                          onChange={() =>
-                            toggle(
-                              l.id,
-                              locationIds,
-                              setLocationIds
-                            )
+                          placeholder="Search locations…"
+                          value={locQuery}
+                          onChange={(e) =>
+                            setLocQuery(e.target.value)
                           }
+                          autoFocus
                         />
-                        <span>{l.name}</span>
-                      </label>
-                    ))}
-                  </div>
+                      </div>
+                      <div className="dd-list">
+                        {filteredLocations.map((l) => (
+                          <label
+                            key={l.id}
+                            className="opt"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={locationIds.includes(
+                                l.id
+                              )}
+                              onChange={() =>
+                                toggle(
+                                  l.id,
+                                  locationIds,
+                                  setLocationIds
+                                )
+                              }
+                            />
+                            <span>{l.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="select-wrap">
-              <button
-                ref={chanBtnRef}
-                className="pill"
-                onClick={() => {
-                  setChanOpen((v) => !v);
-                  setLocOpen(false);
-                }}
-              >
-                <span className="pill-label">
-                  Select Channel
-                </span>
-                <span className="pill-count">
-                  {channelIds.length}
-                </span>
-              </button>
-              {chanOpen && (
-                <div
-                  className="dropdown"
-                  style={chanDropStyle}
-                >
-                  <div className="dd-search">
-                    <input
-                      placeholder="Search channels…"
-                      value={chanQuery}
-                      onChange={(e) =>
-                        setChanQuery(e.target.value)
-                      }
-                      autoFocus
-                    />
-                  </div>
-                  <div className="dd-list">
-                    <label className="opt">
-                      <input
-                        type="checkbox"
-                        checked={
-                          channelIds.length ===
-                          allChannelIds.length
-                        }
-                        onChange={() =>
-                          setChannelIds((prev) =>
-                            prev.length ===
-                            allChannelIds.length
-                              ? []
-                              : allChannelIds
-                          )
-                        }
-                      />
-                      <span>ALL</span>
-                    </label>
-                    {filteredChannels.map((c) => (
-                      <label
-                        key={c.id}
-                        className="opt"
-                      >
+                <div className="select-wrap">
+                  <button
+                    ref={chanBtnRef}
+                    className="pill"
+                    onClick={() => {
+                      setChanOpen((v) => !v);
+                      setLocOpen(false);
+                    }}
+                  >
+                    <span className="pill-label">
+                      Select Channel
+                    </span>
+                    <span className="pill-count">
+                      {channelIds.length}
+                    </span>
+                  </button>
+                  {chanOpen && (
+                    <div
+                      className="dropdown"
+                      style={chanDropStyle}
+                    >
+                      <div className="dd-search">
                         <input
-                          type="checkbox"
-                          checked={channelIds.includes(
-                            c.id
-                          )}
-                          onChange={() =>
-                            setChannelIds((prev) =>
-                              prev.includes(c.id)
-                                ? prev.filter(
-                                    (x) => x !== c.id
-                                  )
-                                : [...prev, c.id]
-                            )
+                          placeholder="Search channels…"
+                          value={chanQuery}
+                          onChange={(e) =>
+                            setChanQuery(e.target.value)
                           }
+                          autoFocus
                         />
-                        <span>{c.name}</span>
-                      </label>
-                    ))}
-                  </div>
+                      </div>
+                      <div className="dd-list">
+                        <label className="opt">
+                          <input
+                            type="checkbox"
+                            checked={
+                              channelIds.length ===
+                              allChannelIds.length
+                            }
+                            onChange={() =>
+                              setChannelIds((prev) =>
+                                prev.length ===
+                                allChannelIds.length
+                                  ? []
+                                  : allChannelIds
+                              )
+                            }
+                          />
+                          <span>ALL</span>
+                        </label>
+                        {filteredChannels.map((c) => (
+                          <label
+                            key={c.id}
+                            className="opt"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={channelIds.includes(
+                                c.id
+                              )}
+                              onChange={() =>
+                                setChannelIds((prev) =>
+                                  prev.includes(c.id)
+                                    ? prev.filter(
+                                        (x) => x !== c.id
+                                      )
+                                    : [...prev, c.id]
+                                )
+                              }
+                            />
+                            <span>{c.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
 
           <div className="toolbar-right">

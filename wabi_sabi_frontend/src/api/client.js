@@ -680,3 +680,31 @@ export async function createSupplier(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+// --- Chart of Account ---
+
+// List accounts (no pagination for now; adjust later if needed)
+export async function listAccounts() {
+  return http(`/accounts/`);
+}
+
+export async function createAccount(payload) {
+  // payload: { name, group_name, account_type, opening_debit, opening_credit }
+  return http(`/accounts/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAccount(id, payload) {
+  return http(`/accounts/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAccount(id) {
+  return http(`/accounts/${id}/`, {
+    method: "DELETE",
+  });
+}

@@ -28,12 +28,12 @@ class EmployeeSerializer(serializers.ModelSerializer):
     last_name   = serializers.CharField(write_only=True, required=False, allow_blank=True)
     email       = serializers.EmailField(write_only=True, required=False, allow_blank=True)
 
-    # KYC/bank (required)
-    aadhaar = serializers.CharField(required=True, max_length=12)
-    pan     = serializers.CharField(required=True, max_length=10)
-    bank_name = serializers.CharField(required=True, max_length=80)
-    bank_branch = serializers.CharField(required=True, max_length=120)
-    account_number = serializers.CharField(required=True, max_length=18)
+    # 🔹 KYC/bank now OPTIONAL
+    aadhaar = serializers.CharField(required=False, allow_blank=True, max_length=12)
+    pan     = serializers.CharField(required=False, allow_blank=True, max_length=10)
+    bank_name = serializers.CharField(required=False, allow_blank=True, max_length=80)
+    bank_branch = serializers.CharField(required=False, allow_blank=True, max_length=120)
+    account_number = serializers.CharField(required=False, allow_blank=True, max_length=18)
 
     outlet = serializers.PrimaryKeyRelatedField(queryset=Outlet.objects.all())
 
@@ -43,25 +43,39 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "id", "user",
             "username", "password", "first_name", "last_name", "email",
             "outlet", "role", "is_active",
-            "mobile",                      # 🔹 NEW
+            "mobile",
             "aadhaar", "pan", "bank_name", "bank_branch", "account_number",
         ]
 
     def validate(self, data):
         # Normalize PAN to uppercase; strip whitespace
-        pan = data.get("pan")
+        pan = (data.get("pan") or "").strip()
         if pan:
-            data["pan"] = pan.strip().upper()
-        # Aadhaar must be 12 digits; account_number must be digits 9–18; patterns enforced again at model-level.
-        aadhaar = data.get("aadhaar", "").strip()
-        if not aadhaar.isdigit() or len(aadhaar) != 12:
-            raise serializers.ValidationError({"aadhaar": "Aadhaar must be exactly 12 digits."})
-        acct = data.get("account_number", "").strip()
-        if not acct.isdigit() or not (9 <= len(acct) <= 18):
-            raise serializers.ValidationError({"account_number": "Account number must be 9–18 digits."})
-        pan = data.get("pan", "")
-        if not pan.isalnum() or len(pan) != 10:
-            raise serializers.ValidationError({"pan": "PAN must be exactly 10 alphanumeric characters."})
+            if not pan.isalnum() or len(pan) != 10:
+                raise serializers.ValidationError(
+                    {"pan": "PAN must be exactly 10 alphanumeric characters."}
+                )
+            data["pan"] = pan.upper()
+
+        # Aadhaar: only if provided
+        aadhaar = (data.get("aadhaar") or "").strip()
+        if aadhaar:
+            if (not aadhaar.isdigit()) or len(aadhaar) != 12:
+                raise serializers.ValidationError(
+                    {"aadhaar": "Aadhaar must be exactly 12 digits."}
+                )
+            data["aadhaar"] = aadhaar
+
+        # Account number: only if provided
+        acct = (data.get("account_number") or "").strip()
+        if acct:
+            if (not acct.isdigit()) or not (9 <= len(acct) <= 18):
+                raise serializers.ValidationError(
+                    {"account_number": "Account number must be 9–18 digits."}
+                )
+            data["account_number"] = acct
+
+        # Bank name/branch – optional, no strict validation
         return data
 
     def create(self, validated):
@@ -70,7 +84,13 @@ class EmployeeSerializer(serializers.ModelSerializer):
         first = validated.pop("first_name", "")
         last  = validated.pop("last_name", "")
         email = validated.pop("email", "")
-        u = User.objects.create_user(username=uname, password=pwd, first_name=first, last_name=last, email=email)
+        u = User.objects.create_user(
+            username=uname,
+            password=pwd,
+            first_name=first,
+            last_name=last,
+            email=email,
+        )
         return Employee.objects.create(user=u, **validated)
 
     def update(self, instance, validated):
@@ -82,6 +102,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
             user.set_password(validated.pop("password"))
         user.save()
         return super().update(instance, validated)
+
+
 
 class LoginLogSerializer(serializers.ModelSerializer):
     user_display = serializers.SerializerMethodField()
