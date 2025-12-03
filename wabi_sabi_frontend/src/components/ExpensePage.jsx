@@ -2,14 +2,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/ExpensePage.css";
 
-/* 🔹 NewExpense form import (YEHI MISSING THA) */
+/* 🔹 NewExpense form import */
 import NewExpense from "./NewExpense";
 
 /* 🔧 Icons (Feather) */
 import { FiHome, FiSearch, FiFilter, FiDownload, FiChevronDown } from "react-icons/fi";
 
+/* 🔹 API */
+import { listExpenses, deleteExpense } from "../api/client";
+
 /* ---------------- Mock data ---------------- */
-const ROWS = [];
 const LOCATIONS = [
   "WABI SABI SUSTAINABILITY LLP",
   "Brands 4 less – IFFCO Chowk",
@@ -307,6 +309,7 @@ function ExportMenu({ rows }) {
 /* ---------------- Main Page (List + Form switch) ---------------- */
 export default function ExpensePage() {
   const [view, setView] = useState("list"); // "list" | "form"
+
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selLocations, setSelLocations] = useState([]);
   const [party, setParty] = useState("All Party");
@@ -317,10 +320,75 @@ export default function ExpensePage() {
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
+  // 🔹 real rows from backend
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null); // { type: "success"|"error", message }
+
+  // load once
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await listExpenses();
+        const data = Array.isArray(res) ? res : res?.results || [];
+
+        const mapped = data.map((e) => {
+          const dt = e.date_time ? new Date(e.date_time) : null;
+          const dtStr = dt
+            ? dt.toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : "";
+
+          const loc =
+            e.branch ||
+            e.created_by_name ||
+            e.created_from ||
+            e.created_by_location ||
+            "";
+
+          const amt = Number(e.amount || 0);
+
+          return {
+            id: e.id,
+            expenseNo: e.id, // Sr. No. & Expense No. same
+            expenseDate: dtStr,
+            party: e.supplier_name || "",
+            total: amt,
+            paid: amt, // paid is total amount
+            status: "",
+            branch: loc,
+            createdBy: loc,
+            createdFrom: loc,
+          };
+        });
+
+        setRows(mapped);
+      } catch (err) {
+        console.error(err);
+        setToast({ type: "error", message: "Failed to load expenses." });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  // auto-hide toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const filtered = useMemo(() => {
     const f = fromDate ? new Date(fromDate) : null;
     const t = toDate ? new Date(toDate) : null;
-    return ROWS.filter((r) => {
+    return rows.filter((r) => {
       if (selLocations.length && !selLocations.includes(r.branch)) return false;
       if (party && party !== "All Party" && party !== r.party) return false;
       if (status !== "All" && status !== (r.status || "")) return false;
@@ -340,7 +408,7 @@ export default function ExpensePage() {
         .toLowerCase();
       return query.trim() ? blob.includes(query.toLowerCase()) : true;
     });
-  }, [selLocations, party, status, fromDate, toDate, query]);
+  }, [rows, selLocations, party, status, fromDate, toDate, query]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   useEffect(
@@ -352,10 +420,23 @@ export default function ExpensePage() {
     [filtered, page, pageSize]
   );
 
-  const totals = useMemo(
-    () => ({ total: 0, paid: 0, unpaid: 0 }),
-    [filtered]
-  ); // placeholder, data integration later
+  const totals = useMemo(() => {
+    const total = filtered.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+    // Paid & Unpaid cards stay 0 for now as requested
+    return { total, paid: 0, unpaid: 0 };
+  }, [filtered]);
+
+  const handleDelete = async (row) => {
+    if (!window.confirm("Are you sure you want to delete this expense?")) return;
+    try {
+      await deleteExpense(row.id);
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+      setToast({ type: "success", message: "Expense deleted successfully." });
+    } catch (err) {
+      console.error(err);
+      setToast({ type: "error", message: "Failed to delete expense." });
+    }
+  };
 
   if (view === "form") {
     return (
@@ -380,6 +461,13 @@ export default function ExpensePage() {
       </div>
 
       <div className="ex2-card">
+        {/* blue overlay spinner while loading */}
+        {loading && (
+          <div className="ex2-spinner-wrap">
+            <div className="ex2-spinner" />
+          </div>
+        )}
+
         <div className="ex2-toolbar">
           <div className="ex2-tools-left">
             <ExportMenu rows={filtered} />
@@ -510,13 +598,19 @@ export default function ExpensePage() {
                   <td>{r.createdBy}</td>
                   <td>{r.createdFrom}</td>
                   <td>
-                    <button className="row-dot">⋯</button>
+                    <button
+                      className="row-del"
+                      onClick={() => handleDelete(r)}
+                      title="Delete"
+                    >
+                      🗑
+                    </button>
                   </td>
                 </tr>
               ))}
               <tr className="total">
                 <td colSpan={4}>Total</td>
-                <td className="num">0.00</td>
+                <td className="num">{totals.total.toFixed(2)}</td>
                 <td className="num">0.00</td>
                 <td className="num">0.00</td>
                 <td colSpan={5}></td>
@@ -552,6 +646,12 @@ export default function ExpensePage() {
           </div>
         </div>
       </div>
+
+      {toast && (
+        <div className={cx("ex2-toast", toast.type)}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

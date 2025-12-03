@@ -118,3 +118,44 @@
 .md-opts .opt:hover{ background:#f8fafc; }
 .md-opts .opt.sel{ background:#eef6ff; }
 .modal-foot{ display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:12px 16px 14px; border-top:1px solid #eef2f7; }
+
+
+/* blue overlay spinner while list is loading */
+.coa-card {
+  position: relative;
+}
+
+.coa-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.coa-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 4px solid #bfdbfe;   /* light blue */
+  border-top-color: #2563eb;   /* primary blue */
+  animation: coa-spin 0.8s linear infinite;
+}
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #bfdbfe;
+  border-top-color: #2563eb;
+  animation: coa-spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes coa-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

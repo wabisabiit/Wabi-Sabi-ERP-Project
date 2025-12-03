@@ -288,3 +288,73 @@
   background: #fee2e2;
   color: #b91c1c;
 }
+
+/* Card wrapper already exists – just ensure it's relative so spinner overlay works */
+.ex2-card {
+  position: relative;
+}
+
+/* ---------- Loading spinner ---------- */
+
+.ex2-spinner-wrap {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.ex2-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid #cfe2ff;
+  border-top-color: #0d6efd; /* blue */
+  animation: ex2-spin 0.8s linear infinite;
+}
+
+@keyframes ex2-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Delete (dustbin) button ---------- */
+
+.row-del {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.row-del:hover {
+  transform: scale(1.1);
+}
+
+/* ---------- Toast message (success / error) ---------- */
+
+.ex2-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+}
+
+.ex2-toast.success {
+  background: #e7f9ef;
+  color: #0f5132;
+}
+
+.ex2-toast.error {
+  background: #fde2e1;
+  color: #842029;
+}

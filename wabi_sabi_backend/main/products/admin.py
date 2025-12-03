@@ -6,7 +6,7 @@ from .models import MasterPack, MasterPackLine
 from .models import (
     MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,Coupon, GeneratedCoupon
 )
-from .models import Discount
+from .models import Discount,Expense
 
 
 @admin.register(Product)
@@ -210,4 +210,22 @@ class DiscountAdmin(admin.ModelAdmin):
         ("Validity", {
             "fields": ("start_date", "end_date", "created_at"),
         }),
+    )
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "date_time",
+        "supplier",
+        "account",
+        "amount",
+        "non_gst",
+        "created_by_location",
+    )
+    list_filter = ("non_gst", "account", "supplier")
+    search_fields = (
+        "supplier__company_name",
+        "account__name",
+        "remark",
     )

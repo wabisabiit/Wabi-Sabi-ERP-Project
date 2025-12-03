@@ -209,6 +209,18 @@ export default {
 
   listSuppliers,
   createSupplier,
+
+
+   // Chart of Account
+  listAccounts,
+  createAccount,
+  updateAccount,
+  deleteAccount,
+
+  // 🔵 Expenses
+  listExpenses,
+  createExpense,
+  deleteExpense,
 };
 
 function sanitizeBarcode(v = "") {
@@ -707,4 +719,32 @@ export async function deleteAccount(id) {
   return http(`/accounts/${id}/`, {
     method: "DELETE",
   });
+}
+
+/// --- Expenses ---
+// List expenses
+export async function listExpenses(params = {}) {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    const s = String(v).trim();
+    if (!s) return;
+    sp.append(k, s);
+  });
+  const qs = sp.toString();
+  return http(`/expenses/${qs ? `?${qs}` : ""}`);
+}
+
+// Create expense
+export async function createExpense(payload) {
+  // payload: { supplier, account, amount, non_gst, remark, date_time? }
+  return http(`/expenses/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Delete expense
+export async function deleteExpense(id) {
+  return http(`/expenses/${id}/`, { method: "DELETE" });
 }

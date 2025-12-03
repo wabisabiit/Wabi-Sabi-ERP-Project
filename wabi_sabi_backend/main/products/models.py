@@ -5,7 +5,6 @@ from django.utils import timezone
 from django.core.validators import RegexValidator,MinValueValidator
 
 
-
 alnum_validator = RegexValidator(
     regex=r"^[A-Za-z0-9]+$",
     message="Coupon name must be alphanumeric (A–Z, a–z, 0–9) without spaces.",
@@ -759,3 +758,46 @@ class Account(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Expense(models.Model):
+    """
+    Simple expense voucher raised from the Payment > Expense modal.
+    """
+    supplier   = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name="expenses")
+    account    = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="expenses")
+    amount     = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    non_gst    = models.BooleanField(default=False)
+    remark     = models.CharField(max_length=255, blank=True, default="")
+    date_time  = models.DateTimeField(default=timezone.now)
+
+    # who created this expense (manager / employee)
+    created_by = models.ForeignKey(
+        "outlets.Employee",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="expenses",
+    )
+
+    class Meta:
+        ordering = ["-date_time", "-id"]
+
+    def __str__(self):
+        return f"Expense {self.id} - {self.supplier}"
+    
+    # 🔹 NEW: show location / HQ in admin
+    def created_by_location(self):
+        """
+        For admin list: show manager's location name,
+        or 'HQ' when no employee/outlet/location is attached.
+        """
+        emp = self.created_by
+        if emp and getattr(emp, "outlet", None):
+            loc = emp.outlet.location
+            if loc:
+                # use location name; change to loc.code if you prefer code
+                return loc.name or loc.code
+        return "HQ"
+
+    created_by_location.short_description = "Created By"

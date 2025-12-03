@@ -1,8 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/PaymentModal.css";
+import { listSuppliers, listAccounts, createExpense } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+
+function nowLocalInput() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+}
 
 export default function PaymentModal({ open, onClose }) {
-  const [voucherType, setVoucherType] = useState("sales");   // sales | purchase | expense
+  const { user } = useAuth();
+
+  const [voucherType, setVoucherType] = useState("sales"); // sales | purchase | expense
   const [paymentType, setPaymentType] = useState("against"); // advance | against
 
   // Advance payment local state
@@ -59,6 +71,106 @@ export default function PaymentModal({ open, onClose }) {
     () => paymentMode && paymentMode.toLowerCase() !== "cash",
     [paymentMode]
   );
+
+  // ---------- EXPENSE state ----------
+  const [suppliers, setSuppliers] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+
+  const [expenseSupplierId, setExpenseSupplierId] = useState("");
+  const [expenseAccountId, setExpenseAccountId] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseRemark, setExpenseRemark] = useState("");
+  const [expenseNonGst, setExpenseNonGst] = useState(false);
+  const [expenseDateTime, setExpenseDateTime] = useState(nowLocalInput());
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [expenseMsg, setExpenseMsg] = useState(null); // { type: "success"|"error", text }
+
+  // Load suppliers + accounts when Expense tab is opened
+  useEffect(() => {
+    if (!open || voucherType !== "expense") return;
+
+    let cancelled = false;
+    async function loadMasters() {
+      try {
+        const [supRes, accRes] = await Promise.all([
+          listSuppliers(),
+          listAccounts(),
+        ]);
+
+        const supList = Array.isArray(supRes)
+          ? supRes
+          : supRes?.results || supRes?.data || supRes?.items || [];
+        const accList = Array.isArray(accRes)
+          ? accRes
+          : accRes?.results || accRes?.data || accRes?.items || [];
+
+        if (!cancelled) {
+          setSuppliers(supList);
+          setAccounts(accList);
+        }
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) {
+          setExpenseMsg({
+            type: "error",
+            text: "Failed to load suppliers/accounts.",
+          });
+        }
+      }
+    }
+
+    loadMasters();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, voucherType]);
+
+  async function handleExpenseSave() {
+    if (!expenseSupplierId || !expenseAccountId || !expenseAmount) {
+      setExpenseMsg({
+        type: "error",
+        text: "Please select party, account and enter amount.",
+      });
+      return;
+    }
+
+    try {
+      setSavingExpense(true);
+      setExpenseMsg(null);
+
+      const payload = {
+        supplier: Number(expenseSupplierId),
+        account: Number(expenseAccountId),
+        amount: Number(expenseAmount),
+        non_gst: expenseNonGst,
+        remark: expenseRemark,
+        date_time: expenseDateTime
+          ? new Date(expenseDateTime).toISOString()
+          : undefined,
+      };
+
+      await createExpense(payload);
+
+      setExpenseMsg({
+        type: "success",
+        text: "Expense saved successfully.",
+      });
+
+      // reset amount/remark but keep party/account selected
+      setExpenseAmount("");
+      setExpenseRemark("");
+      setExpenseNonGst(false);
+      setExpenseDateTime(nowLocalInput());
+    } catch (e) {
+      console.error(e);
+      setExpenseMsg({
+        type: "error",
+        text: e?.message || "Failed to save expense.",
+      });
+    } finally {
+      setSavingExpense(false);
+    }
+  }
 
   // lock background scroll
   useEffect(() => {
@@ -310,7 +422,7 @@ export default function PaymentModal({ open, onClose }) {
             </div>
           </div>
 
-          {/* SALES / PURCHASE */}
+          {/* SALES / PURCHASE (unchanged) */}
           {voucherType !== "expense" && (
             <>
               <div className="payx-row">
@@ -376,7 +488,9 @@ export default function PaymentModal({ open, onClose }) {
                                 autoFocus
                               />
                               {partySearch.trim().length < 1 && (
-                                <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                                <div className="payx-dd-hint">
+                                  Please enter 1 or more characters
+                                </div>
                               )}
                             </div>
 
@@ -440,7 +554,9 @@ export default function PaymentModal({ open, onClose }) {
                                 autoFocus
                               />
                               {saleSearch.trim().length < 1 && (
-                                <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                                <div className="payx-dd-hint">
+                                  Please enter 1 or more characters
+                                </div>
                               )}
                             </div>
 
@@ -451,7 +567,9 @@ export default function PaymentModal({ open, onClose }) {
                                     <li key={opt}>
                                       <button
                                         type="button"
-                                        className={`payx-dd-item ${saleValue === opt ? "active" : ""}`}
+                                        className={`payx-dd-item ${
+                                          saleValue === opt ? "active" : ""
+                                        }`}
                                         onClick={() => {
                                           setSaleValue(opt);
                                           setSaleOpen(false);
@@ -530,7 +648,9 @@ export default function PaymentModal({ open, onClose }) {
                                 autoFocus
                               />
                               {walletSearch.trim().length < 1 && (
-                                <div className="payx-dd-hint">Please enter 1 or more characters</div>
+                                <div className="payx-dd-hint">
+                                  Please enter 1 or more characters
+                                </div>
                               )}
                             </div>
 
@@ -543,7 +663,9 @@ export default function PaymentModal({ open, onClose }) {
                                       <li key={opt}>
                                         <button
                                           type="button"
-                                          className={`payx-dd-item ${walletValue === opt ? "active" : ""}`}
+                                          className={`payx-dd-item ${
+                                            walletValue === opt ? "active" : ""
+                                          }`}
                                           onClick={() => {
                                             setWalletValue(opt);
                                             setWalletOpen(false);
@@ -616,7 +738,7 @@ export default function PaymentModal({ open, onClose }) {
             </>
           )}
 
-          {/* EXPENSE (unchanged) */}
+          {/* EXPENSE (wired to backend, rest unchanged) */}
           {voucherType === "expense" && (
             <>
               <div className="payx-grid2">
@@ -625,8 +747,17 @@ export default function PaymentModal({ open, onClose }) {
                     Select Party Name <span className="payx-req">*</span>
                   </label>
                   <div className="payx-selectwrap">
-                    <select className="payx-control">
-                      <option>Select Party</option>
+                    <select
+                      className="payx-control"
+                      value={expenseSupplierId}
+                      onChange={(e) => setExpenseSupplierId(e.target.value)}
+                    >
+                      <option value="">Select Party</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.company_name}
+                        </option>
+                      ))}
                     </select>
                     <button className="payx-caret" aria-label="More">
                       <span className="material-icons">arrow_drop_down</span>
@@ -638,8 +769,17 @@ export default function PaymentModal({ open, onClose }) {
                     Account <span className="payx-req">*</span>
                   </label>
                   <div className="payx-selectwrap">
-                    <select className="payx-control">
-                      <option>Search Account</option>
+                    <select
+                      className="payx-control"
+                      value={expenseAccountId}
+                      onChange={(e) => setExpenseAccountId(e.target.value)}
+                    >
+                      <option value="">Search Account</option>
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
                     </select>
                     <button className="payx-caret" aria-label="More">
                       <span className="material-icons">arrow_drop_down</span>
@@ -648,29 +788,97 @@ export default function PaymentModal({ open, onClose }) {
                 </div>
               </div>
 
+              {/* Date/Time + User */}
+              <div className="payx-grid2">
+                <div className="payx-field">
+                  <label>Date &amp; Time</label>
+                  <input
+                    className="payx-control"
+                    type="datetime-local"
+                    value={expenseDateTime}
+                    onChange={(e) => setExpenseDateTime(e.target.value)}
+                  />
+                </div>
+                <div className="payx-field">
+                  <label>User</label>
+                  <input
+                    className="payx-control"
+                    type="text"
+                    value={user?.username || user?.name || ""}
+                    disabled
+                  />
+                </div>
+              </div>
+
               <div className="payx-grid2">
                 <div className="payx-field">
                   <label>
                     Amount <span className="payx-req">*</span>
                   </label>
-                  <input className="payx-control" type="text" placeholder="Enter Amount" />
+                  <input
+                    className="payx-control"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter Amount"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                  />
                 </div>
                 <div className="payx-field payx-checkfield">
                   <label>&nbsp;</label>
                   <label className="payx-check">
-                    <input type="checkbox" /> <span>Non-GST</span>
+                    <input
+                      type="checkbox"
+                      checked={expenseNonGst}
+                      onChange={(e) => setExpenseNonGst(e.target.checked)}
+                    />{" "}
+                    <span>Non-GST</span>
                   </label>
                 </div>
               </div>
 
               <div className="payx-field">
                 <label>Remark</label>
-                <input className="payx-control" type="text" placeholder="Enter remark" />
+                <input
+                  className="payx-control"
+                  type="text"
+                  placeholder="Enter remark"
+                  value={expenseRemark}
+                  onChange={(e) => setExpenseRemark(e.target.value)}
+                />
               </div>
 
               <div className="payx-actions">
-                <button className="payx-btn">Save</button>
+                <button
+                  className="payx-btn"
+                  onClick={handleExpenseSave}
+                  disabled={savingExpense}
+                >
+                  {savingExpense ? "Saving..." : "Save"}
+                </button>
+                {savingExpense && (
+                  <span style={{ marginLeft: 12, fontSize: 12, opacity: 0.7 }}>
+                    Please wait...
+                  </span>
+                )}
               </div>
+
+              {expenseMsg && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: "6px 10px",
+                    borderRadius: 4,
+                    fontSize: 13,
+                    backgroundColor:
+                      expenseMsg.type === "success" ? "#e6ffed" : "#ffecec",
+                    color: expenseMsg.type === "success" ? "#0a7a26" : "#c00",
+                  }}
+                >
+                  {expenseMsg.text}
+                </div>
+              )}
             </>
           )}
         </div>

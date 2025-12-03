@@ -25,6 +25,8 @@ from .views_reports_masterpacking import master_packing_item_wise
 from .views_holdbills import HoldBillView, HoldBillRestore
 from .views_supplier import SupplierListCreateView
 from .views_accounts import AccountListCreateView, AccountDetailView
+from .views_expenses import ExpenseListCreateView, ExpenseDetailView
+
 
 
 router = DefaultRouter()
@@ -87,6 +89,10 @@ urlpatterns = [
         # Chart of Account
     path("accounts/", AccountListCreateView.as_view(), name="account-list-create"),
     path("accounts/<int:pk>/", AccountDetailView.as_view(), name="account-detail"),
+
+     # 🔵 Expenses
+    path("expenses/", ExpenseListCreateView.as_view(), name="expense-list-create"),
+    path("expenses/<int:pk>/", ExpenseDetailView.as_view(), name="expense-detail"),
 
 ]
 
