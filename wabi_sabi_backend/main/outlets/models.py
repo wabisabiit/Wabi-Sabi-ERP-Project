@@ -109,6 +109,7 @@ class LoginLog(models.Model):
     def __str__(self):
         return f"{self.username} @ {self.login_time:%Y-%m-%d %H:%M:%S}"
 
+
 class WowBillEntry(models.Model):
     """
     One WOW-Bill calculation row for a salesperson.
@@ -126,6 +127,16 @@ class WowBillEntry(models.Model):
         on_delete=models.PROTECT,
         related_name="wow_entries",
     )
+
+    # allow null for old rows, we'll always set it for new ones
+    customer = models.ForeignKey(
+        "products.Customer",
+        on_delete=models.PROTECT,
+        related_name="wow_entries",
+        null=True,
+        blank=True,
+    )
+    bill_date = models.DateField(null=True, blank=True)
 
     sale_amount = models.DecimalField(max_digits=12, decimal_places=2)
     wow_min_value = models.DecimalField(max_digits=12, decimal_places=2)
@@ -147,6 +158,15 @@ class WowBillEntry(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "customer", "bill_date"],
+                name="uniq_wowbill_emp_customer_date",
+            )
+        ]
 
     def __str__(self):
         return f"{self.employee} – WOW {self.wow_count} – ₹{self.total_payout}"
+
+
+    

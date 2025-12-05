@@ -145,6 +145,15 @@ class Sale(models.Model):
         (PAYMENT_COUPON, "Coupon"),
     ]
 
+    # 🔵 NEW: salesman (must be STAFF, enforced in serializer)
+    salesman = models.ForeignKey(
+        "outlets.Employee",
+        on_delete=models.PROTECT,
+        related_name="sales",
+        null=True,
+        blank=True,
+    )
+
     invoice_no       = models.CharField(max_length=32, unique=True, db_index=True)
     customer         = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="sales")
     store            = models.CharField(max_length=64, default="Wabi - Sabi")

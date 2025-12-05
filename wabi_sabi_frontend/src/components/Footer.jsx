@@ -1,11 +1,12 @@
 // src/components/Footer.jsx
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React,
+  {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+  } from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
 import {
@@ -166,7 +167,42 @@ export default function Footer({
       window.removeEventListener("storage", handleCust);
     };
   }, []);
-  const canPay = !!(currentCustomer && (currentCustomer.name || currentCustomer.phone));
+
+  // 🔵 Current salesman (selected in header; required for payment)
+  const [currentSalesman, setCurrentSalesman] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("pos.currentSalesman") || "null");
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e?.type === "storage") {
+        try {
+          setCurrentSalesman(
+            JSON.parse(localStorage.getItem("pos.currentSalesman") || "null")
+          );
+        } catch {
+          setCurrentSalesman(null);
+        }
+      } else if (e?.type === "pos:salesman") {
+        setCurrentSalesman(e.detail || null);
+      }
+    };
+    window.addEventListener("pos:salesman", handler);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener("pos:salesman", handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, []);
+
+  // ✅ Payment allowed only if customer AND salesman selected
+  const canPay =
+    !!(currentCustomer && (currentCustomer.name || currentCustomer.phone)) &&
+    !!currentSalesman;
 
   // Base after manual flat discount
   const baseAfterFlat = useMemo(() => {
@@ -290,10 +326,15 @@ export default function Footer({
         payments,
         store: "Wabi - Sabi",
         note: paymentDetails?.note || "",
+        // 🔵 send salesman to backend; required for WOW bill
+        salesman_id: currentSalesman?.id || null,
       };
 
       const res = await createSale(payload);
-      addToast(`Payment successful. Invoice: ${res?.invoice_no || "—"}`, "success");
+      addToast(
+        `Payment successful. Invoice: ${res?.invoice_no || "—"}`,
+        "success"
+      );
 
       if (creditUse?.noteNo && creditUse.amount > 0 && res?.invoice_no) {
         try {
@@ -427,7 +468,7 @@ export default function Footer({
         label === "Redeem Credit";
 
       if (isPaymentAction && !canPay) {
-        addToast("Select the customer first");
+        addToast("Select the customer and salesman first");
         return;
       }
 
@@ -710,7 +751,7 @@ export default function Footer({
                 }
                 title={
                   isPaymentBtn && !canPay
-                    ? "Select the customer first"
+                    ? "Select the customer and salesman first"
                     : ""
                 }
               >

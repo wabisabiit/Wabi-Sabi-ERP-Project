@@ -10,7 +10,19 @@ import { listEmployees } from "../api/client";
 
 function Header() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selected, setSelected] = useState("Select Salesman");
+
+  // ✅ default from localStorage so selection survives reload
+  const [selected, setSelected] = useState(() => {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem("pos.currentSalesman") || "null"
+      );
+      return saved?.name || "Select Salesman";
+    } catch {
+      return "Select Salesman";
+    }
+  });
+
   const [open, setOpen] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
   const [openProducts, setOpenProducts] = useState(false);
@@ -22,7 +34,7 @@ function Header() {
   const [rangeLabel, setRangeLabel] = useState("");
 
   // ---- Salesman data from API ----
-  const [salesmen, setSalesmen] = useState([]);        // [{id, name}]
+  const [salesmen, setSalesmen] = useState([]); // [{id, name}]
   const [empLoading, setEmpLoading] = useState(false);
   const [empError, setEmpError] = useState("");
 
@@ -36,14 +48,15 @@ function Header() {
         const rows = Array.isArray(res?.results)
           ? res.results
           : Array.isArray(res)
-            ? res
-            : [];
+          ? res
+          : [];
 
+        // ✅ only STAFF will show in dropdown
         const mapped = rows
+          .filter((e) => (e.role || "").toUpperCase() === "STAFF")
           .map((e) => {
             const u = e.user || {};
-            const full =
-              `${u.first_name || ""} ${u.last_name || ""}`.trim();
+            const full = `${u.first_name || ""} ${u.last_name || ""}`.trim();
             const name = full || u.username || "";
             return name ? { id: e.id, name } : null;
           })
@@ -51,9 +64,6 @@ function Header() {
 
         if (!cancelled) {
           setSalesmen(mapped);
-          if (mapped.length && selected === "Select Salesman") {
-            setSelected(mapped[0].name);
-          }
         }
       } catch (e) {
         if (!cancelled) {
@@ -153,7 +163,7 @@ function Header() {
           <div className="salesman">
             <label style={{ marginRight: 6, fontWeight: 500 }}>Salesman:</label>
 
-            {/* COLLISION-PROOF DROPDOWN */}
+            {/* Dropdown */}
             <div className="ws-dd" ref={dropdownRef}>
               <button
                 type="button"
@@ -180,9 +190,14 @@ function Header() {
                   />
 
                   {empLoading ? (
-                    <div className="ws-dd-loading" style={{ display: "flex", alignItems: "center", padding: "10px" }}>
+                    <div
+                      className="ws-dd-loading"
+                      style={{ display: "flex", alignItems: "center", padding: "10px" }}
+                    >
                       <div className="ws-dd-blue-spinner"></div>
-                      <span style={{ color: "#2563eb", fontWeight: 500 }}>Loading salesmen…</span>
+                      <span style={{ color: "#2563eb", fontWeight: 500 }}>
+                        Loading salesmen…
+                      </span>
                     </div>
                   ) : empError ? (
                     <div className="ws-dd-noresult">
@@ -202,6 +217,21 @@ function Header() {
                               setSelected(opt.name);
                               setSearchTerm("");
                               setOpen(false);
+
+                              // ✅ persist + broadcast selected salesman
+                              try {
+                                localStorage.setItem(
+                                  "pos.currentSalesman",
+                                  JSON.stringify(opt)
+                                );
+                              } catch {}
+                              try {
+                                window.dispatchEvent(
+                                  new CustomEvent("pos:salesman", {
+                                    detail: opt,
+                                  })
+                                );
+                              } catch {}
                             }}
                           >
                             {opt.name}

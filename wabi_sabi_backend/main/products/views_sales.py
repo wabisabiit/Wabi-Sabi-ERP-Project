@@ -112,7 +112,7 @@ class SalesView(APIView):
         )
 
     def post(self, request):
-        ser = SaleCreateSerializer(data=request.data)
+        ser = SaleCreateSerializer(data=request.data, context={"request": request})
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -120,7 +120,7 @@ class SalesView(APIView):
         extra = {}
         loc_code = _get_user_location_code(request)
         if loc_code and not request.user.is_superuser:
-            extra["store"] = loc_code   # change "store" if your field name is different
+            extra["store"] = loc_code
 
         with transaction.atomic():
             result = ser.save(**extra)
