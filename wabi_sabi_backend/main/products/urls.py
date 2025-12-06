@@ -26,6 +26,7 @@ from .views_holdbills import HoldBillView, HoldBillRestore
 from .views_supplier import SupplierListCreateView
 from .views_accounts import AccountListCreateView, AccountDetailView
 from .views_expenses import ExpenseListCreateView, ExpenseDetailView
+from .views_register import RegisterClosingView, RegisterClosingSummaryView
 
 
 
@@ -94,6 +95,9 @@ urlpatterns = [
     path("expenses/", ExpenseListCreateView.as_view(), name="expense-list-create"),
     path("expenses/<int:pk>/", ExpenseDetailView.as_view(), name="expense-detail"),
 
+        # 🔵 Register close (cash register closing)
+    path("register-closes/", RegisterClosingView.as_view(), name="register-close-list-create"),
+    path("register-closes/today-summary/", RegisterClosingSummaryView.as_view(), name="register-close-today-summary"),
 ]
 
 urlpatterns += router.urls

@@ -227,6 +227,10 @@ export default {
   createWowSlab,
   updateWowSlab,
   deleteWowSlab,
+
+  // Register closing
+  createRegisterClose,
+  getRegisterClosingSummary,
 };
 
 function sanitizeBarcode(v = "") {
@@ -784,4 +788,18 @@ export async function deleteWowSlab(id) {
   return http(`/wow-slabs/${id}/`, {
     method: "DELETE",
   });
+}
+
+// --- Register Closing (Close Register modal) ---
+export async function createRegisterClose(payload) {
+  // payload shape must match RegisterClosingSerializer
+  return http(`/register-closes/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getRegisterClosingSummary() {
+  // returns { date, total_sales, expense }
+  return http(`/register-closes/today-summary/`);
 }

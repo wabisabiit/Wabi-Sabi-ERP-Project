@@ -69,3 +69,26 @@
 @media (max-width: 980px){
   .rcm-content{ grid-template-columns:1fr; }
 }
+
+.rcm-header-loader {
+  position: absolute;
+  right: 56px;        /* sits before the X button */
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.rcm-spinner-blue {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #1e88e5;    /* blue */
+  border-top-color: transparent;
+  animation: rcm-spin-blue 0.7s linear infinite;
+}
+
+@keyframes rcm-spin-blue {
+  to {
+    transform: rotate(360deg);
+  }
+}

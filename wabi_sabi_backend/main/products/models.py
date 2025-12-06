@@ -810,3 +810,78 @@ class Expense(models.Model):
         return "HQ"
 
     created_by_location.short_description = "Created By"
+
+class RegisterClosing(models.Model):
+    """
+    One 'Close Register' submission per outlet (location).
+    Currency/denomination breakdown is NOT stored – only summary fields.
+    """
+
+    DRAWER_TOTAL = "TOTAL_CASH"
+    DRAWER_SHORT = "SHORT"
+    DRAWER_EXCESS = "EXCESS"
+
+    DRAWER_CHOICES = [
+        (DRAWER_TOTAL, "Total Cash"),
+        (DRAWER_SHORT, "Short"),
+        (DRAWER_EXCESS, "Excess"),
+    ]
+
+    # Which outlet / location this closing belongs to
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="register_closings",
+        null=True,
+        blank=True,
+    )
+
+    # Closing date + time (what you select in the modal)
+    closed_at = models.DateTimeField(default=timezone.now)
+
+    # LEFT PANEL AMOUNTS (all decimals)
+    opening_cash       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cash_payment       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cheque_payment     = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    card_payment       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    bank_transfer_payment = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    upi_payment        = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    wallet_payment     = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    sales_return       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cash_refund        = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    bank_refund        = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    credit_applied     = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    pay_later          = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    expense            = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    purchase_payment   = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_sales        = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # RIGHT PANEL FIELDS (no currency rows here)
+    bank_account           = models.CharField(max_length=120, blank=True, default="")
+    bank_transfer_register = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cash_flow              = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_cash_left        = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    physical_drawer = models.CharField(
+        max_length=16,
+        choices=DRAWER_CHOICES,
+        default=DRAWER_TOTAL,
+    )
+    closing_note = models.TextField(blank=True, default="")
+
+    # Who submitted this closing
+    created_by = models.ForeignKey(
+        "outlets.Employee",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="register_closings",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-closed_at", "-id"]
+
+    def __str__(self):
+        loc = getattr(self.location, "code", None) or getattr(self.location, "name", "") or "N/A"
+        return f"{loc} @ {self.closed_at:%Y-%m-%d %H:%M}"
