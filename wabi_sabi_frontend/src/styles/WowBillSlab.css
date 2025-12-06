@@ -1,0 +1,409 @@
+.wbs-root {
+  background: #f5f7fb;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+/* Top bar */
+.wbs-appbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.wbs-container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+
+.wbs-appbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wbs-titlewrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wbs-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+/* Buttons */
+.wbs-btn {
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  padding: 8px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.wbs-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.wbs-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.wbs-btn-outline {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+}
+
+.wbs-btn-outline:hover {
+  background: #f3f4f6;
+}
+
+.wbs-btn-ghost {
+  background: transparent;
+  border: 1px dashed #9ca3af;
+  color: #374151;
+}
+
+.wbs-btn-ghost:hover {
+  border-style: solid;
+  background: #f9fafb;
+}
+
+/* Main layout */
+.wbs-main {
+  padding-top: 16px;
+  padding-bottom: 32px;
+}
+
+.wbs-card {
+  background: transparent;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wbs-card.inner {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.wbs-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+/* Controls */
+.wbs-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.wbs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wbs-field label {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+/* Location width ~half of previous */
+.wbs-field-location {
+  flex: 0 0 50%;
+  max-width: 360px;
+}
+
+/* Select */
+.wbs-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+}
+
+.wbs-select select {
+  width: 100%;
+  padding: 10px 36px 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  font-size: 14px;
+  color: #111827;
+  appearance: none;
+}
+
+.wbs-select .material-icons {
+  position: absolute;
+  right: 10px;
+  font-size: 18px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* Amount rows block with horizontal scroll */
+.wbs-slabs-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.wbs-slabs-wrapper {
+  min-width: 520px;
+}
+
+.wbs-slabs-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 60px;
+  gap: 12px;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.wbs-slabs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 60px;
+  gap: 12px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.wbs-input input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  font-size: 14px;
+  color: #111827;
+}
+
+.wbs-input input::placeholder {
+  color: #9ca3af;
+}
+
+/* Right side of each amount row */
+.wbs-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wbs-row-index {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.wbs-icon-btn {
+  border: none;
+  background: #f3f4f6;
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.wbs-icon-btn .material-icons {
+  font-size: 18px;
+  color: #6b7280;
+}
+
+.wbs-icon-btn:hover {
+  background: #e5e7eb;
+}
+
+.wbs-icon-edit {
+  background: #facc15;
+}
+
+.wbs-icon-edit .material-icons {
+  color: #92400e;
+}
+
+.wbs-icon-delete {
+  background: #f97373;
+}
+
+.wbs-icon-delete .material-icons {
+  color: #7f1d1d;
+}
+
+/* Footer buttons */
+.wbs-controls-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* Error */
+.wbs-error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+/* Existing slabs table with horizontal scroll */
+.wbs-table-scroll {
+  overflow-x: auto;
+}
+
+.wbs-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.wbs-table th,
+.wbs-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.wbs-table th {
+  font-weight: 500;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+.wbs-table td {
+  color: #111827;
+}
+
+.wbs-empty {
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .wbs-container {
+    padding: 12px 16px;
+  }
+
+  .wbs-field-location {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .wbs-controls-footer {
+    justify-content: flex-start;
+  }
+}
+
+/* Re-use your existing tokens */
+:root {
+  --primary: #0db3f0;
+  /* keep other vars if you want, or they can come from your global CSS */
+}
+
+/* Buttons – match wbrc styles */
+.wbs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.wbs-btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.wbs-btn-outline {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: #fff;
+}
+
+.wbs-btn-ghost {
+  background: transparent;
+  border: 1px dashed var(--primary);
+  color: var(--primary);
+}
+
+.wbs-btn:hover {
+  filter: brightness(0.98);
+}
+
+/* Spinner overlay */
+.wbs-spinner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+}
+
+.wbs-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 4px solid #e5e7eb;
+  border-top-color: var(--primary);
+  animation: wbs-spin 0.8s linear infinite;
+}
+
+@keyframes wbs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Toast messages */
+.wbs-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+  font-size: 14px;
+  z-index: 99;
+  color: #fff;
+}
+
+.wbs-toast-success {
+  background: #16a34a;
+}
+
+.wbs-toast-error {
+  background: #dc2626;
+}

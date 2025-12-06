@@ -1,6 +1,6 @@
 # outlets/admin.py
 from django.contrib import admin
-from .models import Outlet, Employee,LoginLog, WowBillEntry
+from .models import Outlet, Employee,LoginLog, WowBillEntry,WowBillSlab
 
 @admin.register(Outlet)
 class OutletAdmin(admin.ModelAdmin):
@@ -56,3 +56,22 @@ class WowBillEntryAdmin(admin.ModelAdmin):
         if emp and emp.outlet_id:
             return qs.filter(outlet=emp.outlet)
         return qs.none()
+
+@admin.register(WowBillSlab)
+class WowBillSlabAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "outlet",
+        "min_amount",
+        "payout_per_wow",
+        "active",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("outlet", "active")
+    search_fields = (
+        "outlet__display_name",
+        "outlet__location__name",
+        "outlet__location__code",
+    )
+    ordering = ("outlet__location__code", "min_amount")

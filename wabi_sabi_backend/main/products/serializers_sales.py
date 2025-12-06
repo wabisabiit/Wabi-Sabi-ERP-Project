@@ -6,6 +6,7 @@ from rest_framework import serializers
 from django.utils import timezone
 from .models import Customer, Product, Sale, SaleLine
 from outlets.models import Employee, WowBillEntry
+from outlets.utils_wowbill import create_wow_entry_for_sale   # 👈 NEW IMPORT
 
 
 class CustomerInSerializer(serializers.Serializer):
@@ -151,38 +152,10 @@ class SaleCreateSerializer(serializers.Serializer):
             sale.grand_total = subtotal
             sale.save(update_fields=["subtotal", "discount_total", "grand_total"])
 
-            # 🔵 WOW BILL LOGIC (1 credit per customer per day)
+            # 🔵 WOW BILL LOGIC (now uses per-outlet slabs)
             if salesman is not None:
-                WOW_MIN_VALUE = Decimal("5000.00")   # threshold
-                WOW_PAYOUT    = Decimal("100.00")    # credit per qualifying day
-
-                sale_amount = sale.grand_total or Decimal("0.00")
-                if sale_amount >= WOW_MIN_VALUE:
-                    bill_date = timezone.localdate(sale.transaction_date)
-
-                    exists = WowBillEntry.objects.filter(
-                        employee=salesman,
-                        customer=customer,
-                        bill_date=bill_date,
-                    ).exists()
-
-                    if not exists:
-                        req = self.context.get("request")
-                        created_by = getattr(req, "user", None) if req and getattr(req, "user", None).is_authenticated else None
-
-                        WowBillEntry.objects.create(
-                            outlet=salesman.outlet,
-                            employee=salesman,
-                            customer=customer,
-                            bill_date=bill_date,
-                            sale_amount=sale_amount,
-                            wow_min_value=WOW_MIN_VALUE,
-                            payout_per_wow=WOW_PAYOUT,
-                            wow_count=1,               # exactly 1 per qualifying day
-                            total_payout=WOW_PAYOUT,
-                            exclude_returns=True,
-                            created_by=created_by,
-                        )
+                # uses salesman.outlet + sale.grand_total + customer/date
+                create_wow_entry_for_sale(sale)
 
         return {
             "invoice_no": sale.invoice_no,

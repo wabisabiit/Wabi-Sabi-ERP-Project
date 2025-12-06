@@ -110,6 +110,7 @@ const ReportProductWiseSales = lazy(() =>
   import("./components/ReportProductWiseSales")
 );
 const WowBillReport = lazy(() => import("./components/WowBillReport"));
+const WowBillSlab = lazy(() => import("./components/WowBillSlab"));
 const TaxWiseSalesSummaryPage = lazy(() =>
   import("./components/TaxWiseSalesSummaryPage")
 );
@@ -206,7 +207,7 @@ function POSLayout() {
     if (res?.invoice_no) {
       try {
         alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
-      } catch (_) {}
+      } catch (_) { }
     }
     setItems([]); // clear cart for next customer
   };
@@ -251,9 +252,9 @@ function POSLayout() {
           try {
             alert(
               payload.message ||
-                `${payload.number || "Hold bill"} restored into cart.`
+              `${payload.number || "Hold bill"} restored into cart.`
             );
-          } catch (_) {}
+          } catch (_) { }
         }
       })();
     };
@@ -288,7 +289,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -298,7 +299,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>
         {children}
       </div>
@@ -866,6 +867,16 @@ export default function App() {
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout>
                   <WowBillReport />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/wow-bill-slab"        // 👈 NEW ROUTE
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <WowBillSlab />
                 </SidebarLayout>
               </RoleRoute>
             }

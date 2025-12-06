@@ -1,8 +1,10 @@
 # outlets/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Outlet, Employee , LoginLog, WowBillEntry
+from .models import Outlet, Employee , LoginLog, WowBillEntry, WowBillSlab
 from taskmaster.models import Location
+
+
 
 class OutletSerializer(serializers.ModelSerializer):
     code = serializers.CharField(source="location.code", read_only=True)
@@ -126,6 +128,7 @@ class LoginLogSerializer(serializers.ModelSerializer):
             return obj.user.get_full_name()
         return obj.username
 
+
 class WowBillEntrySerializer(serializers.ModelSerializer):
     outlet_name = serializers.SerializerMethodField(read_only=True)
     employee_name = serializers.SerializerMethodField(read_only=True)
@@ -138,6 +141,8 @@ class WowBillEntrySerializer(serializers.ModelSerializer):
             "outlet_name",
             "employee",
             "employee_name",
+            "customer",       # 👈 NEW
+            "bill_date",      # 👈 NEW
             "sale_amount",
             "wow_min_value",
             "payout_per_wow",
@@ -164,3 +169,29 @@ class WowBillEntrySerializer(serializers.ModelSerializer):
             return ""
         full = (user.get_full_name() or "").strip()
         return full or user.username
+class WowBillSlabSerializer(serializers.ModelSerializer):
+    outlet_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = WowBillSlab
+        fields = [
+            "id",
+            "outlet",
+            "outlet_name",
+            "min_amount",
+            "payout_per_wow",
+            "active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
+
+    def get_outlet_name(self, obj):
+        if obj.outlet.display_name:
+            return obj.outlet.display_name
+        loc = getattr(obj.outlet, "location", None)
+        if loc and loc.name:
+            return loc.name
+        if loc and loc.code:
+            return loc.code
+        return ""

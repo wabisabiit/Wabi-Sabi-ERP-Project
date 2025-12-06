@@ -1,75 +1,36 @@
 // src/components/WowBillReport.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   listOutlets,
   listEmployees,
   listWowBills,
-  createWowBill,
 } from "../api/client";
 import "../styles/WowBillReport.css";
 
-/**
- * Excel-style WOW slab:
- * Location -> { WOW Bill Amount : Rate }
- */
-const WOW_SLABS = {
-  "Rajori Garden": {
-    25000: 400,
-    15000: 200,
-    8000: 100,
-  },
-  "Rajori Outside": {
-    10000: 200,
-    7000: 150,
-    3500: 100,
-  },
-  "Tilak Nagar": {
-    8000: 100,
-    15000: 200,
-    25000: 400,
-  },
-  "Iffco Chowk": {
-    15000: 350,
-    10000: 200,
-    5000: 100,
-  },
-  "Urbana M3M": {
-    25000: 400,
-    15000: 200,
-    7000: 100,
-  },
-  "Udyog Vihar": {
-    20000: 300,
-    12000: 200,
-    6000: 100,
-  },
-  "Ansal Plaza": {
-    20000: 300,
-    12000: 200,
-    6000: 100,
-  },
-};
-
 export default function WowBillReportCore() {
-  // ---------- Location + Salesperson ----------
+  const navigate = useNavigate();
+
+  // ---------- Location + employees ----------
   const [outlets, setOutlets] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [locationId, setLocationId] = useState("");
-  const [salespersonId, setSalespersonId] = useState("");
 
   const [loadingOutlets, setLoadingOutlets] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [loadingRows, setLoadingRows] = useState(false);
 
-  // ---------- WOW controls ----------
-  // (no Total Sale Amount now)
-  const [wowMin, setWowMin] = useState("1000"); // WOW Min Value (₹)
-  const [payoutPerWow, setPayoutPerWow] = useState("100"); // Payout / WOW (₹)
-  const [excludeReturns, setExcludeReturns] = useState(true);
+  // ---------- Date range controls ----------
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Exclude returns toggle (kept for future logic)
+  const [excludeReturns] = useState(true);
 
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
 
-  // ---------- Load outlets + ALL employees on mount ----------
+  // ---------- Load outlets + employees on mount ----------
   useEffect(() => {
     async function loadOutletsAndEmployees() {
       setLoadingOutlets(true);
@@ -101,44 +62,7 @@ export default function WowBillReportCore() {
     loadOutletsAndEmployees();
   }, []);
 
-  // ---------- Load WOW rows (optionally filtered by location) ----------
-  useEffect(() => {
-    async function loadRows() {
-      try {
-        const params = {};
-        if (locationId) params.outlet = locationId;
-        const data = await listWowBills(params);
-        const arr = Array.isArray(data) ? data : data.results || data.data || [];
-        setRows(arr);
-      } catch (err) {
-        console.error(err);
-        setError("Unable to load WOW entries.");
-      }
-    }
-    loadRows();
-  }, [locationId]);
-
   // ---------- Helpers ----------
-  // default: show ALL employees; when location selected, filter by outlet
-  const filteredEmployees = useMemo(() => {
-    if (!locationId) return employees;
-    return employees.filter((e) => String(e.outlet) === String(locationId));
-  }, [employees, locationId]);
-
-  // ensure selected salesperson is valid whenever filter changes
-  useEffect(() => {
-    if (!filteredEmployees.length) {
-      setSalespersonId("");
-      return;
-    }
-    if (
-      !salespersonId ||
-      !filteredEmployees.some((e) => String(e.id) === String(salespersonId))
-    ) {
-      setSalespersonId(String(filteredEmployees[0].id));
-    }
-  }, [filteredEmployees]); // eslint-disable-line react-hooks/exhaustive-deps
-
   function getOutletLabel(o) {
     if (!o) return "";
     if (o.display_name) return o.display_name;
@@ -147,7 +71,8 @@ export default function WowBillReportCore() {
     return "";
   }
 
-  function getEmployeeName(emp) {
+  function getEmployeeNameById(empId) {
+    const emp = employees.find((e) => String(e.id) === String(empId));
     if (!emp) return "";
     const first = emp.user?.first_name || "";
     const last = emp.user?.last_name || "";
@@ -155,84 +80,52 @@ export default function WowBillReportCore() {
     return full || emp.user?.username || "";
   }
 
-  const selectedOutlet = outlets.find(
-    (o) => String(o.id) === String(locationId)
-  );
-  const selectedEmployee = filteredEmployees.find(
-    (e) => String(e.id) === String(salespersonId)
-  );
-
-  // ---------- Auto-fill payout from Excel slab ----------
-  useEffect(() => {
-    if (!selectedOutlet) return;
-
-    const locName =
-      selectedOutlet?.location?.name ||
-      selectedOutlet?.display_name ||
-      selectedOutlet?.location?.code ||
-      "";
-
-    const slabs = WOW_SLABS[locName];
-    const amount = Number(wowMin || 0);
-
-    if (slabs && amount && slabs[amount]) {
-      setPayoutPerWow(String(slabs[amount]));
-    }
-    // if amount not found in slab, we keep whatever is already in payoutPerWow
-  }, [wowMin, selectedOutlet]);
-
-  // ---------- Submit handler ----------
+  // ---------- Submit = load WOW rows for location + date range ----------
   async function handleSubmit() {
     setError("");
-
-    const wow = Number(wowMin || 0);
-    const payout = Number(payoutPerWow || 0);
 
     if (!locationId) {
       setError("Please select a location.");
       return;
     }
-    if (!salespersonId) {
-      setError("Please select a salesperson.");
-      return;
-    }
-    if (!wow || !payout) {
-      setError("WOW Min Value and payout/WOW are required.");
+    if (!dateFrom || !dateTo) {
+      setError("Please select both Date From and Date To.");
       return;
     }
 
-    // We don't have Total Sale Amount on UI, so we use wowMin as the sale
-    // so that wow_count becomes 1 in the backend formula.
-    const sale = wow;
-
+    setLoadingRows(true);
     try {
-      const payload = {
-        outlet: Number(locationId),
-        employee: Number(salespersonId),
-        sale_amount: String(sale),
-        wow_min_value: String(wow),
-        payout_per_wow: String(payout),
-        exclude_returns: excludeReturns,
+      const params = {
+        outlet: locationId,
+        date_from: dateFrom,
+        date_to: dateTo,
       };
-
-      const saved = await createWowBill(payload);
-
-      // append new row returned by backend
-      setRows((prev) => [...prev, saved]);
+      const data = await listWowBills(params);
+      const arr = Array.isArray(data)
+        ? data
+        : data.results || data.data || [];
+      setRows(arr);
     } catch (err) {
       console.error(err);
-      setError("Failed to save WOW entry.");
+      setError("Failed to load WOW bill report for this range.");
+    } finally {
+      setLoadingRows(false);
     }
   }
 
   // ---------- Summary per salesperson ----------
   const summary = useMemo(() => {
     const map = new Map();
+
     rows.forEach((row) => {
+      // only rows of the selected outlet
+      if (locationId && String(row.outlet) !== String(locationId)) {
+        return;
+      }
+
       const key = row.employee; // employee id
-      const empObj = employees.find((e) => e.id === row.employee);
       const salesperson =
-        row.employee_name || (empObj && getEmployeeName(empObj)) || "";
+        row.employee_name || getEmployeeNameById(row.employee);
 
       if (!map.has(key)) {
         map.set(key, {
@@ -242,26 +135,49 @@ export default function WowBillReportCore() {
           totalPayout: 0,
         });
       }
+
       const rec = map.get(key);
       const wowCount = Number(row.wow_count || 0);
       const totalPayout = Number(row.total_payout || 0);
       const payoutPerWow = Number(row.payout_per_wow || 0);
 
+      // WOW Count = total WOWs in the period for that staff
       rec.wowCount += Number.isFinite(wowCount) ? wowCount : 0;
-      rec.totalPayout += Number.isFinite(totalPayout) ? totalPayout : 0;
-      if (payoutPerWow) rec.payoutPerWow = payoutPerWow;
+
+      // Total Payout = sum across all WOW entries
+      rec.totalPayout += Number.isFinite(totalPayout)
+        ? totalPayout
+        : 0;
+
+      // Payout / WOW: same rate, keep last non-zero
+      if (Number.isFinite(payoutPerWow) && payoutPerWow > 0) {
+        rec.payoutPerWow = payoutPerWow;
+      }
     });
+
     return Array.from(map.values());
-  }, [rows, employees]);
+  }, [rows, employees, locationId]);
 
   const grandTotal = summary.reduce(
-    (sum, r) => sum + (Number.isFinite(r.totalPayout) ? r.totalPayout : 0),
+    (sum, r) =>
+      sum + (Number.isFinite(r.totalPayout) ? r.totalPayout : 0),
     0
   );
+
+  const initialLoading =
+    (loadingOutlets || loadingEmployees) && outlets.length === 0;
 
   // ---------- UI ----------
   return (
     <div className="wbrc-root">
+      {/* Global overlay spinner while first data load */}
+      {initialLoading && (
+        <div className="wbrc-loading-overlay">
+          <div className="wbrc-spinner" />
+          <span>Loading data...</span>
+        </div>
+      )}
+
       {/* Top app bar */}
       <div className="wbrc-appbar">
         <div className="wbrc-container">
@@ -276,6 +192,15 @@ export default function WowBillReportCore() {
                 home
               </span>
             </div>
+
+            {/* ➕ Create New button – goes to Wow Bill Slab page */}
+            <button
+              type="button"
+              className="wbrc-btn wbrc-btn-primary"
+              onClick={() => navigate("/reports/wow-bill-slab")}
+            >
+              Create New
+            </button>
           </div>
         </div>
       </div>
@@ -297,7 +222,7 @@ export default function WowBillReportCore() {
                     onChange={(e) => setLocationId(e.target.value)}
                     disabled={loadingOutlets}
                   >
-                    <option value="">All locations</option>
+                    <option value="">Select location</option>
                     {outlets.map((o) => (
                       <option key={o.id} value={o.id}>
                         {getOutletLabel(o)}
@@ -308,72 +233,59 @@ export default function WowBillReportCore() {
                 </div>
               </div>
 
-              {/* Salesperson (default: all employees; filtered by location) */}
+              {/* Date From */}
               <div className="wbrc-field">
-                <label>Salesperson</label>
-                <div className="wbrc-select">
-                  <select
-                    value={salespersonId}
-                    onChange={(e) => setSalespersonId(e.target.value)}
-                    disabled={loadingEmployees || !filteredEmployees.length}
-                  >
-                    {!filteredEmployees.length && (
-                      <option value="">No employees</option>
-                    )}
-                    {filteredEmployees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {getEmployeeName(emp)}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="material-icons">expand_more</span>
-                </div>
-              </div>
-
-              {/* WOW Min Value */}
-              <div className="wbrc-field">
-                <label>WOW Min Value (₹)</label>
+                <label>Date From</label>
                 <div className="wbrc-input">
                   <input
-                    value={wowMin}
-                    onChange={(e) =>
-                      setWowMin(e.target.value.replace(/[^0-9]/g, ""))
-                    }
-                    inputMode="numeric"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
                   />
                 </div>
               </div>
 
-              {/* Payout / WOW + Submit button */}
+              {/* Date To + Submit */}
               <div className="wbrc-field">
-                <label>Payout / WOW (₹)</label>
+                <label>Date To</label>
                 <div className="wbrc-input wbrc-input-submit">
                   <input
-                    value={payoutPerWow}
-                    onChange={(e) =>
-                      setPayoutPerWow(e.target.value.replace(/[^0-9]/g, ""))
-                    }
-                    inputMode="numeric"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
                   />
                   <button
                     type="button"
                     className="wbrc-btn wbrc-btn-primary wbrc-submit-btn"
                     onClick={handleSubmit}
+                    disabled={
+                      loadingRows || loadingOutlets || loadingEmployees
+                    }
                   >
-                    Submit
+                    {loadingRows ? (
+                      <>
+                        <span className="wbrc-btn-spinner" />
+                        <span>Loading...</span>
+                      </>
+                    ) : (
+                      "Submit"
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* Exclude returns */}
-              <label className="wbrc-check">
-                <input
-                  type="checkbox"
-                  checked={excludeReturns}
-                  onChange={(e) => setExcludeReturns(e.target.checked)}
-                />
-                <span>Exclude returns</span>
-              </label>
+              {/* Exclude returns (visual only for now) */}
+              <div className="wbrc-field">
+                <label>&nbsp;</label>
+                <label className="wbrc-check">
+                  <input
+                    type="checkbox"
+                    checked={excludeReturns}
+                    readOnly
+                  />
+                  <span>Exclude returns</span>
+                </label>
+              </div>
             </div>
 
             {error && <div className="wbrc-error">{error}</div>}
@@ -381,7 +293,9 @@ export default function WowBillReportCore() {
 
           {/* Summary card */}
           <div className="wbrc-card inner">
-            <div className="wbrc-section-title">Summary (Per Salesperson)</div>
+            <div className="wbrc-section-title">
+              Summary (Per Salesperson)
+            </div>
 
             <div className="wbrc-grid-table">
               <div className="wbrc-row wbrc-head">
@@ -391,24 +305,44 @@ export default function WowBillReportCore() {
                 <div>Total Payout (₹)</div>
               </div>
 
-              {/* Only ~3 rows visible with scroll for more */}
               <div
                 className="wbrc-table-body"
                 style={{ maxHeight: "180px", overflowY: "auto" }}
               >
-                {summary.map((r, idx) => (
-                  <div key={idx} className="wbrc-row">
-                    <div>{r.salesperson}</div>
-                    <div>{r.wowCount}</div>
-                    <div>{r.payoutPerWow}</div>
-                    <div>{r.totalPayout}</div>
+                {loadingRows && (
+                  <div className="wbrc-row">
+                    <div>Loading...</div>
+                    <div />
+                    <div />
+                    <div />
                   </div>
-                ))}
+                )}
+
+                {!loadingRows && summary.length === 0 && (
+                  <div className="wbrc-row">
+                    <div>No data for this filter.</div>
+                    <div />
+                    <div />
+                    <div />
+                  </div>
+                )}
+
+                {!loadingRows &&
+                  summary.map((r, idx) => (
+                    <div key={idx} className="wbrc-row">
+                      <div>{r.salesperson}</div>
+                      <div>{r.wowCount}</div>
+                      <div>{r.payoutPerWow}</div>
+                      <div>{r.totalPayout}</div>
+                    </div>
+                  ))}
               </div>
 
               <div className="wbrc-grand">
                 <div>Grand Total</div>
-                <div className="wbrc-grand-value">{grandTotal}</div>
+                <div className="wbrc-grand-value">
+                  {grandTotal}
+                </div>
               </div>
             </div>
           </div>

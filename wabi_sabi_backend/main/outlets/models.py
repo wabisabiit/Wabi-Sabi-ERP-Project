@@ -169,4 +169,43 @@ class WowBillEntry(models.Model):
         return f"{self.employee} – WOW {self.wow_count} – ₹{self.total_payout}"
 
 
+class WowBillSlab(models.Model):
+    """
+    Admin-defined WOW slab for a location (outlet).
+    Example rows:
+      outlet = Tilak Nagar, min_amount = 8000, payout_per_wow = 100
+    """
+
+    outlet = models.ForeignKey(
+        Outlet,
+        on_delete=models.CASCADE,
+        related_name="wow_slabs",
+    )
+    min_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payout_per_wow = models.DecimalField(max_digits=12, decimal_places=2)
+
+    active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wowbill_slabs",
+    )
+
+    class Meta:
+        ordering = ["outlet__location__code", "min_amount"]
+        constraints = [
+            # same outlet + same min_amount only once
+            models.UniqueConstraint(
+                fields=["outlet", "min_amount"],
+                name="uniq_wowbill_slab_per_outlet_amount",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.outlet} ≥ {self.min_amount} → ₹{self.payout_per_wow}"
     

@@ -221,6 +221,12 @@ export default {
   listExpenses,
   createExpense,
   deleteExpense,
+
+  // WOW slabs
+  listWowSlabs,
+  createWowSlab,
+  updateWowSlab,
+  deleteWowSlab,
 };
 
 function sanitizeBarcode(v = "") {
@@ -633,6 +639,8 @@ export async function listWowBills(params = {}) {
   const sp = new URLSearchParams();
   if (params.outlet) sp.append("outlet", params.outlet);
   if (params.employee) sp.append("employee", params.employee);
+  if (params.date_from) sp.append("date_from", params.date_from); // 👈 NEW
+  if (params.date_to)   sp.append("date_to", params.date_to);
   const qs = sp.toString();
   return http(`/wow-bills/${qs ? `?${qs}` : ""}`);
 }
@@ -747,4 +755,33 @@ export async function createExpense(payload) {
 // Delete expense
 export async function deleteExpense(id) {
   return http(`/expenses/${id}/`, { method: "DELETE" });
+}
+
+// --- WOW Bill Slabs (admin) ---
+export async function listWowSlabs(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.outlet) sp.append("outlet", params.outlet);
+  const qs = sp.toString();
+  return http(`/wow-slabs/${qs ? `?${qs}` : ""}`);
+}
+
+export async function createWowSlab(payload) {
+  // { outlet, min_amount, payout_per_wow, active? }
+  return http(`/wow-slabs/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateWowSlab(id, payload) {
+  return http(`/wow-slabs/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteWowSlab(id) {
+  return http(`/wow-slabs/${id}/`, {
+    method: "DELETE",
+  });
 }

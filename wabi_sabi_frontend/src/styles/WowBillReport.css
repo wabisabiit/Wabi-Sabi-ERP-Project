@@ -188,3 +188,54 @@
 }
 
 /* Download dropdown (already present earlier) remains the same */
+
+.wbrc-btn{
+  /* ... */
+  border:1px solid #0db3f0;
+  background:#fff;
+  color:#0db3f0;
+}
+
+.wbrc-btn-primary{
+  background:#0db3f0;
+  color:#fff;
+  border-color:#0db3f0;
+}
+
+/* ---------- Loading / Spinners ---------- */
+
+.wbrc-loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  z-index: 80;
+  pointer-events: none;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.wbrc-spinner,
+.wbrc-btn-spinner {
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.5);
+  border-top-color: var(--primary);
+  width: 18px;
+  height: 18px;
+  animation: wbrc-spin 0.7s linear infinite;
+}
+
+.wbrc-btn-spinner {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+}
+
+@keyframes wbrc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
