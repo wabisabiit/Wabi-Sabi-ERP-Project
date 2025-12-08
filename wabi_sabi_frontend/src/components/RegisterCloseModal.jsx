@@ -57,7 +57,7 @@ export default function RegisterCloseModal({
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [loadingSummary, setLoadingSummary] = useState(false); // 👈 NEW
+  const [loadingSummary, setLoadingSummary] = useState(false); // spinner for auto data
 
   const okRef = useRef(null);
 
@@ -115,20 +115,23 @@ export default function RegisterCloseModal({
     document.body.style.overflow = "hidden";
     setTimeout(() => okRef.current?.focus(), 0);
 
-    // 🔵 Fetch today's real totals (sales + expense)
+    // 🔵 Fetch today's real totals (sales + expense + per payment mode)
     (async () => {
       try {
-        setLoadingSummary(true); // 👈 NEW
+        setLoadingSummary(true);
         const data = await getRegisterClosingSummary();
         setSummary((prev) => ({
           ...prev,
           totalSales: String(data?.total_sales ?? prev.totalSales ?? 0),
           expense: String(data?.expense ?? prev.expense ?? 0),
+          cashPayment: String(data?.cash_payment ?? prev.cashPayment ?? 0),
+          cardPayment: String(data?.card_payment ?? prev.cardPayment ?? 0),
+          upiPayment: String(data?.upi_payment ?? prev.upiPayment ?? 0),
         }));
       } catch (err) {
         console.error("Failed to load register summary", err);
       } finally {
-        setLoadingSummary(false); // 👈 NEW
+        setLoadingSummary(false);
       }
     })();
 
@@ -217,7 +220,7 @@ export default function RegisterCloseModal({
         <div className="rcm-header">
           <h3 className="rcm-title">{title}</h3>
 
-          {/* 👇 NEW small blue spinner while data loads */}
+          {/* small blue spinner while summary data loads */}
           {loadingSummary && (
             <div className="rcm-header-loader">
               <span className="rcm-spinner-blue" />

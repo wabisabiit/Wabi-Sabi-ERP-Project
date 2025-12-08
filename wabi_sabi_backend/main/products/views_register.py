@@ -73,7 +73,10 @@ class RegisterClosingSummaryView(APIView):
     {
       "date": "2025-12-06",
       "total_sales": "24000.00",
-      "expense": "500.00"
+      "expense": "500.00",
+      "cash_payment": "10000.00",
+      "card_payment": "8000.00",
+      "upi_payment": "6000.00"
     }
     """
 
@@ -90,11 +93,26 @@ class RegisterClosingSummaryView(APIView):
         # --- Sales for today (this outlet only) ---
         sales_qs = Sale.objects.filter(transaction_date__date=today)
         if loc is not None and loc.code:
-            # store field stores location code for outlet users
             sales_qs = sales_qs.filter(store__icontains=loc.code)
 
-        sales_total = sales_qs.aggregate(total=Sum("grand_total"))["total"] or Decimal(
-            "0.00"
+        # overall total
+        sales_total = sales_qs.aggregate(total=Sum("grand_total"))["total"] or Decimal("0.00")
+
+        # per payment method
+        cash_total = (
+            sales_qs.filter(payment_method=Sale.PAYMENT_CASH)
+            .aggregate(total=Sum("grand_total"))["total"]
+            or Decimal("0.00")
+        )
+        card_total = (
+            sales_qs.filter(payment_method=Sale.PAYMENT_CARD)
+            .aggregate(total=Sum("grand_total"))["total"]
+            or Decimal("0.00")
+        )
+        upi_total = (
+            sales_qs.filter(payment_method=Sale.PAYMENT_UPI)
+            .aggregate(total=Sum("grand_total"))["total"]
+            or Decimal("0.00")
         )
 
         # --- Expenses for today (this outlet only) ---
@@ -102,15 +120,16 @@ class RegisterClosingSummaryView(APIView):
         if loc is not None:
             exp_qs = exp_qs.filter(created_by__outlet__location=loc)
 
-        expense_total = exp_qs.aggregate(total=Sum("amount"))["total"] or Decimal(
-            "0.00"
-        )
+        expense_total = exp_qs.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
 
         return Response(
             {
                 "date": str(today),
                 "total_sales": str(sales_total),
                 "expense": str(expense_total),
+                "cash_payment": str(cash_total),
+                "card_payment": str(card_total),
+                "upi_payment": str(upi_total),
             },
             status=status.HTTP_200_OK,
         )

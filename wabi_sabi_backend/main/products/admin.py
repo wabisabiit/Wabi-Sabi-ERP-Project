@@ -6,6 +6,7 @@ from .models import MasterPack, MasterPackLine
 from .models import (
     MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,Coupon, GeneratedCoupon
 )
+from .models import RegisterClosing
 from .models import Discount,Expense
 
 
@@ -228,4 +229,25 @@ class ExpenseAdmin(admin.ModelAdmin):
         "supplier__company_name",
         "account__name",
         "remark",
+    )
+
+@admin.register(RegisterClosing)
+class RegisterClosingAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "closed_at",
+        "location",
+        "opening_cash",
+        "total_sales",
+        "expense",
+        "total_cash_left",
+        "physical_drawer",
+        "created_by",
+    )
+    list_filter = ("location", "physical_drawer", "closed_at")
+    date_hierarchy = "closed_at"
+    search_fields = (
+        "location__name",
+        "location__code",
+        "created_by__user__username",
     )
