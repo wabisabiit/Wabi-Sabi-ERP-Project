@@ -7,7 +7,7 @@ from .models import (
     MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,Coupon, GeneratedCoupon
 )
 from .models import RegisterClosing
-from .models import Discount,Expense
+from .models import Discount,Expense,HoldBill,HoldBillLine,HoldBillSequence
 
 
 @admin.register(Product)
@@ -251,3 +251,19 @@ class RegisterClosingAdmin(admin.ModelAdmin):
         "location__code",
         "created_by__user__username",
     )
+
+@admin.register(HoldBill)
+class HoldBillAdmin(admin.ModelAdmin):
+    list_display = (
+        "number",
+        "location",
+        "customer_name",
+        "customer_phone",
+        "is_active",
+        "created_at",
+        "created_by",
+    )
+    list_filter = ("location", "is_active", "created_at")
+    date_hierarchy = "created_at"
+    search_fields = ("number", "customer_name", "customer_phone")
+    
