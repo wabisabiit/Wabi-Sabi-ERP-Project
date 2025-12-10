@@ -55,13 +55,13 @@ export default function Login() {
 
         <form className="fx-form" onSubmit={submit} noValidate>
           <label className="fx-field">
-            <span>Email</span>
+            <span>User Name</span>
             <input
               className="fx-input"
               type="text"
               name="username"
               autoComplete="username"
-              placeholder="you@company.com"
+              placeholder="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -76,7 +76,7 @@ export default function Login() {
                 type={show ? "text" : "password"}
                 name="password"
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
