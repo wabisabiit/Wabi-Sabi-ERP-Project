@@ -5,7 +5,7 @@ import "../styles/BarcodeUtility2Page.css";
 import { getItemByCode } from "../api/client";
 
 /* ---------------- Backend locations (KEEP) ---------------- */
-const API = "http://127.0.0.1:8000/api";
+const API = "http://64.227.135.159/api";
 async function listLocations() {
   const res = await fetch(`${API}/locations/`, { credentials: "include" });
   if (!res.ok) throw new Error("Failed to load locations");
