@@ -2,15 +2,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/BarcodeUtility2Page.css";
-import { getItemByCode } from "../api/client";
+
+// ❌ OLD (kept)
+// import { getItemByCode } from "../api/client";
+
+// ✅ NEW: use shared listLocations from client
+import { getItemByCode, listLocations } from "../api/client";
 
 /* ---------------- Backend locations (KEEP) ---------------- */
-const API = "http://64.227.135.159/api";
-async function listLocations() {
-  const res = await fetch(`${API}/locations/`, { credentials: "include" });
-  if (!res.ok) throw new Error("Failed to load locations");
-  return res.json(); // [{code,name}]
-}
+
+// ❌ OLD (kept, but commented)
+// const API = "http://64.227.135.159/api";
+// async function listLocations() {
+//   const res = await fetch(`${API}/locations/`, { credentials: "include" });
+//   if (!res.ok) throw new Error("Failed to load locations");
+//   return res.json(); // [{code,name}]
+// }
 
 /* ---------------- Common size options (from Code2) ---------------- */
 const SIZE_OPTIONS = [
