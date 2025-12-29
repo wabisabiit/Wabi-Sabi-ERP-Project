@@ -20,7 +20,7 @@ urlpatterns = [
     path("login-logs/", LoginLogListView.as_view(), name="login-log-list"),
 
      # 🔵 WOW Bill entries
-    path("wow-bills/", WowBillEntryListCreateView.as_view(), name="wowbill-list-create"),
+    #path("wow-bills/", WowBillEntryListCreateView.as_view(), name="wowbill-list-create"),
 
     # WOW entries
     path("wow-bills/", WowBillEntryListCreateView.as_view(), name="wowbill-list-create"),

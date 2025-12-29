@@ -1,7 +1,20 @@
 // src/api/client.js
 
 /* ========= TaskItem lookup (used on Image-1) ========= */
-const BASE = "http://localhost:8000"; // if frontend is proxied to Django, you can set ""
+
+// ❌ OLD (kept for dev reference)
+// const BASE = "http://localhost:8000"; // if frontend is proxied to Django, you can set ""
+
+// ✅ NEW (works in dev + production)
+// - dev: http://localhost:8000
+// - prod: http://64.227.135.159   (same origin)
+const DEV_BACKEND_ORIGIN = "http://localhost:8000";
+const PROD_BACKEND_ORIGIN =
+  (typeof window !== "undefined" && window.location?.origin)
+    ? window.location.origin
+    : "http://64.227.135.159";
+
+const BASE = (import.meta?.env?.DEV ? DEV_BACKEND_ORIGIN : PROD_BACKEND_ORIGIN);
 
 export async function getItemByCode(code) {
   // DRF endpoint: /api/taskitems/<item_code>/
@@ -27,12 +40,31 @@ export async function getItemByCode(code) {
 }
 
 /* ========= Generic JSON HTTP helper (used by Product APIs) ========= */
-const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8000/api";
+
+// ❌ OLD (kept for reference)
+// const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8000/api";
+
+// ✅ NEW:
+// - If VITE_API_BASE exists -> use it
+// - Dev -> http://localhost:8000/api
+// - Prod -> http://64.227.135.159/api (same origin)
+const API_BASE =
+  import.meta?.env?.VITE_API_BASE ||
+  (import.meta?.env?.DEV
+    ? `${DEV_BACKEND_ORIGIN}/api`
+    : `${PROD_BACKEND_ORIGIN}/api`);
 
 // Minimal cookie reader for CSRF (only needed with SessionAuthentication)
 function getCookie(name) {
   const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
   return m ? decodeURIComponent(m.pop()) : "";
+}
+
+// ✅ NEW: safe join to avoid double slashes issues
+function joinUrl(base, path) {
+  const b = String(base || "").replace(/\/+$/, "");
+  const p = String(path || "");
+  return p.startsWith("/") ? `${b}${p}` : `${b}/${p}`;
 }
 
 async function http(path, opts = {}) {
@@ -49,7 +81,7 @@ async function http(path, opts = {}) {
     if (csrftoken) headers["X-CSRFToken"] = csrftoken;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(joinUrl(API_BASE, path), {
     credentials: "include", // send cookies if you’re using SessionAuth
     ...opts,
     headers,
