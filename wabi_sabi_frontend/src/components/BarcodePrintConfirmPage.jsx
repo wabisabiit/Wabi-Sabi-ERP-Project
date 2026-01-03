@@ -2,35 +2,13 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/BarcodePrintConfirmPage.css";
-import { upsertProductsFromBarcodes } from "../api/client";
 
-/* Backend helpers */
-const API = "http://127.0.0.1:8000/api";
-
-async function fetchJSON(url, opts = {}) {
-  const res = await fetch(url, {
-    credentials: "include",
-    ...opts,
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText} – ${text || "request failed"}`);
-  }
-  if (res.status === 204) return null;
-  return res.json();
-}
-
-async function listLocations() {
-  return fetchJSON(`${API}/locations/`);
-}
-
-async function printBarcodes(payload) {
-  return fetchJSON(`${API}/products/print-barcodes/`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
+// ✅ CHANGED: use shared API helpers from client.js (so CSRF + credentials work in production)
+import {
+  upsertProductsFromBarcodes,
+  listLocations,
+  printBarcodes,
+} from "../api/client";
 
 /* Column order for paste/keyboard nav (S.No excluded) */
 const COLS = [
@@ -137,7 +115,9 @@ export default function BarcodePrintConfirmPage() {
   const updateCell = (rowId, key, val) => {
     setExcelRows((prev) =>
       prev.map((r) =>
-        r._id === rowId ? { ...r, [key]: NUM_FIELDS.has(key) ? asNum(val) : val } : r
+        r._id === rowId
+          ? { ...r, [key]: NUM_FIELDS.has(key) ? asNum(val) : val }
+          : r
       )
     );
   };
@@ -330,10 +310,7 @@ export default function BarcodePrintConfirmPage() {
 
         if (errs.length) {
           console.warn("bulk-upsert errors:", errs);
-          showToast(
-            "error",
-            `Barcode save completed with ${errs.length} error(s).`
-          );
+          showToast("error", `Barcode save completed with ${errs.length} error(s).`);
         } else {
           // ✅ success popup (light green)
           showToast("success", "Barcode created successfully.");
@@ -387,10 +364,7 @@ export default function BarcodePrintConfirmPage() {
         showToast("success", "Stock transfer created successfully.");
         console.log("Stock Transfer numbers:", results);
       } else {
-        showToast(
-          "error",
-          "No stock transfer created (no location or barcodes)."
-        );
+        showToast("error", "No stock transfer created (no location or barcodes).");
       }
     } catch (e) {
       console.error("STF create failed:", e);
@@ -417,13 +391,7 @@ export default function BarcodePrintConfirmPage() {
           <span className="sit-title">Barcode Print – Excel Mode</span>
         </div>
         <div className="sit-home" aria-label="Home">
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="currentColor"
-            aria-hidden
-          >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
             <path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3l9-8z" />
           </svg>
         </div>
@@ -476,55 +444,40 @@ export default function BarcodePrintConfirmPage() {
               <tbody>
                 {excelRows.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={10}
-                      className="t-dim"
-                      style={{ padding: "12px 8px" }}
-                    />
+                    <td colSpan={10} className="t-dim" style={{ padding: "12px 8px" }} />
                   </tr>
                 ) : (
                   excelRows.map((r, rowIdx) => (
                     <tr key={r._id}>
                       <td className="t-right">{rowIdx + 1}</td>
                       {COLS.map((key, colIdx) => {
-                        const isCode =
-                          key === "itemCode" || key === "barcodeNumber";
+                        const isCode = key === "itemCode" || key === "barcodeNumber";
                         const isNumber = NUM_FIELDS.has(key);
                         const isLocation = key === "location";
                         return (
                           <td key={key}>
                             <input
                               ref={setCellRef(rowIdx, key)}
-                              className={`sit-input ${
-                                isCode ? "t-mono" : ""
-                              } ${isNumber ? "t-right" : ""}`}
+                              className={`sit-input ${isCode ? "t-mono" : ""} ${
+                                isNumber ? "t-right" : ""
+                              }`}
                               value={r[key]}
                               list={isLocation ? "locations" : undefined}
-                              onFocus={() =>
-                                setFocusPos({ row: rowIdx, col: colIdx })
-                              }
+                              onFocus={() => setFocusPos({ row: rowIdx, col: colIdx })}
                               onChange={(e) => {
                                 let v = e.target.value;
                                 if (isCode) v = sanitizeCode(v);
                                 if (isNumber) v = v === "" ? "" : String(v);
                                 if (isLocation) {
                                   const match = (locations || []).find(
-                                    (L) =>
-                                      L.code.toLowerCase() ===
-                                      v.toLowerCase()
+                                    (L) => L.code.toLowerCase() === v.toLowerCase()
                                   );
                                   if (match) v = match.code;
                                 }
-                                updateCell(
-                                  r._id,
-                                  key,
-                                  isNumber ? asNum(v) : v
-                                );
+                                updateCell(r._id, key, isNumber ? asNum(v) : v);
                               }}
                               onPaste={(e) => onCellPaste(e, rowIdx, key)}
-                              onKeyDown={(e) =>
-                                handleKeyDown(e, rowIdx, colIdx)
-                              }
+                              onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
                               placeholder={
                                 key === "itemCode"
                                   ? "Code"
@@ -534,9 +487,7 @@ export default function BarcodePrintConfirmPage() {
                                   ? "Size"
                                   : key === "location"
                                   ? "Location"
-                                  : key === "discount" ||
-                                    key === "salesPrice" ||
-                                    key === "mrp"
+                                  : key === "discount" || key === "salesPrice" || key === "mrp"
                                   ? "0.00"
                                   : key === "qty"
                                   ? "0"
