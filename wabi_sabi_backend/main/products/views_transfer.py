@@ -14,11 +14,9 @@ from outlets.utils import get_user_location_code
 
 from decimal import Decimal
 
-# @csrf_exempt
-# @api_view(["POST"])
-# @permission_classes([AllowAny])
+@csrf_exempt
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def print_and_transfer(request):
     """
     POST /api/products/print-barcodes/
@@ -55,7 +53,7 @@ def print_and_transfer(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-# @csrf_exempt
+@csrf_exempt
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def transfer_list(request):
