@@ -92,6 +92,7 @@ function toCSV(rows) {
     "Selling Price",
     "HSN",
     "Qty",
+    "Date",
     "Location",
     "Status",
     "Show Online",
@@ -111,6 +112,7 @@ function toCSV(rows) {
         Number(r.sp || 0).toFixed(2),
         r.hsn,
         Number(r.qty || 0).toFixed(2),
+        r.createdOn || "",
         r.location || "",
         (Number(r.qty) || 0) <= 0 ? "SOLD" : "ACTIVE",
         r.showOnline ? "Yes" : "No",
@@ -414,9 +416,7 @@ export default function InventoryProductsPage() {
   /* ===== Delete (DB + UI) ===== */
   async function handleDeleteOne(row) {
     if (!row?.id) return;
-    const ok = window.confirm(
-      `Delete product with barcode "${row.barcodeNumber}" from database?`
-    );
+    const ok = window.confirm(`Delete product with barcode "${row.barcodeNumber}" from database?`);
     if (!ok) return;
     try {
       await deleteProduct(row.id);
@@ -447,11 +447,7 @@ export default function InventoryProductsPage() {
                 <div className="pp-menu">
                   <button
                     onClick={() => {
-                      downloadBlob(
-                        toCSV(pageRows),
-                        "products_page.csv",
-                        "text/csv;charset=utf-8"
-                      );
+                      downloadBlob(toCSV(pageRows), "products_page.csv", "text/csv;charset=utf-8");
                       setExportOpen(false);
                     }}
                   >
@@ -475,11 +471,7 @@ export default function InventoryProductsPage() {
                   </button>
                   <button
                     onClick={() => {
-                      downloadBlob(
-                        toCSV(filtered),
-                        "products_all.csv",
-                        "text/csv;charset=utf-8"
-                      );
+                      downloadBlob(toCSV(filtered), "products_all.csv", "text/csv;charset=utf-8");
                       setExportOpen(false);
                     }}
                   >
@@ -512,10 +504,7 @@ export default function InventoryProductsPage() {
               )}
             </div>
 
-            <button
-              className="pp-btn outline"
-              onClick={() => setShowFilters((v) => !v)}
-            >
+            <button className="pp-btn outline" onClick={() => setShowFilters((v) => !v)}>
               <span className="mi">filter_list</span> Filter
             </button>
 
@@ -548,10 +537,7 @@ export default function InventoryProductsPage() {
               />
               <span className="mi">search</span>
             </div>
-            <button
-              className="pp-btn blue"
-              onClick={() => navigate("/inventory/products/new")}
-            >
+            <button className="pp-btn blue" onClick={() => navigate("/inventory/products/new")}>
               Create New
             </button>
           </div>
@@ -590,34 +576,21 @@ export default function InventoryProductsPage() {
             <SearchSelect
               label="Purchase Tax"
               value={filters.purchaseTax}
-              onChange={(v) =>
-                setFilters((f) => ({
-                  ...f,
-                  purchaseTax: v,
-                }))
-              }
+              onChange={(v) => setFilters((f) => ({ ...f, purchaseTax: v }))}
               options={TAX_OPTIONS}
               width={240}
             />
             <SearchSelect
               label="Sales Tax"
               value={filters.salesTax}
-              onChange={(v) =>
-                setFilters((f) => ({
-                  ...f,
-                  salesTax: v,
-                }))
-              }
+              onChange={(v) => setFilters((f) => ({ ...f, salesTax: v }))}
               options={TAX_OPTIONS}
               width={240}
             />
           </div>
         )}
 
-        <div
-          className="pp-bulk"
-          style={{ display: selectedIds.size ? "block" : "none" }}
-        >
+        <div className="pp-bulk" style={{ display: selectedIds.size ? "block" : "none" }}>
           <div className="pp-bulk-left">
             Selected {selectedIds.size || 0} Records:
             <button
@@ -656,15 +629,10 @@ export default function InventoryProductsPage() {
                     <label className="pp-chk">
                       <input
                         type="checkbox"
-                        checked={
-                          pageRows.length > 0 &&
-                          pageRows.every((r) => selectedIds.has(r.id))
-                        }
+                        checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))}
                         onChange={(e) => {
                           if (e.target.checked)
-                            setSelectedIds(
-                              new Set([...selectedIds, ...pageRows.map((r) => r.id)])
-                            );
+                            setSelectedIds(new Set([...selectedIds, ...pageRows.map((r) => r.id)]));
                           else {
                             const next = new Set(selectedIds);
                             pageRows.forEach((r) => next.delete(r.id));
@@ -686,6 +654,7 @@ export default function InventoryProductsPage() {
                   <th>Selling Price</th>
                   <th>HSN</th>
                   <th>Qty</th>
+                  <th>Created On</th>
                   <th>Location</th>
                   <th>Status</th>
                   <th>Show Online</th>
@@ -771,9 +740,7 @@ export default function InventoryProductsPage() {
                       <td>
                         <button
                           className="pp-link blue"
-                          onClick={() =>
-                            navigate(`/inventory/products/${r.id}`, { state: { row: r } })
-                          }
+                          onClick={() => navigate(`/inventory/products/${r.id}`, { state: { row: r } })}
                           title="Open product details"
                           style={{
                             background: "transparent",
@@ -793,6 +760,7 @@ export default function InventoryProductsPage() {
                       <td className="num">{Number(r.sp || 0).toFixed(2)}</td>
                       <td className="mono">{r.hsn}</td>
                       <td className="num">{Number(r.qty ?? 0).toFixed(2)}</td>
+                      <td className="mono">{r.createdOn || "-"}</td>
                       <td>{r.location || "-"}</td>
                       <td>
                         <span className={`pp-badge ${isSold ? "danger" : "success"}`}>
@@ -807,9 +775,7 @@ export default function InventoryProductsPage() {
                             onChange={(e) => {
                               const checked = e.target.checked;
                               setRows((l) =>
-                                l.map((row) =>
-                                  row.id === r.id ? { ...row, showOnline: checked } : row
-                                )
+                                l.map((row) => (row.id === r.id ? { ...row, showOnline: checked } : row))
                               );
                             }}
                           />
@@ -897,15 +863,11 @@ export default function InventoryProductsPage() {
 
         <div className="pp-foot">
           <div className="pp-foot-left">
-            Showing {Math.min(start + 1, filtered.length)} to{" "}
-            {Math.min(end, filtered.length)} of {filtered.length.toLocaleString()} entries
+            Showing {Math.min(start + 1, filtered.length)} to {Math.min(end, filtered.length)} of{" "}
+            {filtered.length.toLocaleString()} entries
           </div>
           <div className="pp-pagination">
-            <button
-              className="pg-btn"
-              disabled={safePage === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
+            <button className="pg-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
               Prev
             </button>
             {paginate(totalPages, safePage).map((p, i) =>

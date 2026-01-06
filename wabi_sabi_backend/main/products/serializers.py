@@ -39,10 +39,14 @@ class ProductGridSerializer(serializers.ModelSerializer):
     # ✅ NEW: destination location (from latest MasterPackLine for this product)
     location     = serializers.SerializerMethodField()
 
+    createdOn = serializers.DateTimeField(source="created_at", format="%Y-%m-%d %H:%M", read_only=True)
+
+
     class Meta:
         model = Product
         fields = [
             "id",
+            "createdOn",
             "itemCode",
             "name",
             "taskItemCode",
