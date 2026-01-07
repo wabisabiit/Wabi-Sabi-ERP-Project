@@ -9,16 +9,6 @@ import "../styles/BarcodeUtility2Page.css";
 // ✅ NEW: use shared listLocations from client
 import { getItemByCode, listLocations } from "../api/client";
 
-/* ---------------- Backend locations (KEEP) ---------------- */
-
-// ❌ OLD (kept, but commented)
-// const API = "http://64.227.135.159/api";
-// async function listLocations() {
-//   const res = await fetch(`${API}/locations/`, { credentials: "include" });
-//   if (!res.ok) throw new Error("Failed to load locations");
-//   return res.json(); // [{code,name}]
-// }
-
 /* ---------------- Common size options (from Code2) ---------------- */
 const SIZE_OPTIONS = [
   "XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL",
@@ -142,7 +132,6 @@ function SizeSelect({ value, onChange, options }) {
             ) : (
               filtered.map((opt, i) => {
                 const selected = value === opt;
-                // adjust hover index when custom banner present
                 const isHover =
                   (!showCustomBanner && i === hover) ||
                   (showCustomBanner && i + 1 === hover);
@@ -300,6 +289,9 @@ export default function BarcodeUtility2Page({
   const [locations, setLocations] = useState([]); // [{code,name}]
   const [loadingRowId, setLoadingRowId] = useState(null); // 🔵 which row is loading
 
+  // ✅ CSV import input ref
+  const csvInputRef = useRef(null);
+
   // restore from storage
   useEffect(() => {
     try {
@@ -336,7 +328,6 @@ export default function BarcodeUtility2Page({
   rowsRef.current = rows;
   const debouncersRef = useRef({});
 
-  // 🔵 wrapper that shows spinner while lookup is happening
   const doLookup = async (rowId, code) => {
     const clean = sanitizeCodeStrict(code);
     if (!clean) return;
@@ -350,7 +341,7 @@ export default function BarcodeUtility2Page({
 
   const scheduleLookup = (rowId, code) => {
     const raw = sanitizeCodeLoose(code);
-    if (!raw || /-$/.test(raw)) return; // wait if trailing hyphen
+    if (!raw || /-$/.test(raw)) return;
     const clean = sanitizeCodeStrict(raw);
     const timers = debouncersRef.current;
     if (timers[rowId]) clearTimeout(timers[rowId]);
@@ -384,6 +375,195 @@ export default function BarcodeUtility2Page({
     if (field === "itemCode") scheduleLookup(id, value);
   };
 
+  // ✅ CSV helpers
+  const parseCSVLine = (line) => {
+    const out = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"' && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+        continue;
+      }
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (ch === "," && !inQuotes) {
+        out.push(cur.trim());
+        cur = "";
+        continue;
+      }
+      cur += ch;
+    }
+    out.push(cur.trim());
+    return out;
+  };
+
+  const handleImportCSVClick = () => {
+    csvInputRef.current?.click();
+  };
+
+  // ✅ build confirm-page rows (same shape as handleSubmit does)
+  const buildExcelSeed = (sourceRows) => {
+    const normalized = sourceRows.map((r) => {
+      const sp = toNum(r.sp);
+      const discount = toNum(r.discount);
+      const qty = Math.trunc(toNum(r.qty));
+      return {
+        ...r,
+        itemCode: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
+        product: (r.product || "").trim(),
+        size: (r.size || "").trim(),
+        location: (r.location || "").trim(),
+        sp,
+        discount,
+        qty,
+        salesPrice: Math.max(0, Math.round(sp - sp * (discount / 100))),
+        barcodeName: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
+      };
+    });
+
+    const filtered = normalized.filter((r) => r.itemCode && r.itemCode !== "0");
+
+    return filtered.map((r, i) => ({
+      _id: i + 1,
+      itemCode: r.itemCode,
+      product: r.product,
+      size: r.size,
+      location: r.location,
+      discount: Number.isFinite(r.discount) ? r.discount : 0,
+      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0,
+      mrp: Number.isFinite(r.sp) ? r.sp : 0,
+      qty: Number.isFinite(r.qty) ? r.qty : 0,
+      barcodeNumber: "",
+    }));
+  };
+
+  // ✅ After import: redirect to confirm page
+  const handleCSVSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const lines = text
+        .replace(/\r/g, "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      if (!lines.length) return;
+
+      const first = parseCSVLine(lines[0]).map((h) => (h || "").toLowerCase());
+
+      const headerMap = {
+        itemcode: ["item code", "itemcode", "barcode", "code"],
+        product: ["product name", "product", "name"],
+        size: ["size"],
+        location: ["location", "loc"],
+        discount: ["discount %", "discount", "disc"],
+        sp: ["price", "sp", "selling price", "selling_price"],
+        qty: ["qty", "quantity"],
+      };
+
+      const idxOf = (keys) =>
+        keys
+          .map((k) => first.indexOf(k))
+          .find((i) => i != null && i >= 0);
+
+      const hasHeader =
+        idxOf(headerMap.itemcode) != null ||
+        idxOf(headerMap.product) != null ||
+        idxOf(headerMap.sp) != null;
+
+      const startLine = hasHeader ? 1 : 0;
+
+      const colIdx = hasHeader
+        ? {
+            itemCode: idxOf(headerMap.itemcode),
+            product: idxOf(headerMap.product),
+            size: idxOf(headerMap.size),
+            location: idxOf(headerMap.location),
+            discount: idxOf(headerMap.discount),
+            sp: idxOf(headerMap.sp),
+            qty: idxOf(headerMap.qty),
+          }
+        : {
+            itemCode: 0,
+            product: 1,
+            size: 2,
+            location: 3,
+            discount: 4,
+            sp: 5,
+            qty: 6,
+          };
+
+      const imported = [];
+      for (let i = startLine; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        const get = (k) => {
+          const idx = colIdx[k];
+          if (idx == null || idx < 0) return "";
+          return (cols[idx] ?? "").trim();
+        };
+
+        const itemCode = sanitizeCodeStrict(get("itemCode"));
+        const product = get("product");
+        const size = get("size");
+        const location = get("location");
+        const discount = get("discount");
+        const sp = get("sp");
+        const qty = get("qty");
+
+        if (!itemCode && !product && !sp) continue;
+
+        imported.push({
+          itemCode: itemCode || "0",
+          product: product || "",
+          size: size || "",
+          location: location || "",
+          discount: discount === "" ? 0 : Number(discount),
+          sp: sp === "" ? 0 : Number(sp),
+          qty: qty === "" ? 1 : Number(qty),
+        });
+      }
+
+      if (!imported.length) return;
+
+      const next = [...rowsRef.current];
+      let nextId = Math.max(0, ...next.map((r) => r.id || 0)) + 1;
+
+      for (let i = 0; i < imported.length; i++) {
+        if (i < next.length) {
+          next[i] = { ...next[i], ...imported[i] };
+        } else {
+          next.push({
+            id: nextId++,
+            mrp: 0,
+            ...imported[i],
+          });
+        }
+      }
+
+      persist(next);
+      setPage(1);
+
+      // ✅ redirect to confirm page after import
+      const excelSeed = buildExcelSeed(next);
+      navigate("/utilities/barcode2/confirm", {
+        state: { initialRows: excelSeed },
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Failed to import CSV.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
   // submit (KEEP backend-compatible mapping & percent discount)
   const handleSubmit = () => {
     const normalized = rows.map((r) => {
@@ -399,7 +579,6 @@ export default function BarcodeUtility2Page({
         sp,
         discount,
         qty,
-        // NOTE: keep percent-based discount calc (Code1 behavior)
         salesPrice: Math.max(0, Math.round(sp - sp * (discount / 100))),
         barcodeName: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
       };
@@ -426,15 +605,14 @@ export default function BarcodeUtility2Page({
       return;
     }
 
-    // KEEP payload shape expected by the confirm screen
     const excelSeed = filtered.map((r, i) => ({
       _id: i + 1,
       itemCode: r.itemCode,
       product: r.product,
       size: r.size,
-      location: r.location, // code like "RJO"
-      discount: Number.isFinite(r.discount) ? r.discount : 0, // percent
-      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0, // rounded
+      location: r.location,
+      discount: Number.isFinite(r.discount) ? r.discount : 0,
+      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0,
       mrp: Number.isFinite(r.sp) ? r.sp : 0,
       qty: Number.isFinite(r.qty) ? r.qty : 0,
       barcodeNumber: "",
@@ -454,7 +632,6 @@ export default function BarcodeUtility2Page({
     setRows(INIT_ROWS);
   };
 
-  // display helpers (KEEP)
   const formatINR = (n) =>
     `₹ ${Number(n || 0).toLocaleString("en-IN", {
       minimumFractionDigits: 0,
@@ -475,6 +652,24 @@ export default function BarcodeUtility2Page({
           <span className="sit-title">{title}</span>
           <span className="sit-sep">|</span>
         </div>
+
+        {/* Import CSV button at right top */}
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleImportCSVClick}
+          style={{ marginLeft: "auto" }}
+        >
+          Import CSV
+        </button>
+        <input
+          ref={csvInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          onChange={handleCSVSelected}
+          style={{ display: "none" }}
+        />
+
         <div className="sit-home" aria-label="Home">
           <svg
             viewBox="0 0 24 24"
@@ -490,7 +685,6 @@ export default function BarcodeUtility2Page({
 
       <div className="sit-card">
         <div className="sit-body">
-          {/* LEFT: table + controls */}
           <div className="sit-left" style={{ maxWidth: "100%" }}>
             <div className="sit-table-wrap">
               <table className="sit-table">
@@ -517,7 +711,6 @@ export default function BarcodeUtility2Page({
                     >
                       <td className="t-right">{start + idx + 1}</td>
 
-                      {/* Item Code (KEEP sanitizer + lookup + spinner) */}
                       <td>
                         <div className="sit-itemcode-cell">
                           <input
@@ -536,9 +729,7 @@ export default function BarcodeUtility2Page({
                             }
                             onBlur={(e) => {
                               const v = e.target.value || "";
-                              const normalized = v
-                                ? sanitizeCodeStrict(v)
-                                : "";
+                              const normalized = v ? sanitizeCodeStrict(v) : "";
                               if (normalized !== r.itemCode)
                                 handleChange(r.id, "itemCode", normalized);
                               doLookup(r.id, normalized);
@@ -557,12 +748,10 @@ export default function BarcodeUtility2Page({
                         </div>
                       </td>
 
-                      {/* Product display */}
                       <td>
                         <span className="t-link">{r.product}</span>
                       </td>
 
-                      {/* Size — Code2 dropdown (UI only) */}
                       <td>
                         <SizeSelect
                           value={r.size}
@@ -571,7 +760,6 @@ export default function BarcodeUtility2Page({
                         />
                       </td>
 
-                      {/* Location — from backend (KEEP) */}
                       <td>
                         <select
                           className="sit-input"
@@ -589,7 +777,6 @@ export default function BarcodeUtility2Page({
                         </select>
                       </td>
 
-                      {/* Discount (percent) */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -605,7 +792,6 @@ export default function BarcodeUtility2Page({
                         />
                       </td>
 
-                      {/* Price (sp) */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -621,12 +807,10 @@ export default function BarcodeUtility2Page({
                         />
                       </td>
 
-                      {/* Computed Total */}
                       <td className="t-right t-dim">
                         {formatINR(totalAmt(r))}
                       </td>
 
-                      {/* Qty */}
                       <td>
                         <input
                           className="sit-input t-right"
@@ -647,7 +831,6 @@ export default function BarcodeUtility2Page({
               </table>
             </div>
 
-            {/* Pagination + Submit/Reset (UI from Code2, behavior from Code1) */}
             <div className="sit-pagination">
               <button
                 className="pg-btn"
@@ -683,7 +866,6 @@ export default function BarcodeUtility2Page({
               </button>
             </div>
           </div>
-          {/* RIGHT preview intentionally omitted (same as Code2) */}
         </div>
       </div>
     </div>
