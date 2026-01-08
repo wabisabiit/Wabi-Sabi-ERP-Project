@@ -2,7 +2,7 @@
 from django.contrib import admin
 from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, SaleLine, InvoiceSequence, CreditNoteSequence, CreditNote
 from taskmaster.models import TaskItem, Location
-from .models import MasterPack, MasterPackLine
+from .models import MasterPack, MasterPackLine, SalePayment
 from .models import (
     MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,Coupon, GeneratedCoupon
 )
@@ -267,3 +267,15 @@ class HoldBillAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     search_fields = ("number", "customer_name", "customer_phone")
     
+
+@admin.register(SalePayment)
+class SalePaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "sale",
+        "method",
+        "amount",
+        "created_at",
+    )
+    list_filter = ("method", "created_at")
+    search_fields = ("sale__invoice_no",)
