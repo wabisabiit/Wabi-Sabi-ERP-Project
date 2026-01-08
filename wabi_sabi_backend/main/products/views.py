@@ -4,16 +4,12 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
-# 👇 NEW
-from django.db.models import OuterRef, Subquery
-
-from .models import Product, StockTransferLine
+from .models import Product
 from .serializers import ProductSerializer, ProductGridSerializer
 from taskmaster.models import TaskItem
-from outlets.models import Employee  # for outlet/location scoping
+
 
 # ------------------ BARCODE GENERATOR HELPERS (local) ------------------
 import re
@@ -77,16 +73,16 @@ def _next_available(letter: str, num: int):
     raise RuntimeError("Exhausted barcode space unexpectedly")
 
 
-# ---- helper: current user's outlet location code (for MANAGER) --------
-def _get_user_location_code(request):
+# ---- helper: current user's outlet location (for MANAGER) --------
+def _get_user_location(request):
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated or user.is_superuser:
         return None
     emp = getattr(user, "employee", None)
     outlet = getattr(emp, "outlet", None) if emp else None
     loc = getattr(outlet, "location", None) if outlet else None
-    return getattr(loc, "code", None) or None
-# ----------------------------------------------------------------------
+    return loc
+# ------------------------------------------------------------------
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -102,7 +98,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Product.objects.select_related("task_item")
 
-    # 👇 NEW: manager-level outlet scoping
+    # ✅ Manager scoping uses Product.location ONLY (NO StockTransferLine)
     def get_queryset(self):
         qs = super().get_queryset().select_related("task_item", "location")
 
@@ -115,41 +111,11 @@ class ProductViewSet(viewsets.ModelViewSet):
             return qs
 
         # Manager: restrict to their outlet.location
-        emp = getattr(user, "employee", None)  # common pattern: OneToOne user->Employee
-        outlet = getattr(emp, "outlet", None) if emp else None
-        loc = getattr(outlet, "location", None) if outlet else None
-
+        loc = _get_user_location(self.request)
         if not loc:
             return qs.none()
 
         return qs.filter(location=loc)
-
-        """
-        ADMIN / superuser  -> all products
-        MANAGER            -> only products whose *latest* stock transfer
-                              is to their own location.
-        """
-        qs = Product.objects.select_related("task_item")
-
-        loc_code = _get_user_location_code(self.request)
-        if not loc_code:
-            # admin / unaffiliated user => no branch filter
-            return qs
-
-        # Subquery: for each product, get the last transfer's to_location.code
-        last_to_code_subq = Subquery(
-            StockTransferLine.objects
-            .filter(product=OuterRef("pk"))
-            .select_related("transfer", "transfer__to_location")
-            .order_by("-transfer__created_at")
-            .values("transfer__to_location__code")[:1]
-        )
-
-        qs = qs.annotate(
-            last_to_code=last_to_code_subq
-        ).filter(last_to_code=loc_code)
-
-        return qs
 
     def get_serializer_class(self):
         return ProductGridSerializer if self.action in ["list"] else ProductSerializer
@@ -177,20 +143,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     # ---------- BULK UPSERT ----------
     @action(detail=False, methods=["post"], url_path="bulk-upsert")
     def bulk_upsert(self, request):
-        """
-        Accepts a list of rows (from your Expanded/Print step), each like:
-          {
-            "itemCode": "100-W",
-            "barcodeNumber": "",
-            "salesPrice": 1999,
-            "mrp": 3500,
-            "size": "M",
-            "imageUrl": "",
-            "qty": 1,
-            "discountPercent": 0
-          }
-        ...
-        """
         items = request.data if isinstance(request.data, list) else request.data.get("rows", [])
         if not isinstance(items, list):
             return Response({"detail": "Expected a list or {rows: [...]}."},
@@ -214,15 +166,12 @@ class ProductViewSet(viewsets.ModelViewSet):
 
                     ti = TaskItem.objects.get(item_code=item_code)
 
-                    # Decide the final barcode
                     barcode = None
                     if _BAR_RE.match(raw_barcode):
-                        # Accept client value only if unused
                         if not Product.objects.filter(barcode=raw_barcode).exists():
                             barcode = raw_barcode
 
                     if not barcode:
-                        # Mint next available code from the rolling sequence
                         cur_letter, cur_num, barcode = _next_available(cur_letter, cur_num)
 
                     discount_val = row.get("discountPercent", row.get("discount", 0)) or 0
@@ -266,48 +215,27 @@ class ProductViewSet(viewsets.ModelViewSet):
         url_path=r"by-barcode/(?P<barcode>[^/]+)"
     )
     def by_barcode(self, request, barcode=None):
-        """
-        ...
-        🔒 For MANAGER users, this is restricted to their own outlet:
-        it checks the latest StockTransferLine for that barcode and
-        only allows if transfer.to_location.code == manager's location code.
-        """
         def clean_barcode(v: str) -> str:
             if not v:
                 return ""
-            # normalize unicode dashes to ASCII '-', trim & upper
             v = v.replace("–", "-").replace("—", "-").replace("−", "-").replace("‐", "-")
             return v.strip().upper()
 
         clean = clean_barcode(barcode)
 
-        # --- outlet restriction for MANAGER ---
-        loc_code = _get_user_location_code(request)
-        if loc_code:
-            last_line = (
-                StockTransferLine.objects
-                .select_related("transfer", "transfer__to_location")
-                .filter(barcode=clean)
-                .order_by("-transfer__created_at")
-                .first()
-            )
-            if not last_line or not getattr(last_line, "transfer", None):
-                return Response(
-                    {"detail": "This barcode is not for this branch."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-            to_loc = getattr(last_line.transfer, "to_location", None)
-            to_code = getattr(to_loc, "code", None)
-            if not to_code or to_code != loc_code:
-                return Response(
-                    {"detail": "This barcode is not for this branch."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-        p = Product.objects.select_related("task_item").filter(barcode__iexact=clean).first()
+        p = Product.objects.select_related("task_item", "location").filter(barcode__iexact=clean).first()
         if not p:
             return Response({"detail": f"Product {clean} not found."},
                             status=status.HTTP_404_NOT_FOUND)
+
+        # ✅ Manager restriction uses Product.location only
+        loc = _get_user_location(request)
+        if loc:
+            if not p.location_id or p.location_id != loc.id:
+                return Response(
+                    {"detail": "This barcode is not for this branch."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         data = {
             "id": p.id,
