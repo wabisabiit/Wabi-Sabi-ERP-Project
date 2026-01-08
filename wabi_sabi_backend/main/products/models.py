@@ -189,6 +189,41 @@ class Sale(models.Model):
             self.invoice_no = InvoiceSequence.next_invoice_no(prefix="INV")
         super().save(*args, **kwargs)
 
+class SalePayment(models.Model):
+    """
+    Stores actual payment breakup for a sale.
+    Needed for register closing summary (cash/card/upi totals), especially for MULTIPAY.
+    """
+    sale = models.ForeignKey(
+        Sale,
+        on_delete=models.CASCADE,
+        related_name="payments",
+    )
+
+    # store the actual method used for THIS payment row (CASH / CARD / UPI / etc.)
+    method = models.CharField(max_length=16, choices=Sale.PAYMENT_METHODS)
+
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    reference = models.CharField(max_length=120, blank=True, default="")
+    card_holder = models.CharField(max_length=120, blank=True, default="")
+    card_holder_phone = models.CharField(max_length=20, blank=True, default="")
+    customer_bank = models.CharField(max_length=120, blank=True, default="")
+    account = models.CharField(max_length=120, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+        indexes = [
+            models.Index(fields=["method"]),
+        ]
+
+    def __str__(self):
+        return f"{self.sale.invoice_no} {self.method} {self.amount}"
+
+
+
 
 class SaleLine(models.Model):
     """

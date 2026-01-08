@@ -9,7 +9,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .models import RegisterClosing, Sale, Expense
+from .models import RegisterClosing, Sale, Expense, SalePayment
 from .serializers_register import RegisterClosingSerializer
 
 
@@ -98,19 +98,40 @@ class RegisterClosingSummaryView(APIView):
         # overall total
         sales_total = sales_qs.aggregate(total=Sum("grand_total"))["total"] or Decimal("0.00")
 
-        # per payment method
+        # ✅ Per payment method (supports MULTIPAY via SalePayment)
+        pay_qs = SalePayment.objects.filter(sale__in=sales_qs)
+
         cash_total = (
-            sales_qs.filter(payment_method=Sale.PAYMENT_CASH)
-            .aggregate(total=Sum("grand_total"))["total"]
+            pay_qs.filter(method=Sale.PAYMENT_CASH)
+            .aggregate(total=Sum("amount"))["total"]
             or Decimal("0.00")
         )
         card_total = (
-            sales_qs.filter(payment_method=Sale.PAYMENT_CARD)
-            .aggregate(total=Sum("grand_total"))["total"]
+            pay_qs.filter(method=Sale.PAYMENT_CARD)
+            .aggregate(total=Sum("amount"))["total"]
             or Decimal("0.00")
         )
         upi_total = (
-            sales_qs.filter(payment_method=Sale.PAYMENT_UPI)
+            pay_qs.filter(method=Sale.PAYMENT_UPI)
+            .aggregate(total=Sum("amount"))["total"]
+            or Decimal("0.00")
+        )
+
+        # ✅ Fallback for older sales (before SalePayment existed)
+        legacy_sales = sales_qs.filter(payments__isnull=True)
+
+        cash_total += (
+            legacy_sales.filter(payment_method=Sale.PAYMENT_CASH)
+            .aggregate(total=Sum("grand_total"))["total"]
+            or Decimal("0.00")
+        )
+        card_total += (
+            legacy_sales.filter(payment_method=Sale.PAYMENT_CARD)
+            .aggregate(total=Sum("grand_total"))["total"]
+            or Decimal("0.00")
+        )
+        upi_total += (
+            legacy_sales.filter(payment_method=Sale.PAYMENT_UPI)
             .aggregate(total=Sum("grand_total"))["total"]
             or Decimal("0.00")
         )

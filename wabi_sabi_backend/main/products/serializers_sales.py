@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import F
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Customer, Product, Sale, SaleLine
+from .models import Customer, Product, Sale, SaleLine, SalePayment
 from outlets.models import Employee, WowBillEntry
 from outlets.utils_wowbill import create_wow_entry_for_sale   # 👈 NEW IMPORT
 
@@ -53,10 +53,11 @@ class SaleCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError(f"Invalid qty for {code}.")
             want[code] = want.get(code, 0) + qty
 
-        # fetch all required products at once
-        products = {p.barcode: p for p in Product.objects.select_related("task_item").filter(barcode__in=want.keys())}
+        products = {
+            p.barcode: p
+            for p in Product.objects.select_related("task_item").filter(barcode__in=want.keys())
+        }
 
-        # existence + availability + total
         missing = [bc for bc in want.keys() if bc not in products]
         if missing:
             raise serializers.ValidationError(f"Products not found: {', '.join(missing)}")
@@ -64,20 +65,25 @@ class SaleCreateSerializer(serializers.Serializer):
         for bc, need in want.items():
             p = products[bc]
             if (p.qty or 0) < need:
-                raise serializers.ValidationError(f"{bc} not available (stock {p.qty}, need {need}).")
+                raise serializers.ValidationError(
+                    f"{bc} not available (stock {p.qty}, need {need})."
+                )
             total += (p.selling_price or 0) * need
 
         pay_total = sum([float(p["amount"]) for p in data["payments"]])
         if round(pay_total, 2) != round(float(total), 2):
-            raise serializers.ValidationError(f"Payments total ({pay_total}) must equal cart total ({total}).")
+            raise serializers.ValidationError(
+                f"Payments total ({pay_total}) must equal cart total ({total})."
+            )
+
         return data
 
     def create(self, validated):
-        cust_in = validated["customer"]
-        lines_in = validated["lines"]
-        pays_in  = validated["payments"]
-        note     = validated.get("note", "")
-        store    = validated.get("store", "Wabi - Sabi")
+        cust_in   = validated["customer"]
+        lines_in  = validated["lines"]
+        pays_in   = validated["payments"]
+        note      = validated.get("note", "")
+        store     = validated.get("store", "Wabi - Sabi")
         salesman_id = validated.get("salesman_id")
 
         # --- resolve salesman (must be STAFF) ---
@@ -92,12 +98,14 @@ class SaleCreateSerializer(serializers.Serializer):
             except Employee.DoesNotExist:
                 raise serializers.ValidationError("Invalid salesman selected.")
 
-        # --- customer upsert (same as before) ---
+        # --- customer upsert ---
         phone = (cust_in.get("phone") or "").strip()
         name  = (cust_in.get("name") or "").strip() or "Guest"
         email = cust_in.get("email", "")
         if phone:
-            customer, _ = Customer.objects.get_or_create(phone=phone, defaults={"name": name, "email": email})
+            customer, _ = Customer.objects.get_or_create(
+                phone=phone, defaults={"name": name, "email": email}
+            )
             if customer.name != name or (email and customer.email != email):
                 customer.name = name
                 if email:
@@ -115,27 +123,27 @@ class SaleCreateSerializer(serializers.Serializer):
                 payment_method=method,
                 transaction_date=timezone.now(),
                 note=note,
-                salesman=salesman,   # 🔵 link invoice to salesman
+                salesman=salesman,
             )
 
             subtotal = 0
 
-            # Group requested qty per barcode to do atomic decrements
             want = {}
             for ln in lines_in:
                 bc = str(ln["barcode"]).strip()
                 want[bc] = want.get(bc, 0) + int(ln["qty"])
 
-            # Atomic decrement per barcode (protect against race)
             for bc, need in want.items():
-                updated = Product.objects.select_for_update().filter(barcode=bc, qty__gte=need).update(qty=F("qty") - need)
+                updated = (
+                    Product.objects.select_for_update()
+                    .filter(barcode=bc, qty__gte=need)
+                    .update(qty=F("qty") - need)
+                )
                 if updated == 0:
-                    # if someone else sold it just now
                     raise serializers.ValidationError(f"{bc} not available anymore.")
 
-            # Now create sale lines (denormalize)
             for ln in lines_in:
-                p = Product.objects.get(barcode=ln["barcode"])  # locked by select_for_update above
+                p = Product.objects.get(barcode=ln["barcode"])
                 qty = int(ln["qty"])
                 SaleLine.objects.create(
                     sale=sale,
@@ -152,9 +160,25 @@ class SaleCreateSerializer(serializers.Serializer):
             sale.grand_total = subtotal
             sale.save(update_fields=["subtotal", "discount_total", "grand_total"])
 
-            # 🔵 WOW BILL LOGIC (now uses per-outlet slabs)
+            # ✅ SAVE PAYMENT BREAKUP (CASH / CARD / UPI / MULTIPAY)
+            pay_rows = []
+            for p in pays_in:
+                pay_rows.append(
+                    SalePayment(
+                        sale=sale,
+                        method=str(p.get("method") or "").upper(),
+                        amount=p.get("amount") or 0,
+                        reference=p.get("reference", "") or "",
+                        card_holder=p.get("card_holder", "") or "",
+                        card_holder_phone=p.get("card_holder_phone", "") or "",
+                        customer_bank=p.get("customer_bank", "") or "",
+                        account=p.get("account", "") or "",
+                    )
+                )
+            SalePayment.objects.bulk_create(pay_rows)
+
+            # 🔵 WOW BILL LOGIC
             if salesman is not None:
-                # uses salesman.outlet + sale.grand_total + customer/date
                 create_wow_entry_for_sale(sale)
 
         return {
@@ -162,10 +186,21 @@ class SaleCreateSerializer(serializers.Serializer):
             "transaction_date": sale.transaction_date,
             "payment_method": sale.payment_method,
             "store": sale.store,
-            "customer": {"id": customer.id, "name": customer.name, "phone": customer.phone, "email": customer.email},
-            "totals": {"subtotal": str(sale.subtotal), "discount": str(sale.discount_total), "grand_total": str(sale.grand_total)},
+            "customer": {
+                "id": customer.id,
+                "name": customer.name,
+                "phone": customer.phone,
+                "email": customer.email,
+            },
+            "totals": {
+                "subtotal": str(sale.subtotal),
+                "discount": str(sale.discount_total),
+                "grand_total": str(sale.grand_total),
+            },
             "payments": pays_in,
         }
+
+
 
 
 # ---- List / table serializer (read-only) ----
