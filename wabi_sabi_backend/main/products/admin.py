@@ -19,6 +19,7 @@ class ProductAdmin(admin.ModelAdmin):
         "mrp",
         "selling_price",
         "qty",
+        "location",
         "discount_percent",
         "updated_at",
     )
