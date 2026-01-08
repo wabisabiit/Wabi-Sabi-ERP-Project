@@ -534,20 +534,61 @@ export default function BarcodeUtility2Page({
       if (!imported.length) return;
 
       // ✅ IMPORTANT: replace table rows with EXACT imported rows count
+      // ✅ ALSO: when importing, product name should be fetched automatically by itemCode
       const next = imported.map((r, i) => ({
         id: i + 1,
         mrp: 0,
         ...r,
+        // if csv had product, keep it; otherwise will be filled from backend
+        product: (r.product || "").trim(),
       }));
 
+      // show rows immediately
       persist(next);
       setPage(1);
 
-      // ✅ redirect to confirm page after import
-      const excelSeed = buildExcelSeed(next);
-      navigate("/utilities/barcode2/confirm", {
-        state: { initialRows: excelSeed },
-      });
+      // ✅ fetch product names for all imported rows that have itemCode
+      // (NO redirect here — redirect only on Submit)
+      const extractName = (data) =>
+        data?.product_name ??
+        data?.full_name ??
+        data?.print_name ??
+        data?.item?.name ??
+        "";
+
+      const toLookup = next
+        .map((r) => ({
+          id: r.id,
+          code: sanitizeCodeStrict(r.itemCode),
+        }))
+        .filter((x) => x.code && x.code !== "0");
+
+      if (toLookup.length) {
+        // optional: show spinner on first row being processed
+        setLoadingRowId(toLookup[0].id);
+        try {
+          const updated = await Promise.all(
+            next.map(async (r) => {
+              const code = sanitizeCodeStrict(r.itemCode);
+              if (!code || code === "0") return r;
+
+              // if already present, don't overwrite (but you can change this if you want)
+              if ((r.product || "").trim()) return { ...r, itemCode: code };
+
+              try {
+                const data = await getItemByCode(code);
+                const name = extractName(data);
+                return { ...r, itemCode: code, product: name };
+              } catch {
+                return { ...r, itemCode: code };
+              }
+            })
+          );
+          persist(updated);
+        } finally {
+          setLoadingRowId(null);
+        }
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to import CSV.");
