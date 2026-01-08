@@ -104,6 +104,26 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     # 👇 NEW: manager-level outlet scoping
     def get_queryset(self):
+        qs = super().get_queryset().select_related("task_item", "location")
+
+        user = getattr(self.request, "user", None)
+        if not user or not user.is_authenticated:
+            return qs.none()
+
+        # HQ / admin can see all
+        if user.is_superuser or user.is_staff:
+            return qs
+
+        # Manager: restrict to their outlet.location
+        emp = getattr(user, "employee", None)  # common pattern: OneToOne user->Employee
+        outlet = getattr(emp, "outlet", None) if emp else None
+        loc = getattr(outlet, "location", None) if outlet else None
+
+        if not loc:
+            return qs.none()
+
+        return qs.filter(location=loc)
+
         """
         ADMIN / superuser  -> all products
         MANAGER            -> only products whose *latest* stock transfer

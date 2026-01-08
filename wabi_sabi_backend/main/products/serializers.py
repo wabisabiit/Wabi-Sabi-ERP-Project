@@ -100,6 +100,27 @@ class ProductGridSerializer(serializers.ModelSerializer):
 
     def get_location(self, obj):
         """
+        Product is assigned to ONE location (Product.location).
+        Fallback: if old data has no Product.location, try latest MasterPackLine.
+        """
+        if getattr(obj, "location_id", None) and getattr(obj, "location", None):
+            loc = obj.location
+            return loc.name or loc.code or ""
+
+        # fallback for old records (kept so nothing breaks)
+        line = (
+            MasterPackLine.objects
+            .filter(product=obj)
+            .select_related("location", "pack")
+            .order_by("-pack__created_at", "-id")
+            .first()
+        )
+        if not line or not line.location:
+            return ""
+        return line.location.name or line.location.code or ""
+
+
+        """
         Pick the MOST RECENT MasterPackLine for this product (i.e. last time
         it was packed and destined to a location) and return that location name.
         If never packed, return empty string.
@@ -169,6 +190,10 @@ class MasterPackCreateSerializer(serializers.Serializer):
             qty = int(payload["qty"])
             sp = p.selling_price
             loc = locations[payload["location_code"]]
+
+            if p.location_id != loc.id:
+                p.location = loc
+                p.save(update_fields=["location"])
 
             MasterPackLine.objects.create(
                 pack=pack,

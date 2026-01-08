@@ -45,6 +45,16 @@ class Product(models.Model):
     qty = models.IntegerField(default=0)
     discount_percent = models.DecimalField(max_digits=6, decimal_places=2, default=0)
 
+    # inside class Product(models.Model):
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="products",
+        null=True,
+        blank=True,
+    )
+
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
