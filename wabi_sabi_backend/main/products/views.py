@@ -99,6 +99,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related("task_item")
 
     # ✅ Manager scoping uses Product.location ONLY (NO StockTransferLine)
+    
     def get_queryset(self):
         qs = super().get_queryset().select_related("task_item", "location")
 
@@ -106,8 +107,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         if not user or not user.is_authenticated:
             return qs.none()
 
-        # HQ / admin can see all
-        if user.is_superuser or user.is_staff:
+        # ✅ ONLY superuser sees all
+        if user.is_superuser:
             return qs
 
         # Manager: restrict to their outlet.location
@@ -116,6 +117,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             return qs.none()
 
         return qs.filter(location=loc)
+
+
 
     def get_serializer_class(self):
         return ProductGridSerializer if self.action in ["list"] else ProductSerializer
