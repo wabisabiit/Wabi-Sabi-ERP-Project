@@ -262,18 +262,12 @@ async function lookupAndFill(rowId, code, rows, persist) {
   if (!clean) return;
   try {
     const data = await getItemByCode(clean);
-
-    // ✅ FIX: support your backend keys (TaskItem fields)
     const name =
-      data?.item_print_friendly_name ||
-      data?.item_vasy_name ||
-      data?.item_full_name ||
-      data?.product_name ||
-      data?.full_name ||
-      data?.print_name ||
-      data?.item?.name ||
+      data?.product_name ??
+      data?.full_name ??
+      data?.print_name ??
+      data?.item?.name ??
       "";
-
     const next = rows.map((r) =>
       r.id === rowId ? { ...r, itemCode: clean, product: name } : r
     );
@@ -448,7 +442,7 @@ export default function BarcodeUtility2Page({
     }));
   };
 
-  // ✅ After import: redirect to confirm page
+  // ✅ After import: replace rows with EXACT csv rows
   const handleCSVSelected = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -539,20 +533,12 @@ export default function BarcodeUtility2Page({
 
       if (!imported.length) return;
 
-      const next = [...rowsRef.current];
-      let nextId = Math.max(0, ...next.map((r) => r.id || 0)) + 1;
-
-      for (let i = 0; i < imported.length; i++) {
-        if (i < next.length) {
-          next[i] = { ...next[i], ...imported[i] };
-        } else {
-          next.push({
-            id: nextId++,
-            mrp: 0,
-            ...imported[i],
-          });
-        }
-      }
+      // ✅ IMPORTANT: replace table rows with EXACT imported rows count
+      const next = imported.map((r, i) => ({
+        id: i + 1,
+        mrp: 0,
+        ...r,
+      }));
 
       persist(next);
       setPage(1);
