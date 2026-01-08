@@ -262,12 +262,18 @@ async function lookupAndFill(rowId, code, rows, persist) {
   if (!clean) return;
   try {
     const data = await getItemByCode(clean);
+
+    // ✅ FIX: support your backend keys (TaskItem fields)
     const name =
-      data?.product_name ??
-      data?.full_name ??
-      data?.print_name ??
-      data?.item?.name ??
+      data?.item_print_friendly_name ||
+      data?.item_vasy_name ||
+      data?.item_full_name ||
+      data?.product_name ||
+      data?.full_name ||
+      data?.print_name ||
+      data?.item?.name ||
       "";
+
     const next = rows.map((r) =>
       r.id === rowId ? { ...r, itemCode: clean, product: name } : r
     );
