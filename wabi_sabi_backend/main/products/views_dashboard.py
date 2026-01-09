@@ -91,13 +91,13 @@ class DashboardSummaryView(APIView):
         total_receive = cn_qs.aggregate(x=Sum("amount"))["x"] or 0
 
         # ---------- Total Bills ----------
-        # You said: same as total sales
+        # FIX: bills should be COUNT (not sum of totals)
         sales_qs = Sale.objects.filter(transaction_date__range=(start_dt, end_dt))
         if loc:
             # your sales scoping uses store contains location code
             sales_qs = sales_qs.filter(store__icontains=loc.code)
 
-        total_bills = sales_qs.aggregate(x=Sum("grand_total"))["x"] or 0
+        total_bills = sales_qs.count()
 
         # ---------- Total Suppliers ----------
         # Total outlets excluding HQ (best-effort without changing your outlet models)
@@ -129,16 +129,21 @@ class DashboardSummaryView(APIView):
 
         total_products_amount = (
             prod_qs.aggregate(
-                x=Sum(ExpressionWrapper(F("selling_price") * F("qty"), output_field=DecimalField(max_digits=18, decimal_places=2)))
+                x=Sum(
+                    ExpressionWrapper(
+                        F("selling_price") * F("qty"),
+                        output_field=DecimalField(max_digits=18, decimal_places=2),
+                    )
+                )
             )["x"]
             or 0
         )
 
         # ---------- Cash in hand ----------
-        # Best: SalePayment method CASH; fallback: Sale.payment_method == CASH
+        # FIX: your DB has method values like "Cash", not "CASH"
         cash_qs = SalePayment.objects.filter(
             sale__transaction_date__range=(start_dt, end_dt),
-            method="CASH",
+            method__iexact="cash",
         )
         if loc:
             cash_qs = cash_qs.filter(sale__store__icontains=loc.code)
@@ -146,7 +151,7 @@ class DashboardSummaryView(APIView):
         cash_in_hand = cash_qs.aggregate(x=Sum("amount"))["x"] or 0
 
         if not cash_in_hand:
-            fallback_sales = sales_qs.filter(payment_method="CASH")
+            fallback_sales = sales_qs.filter(payment_method__iexact="cash")
             cash_in_hand = fallback_sales.aggregate(x=Sum("grand_total"))["x"] or 0
 
         # ---------- Gross Profit ----------

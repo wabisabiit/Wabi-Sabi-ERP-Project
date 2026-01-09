@@ -4,11 +4,7 @@ from .models import Expense
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
-    # Party name = supplier name
-    supplier_name = serializers.CharField(
-        source="supplier.company_name", read_only=True
-    )
-    # Location fields – all same for now
+    supplier_name = serializers.CharField(source="supplier.company_name", read_only=True)
     branch = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     created_from = serializers.SerializerMethodField()
@@ -29,9 +25,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "created_from",
         ]
 
-    # All three use the same location logic
     def _loc(self, obj):
-        # uses your model helper; fallback "HQ"
         try:
             return obj.created_by_location()
         except Exception:
@@ -53,16 +47,30 @@ class ExpenseListCreateView(generics.ListCreateAPIView):
       GET  -> list expenses
       POST -> create a new expense row
     """
-    queryset = (
-        Expense.objects
-        .select_related("supplier", "created_by__outlet__location")
-        .order_by("-date_time", "-id")
-    )
     serializer_class = ExpenseSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        qs = (
+            Expense.objects
+            .select_related("supplier", "created_by__outlet__location")
+            .order_by("-date_time", "-id")
+        )
+
+        user = self.request.user
+        if getattr(user, "is_superuser", False):
+            return qs
+
+        emp = getattr(user, "employee", None)
+        outlet = getattr(emp, "outlet", None) if emp else None
+        loc = getattr(outlet, "location", None) if outlet else None
+
+        if not loc:
+            return qs.none()
+
+        return qs.filter(created_by__outlet__location=loc)
+
     def perform_create(self, serializer):
-        # Try to attach logged-in employee / manager if available
         employee = getattr(self.request.user, "employee", None) if hasattr(
             self.request.user, "employee"
         ) else None

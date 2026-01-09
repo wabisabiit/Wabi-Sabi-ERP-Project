@@ -1,6 +1,11 @@
 // src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { listSales, listLoginLogs, listProducts } from "../api/client";
+import {
+  listSales,
+  listLoginLogs,
+  listExpenses,
+  dashboardSummary,
+} from "../api/client";
 import "../styles/Dashboard.css";
 import { useAuth } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -36,97 +41,84 @@ const money2 = (n) =>
       })
     : String(n);
 
-/* -------------------- Compact helpers (K/L/Cr) -------------------- */
-function compactIN(n) {
-  const v = Number(n || 0);
-  if (!Number.isFinite(v) || v === 0) return "0";
-  const abs = Math.abs(v);
-
-  // Thousand
-  if (abs < 100000) {
-    const out = abs >= 1000 ? (v / 1000).toFixed(abs >= 10000 ? 0 : 1) + " K" : String(Math.round(v));
-    return out.replace(".0 K", " K");
-  }
-
-  // Lakh
-  if (abs < 10000000) {
-    const out = (v / 100000).toFixed(abs >= 1000000 ? 1 : 2) + " L";
-    return out.replace(".00 L", " L").replace(".0 L", " L");
-  }
-
-  // Crore
-  const out = (v / 10000000).toFixed(abs >= 100000000 ? 1 : 2) + " Cr";
-  return out.replace(".00 Cr", " Cr").replace(".0 Cr", " Cr");
-}
-
-function moneyCompact(n) {
-  const v = Number(n || 0);
-  if (!Number.isFinite(v) || v === 0) return "₹0";
-  return "₹" + compactIN(v);
-}
-
-/* -------------------- KPI mock (kept but no longer used for values) -------------------- */
+/* -------------------- KPI mock -------------------- */
+/**
+ * For values not implemented yet, keep them 0 and mark "comingSoon: true"
+ * so UI can show tooltip on hover.
+ */
 function computeMetricsMock({ from, to, locationIds, channelIds }) {
-  const loc = Math.max(locationIds.length, 1);
-  const ch = Math.max(channelIds.length, 1);
-  const days = Math.max(1, Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1);
-  const base = 5674 * loc * ch * days;
-
   const m = {
-    totalSales: base + 11073,
-    totalInvoice: 8 * loc * ch,
-    soldQty: 165 * loc,
-    totalCustomers: 7 * loc,
-    toReceive: Math.round(base * 0.23),
+    totalSales: 0,
+    totalInvoice: 0,
+    soldQty: 0,
+    totalCustomers: 0,
+    toReceive: 0,
     salesReturn: 0,
+
     totalPurchase: 0,
     totalBills: 0,
     purchaseQty: 0,
-    suppliers: 12,
+    suppliers: 0,
     toPay: 0,
     purchaseReturn: 0,
+
     totalPaid: 0,
     totalExpense: 0,
-    totalProducts: "1.81 L",
-    stockQty: 93,
-    stockValue: "₹1.10 L",
-    cashInHand: "15.41 L",
-    grossProfit: 1199,
+    totalProductsAmount: 0,
+    stockQty: 0,
+    stockValue: 0,
+    cashInHand: 0,
+
+    grossProfit: 0,
     avgProfitMargin: 0,
     avgProfitMarginPct: 0,
-    avgCartValue: 1199,
-    avgBills: 1,
+    avgCartValue: 0,
+    avgBills: 0,
     bankAccounts: 0,
   };
 
+  const cs = (label, value, tone) => ({
+    label,
+    value,
+    tone,
+    comingSoon: true,
+  });
+
+  const real = (label, value, tone) => ({
+    label,
+    value,
+    tone,
+    comingSoon: false,
+  });
+
   return [
-    { label: "Total Sales", value: money0(m.totalSales), tone: "mint" },
-    { label: "Total Invoice", value: m.totalInvoice, tone: "mint" },
-    { label: "Sold Qty", value: m.soldQty, tone: "mint" },
-    { label: "Total Customers", value: m.totalCustomers, tone: "mint" },
-    { label: "To Receive", value: money0(m.toReceive), tone: "mint" },
-    { label: "Total Sales Return", value: money0(m.salesReturn), tone: "mint" },
+    real("Total Sales", money0(m.totalSales), "mint"),
+    real("Total Invoice", m.totalInvoice, "mint"),
+    real("Sold Qty", m.soldQty, "mint"),
+    real("Total Customers", m.totalCustomers, "mint"),
+    real("To Receive", money0(m.toReceive), "mint"),
+    real("Total Sales Return", money0(m.salesReturn), "mint"),
 
-    { label: "Total Purchase", value: money0(m.totalPurchase), tone: "sky" },
-    { label: "Total Bills", value: m.totalBills, tone: "sky" },
-    { label: "Purchase Qty", value: m.purchaseQty, tone: "sky" },
-    { label: "Total Suppliers", value: m.suppliers, tone: "sky" },
-    { label: "To Pay", value: money0(m.toPay), tone: "sky" },
-    { label: "Total Purchase Return", value: m.purchaseReturn, tone: "sky" },
+    real("Total Purchase", money0(m.totalPurchase), "sky"),
+    real("Total Bills", m.totalBills, "sky"),
+    real("Purchase Qty", m.purchaseQty, "sky"),
+    cs("Total Suppliers", m.suppliers, "sky"),
+    cs("To Pay", money0(m.toPay), "sky"),
+    cs("Total Purchase Return", money0(m.purchaseReturn), "sky"),
 
-    { label: "Total Paid", value: money0(m.totalPaid), tone: "violet" },
-    { label: "Total Expense", value: m.totalExpense, tone: "violet" },
-    { label: "Total Products", value: m.totalProducts, tone: "violet" },
-    { label: "Stock Qty", value: m.stockQty, tone: "violet" },
-    { label: "Stock Value", value: m.stockValue, tone: "violet" },
-    { label: "Cash in Hand", value: m.cashInHand, tone: "violet" },
+    cs("Total Paid", money0(m.totalPaid), "violet"),
+    real("Total Expense", money0(m.totalExpense), "violet"),
+    real("Total Products", money0(m.totalProductsAmount), "violet"),
+    cs("Stock Qty", m.stockQty, "violet"),
+    cs("Stock Value", money0(m.stockValue), "violet"),
+    real("Cash in Hand", money0(m.cashInHand), "violet"),
 
-    { label: "Gross Profit", value: m.grossProfit, tone: "rose" },
-    { label: "Avg. Profit Margin", value: money0(m.avgProfitMargin), tone: "rose" },
-    { label: "Avg. Profit Margin(%)", value: m.avgProfitMarginPct.toFixed(2), tone: "rose" },
-    { label: "Avg. Cart Value", value: money0(m.avgCartValue), tone: "rose" },
-    { label: "Avg. Bills (Nos.)", value: m.avgBills, tone: "rose" },
-    { label: "Bank Accounts", value: m.bankAccounts, tone: "rose" },
+    real("Gross Profit", money0(m.grossProfit), "rose"),
+    cs("Avg. Profit Margin", money0(m.avgProfitMargin), "rose"),
+    cs("Avg. Profit Margin(%)", m.avgProfitMarginPct.toFixed(2), "rose"),
+    cs("Avg. Cart Value", money0(m.avgCartValue), "rose"),
+    cs("Avg. Bills (Nos.)", m.avgBills, "rose"),
+    cs("Bank Accounts", m.bankAccounts, "rose"),
   ];
 }
 
@@ -245,7 +237,10 @@ function BarChart({
   const baseGroupW = innerW / Math.max(1, xLabels.length);
   const groupW = baseGroupW * Math.max(1, zoom);
   const barGap = 10;
-  const barW = Math.min(28, (groupW - barGap * (series.length + 1)) / Math.max(1, series.length));
+  const barW = Math.min(
+    28,
+    (groupW - barGap * (series.length + 1)) / Math.max(1, series.length)
+  );
   const minPan = -Math.max(0, groupW * xLabels.length - innerW);
   const panClamped = Math.max(minPan, Math.min(0, pan));
 
@@ -470,7 +465,10 @@ function ChartCard({
       const minPan = -Math.max(0, groupW * xLabels.length - innerW);
       const panClamped = Math.max(minPan, Math.min(0, pan));
       const effectiveX = localX - panClamped;
-      const idx = Math.max(0, Math.min(xLabels.length - 1, Math.floor(effectiveX / groupW + 0.5)));
+      const idx = Math.max(
+        0,
+        Math.min(xLabels.length - 1, Math.floor(effectiveX / groupW + 0.5))
+      );
       setHoverIdx(idx);
     }
     function leave() {
@@ -611,17 +609,31 @@ function ChartCard({
 }
 
 /* -------------------- Simple Table Card -------------------- */
-function TableCard({ title, rangeValue, onRangeChange, columns, rows, rightSide = null, scrollY = 0, showDate = true }) {
+function TableCard({
+  title,
+  rangeValue,
+  onRangeChange,
+  columns,
+  rows,
+  rightSide = null,
+  scrollY = 0,
+  showDate = true,
+}) {
   return (
     <div className="table-card">
       <div className="table-head">
         <div className="table-title">{title}</div>
         <div className="table-head-right">
           {rightSide}
-          {showDate && <DateRangeInput value={rangeValue} onChange={onRangeChange} small />}
+          {showDate && (
+            <DateRangeInput value={rangeValue} onChange={onRangeChange} small />
+          )}
         </div>
       </div>
-      <div className={`table-wrap ${scrollY ? "has-scroll" : ""}`} style={scrollY ? { maxHeight: scrollY } : undefined}>
+      <div
+        className={`table-wrap ${scrollY ? "has-scroll" : ""}`}
+        style={scrollY ? { maxHeight: scrollY } : undefined}
+      >
         <table className="data-table">
           <thead>
             <tr>
@@ -629,7 +641,13 @@ function TableCard({ title, rangeValue, onRangeChange, columns, rows, rightSide 
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={c.align === "right" ? "al-r" : c.align === "center" ? "al-c" : ""}
+                  className={
+                    c.align === "right"
+                      ? "al-r"
+                      : c.align === "center"
+                      ? "al-c"
+                      : ""
+                  }
                 >
                   {c.label}
                 </th>
@@ -643,7 +661,13 @@ function TableCard({ title, rangeValue, onRangeChange, columns, rows, rightSide 
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={c.align === "right" ? "al-r" : c.align === "center" ? "al-c" : ""}
+                    className={
+                      c.align === "right"
+                        ? "al-r"
+                        : c.align === "center"
+                        ? "al-c"
+                        : ""
+                    }
                   >
                     {r[c.key]}
                   </td>
@@ -699,7 +723,9 @@ export default function Dashboard() {
   }, [chanQuery]);
   const allChannelIds = CHANNELS.map((c) => c.id);
   const toggle = (id, list, setList) =>
-    setList((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setList((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileBtnRef = useRef(null);
@@ -765,29 +791,25 @@ export default function Dashboard() {
     return { from: toISO(a), to: toISO(b) };
   };
 
-  // Fields you DID mention (keep as real / intended, even if currently 0)
-  const MENTIONED_FIELDS = useMemo(
-    () =>
-      new Set([
-        "Total Sales",
-        "Total Invoice",
-        "Sold Qty",
-        "Total Customers",
+  const sumExpensesInRange = (expenses, fromISO, toISO_) => {
+    const start = new Date(fromISO + "T00:00:00");
+    const end = new Date(toISO_ + "T23:59:59");
+    let total = 0;
 
-        "To Receive",
-        "Total Sales Return",
-        "Total Purchase",
-        "Total Bills",
-        "Purchase Qty",
-        "Total Suppliers",
-        "Total Products",
-        "Cash in Hand",
-        "Gross Profit",
-      ]),
-    []
-  );
+    for (const ex of expenses || []) {
+      const dt = ex?.date_time || ex?.date || ex?.created_at;
+      if (!dt) continue;
+      const d = new Date(dt);
+      if (Number.isNaN(d.getTime())) continue;
+      if (d < start || d > end) continue;
 
-  /* ===== KPI loader (Sales, Invoices, Qty, Customers) + Total Products from inventory ===== */
+      const amt = Number(ex?.amount ?? 0);
+      if (Number.isFinite(amt)) total += amt;
+    }
+    return total;
+  };
+
+  /* ===== KPI loader (REAL from backend summary + sales + expenses) ===== */
   useEffect(() => {
     const { from, to } = parseRange(globalRange);
     let cancelled = false;
@@ -797,19 +819,15 @@ export default function Dashboard() {
       setErr("");
 
       try {
-        const salesParams = {
-          date_from: from,
-          date_to: to,
-          all: "1",
-        };
+        const params = { date_from: from, date_to: to, all: "1" };
 
-        // Fetch Sales + Products together
-        const [salesRes, prodRes] = await Promise.all([
-          listSales(salesParams),
-          listProducts({ page: 1, page_size: 1000 }),
+        // backend scopes sales by outlet for non-admin; admin sees all
+        const [salesRes, expRes, sumRes] = await Promise.all([
+          listSales(params),
+          listExpenses({ limit: 2500 }), // backend scopes for outlet; admin gets all
+          dashboardSummary({ date_from: from, date_to: to }),
         ]);
 
-        // ---- Sales parsing (keep your working 4 KPIs) ----
         const sales = Array.isArray(salesRes?.results)
           ? salesRes.results
           : Array.isArray(salesRes)
@@ -831,7 +849,9 @@ export default function Dashboard() {
           const key =
             s.customer_id ??
             s.customer ??
-            (s.customer_name || s.customer_phone ? `${s.customer_name || ""}|${s.customer_phone || ""}` : null);
+            (s.customer_name || s.customer_phone
+              ? `${s.customer_name || ""}|${s.customer_phone || ""}`
+              : null);
 
           if (key !== null && key !== undefined && String(key).trim() !== "") {
             customerKeys.add(String(key));
@@ -841,93 +861,48 @@ export default function Dashboard() {
         if (soldQty <= 0) soldQty = totalInvoice;
         const totalCustomers = customerKeys.size;
 
-        // ---- Products parsing (Total Products should be real inventory) ----
-        const products = Array.isArray(prodRes?.results)
-          ? prodRes.results
-          : Array.isArray(prodRes)
-          ? prodRes
-          : [];
+        const sum = sumRes || {};
+        const totalSalesReturn = Number(sum?.total_sales_return ?? 0);
+        const totalReceive = Number(sum?.total_receive ?? 0);
+        const totalPurchase = Number(sum?.total_purchase ?? 0);
+        const totalBills = Number(sum?.total_bills ?? 0);
+        const purchaseQty = Number(sum?.purchase_qty ?? 0);
+        const totalProductsAmount = Number(sum?.total_products_amount ?? 0);
+        const cashInHand = Number(sum?.cash_in_hand ?? 0);
+        const grossProfit = Number(sum?.gross_profit ?? 0);
 
-        // Total Products = sum of qty in inventory (qty > 0)
-        let totalProductsQty = 0;
-        for (const p of products) {
-          const q = Number(p.qty ?? 0);
-          if (Number.isFinite(q) && q > 0) totalProductsQty += q;
-        }
+        const totalExpense = sumExpensesInRange(expRes || [], from, to);
 
-        // ---- Build KPI cards (no mock numbers anymore) ----
-        const rawCards = [
-          { label: "Total Sales", value: moneyCompact(totalSales), tone: "mint" },
-          { label: "Total Invoice", value: totalInvoice, tone: "mint" },
-          { label: "Sold Qty", value: soldQty, tone: "mint" },
-          { label: "Total Customers", value: totalCustomers, tone: "mint" },
+        const baseCards = computeMetricsMock({ from, to, locationIds, channelIds });
 
-          // Mentioned by you (but backend rules will be implemented later if needed)
-          { label: "To Receive", value: "₹0", tone: "mint" },
-          { label: "Total Sales Return", value: "₹0", tone: "mint" },
+        const cards = baseCards.map((card) => {
+          if (card.label === "Total Sales") return { ...card, value: money0(totalSales), comingSoon: false };
+          if (card.label === "Total Invoice") return { ...card, value: totalInvoice, comingSoon: false };
+          if (card.label === "Sold Qty") return { ...card, value: soldQty, comingSoon: false };
+          if (card.label === "Total Customers") return { ...card, value: totalCustomers, comingSoon: false };
 
-          { label: "Total Purchase", value: "₹0", tone: "sky" },
-          { label: "Total Bills", value: 0, tone: "sky" },
-          { label: "Purchase Qty", value: 0, tone: "sky" },
-          { label: "Total Suppliers", value: 0, tone: "sky" },
+          if (card.label === "Total Sales Return") return { ...card, value: money0(totalSalesReturn), comingSoon: false };
+          if (card.label === "To Receive") return { ...card, value: money0(totalReceive), comingSoon: false };
+          if (card.label === "Total Purchase") return { ...card, value: money0(totalPurchase), comingSoon: false };
+          if (card.label === "Total Bills") return { ...card, value: totalBills, comingSoon: false };
+          if (card.label === "Purchase Qty") return { ...card, value: purchaseQty, comingSoon: false };
 
-          // Not mentioned: keep 0 + Coming soon
-          { label: "To Pay", value: "₹0", tone: "sky" },
-          { label: "Total Purchase Return", value: 0, tone: "sky" },
+          if (card.label === "Total Products") return { ...card, value: money0(totalProductsAmount), comingSoon: false };
+          if (card.label === "Cash in Hand") return { ...card, value: money0(cashInHand), comingSoon: false };
+          if (card.label === "Gross Profit") return { ...card, value: money0(grossProfit), comingSoon: false };
+          if (card.label === "Total Expense") return { ...card, value: money0(totalExpense), comingSoon: false };
 
-          // Not mentioned: keep 0 + Coming soon
-          { label: "Total Paid", value: "₹0", tone: "violet" },
-          { label: "Total Expense", value: 0, tone: "violet" },
-
-          // ✅ FIXED: Total Products from inventory
-          { label: "Total Products", value: compactIN(totalProductsQty), tone: "violet" },
-
-          // Not mentioned: keep 0 + Coming soon
-          { label: "Stock Qty", value: 0, tone: "violet" },
-          { label: "Stock Value", value: "₹0", tone: "violet" },
-
-          // Mentioned by you
-          { label: "Cash in Hand", value: "₹0", tone: "violet" },
-
-          // Mentioned by you
-          { label: "Gross Profit", value: "₹0", tone: "rose" },
-
-          // Not mentioned: keep 0 + Coming soon
-          { label: "Avg. Profit Margin", value: "₹0", tone: "rose" },
-          { label: "Avg. Profit Margin(%)", value: "0.00", tone: "rose" },
-          { label: "Avg. Cart Value", value: "₹0", tone: "rose" },
-          { label: "Avg. Bills (Nos.)", value: 0, tone: "rose" },
-          { label: "Bank Accounts", value: 0, tone: "rose" },
-        ];
-
-        // Attach comingSoon flag for fields NOT mentioned
-        const cards = rawCards.map((c) => ({
-          ...c,
-          comingSoon: !MENTIONED_FIELDS.has(c.label),
-        }));
+          // everything else stays 0 + coming soon
+          return card;
+        });
 
         if (!cancelled) setMetrics(cards);
       } catch (e) {
+        console.error("Dashboard KPI load failed:", e); // ✅ requested
         if (!cancelled) {
           setErr(e?.message || "Failed to load");
-          // fallback: show 0s but keep layout
           const { from, to } = parseRange(globalRange);
-          const base = computeMetricsMock({ from, to, locationIds, channelIds }).map((c) => ({
-            ...c,
-            value:
-              c.label === "Total Sales" ||
-              c.label === "Total Invoice" ||
-              c.label === "Sold Qty" ||
-              c.label === "Total Customers"
-                ? c.value
-                : c.label === "Total Products"
-                ? "0"
-                : c.label.includes("₹")
-                ? "₹0"
-                : 0,
-            comingSoon: !MENTIONED_FIELDS.has(c.label),
-          }));
-          setMetrics(base);
+          setMetrics(computeMetricsMock({ from, to, locationIds, channelIds }));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -937,7 +912,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [globalRange, locationIds, channelIds, MENTIONED_FIELDS]);
+  }, [globalRange, locationIds, channelIds]);
 
   const [rangeSVP, setRangeSVP] = useState(defaultRange);
   const [rangeTXN, setRangeTXN] = useState(defaultRange);
@@ -1012,10 +987,9 @@ export default function Dashboard() {
           location: logLocIds,
           limit: 100,
         });
-        if (!cancelled) {
-          setLoginLogs(res || []);
-        }
+        if (!cancelled) setLoginLogs(res || []);
       } catch (e) {
+        console.error("Login logs load failed:", e); // ✅ helpful
         if (!cancelled) setLoginLogErr(e?.message || "Failed to load login logs");
       } finally {
         if (!cancelled) setLoginLogLoading(false);
@@ -1114,7 +1088,9 @@ export default function Dashboard() {
                             type="checkbox"
                             checked={channelIds.length === allChannelIds.length}
                             onChange={() =>
-                              setChannelIds((prev) => (prev.length === allChannelIds.length ? [] : allChannelIds))
+                              setChannelIds((prev) =>
+                                prev.length === allChannelIds.length ? [] : allChannelIds
+                              )
                             }
                           />
                           <span>ALL</span>
@@ -1126,7 +1102,9 @@ export default function Dashboard() {
                               checked={channelIds.includes(c.id)}
                               onChange={() =>
                                 setChannelIds((prev) =>
-                                  prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]
+                                  prev.includes(c.id)
+                                    ? prev.filter((x) => x !== c.id)
+                                    : [...prev, c.id]
                                 )
                               }
                             />
@@ -1182,7 +1160,6 @@ export default function Dashboard() {
 
         {err && <div className="dash-error">⚠ {err}</div>}
 
-        {/* 🔵 Dashboard loading spinner */}
         {loading && (
           <div className="dash-loading">
             <div className="dash-spinner" />
@@ -1195,8 +1172,7 @@ export default function Dashboard() {
             <div
               key={i}
               className="metric-card"
-              title={m.comingSoon ? "Coming soon" : undefined}
-              style={m.comingSoon ? { cursor: "help" } : undefined}
+              title={m.comingSoon ? "Coming soon" : ""}
             >
               <div className={`metric-badge ${m.tone}`}>{m.value}</div>
               <div className="metric-label">{m.label}</div>
@@ -1336,7 +1312,6 @@ export default function Dashboard() {
               showDate={false}
               rightSide={LoginLogRightSide}
             />
-            {/* 🔵 Login log loading spinner */}
             {loginLogLoading && (
               <div className="dash-loading" style={{ marginTop: 4 }}>
                 <div className="dash-spinner" />
@@ -1364,7 +1339,10 @@ function useSmartDropdown(open, btnRef) {
       if (!open || !btnRef.current) return;
       const r = btnRef.current.getBoundingClientRect();
       const pad = 8;
-      const left = Math.min(Math.max(pad, r.left), window.innerWidth - DD_WIDTH - pad);
+      const left = Math.min(
+        Math.max(pad, r.left),
+        window.innerWidth - DD_WIDTH - pad
+      );
       const top = r.bottom + 8;
       setStyle({
         position: "fixed",
