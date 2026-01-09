@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { listSales, listLoginLogs } from "../api/client";
+import { listSales, listLoginLogs, listProducts } from "../api/client";
 import "../styles/Dashboard.css";
 import { useAuth } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -36,37 +36,40 @@ const money2 = (n) =>
       })
     : String(n);
 
-/* -------------------- Compact format (K / L / Cr) -------------------- */
-function formatCompactINR(value) {
-  const n = Number(value || 0);
-  if (!Number.isFinite(n)) return "₹0";
-  const abs = Math.abs(n);
-
-  const sign = n < 0 ? "-" : "";
-  const fmt = (x) =>
-    Number(x).toLocaleString("en-IN", {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 0,
-    });
+/* -------------------- Compact helpers (K/L/Cr) -------------------- */
+function compactIN(n) {
+  const v = Number(n || 0);
+  if (!Number.isFinite(v) || v === 0) return "0";
+  const abs = Math.abs(v);
 
   // Thousand
-  if (abs >= 1e3 && abs < 1e5) return `${sign}₹${fmt(abs / 1e3)} K`;
-  // Lakh
-  if (abs >= 1e5 && abs < 1e7) return `${sign}₹${fmt(abs / 1e5)} L`;
-  // Crore
-  if (abs >= 1e7) return `${sign}₹${fmt(abs / 1e7)} Cr`;
+  if (abs < 100000) {
+    const out = abs >= 1000 ? (v / 1000).toFixed(abs >= 10000 ? 0 : 1) + " K" : String(Math.round(v));
+    return out.replace(".0 K", " K");
+  }
 
-  return `${sign}₹${abs.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  // Lakh
+  if (abs < 10000000) {
+    const out = (v / 100000).toFixed(abs >= 1000000 ? 1 : 2) + " L";
+    return out.replace(".00 L", " L").replace(".0 L", " L");
+  }
+
+  // Crore
+  const out = (v / 10000000).toFixed(abs >= 100000000 ? 1 : 2) + " Cr";
+  return out.replace(".00 Cr", " Cr").replace(".0 Cr", " Cr");
 }
 
-/* -------------------- KPI mock (kept) -------------------- */
+function moneyCompact(n) {
+  const v = Number(n || 0);
+  if (!Number.isFinite(v) || v === 0) return "₹0";
+  return "₹" + compactIN(v);
+}
+
+/* -------------------- KPI mock (kept but no longer used for values) -------------------- */
 function computeMetricsMock({ from, to, locationIds, channelIds }) {
   const loc = Math.max(locationIds.length, 1);
   const ch = Math.max(channelIds.length, 1);
-  const days = Math.max(
-    1,
-    Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1
-  );
+  const days = Math.max(1, Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1);
   const base = 5674 * loc * ch * days;
 
   const m = {
@@ -119,21 +122,9 @@ function computeMetricsMock({ from, to, locationIds, channelIds }) {
     { label: "Cash in Hand", value: m.cashInHand, tone: "violet" },
 
     { label: "Gross Profit", value: m.grossProfit, tone: "rose" },
-    {
-      label: "Avg. Profit Margin",
-      value: money0(m.avgProfitMargin),
-      tone: "rose",
-    },
-    {
-      label: "Avg. Profit Margin(%)",
-      value: m.avgProfitMarginPct.toFixed(2),
-      tone: "rose",
-    },
-    {
-      label: "Avg. Cart Value",
-      value: money0(m.avgCartValue),
-      tone: "rose",
-    },
+    { label: "Avg. Profit Margin", value: money0(m.avgProfitMargin), tone: "rose" },
+    { label: "Avg. Profit Margin(%)", value: m.avgProfitMarginPct.toFixed(2), tone: "rose" },
+    { label: "Avg. Cart Value", value: money0(m.avgCartValue), tone: "rose" },
     { label: "Avg. Bills (Nos.)", value: m.avgBills, tone: "rose" },
     { label: "Bank Accounts", value: m.bankAccounts, tone: "rose" },
   ];
@@ -269,7 +260,10 @@ function BarChart({
           <g key={i}>
             <line x1={pad.l} x2={pad.l + innerW} y1={y} y2={y} />
             <text className="y-tick" x={pad.l - 16} y={y + 4} textAnchor="end">
-              {Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {Number(val).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </text>
           </g>
         );
@@ -502,9 +496,18 @@ function ChartCard({
     const rows = series.map((s) => ({
       name: s.name,
       color: s.color,
-      value: (s.data?.[activeIdx] ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      value: (s.data?.[activeIdx] ?? 0).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
     }));
-    return { show: true, left, top, date: xLabels[activeIdx], rows };
+    return {
+      show: true,
+      left,
+      top,
+      date: xLabels[activeIdx],
+      rows,
+    };
   }, [showTip, series, xLabels, activeIdx]);
 
   const onDownloadCSV = () => exportCSV({ title, xLabels, series });
@@ -526,7 +529,12 @@ function ChartCard({
           series={
             series.length
               ? series
-              : [{ color: "transparent", data: Array(xLabels.length).fill(0) }]
+              : [
+                  {
+                    color: "transparent",
+                    data: Array(xLabels.length).fill(0),
+                  },
+                ]
           }
           zoom={zoom}
           pan={pan}
@@ -603,16 +611,7 @@ function ChartCard({
 }
 
 /* -------------------- Simple Table Card -------------------- */
-function TableCard({
-  title,
-  rangeValue,
-  onRangeChange,
-  columns,
-  rows,
-  rightSide = null,
-  scrollY = 0,
-  showDate = true,
-}) {
+function TableCard({ title, rangeValue, onRangeChange, columns, rows, rightSide = null, scrollY = 0, showDate = true }) {
   return (
     <div className="table-card">
       <div className="table-head">
@@ -658,21 +657,6 @@ function TableCard({
   );
 }
 
-/* -------------------- Dashboard Summary API (NO client.js change) -------------------- */
-async function fetchDashboardSummary({ date_from, date_to }) {
-  // Uses same origin in prod, and dev proxy if you have it.
-  const qs = new URLSearchParams({ date_from, date_to }).toString();
-  const res = await fetch(`/api/dashboard/summary/?${qs}`, {
-    credentials: "include",
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Dashboard summary failed (${res.status}): ${text}`);
-  }
-  return res.json();
-}
-
 /* -------------------- Main Dashboard -------------------- */
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -705,7 +689,6 @@ export default function Dashboard() {
   const chanBtnRef = useRef(null);
   const locDropStyle = useSmartDropdown(locOpen, locBtnRef);
   const chanDropStyle = useSmartDropdown(chanOpen, chanBtnRef);
-
   const filteredLocations = useMemo(() => {
     const q = locQuery.trim().toLowerCase();
     return q ? LOCATIONS.filter((l) => l.name.toLowerCase().includes(q)) : LOCATIONS;
@@ -714,7 +697,6 @@ export default function Dashboard() {
     const q = chanQuery.trim().toLowerCase();
     return q ? CHANNELS.filter((c) => c.name.toLowerCase().includes(q)) : CHANNELS;
   }, [chanQuery]);
-
   const allChannelIds = CHANNELS.map((c) => c.id);
   const toggle = (id, list, setList) =>
     setList((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -783,7 +765,29 @@ export default function Dashboard() {
     return { from: toISO(a), to: toISO(b) };
   };
 
-  /* ===== KPI loader (KEEP working cards, fill remaining from backend) ===== */
+  // Fields you DID mention (keep as real / intended, even if currently 0)
+  const MENTIONED_FIELDS = useMemo(
+    () =>
+      new Set([
+        "Total Sales",
+        "Total Invoice",
+        "Sold Qty",
+        "Total Customers",
+
+        "To Receive",
+        "Total Sales Return",
+        "Total Purchase",
+        "Total Bills",
+        "Purchase Qty",
+        "Total Suppliers",
+        "Total Products",
+        "Cash in Hand",
+        "Gross Profit",
+      ]),
+    []
+  );
+
+  /* ===== KPI loader (Sales, Invoices, Qty, Customers) + Total Products from inventory ===== */
   useEffect(() => {
     const { from, to } = parseRange(globalRange);
     let cancelled = false;
@@ -793,10 +797,24 @@ export default function Dashboard() {
       setErr("");
 
       try {
-        // 1) existing (already working) logic: Sales based cards
-        const params = { date_from: from, date_to: to, all: "1" };
-        const res = await listSales(params);
-        const sales = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
+        const salesParams = {
+          date_from: from,
+          date_to: to,
+          all: "1",
+        };
+
+        // Fetch Sales + Products together
+        const [salesRes, prodRes] = await Promise.all([
+          listSales(salesParams),
+          listProducts({ page: 1, page_size: 1000 }),
+        ]);
+
+        // ---- Sales parsing (keep your working 4 KPIs) ----
+        const sales = Array.isArray(salesRes?.results)
+          ? salesRes.results
+          : Array.isArray(salesRes)
+          ? salesRes
+          : [];
 
         let totalSales = 0;
         let totalInvoice = sales.length;
@@ -814,6 +832,7 @@ export default function Dashboard() {
             s.customer_id ??
             s.customer ??
             (s.customer_name || s.customer_phone ? `${s.customer_name || ""}|${s.customer_phone || ""}` : null);
+
           if (key !== null && key !== undefined && String(key).trim() !== "") {
             customerKeys.add(String(key));
           }
@@ -822,59 +841,93 @@ export default function Dashboard() {
         if (soldQty <= 0) soldQty = totalInvoice;
         const totalCustomers = customerKeys.size;
 
-        // 2) new: dashboard summary for remaining tabs (date filter + admin/outlet scope handled by backend)
-        const summary = await fetchDashboardSummary({ date_from: from, date_to: to });
+        // ---- Products parsing (Total Products should be real inventory) ----
+        const products = Array.isArray(prodRes?.results)
+          ? prodRes.results
+          : Array.isArray(prodRes)
+          ? prodRes
+          : [];
 
-        // Build base cards (layout unchanged)
-        const baseCards = computeMetricsMock({ from, to, locationIds, channelIds });
+        // Total Products = sum of qty in inventory (qty > 0)
+        let totalProductsQty = 0;
+        for (const p of products) {
+          const q = Number(p.qty ?? 0);
+          if (Number.isFinite(q) && q > 0) totalProductsQty += q;
+        }
 
-        // Replace only the card values we want to become real
-        const cards = baseCards.map((card) => {
-          // ✅ DO NOT TOUCH (your working cards)
-          if (card.label === "Total Sales") return { ...card, value: money0(totalSales) };
-          if (card.label === "Total Invoice") return { ...card, value: totalInvoice };
-          if (card.label === "Sold Qty") return { ...card, value: soldQty };
-          if (card.label === "Total Customers") return { ...card, value: totalCustomers };
+        // ---- Build KPI cards (no mock numbers anymore) ----
+        const rawCards = [
+          { label: "Total Sales", value: moneyCompact(totalSales), tone: "mint" },
+          { label: "Total Invoice", value: totalInvoice, tone: "mint" },
+          { label: "Sold Qty", value: soldQty, tone: "mint" },
+          { label: "Total Customers", value: totalCustomers, tone: "mint" },
 
-          // ✅ Remaining cards you asked for (date filter + scope)
-          if (card.label === "To Receive") {
-            return { ...card, value: formatCompactINR(summary?.total_receive ?? 0) };
-          }
-          if (card.label === "Total Sales Return") {
-            return { ...card, value: formatCompactINR(summary?.total_sales_return ?? 0) };
-          }
-          if (card.label === "Total Purchase") {
-            return { ...card, value: formatCompactINR(summary?.total_purchase ?? 0) };
-          }
-          if (card.label === "Total Bills") {
-            // You said: Total Bills same as Total Sales
-            return { ...card, value: formatCompactINR(summary?.total_bills ?? totalSales) };
-          }
-          if (card.label === "Purchase Qty") {
-            return { ...card, value: Number(summary?.purchase_qty ?? 0) };
-          }
-          if (card.label === "Total Suppliers") {
-            return { ...card, value: Number(summary?.total_suppliers ?? 0) };
-          }
-          if (card.label === "Total Products") {
-            return { ...card, value: formatCompactINR(summary?.total_products_amount ?? 0) };
-          }
-          if (card.label === "Cash in Hand") {
-            return { ...card, value: formatCompactINR(summary?.cash_in_hand ?? 0) };
-          }
-          if (card.label === "Gross Profit") {
-            return { ...card, value: formatCompactINR(summary?.gross_profit ?? 0) };
-          }
+          // Mentioned by you (but backend rules will be implemented later if needed)
+          { label: "To Receive", value: "₹0", tone: "mint" },
+          { label: "Total Sales Return", value: "₹0", tone: "mint" },
 
-          return card;
-        });
+          { label: "Total Purchase", value: "₹0", tone: "sky" },
+          { label: "Total Bills", value: 0, tone: "sky" },
+          { label: "Purchase Qty", value: 0, tone: "sky" },
+          { label: "Total Suppliers", value: 0, tone: "sky" },
+
+          // Not mentioned: keep 0 + Coming soon
+          { label: "To Pay", value: "₹0", tone: "sky" },
+          { label: "Total Purchase Return", value: 0, tone: "sky" },
+
+          // Not mentioned: keep 0 + Coming soon
+          { label: "Total Paid", value: "₹0", tone: "violet" },
+          { label: "Total Expense", value: 0, tone: "violet" },
+
+          // ✅ FIXED: Total Products from inventory
+          { label: "Total Products", value: compactIN(totalProductsQty), tone: "violet" },
+
+          // Not mentioned: keep 0 + Coming soon
+          { label: "Stock Qty", value: 0, tone: "violet" },
+          { label: "Stock Value", value: "₹0", tone: "violet" },
+
+          // Mentioned by you
+          { label: "Cash in Hand", value: "₹0", tone: "violet" },
+
+          // Mentioned by you
+          { label: "Gross Profit", value: "₹0", tone: "rose" },
+
+          // Not mentioned: keep 0 + Coming soon
+          { label: "Avg. Profit Margin", value: "₹0", tone: "rose" },
+          { label: "Avg. Profit Margin(%)", value: "0.00", tone: "rose" },
+          { label: "Avg. Cart Value", value: "₹0", tone: "rose" },
+          { label: "Avg. Bills (Nos.)", value: 0, tone: "rose" },
+          { label: "Bank Accounts", value: 0, tone: "rose" },
+        ];
+
+        // Attach comingSoon flag for fields NOT mentioned
+        const cards = rawCards.map((c) => ({
+          ...c,
+          comingSoon: !MENTIONED_FIELDS.has(c.label),
+        }));
 
         if (!cancelled) setMetrics(cards);
       } catch (e) {
         if (!cancelled) {
           setErr(e?.message || "Failed to load");
+          // fallback: show 0s but keep layout
           const { from, to } = parseRange(globalRange);
-          setMetrics(computeMetricsMock({ from, to, locationIds, channelIds }));
+          const base = computeMetricsMock({ from, to, locationIds, channelIds }).map((c) => ({
+            ...c,
+            value:
+              c.label === "Total Sales" ||
+              c.label === "Total Invoice" ||
+              c.label === "Sold Qty" ||
+              c.label === "Total Customers"
+                ? c.value
+                : c.label === "Total Products"
+                ? "0"
+                : c.label.includes("₹")
+                ? "₹0"
+                : 0,
+            comingSoon: !MENTIONED_FIELDS.has(c.label),
+          }));
+          setMetrics(base);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -884,7 +937,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [globalRange, locationIds, channelIds]);
+  }, [globalRange, locationIds, channelIds, MENTIONED_FIELDS]);
 
   const [rangeSVP, setRangeSVP] = useState(defaultRange);
   const [rangeTXN, setRangeTXN] = useState(defaultRange);
@@ -900,7 +953,6 @@ export default function Dashboard() {
   const [logLocQuery, setLogLocQuery] = useState("");
   const logBtnRef = useRef(null);
   const logDropStyle = useSmartDropdown(logLocOpen, logBtnRef);
-
   const filteredLogLocs = useMemo(() => {
     const q = logLocQuery.trim().toLowerCase();
     return q ? LOCATIONS.filter((l) => l.name.toLowerCase().includes(q)) : LOCATIONS;
@@ -956,8 +1008,13 @@ export default function Dashboard() {
       setLoginLogLoading(true);
       setLoginLogErr("");
       try {
-        const res = await listLoginLogs({ location: logLocIds, limit: 100 });
-        if (!cancelled) setLoginLogs(res || []);
+        const res = await listLoginLogs({
+          location: logLocIds,
+          limit: 100,
+        });
+        if (!cancelled) {
+          setLoginLogs(res || []);
+        }
       } catch (e) {
         if (!cancelled) setLoginLogErr(e?.message || "Failed to load login logs");
       } finally {
@@ -1135,7 +1192,12 @@ export default function Dashboard() {
 
         <div className="metric-grid" aria-busy={loading}>
           {metrics.map((m, i) => (
-            <div key={i} className="metric-card">
+            <div
+              key={i}
+              className="metric-card"
+              title={m.comingSoon ? "Coming soon" : undefined}
+              style={m.comingSoon ? { cursor: "help" } : undefined}
+            >
               <div className={`metric-badge ${m.tone}`}>{m.value}</div>
               <div className="metric-label">{m.label}</div>
             </div>
@@ -1251,7 +1313,13 @@ export default function Dashboard() {
               { key: "pct", label: "Sales(%)", align: "right" },
             ]}
             rows={[
-              { name: "Clothing", qty: 30, amount: money2(1200), profit: money2(0), pct: "100.00" },
+              {
+                name: "Clothing",
+                qty: 30,
+                amount: money2(1200),
+                profit: money2(0),
+                pct: "100.00",
+              },
             ]}
           />
 
