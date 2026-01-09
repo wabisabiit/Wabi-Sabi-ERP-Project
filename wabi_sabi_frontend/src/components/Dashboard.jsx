@@ -36,7 +36,30 @@ const money2 = (n) =>
       })
     : String(n);
 
-/* -------------------- KPI mock -------------------- */
+/* -------------------- Compact format (K / L / Cr) -------------------- */
+function formatCompactINR(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return "₹0";
+  const abs = Math.abs(n);
+
+  const sign = n < 0 ? "-" : "";
+  const fmt = (x) =>
+    Number(x).toLocaleString("en-IN", {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+    });
+
+  // Thousand
+  if (abs >= 1e3 && abs < 1e5) return `${sign}₹${fmt(abs / 1e3)} K`;
+  // Lakh
+  if (abs >= 1e5 && abs < 1e7) return `${sign}₹${fmt(abs / 1e5)} L`;
+  // Crore
+  if (abs >= 1e7) return `${sign}₹${fmt(abs / 1e7)} Cr`;
+
+  return `${sign}₹${abs.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+/* -------------------- KPI mock (kept) -------------------- */
 function computeMetricsMock({ from, to, locationIds, channelIds }) {
   const loc = Math.max(locationIds.length, 1);
   const ch = Math.max(channelIds.length, 1);
@@ -145,15 +168,8 @@ function downloadText(filename, text) {
 
 function exportCSV({ title, xLabels, series }) {
   const headers = ["Label", ...series.map((s) => s.name)];
-  const rows = xLabels.map((x, i) => [
-    x,
-    ...series.map((s) => s.data?.[i] ?? 0),
-  ]);
-  const csvLines = [
-    `Title,${title}`,
-    headers.join(","),
-    ...rows.map((r) => r.join(",")),
-  ];
+  const rows = xLabels.map((x, i) => [x, ...series.map((s) => s.data?.[i] ?? 0)]);
+  const csvLines = [`Title,${title}`, headers.join(","), ...rows.map((r) => r.join(","))];
   downloadText(`${sanitize(title)}.csv`, csvLines.join("\n"));
 }
 
@@ -167,8 +183,7 @@ function exportPNG({ title, svgEl }) {
   const clone = svgEl.cloneNode(true);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   const svgStr = new XMLSerializer().serializeToString(clone);
-  const svg64 =
-    "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+  const svg64 = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
 
   const img = new Image();
   img.onload = () => {
@@ -228,9 +243,7 @@ function BarChart({
   const innerH = height - pad.t - pad.b;
 
   const flat = series.flatMap((s) => s.data ?? []);
-  const ySeed = flat.length
-    ? Math.max(...flat, 0)
-    : forceYMaxWhenEmpty || 1;
+  const ySeed = flat.length ? Math.max(...flat, 0) : forceYMaxWhenEmpty || 1;
   const segments = 4;
   let step = niceStep(ySeed / segments);
   let yMax = step * segments;
@@ -241,46 +254,22 @@ function BarChart({
   const baseGroupW = innerW / Math.max(1, xLabels.length);
   const groupW = baseGroupW * Math.max(1, zoom);
   const barGap = 10;
-  const barW = Math.min(
-    28,
-    (groupW - barGap * (series.length + 1)) /
-      Math.max(1, series.length)
-  );
+  const barW = Math.min(28, (groupW - barGap * (series.length + 1)) / Math.max(1, series.length));
   const minPan = -Math.max(0, groupW * xLabels.length - innerW);
   const panClamped = Math.max(minPan, Math.min(0, pan));
 
-  const clipId = useMemo(
-    () => `plotClip-${Math.random().toString(36).slice(2)}`,
-    []
-  );
+  const clipId = useMemo(() => `plotClip-${Math.random().toString(36).slice(2)}`, []);
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="gridchart-svg"
-      ref={svgRef}
-    >
+    <svg viewBox={`0 0 ${width} ${height}`} className="gridchart-svg" ref={svgRef}>
       {Array.from({ length: segments + 1 }).map((_, i) => {
         const val = step * i;
         const y = yToPx(val);
         return (
           <g key={i}>
-            <line
-              x1={pad.l}
-              x2={pad.l + innerW}
-              y1={y}
-              y2={y}
-            />
-            <text
-              className="y-tick"
-              x={pad.l - 16}
-              y={y + 4}
-              textAnchor="end"
-            >
-              {Number(val).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+            <line x1={pad.l} x2={pad.l + innerW} y1={y} y2={y} />
+            <text className="y-tick" x={pad.l - 16} y={y + 4} textAnchor="end">
+              {Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </text>
           </g>
         );
@@ -288,14 +277,7 @@ function BarChart({
 
       <defs>
         <clipPath id={clipId}>
-          <rect
-            x={pad.l}
-            y={pad.t}
-            width={innerW}
-            height={innerH}
-            rx="4"
-            ry="4"
-          />
+          <rect x={pad.l} y={pad.t} width={innerW} height={innerH} rx="4" ry="4" />
         </clipPath>
       </defs>
 
@@ -316,9 +298,7 @@ function BarChart({
                 height={h}
                 fill={s.color}
                 rx="3"
-                opacity={
-                  hoverIndex >= 0 && xi !== hoverIndex ? 0.35 : 1
-                }
+                opacity={hoverIndex >= 0 && xi !== hoverIndex ? 0.35 : 1}
               />
             );
           });
@@ -336,16 +316,9 @@ function BarChart({
       </g>
 
       {xLabels.map((lbl, i) => {
-        const x =
-          pad.l + panClamped + i * groupW + groupW / 2;
+        const x = pad.l + panClamped + i * groupW + groupW / 2;
         return (
-          <text
-            className="x-tick"
-            key={i}
-            x={x}
-            y={pad.t + innerH + 20}
-            textAnchor="middle"
-          >
+          <text className="x-tick" key={i} x={x} y={pad.t + innerH + 20} textAnchor="middle">
             {lbl}
           </text>
         );
@@ -362,14 +335,11 @@ function DateRangeInput({ value, onChange, small = false }) {
   const todayDMY = useMemo(() => {
     const d = new Date();
     const p = (n) => String(n).padStart(2, "0");
-    return `${p(d.getDate())}/${p(
-      d.getMonth() + 1
-    )}/${d.getFullYear()}`;
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
   }, []);
 
   const normalizeRange = (v) => {
-    if (typeof v !== "string" || !v.includes(" - "))
-      return `${todayDMY} - ${todayDMY}`;
+    if (typeof v !== "string" || !v.includes(" - ")) return `${todayDMY} - ${todayDMY}`;
     const [a, b] = v.split(" - ");
     return a && b ? v : `${todayDMY} - ${todayDMY}`;
   };
@@ -422,14 +392,8 @@ function DateRangeInput({ value, onChange, small = false }) {
   };
 
   return (
-    <div
-      className={`drp-wrap ${small ? "drp-small" : ""}`}
-      ref={ref}
-    >
-      <div
-        className={`drp-input ${open ? "focus" : ""}`}
-        onClick={() => setOpen(true)}
-      >
+    <div className={`drp-wrap ${small ? "drp-small" : ""}`} ref={ref}>
+      <div className={`drp-input ${open ? "focus" : ""}`} onClick={() => setOpen(true)}>
         <span>{tmp}</span>
         <i className="mi">📅</i>
       </div>
@@ -438,36 +402,20 @@ function DateRangeInput({ value, onChange, small = false }) {
           <div className="drp-cal">
             <div className="drp-col">
               <div className="drp-lbl">From</div>
-              <input
-                type="date"
-                value={fIso}
-                onChange={(e) => setFIso(e.target.value)}
-              />
+              <input type="date" value={fIso} onChange={(e) => setFIso(e.target.value)} />
             </div>
             <div className="drp-col">
               <div className="drp-lbl">To</div>
-              <input
-                type="date"
-                value={tIso}
-                onChange={(e) => setTIso(e.target.value)}
-              />
+              <input type="date" value={tIso} onChange={(e) => setTIso(e.target.value)} />
             </div>
           </div>
           <div className="drp-footer">
-            <span className="drp-preview">
-              {`${toDMY(fIso)} - ${toDMY(tIso)}`}
-            </span>
+            <span className="drp-preview">{`${toDMY(fIso)} - ${toDMY(tIso)}`}</span>
             <div>
-              <button
-                className="btn ghost"
-                onClick={() => setOpen(false)}
-              >
+              <button className="btn ghost" onClick={() => setOpen(false)}>
                 Cancel
               </button>
-              <button
-                className="btn primary"
-                onClick={apply}
-              >
+              <button className="btn primary" onClick={apply}>
                 Apply
               </button>
             </div>
@@ -506,12 +454,10 @@ function ChartCard({
   useEffect(() => {
     const handler = (e) => {
       if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target))
-        setMenuOpen(false);
+      if (!menuRef.current.contains(e.target)) setMenuOpen(false);
     };
     document.addEventListener("mousedown", handler);
-    return () =>
-      document.removeEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   useEffect(() => {
@@ -527,17 +473,10 @@ function ChartCard({
       const localX = e.clientX - rect.left;
       const baseGroupW = innerW / Math.max(1, xLabels.length);
       const groupW = baseGroupW * Math.max(1, 1);
-      const minPan =
-        -Math.max(0, groupW * xLabels.length - innerW);
+      const minPan = -Math.max(0, groupW * xLabels.length - innerW);
       const panClamped = Math.max(minPan, Math.min(0, pan));
       const effectiveX = localX - panClamped;
-      const idx = Math.max(
-        0,
-        Math.min(
-          xLabels.length - 1,
-          Math.floor(effectiveX / groupW + 0.5)
-        )
-      );
+      const idx = Math.max(0, Math.min(xLabels.length - 1, Math.floor(effectiveX / groupW + 0.5)));
       setHoverIdx(idx);
     }
     function leave() {
@@ -556,32 +495,20 @@ function ChartCard({
   const showTip = handOn && activeIdx >= 0;
 
   const tip = useMemo(() => {
-    if (!showTip || !bodyRef.current)
-      return { show: false };
+    if (!showTip || !bodyRef.current) return { show: false };
     const rect = bodyRef.current.getBoundingClientRect();
     const left = rect.right - 310;
     const top = rect.top + 56;
     const rows = series.map((s) => ({
       name: s.name,
       color: s.color,
-      value: (s.data?.[activeIdx] ?? 0).toLocaleString(
-        "en-IN",
-        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-      ),
+      value: (s.data?.[activeIdx] ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     }));
-    return {
-      show: true,
-      left,
-      top,
-      date: xLabels[activeIdx],
-      rows,
-    };
+    return { show: true, left, top, date: xLabels[activeIdx], rows };
   }, [showTip, series, xLabels, activeIdx]);
 
-  const onDownloadCSV = () =>
-    exportCSV({ title, xLabels, series });
-  const onDownloadPNG = () =>
-    exportPNG({ title, svgEl: svgRef.current });
+  const onDownloadCSV = () => exportCSV({ title, xLabels, series });
+  const onDownloadPNG = () => exportPNG({ title, svgEl: svgRef.current });
 
   return (
     <div className="chart-card">
@@ -589,11 +516,7 @@ function ChartCard({
         <div className="chart-title">{title}</div>
         <div className="chart-head-right">
           {rightSelector}
-          <DateRangeInput
-            value={rangeValue}
-            onChange={onRangeChange}
-            small
-          />
+          <DateRangeInput value={rangeValue} onChange={onRangeChange} small />
         </div>
       </div>
 
@@ -603,12 +526,7 @@ function ChartCard({
           series={
             series.length
               ? series
-              : [
-                  {
-                    color: "transparent",
-                    data: Array(xLabels.length).fill(0),
-                  },
-                ]
+              : [{ color: "transparent", data: Array(xLabels.length).fill(0) }]
           }
           zoom={zoom}
           pan={pan}
@@ -618,24 +536,14 @@ function ChartCard({
         />
 
         <div className="chart-tools" aria-hidden>
-          <button
-            className="tool-btn"
-            title="Zoom in"
-            disabled
-          >
+          <button className="tool-btn" title="Zoom in" disabled>
             ＋
           </button>
-          <button
-            className="tool-btn"
-            title="Zoom out"
-            disabled
-          >
+          <button className="tool-btn" title="Zoom out" disabled>
             －
           </button>
           <button
-            className={`tool-btn ${
-              handOn ? "active" : ""
-            }`}
+            className={`tool-btn ${handOn ? "active" : ""}`}
             title="Show data on hover (toggle)"
             onClick={() => setHandOn((v) => !v)}
           >
@@ -652,25 +560,15 @@ function ChartCard({
             🏠
           </button>
           <div className="tool-menu" ref={menuRef}>
-            <button
-              className="tool-btn"
-              title="More"
-              onClick={() => setMenuOpen((v) => !v)}
-            >
+            <button className="tool-btn" title="More" onClick={() => setMenuOpen((v) => !v)}>
               ≡
             </button>
             {menuOpen && (
               <div className="menu-pop">
-                <div
-                  className="menu-item"
-                  onClick={onDownloadCSV}
-                >
+                <div className="menu-item" onClick={onDownloadCSV}>
                   Download CSV
                 </div>
-                <div
-                  className="menu-item"
-                  onClick={onDownloadPNG}
-                >
+                <div className="menu-item" onClick={onDownloadPNG}>
                   Download PNG
                 </div>
               </div>
@@ -681,27 +579,18 @@ function ChartCard({
         <div className="chart-legend">
           {(legends || []).map((lg, i) => (
             <div key={i} className="legend-item">
-              <span
-                className="legend-dot"
-                style={{ background: lg.color }}
-              />
+              <span className="legend-dot" style={{ background: lg.color }} />
               <span>{lg.label}</span>
             </div>
           ))}
         </div>
 
         {tip.show && (
-          <div
-            className="hover-tip"
-            style={{ left: tip.left, top: tip.top }}
-          >
+          <div className="hover-tip" style={{ left: tip.left, top: tip.top }}>
             <div className="tip-head">{tip.date}</div>
             {tip.rows.map((r) => (
               <div key={r.name} className="tip-row">
-                <span
-                  className="tip-dot"
-                  style={{ background: r.color }}
-                />
+                <span className="tip-dot" style={{ background: r.color }} />
                 <span className="tip-name">{r.name}</span>
                 <span className="tip-val">{r.value}</span>
               </div>
@@ -730,21 +619,10 @@ function TableCard({
         <div className="table-title">{title}</div>
         <div className="table-head-right">
           {rightSide}
-          {showDate && (
-            <DateRangeInput
-              value={rangeValue}
-              onChange={onRangeChange}
-              small
-            />
-          )}
+          {showDate && <DateRangeInput value={rangeValue} onChange={onRangeChange} small />}
         </div>
       </div>
-      <div
-        className={`table-wrap ${
-          scrollY ? "has-scroll" : ""
-        }`}
-        style={scrollY ? { maxHeight: scrollY } : undefined}
-      >
+      <div className={`table-wrap ${scrollY ? "has-scroll" : ""}`} style={scrollY ? { maxHeight: scrollY } : undefined}>
         <table className="data-table">
           <thead>
             <tr>
@@ -752,13 +630,7 @@ function TableCard({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={
-                    c.align === "right"
-                      ? "al-r"
-                      : c.align === "center"
-                      ? "al-c"
-                      : ""
-                  }
+                  className={c.align === "right" ? "al-r" : c.align === "center" ? "al-c" : ""}
                 >
                   {c.label}
                 </th>
@@ -772,13 +644,7 @@ function TableCard({
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={
-                      c.align === "right"
-                        ? "al-r"
-                        : c.align === "center"
-                        ? "al-c"
-                        : ""
-                    }
+                    className={c.align === "right" ? "al-r" : c.align === "center" ? "al-c" : ""}
                   >
                     {r[c.key]}
                   </td>
@@ -792,6 +658,21 @@ function TableCard({
   );
 }
 
+/* -------------------- Dashboard Summary API (NO client.js change) -------------------- */
+async function fetchDashboardSummary({ date_from, date_to }) {
+  // Uses same origin in prod, and dev proxy if you have it.
+  const qs = new URLSearchParams({ date_from, date_to }).toString();
+  const res = await fetch(`/api/dashboard/summary/?${qs}`, {
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Dashboard summary failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
 /* -------------------- Main Dashboard -------------------- */
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -802,61 +683,41 @@ export default function Dashboard() {
   const todayDMY = useMemo(() => {
     const d = new Date();
     const p = (n) => String(n).padStart(2, "0");
-    return `${p(d.getDate())}/${p(
-      d.getMonth() + 1
-    )}/${d.getFullYear()}`;
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
   }, []);
   const startDMY = useMemo(() => {
     const d = new Date();
     d.setDate(1);
     const p = (n) => String(n).padStart(2, "0");
-    return `${p(d.getDate())}/${p(
-      d.getMonth() + 1
-    )}/${d.getFullYear()}`;
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
   }, []);
   const defaultRange = `${startDMY} - ${todayDMY}`;
 
-  const [globalRange, setGlobalRange] =
-    useState(defaultRange);
+  const [globalRange, setGlobalRange] = useState(defaultRange);
 
   const [locOpen, setLocOpen] = useState(false);
   const [chanOpen, setChanOpen] = useState(false);
-  const [locationIds, setLocationIds] = useState([
-    LOCATIONS[0].id,
-  ]);
+  const [locationIds, setLocationIds] = useState([LOCATIONS[0].id]);
   const [channelIds, setChannelIds] = useState(["OFFLINE"]);
   const [locQuery, setLocQuery] = useState("");
   const [chanQuery, setChanQuery] = useState("");
   const locBtnRef = useRef(null);
   const chanBtnRef = useRef(null);
   const locDropStyle = useSmartDropdown(locOpen, locBtnRef);
-  const chanDropStyle = useSmartDropdown(
-    chanOpen,
-    chanBtnRef
-  );
+  const chanDropStyle = useSmartDropdown(chanOpen, chanBtnRef);
+
   const filteredLocations = useMemo(() => {
     const q = locQuery.trim().toLowerCase();
-    return q
-      ? LOCATIONS.filter((l) =>
-          l.name.toLowerCase().includes(q)
-        )
-      : LOCATIONS;
+    return q ? LOCATIONS.filter((l) => l.name.toLowerCase().includes(q)) : LOCATIONS;
   }, [locQuery]);
   const filteredChannels = useMemo(() => {
     const q = chanQuery.trim().toLowerCase();
-    return q
-      ? CHANNELS.filter((c) =>
-          c.name.toLowerCase().includes(q)
-        )
-      : CHANNELS;
+    return q ? CHANNELS.filter((c) => c.name.toLowerCase().includes(q)) : CHANNELS;
   }, [chanQuery]);
+
   const allChannelIds = CHANNELS.map((c) => c.id);
   const toggle = (id, list, setList) =>
-    setList((prev) =>
-      prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : [...prev, id]
-    );
+    setList((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileBtnRef = useRef(null);
@@ -864,12 +725,9 @@ export default function Dashboard() {
 
   const displayName = useMemo(() => {
     if (!user) return "Guest";
-    if (user.full_name && user.full_name.trim())
-      return user.full_name;
+    if (user.full_name && user.full_name.trim()) return user.full_name;
     if (user.first_name || user.last_name) {
-      return `${user.first_name || ""} ${
-        user.last_name || ""
-      }`.trim();
+      return `${user.first_name || ""} ${user.last_name || ""}`.trim();
     }
     return user.username || "User";
   }, [user]);
@@ -925,7 +783,7 @@ export default function Dashboard() {
     return { from: toISO(a), to: toISO(b) };
   };
 
-  /* ===== KPI loader (Sales, Invoices, Qty, Customers) ===== */
+  /* ===== KPI loader (KEEP working cards, fill remaining from backend) ===== */
   useEffect(() => {
     const { from, to } = parseRange(globalRange);
     let cancelled = false;
@@ -935,19 +793,10 @@ export default function Dashboard() {
       setErr("");
 
       try {
-        const params = {
-          date_from: from,
-          date_to: to,
-          all: "1",
-        };
-
-        // backend already scopes by manager outlet (SalesView)
+        // 1) existing (already working) logic: Sales based cards
+        const params = { date_from: from, date_to: to, all: "1" };
         const res = await listSales(params);
-        const sales = Array.isArray(res?.results)
-          ? res.results
-          : Array.isArray(res)
-          ? res
-          : [];
+        const sales = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
 
         let totalSales = 0;
         let totalInvoice = sales.length;
@@ -955,87 +804,77 @@ export default function Dashboard() {
         const customerKeys = new Set();
 
         for (const s of sales) {
-          const amt = Number(
-            s.net_amount ??
-              s.total_amount ??
-              s.grand_total ??
-              0
-          );
+          const amt = Number(s.net_amount ?? s.total_amount ?? s.grand_total ?? 0);
           if (Number.isFinite(amt)) totalSales += amt;
 
-          // try to use real per-invoice quantity
-          const q = Number(
-            s.total_qty ??
-              s.total_items ??
-              s.qty ??
-              0
-          );
-          if (Number.isFinite(q) && q > 0) {
-            soldQty += q;
-          }
+          const q = Number(s.total_qty ?? s.total_items ?? s.qty ?? 0);
+          if (Number.isFinite(q) && q > 0) soldQty += q;
 
           const key =
             s.customer_id ??
             s.customer ??
-            (s.customer_name || s.customer_phone
-              ? `${s.customer_name || ""}|${
-                  s.customer_phone || ""
-                }`
-              : null);
-          if (
-            key !== null &&
-            key !== undefined &&
-            String(key).trim() !== ""
-          ) {
+            (s.customer_name || s.customer_phone ? `${s.customer_name || ""}|${s.customer_phone || ""}` : null);
+          if (key !== null && key !== undefined && String(key).trim() !== "") {
             customerKeys.add(String(key));
           }
         }
 
-        // fallback: if backend didn't send qty, treat each invoice as qty 1
-        if (soldQty <= 0) {
-          soldQty = totalInvoice;
-        }
-
+        if (soldQty <= 0) soldQty = totalInvoice;
         const totalCustomers = customerKeys.size;
 
-        const baseCards = computeMetricsMock({
-          from,
-          to,
-          locationIds,
-          channelIds,
-        });
+        // 2) new: dashboard summary for remaining tabs (date filter + admin/outlet scope handled by backend)
+        const summary = await fetchDashboardSummary({ date_from: from, date_to: to });
 
+        // Build base cards (layout unchanged)
+        const baseCards = computeMetricsMock({ from, to, locationIds, channelIds });
+
+        // Replace only the card values we want to become real
         const cards = baseCards.map((card) => {
-          if (card.label === "Total Sales") {
-            return { ...card, value: money0(totalSales) };
+          // ✅ DO NOT TOUCH (your working cards)
+          if (card.label === "Total Sales") return { ...card, value: money0(totalSales) };
+          if (card.label === "Total Invoice") return { ...card, value: totalInvoice };
+          if (card.label === "Sold Qty") return { ...card, value: soldQty };
+          if (card.label === "Total Customers") return { ...card, value: totalCustomers };
+
+          // ✅ Remaining cards you asked for (date filter + scope)
+          if (card.label === "To Receive") {
+            return { ...card, value: formatCompactINR(summary?.total_receive ?? 0) };
           }
-          if (card.label === "Total Invoice") {
-            return { ...card, value: totalInvoice };
+          if (card.label === "Total Sales Return") {
+            return { ...card, value: formatCompactINR(summary?.total_sales_return ?? 0) };
           }
-          if (card.label === "Sold Qty") {
-            return { ...card, value: soldQty };
+          if (card.label === "Total Purchase") {
+            return { ...card, value: formatCompactINR(summary?.total_purchase ?? 0) };
           }
-          if (card.label === "Total Customers") {
-            return { ...card, value: totalCustomers };
+          if (card.label === "Total Bills") {
+            // You said: Total Bills same as Total Sales
+            return { ...card, value: formatCompactINR(summary?.total_bills ?? totalSales) };
           }
+          if (card.label === "Purchase Qty") {
+            return { ...card, value: Number(summary?.purchase_qty ?? 0) };
+          }
+          if (card.label === "Total Suppliers") {
+            return { ...card, value: Number(summary?.total_suppliers ?? 0) };
+          }
+          if (card.label === "Total Products") {
+            return { ...card, value: formatCompactINR(summary?.total_products_amount ?? 0) };
+          }
+          if (card.label === "Cash in Hand") {
+            return { ...card, value: formatCompactINR(summary?.cash_in_hand ?? 0) };
+          }
+          if (card.label === "Gross Profit") {
+            return { ...card, value: formatCompactINR(summary?.gross_profit ?? 0) };
+          }
+
           return card;
         });
 
-        if (!cancelled) {
-          setMetrics(cards);
-        }
+        if (!cancelled) setMetrics(cards);
       } catch (e) {
         if (!cancelled) {
           setErr(e?.message || "Failed to load");
           const { from, to } = parseRange(globalRange);
-          setMetrics(
-            computeMetricsMock({
-              from,
-              to,
-              locationIds,
-              channelIds,
-            })
-          );
+          setMetrics(computeMetricsMock({ from, to, locationIds, channelIds }));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -1053,14 +892,7 @@ export default function Dashboard() {
   const [rangeLSP, setRangeLSP] = useState(defaultRange);
   const [rangeBSP, setRangeBSP] = useState(defaultRange);
 
-  const xDates = [
-    "13:00",
-    "15:00",
-    "17:00",
-    "19:00",
-    "21:00",
-    "23:00",
-  ];
+  const xDates = ["13:00", "15:00", "17:00", "19:00", "21:00", "23:00"];
 
   /* ---------- LOGIN LOG location filter ---------- */
   const [logLocOpen, setLogLocOpen] = useState(false);
@@ -1068,22 +900,15 @@ export default function Dashboard() {
   const [logLocQuery, setLogLocQuery] = useState("");
   const logBtnRef = useRef(null);
   const logDropStyle = useSmartDropdown(logLocOpen, logBtnRef);
+
   const filteredLogLocs = useMemo(() => {
     const q = logLocQuery.trim().toLowerCase();
-    return q
-      ? LOCATIONS.filter((l) =>
-          l.name.toLowerCase().includes(q)
-        )
-      : LOCATIONS;
+    return q ? LOCATIONS.filter((l) => l.name.toLowerCase().includes(q)) : LOCATIONS;
   }, [logLocQuery]);
 
   const LoginLogRightSide = (
     <div className="select-wrap">
-      <button
-        ref={logBtnRef}
-        className="pill"
-        onClick={() => setLogLocOpen((v) => !v)}
-      >
+      <button ref={logBtnRef} className="pill" onClick={() => setLogLocOpen((v) => !v)}>
         <span className="pill-label">Select Location</span>
         <span className="pill-count">{logLocIds.length}</span>
       </button>
@@ -1094,9 +919,7 @@ export default function Dashboard() {
             <input
               placeholder="Search locations…"
               value={logLocQuery}
-              onChange={(e) =>
-                setLogLocQuery(e.target.value)
-              }
+              onChange={(e) => setLogLocQuery(e.target.value)}
               autoFocus
             />
           </div>
@@ -1108,9 +931,7 @@ export default function Dashboard() {
                   checked={logLocIds.includes(l.id)}
                   onChange={() =>
                     setLogLocIds((prev) =>
-                      prev.includes(l.id)
-                        ? prev.filter((x) => x !== l.id)
-                        : [...prev, l.id]
+                      prev.includes(l.id) ? prev.filter((x) => x !== l.id) : [...prev, l.id]
                     )
                   }
                 />
@@ -1126,8 +947,7 @@ export default function Dashboard() {
   // ----- Login Log data -----
   const [loginLogs, setLoginLogs] = useState([]);
   const [loginLogErr, setLoginLogErr] = useState("");
-  const [loginLogLoading, setLoginLogLoading] =
-    useState(false);
+  const [loginLogLoading, setLoginLogLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1136,18 +956,10 @@ export default function Dashboard() {
       setLoginLogLoading(true);
       setLoginLogErr("");
       try {
-        const res = await listLoginLogs({
-          location: logLocIds,
-          limit: 100,
-        });
-        if (!cancelled) {
-          setLoginLogs(res || []);
-        }
+        const res = await listLoginLogs({ location: logLocIds, limit: 100 });
+        if (!cancelled) setLoginLogs(res || []);
       } catch (e) {
-        if (!cancelled)
-          setLoginLogErr(
-            e?.message || "Failed to load login logs"
-          );
+        if (!cancelled) setLoginLogErr(e?.message || "Failed to load login logs");
       } finally {
         if (!cancelled) setLoginLogLoading(false);
       }
@@ -1161,10 +973,7 @@ export default function Dashboard() {
   const loginTableRows = useMemo(
     () =>
       (loginLogs || []).map((log) => ({
-        time: formatLoginTime(
-          log.login_time,
-          log.user_display || log.username
-        ),
+        time: formatLoginTime(log.login_time, log.user_display || log.username),
         ip: log.ip_address,
         system: log.system_details || "",
       })),
@@ -1176,10 +985,7 @@ export default function Dashboard() {
       <div className="dash-panel">
         <div className="dash-toolbar grid">
           <div className="toolbar-left">
-            <DateRangeInput
-              value={globalRange}
-              onChange={setGlobalRange}
-            />
+            <DateRangeInput value={globalRange} onChange={setGlobalRange} />
           </div>
 
           <div className="toolbar-center">
@@ -1194,46 +1000,26 @@ export default function Dashboard() {
                       setChanOpen(false);
                     }}
                   >
-                    <span className="pill-label">
-                      Select Location
-                    </span>
-                    <span className="pill-count">
-                      {locationIds.length}
-                    </span>
+                    <span className="pill-label">Select Location</span>
+                    <span className="pill-count">{locationIds.length}</span>
                   </button>
                   {locOpen && (
-                    <div
-                      className="dropdown"
-                      style={locDropStyle}
-                    >
+                    <div className="dropdown" style={locDropStyle}>
                       <div className="dd-search">
                         <input
                           placeholder="Search locations…"
                           value={locQuery}
-                          onChange={(e) =>
-                            setLocQuery(e.target.value)
-                          }
+                          onChange={(e) => setLocQuery(e.target.value)}
                           autoFocus
                         />
                       </div>
                       <div className="dd-list">
                         {filteredLocations.map((l) => (
-                          <label
-                            key={l.id}
-                            className="opt"
-                          >
+                          <label key={l.id} className="opt">
                             <input
                               type="checkbox"
-                              checked={locationIds.includes(
-                                l.id
-                              )}
-                              onChange={() =>
-                                toggle(
-                                  l.id,
-                                  locationIds,
-                                  setLocationIds
-                                )
-                              }
+                              checked={locationIds.includes(l.id)}
+                              onChange={() => toggle(l.id, locationIds, setLocationIds)}
                             />
                             <span>{l.name}</span>
                           </label>
@@ -1252,25 +1038,16 @@ export default function Dashboard() {
                       setLocOpen(false);
                     }}
                   >
-                    <span className="pill-label">
-                      Select Channel
-                    </span>
-                    <span className="pill-count">
-                      {channelIds.length}
-                    </span>
+                    <span className="pill-label">Select Channel</span>
+                    <span className="pill-count">{channelIds.length}</span>
                   </button>
                   {chanOpen && (
-                    <div
-                      className="dropdown"
-                      style={chanDropStyle}
-                    >
+                    <div className="dropdown" style={chanDropStyle}>
                       <div className="dd-search">
                         <input
                           placeholder="Search channels…"
                           value={chanQuery}
-                          onChange={(e) =>
-                            setChanQuery(e.target.value)
-                          }
+                          onChange={(e) => setChanQuery(e.target.value)}
                           autoFocus
                         />
                       </div>
@@ -1278,38 +1055,21 @@ export default function Dashboard() {
                         <label className="opt">
                           <input
                             type="checkbox"
-                            checked={
-                              channelIds.length ===
-                              allChannelIds.length
-                            }
+                            checked={channelIds.length === allChannelIds.length}
                             onChange={() =>
-                              setChannelIds((prev) =>
-                                prev.length ===
-                                allChannelIds.length
-                                  ? []
-                                  : allChannelIds
-                              )
+                              setChannelIds((prev) => (prev.length === allChannelIds.length ? [] : allChannelIds))
                             }
                           />
                           <span>ALL</span>
                         </label>
                         {filteredChannels.map((c) => (
-                          <label
-                            key={c.id}
-                            className="opt"
-                          >
+                          <label key={c.id} className="opt">
                             <input
                               type="checkbox"
-                              checked={channelIds.includes(
-                                c.id
-                              )}
+                              checked={channelIds.includes(c.id)}
                               onChange={() =>
                                 setChannelIds((prev) =>
-                                  prev.includes(c.id)
-                                    ? prev.filter(
-                                        (x) => x !== c.id
-                                      )
-                                    : [...prev, c.id]
+                                  prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]
                                 )
                               }
                             />
@@ -1328,45 +1088,25 @@ export default function Dashboard() {
             <button
               ref={profileBtnRef}
               className="avatar-btn"
-              onClick={() =>
-                setProfileOpen((v) => !v)
-              }
+              onClick={() => setProfileOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={profileOpen}
             >
-              <span className="avatar-dot">
-                {initials}
-              </span>
+              <span className="avatar-dot">{initials}</span>
             </button>
 
             {profileOpen && (
-              <div
-                className="profile-pop"
-                ref={profilePopRef}
-                role="menu"
-              >
+              <div className="profile-pop" ref={profilePopRef} role="menu">
                 <div className="profile-head">
-                  <div className="profile-title">
-                    {displayName}
-                  </div>
-                  <div className="profile-sub">
-                    {displayRole}
-                  </div>
+                  <div className="profile-title">{displayName}</div>
+                  <div className="profile-sub">{displayRole}</div>
                 </div>
-                <a
-                  className="profile-link"
-                  href="#profile"
-                  role="menuitem"
-                >
-                  <span className="profile-ico">
-                    👤
-                  </span>
+                <a className="profile-link" href="#profile" role="menuitem">
+                  <span className="profile-ico">👤</span>
                   <span>My Profile</span>
                 </a>
                 <div className="profile-actions">
-                  <button className="btn ghost wfull">
-                    🔑 Change Password
-                  </button>
+                  <button className="btn ghost wfull">🔑 Change Password</button>
                   <button
                     className="btn danger wfull"
                     onClick={async () => {
@@ -1383,11 +1123,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {err && (
-          <div className="dash-error">
-            ⚠ {err}
-          </div>
-        )}
+        {err && <div className="dash-error">⚠ {err}</div>}
 
         {/* 🔵 Dashboard loading spinner */}
         {loading && (
@@ -1397,23 +1133,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div
-          className="metric-grid"
-          aria-busy={loading}
-        >
+        <div className="metric-grid" aria-busy={loading}>
           {metrics.map((m, i) => (
-            <div
-              key={i}
-              className="metric-card"
-            >
-              <div
-                className={`metric-badge ${m.tone}`}
-              >
-                {m.value}
-              </div>
-              <div className="metric-label">
-                {m.label}
-              </div>
+            <div key={i} className="metric-card">
+              <div className={`metric-badge ${m.tone}`}>{m.value}</div>
+              <div className="metric-label">{m.label}</div>
             </div>
           ))}
         </div>
@@ -1423,40 +1147,16 @@ export default function Dashboard() {
             title="SALES V/S PURCHASE"
             xLabels={xDates}
             series={[
-              {
-                name: "Sales",
-                color: "#1f77b4",
-                data: [
-                  245000, 130000, 260000, 5000, 0, 0,
-                ],
-              },
-              {
-                name: "Purchase",
-                color: "#2ca02c",
-                data: [0, 0, 250000, 0, 0, 0],
-              },
-              {
-                name: "Sales Return",
-                color: "#ff7f0e",
-                data: [0, 0, 0, 0, 0, 0],
-              },
-              {
-                name: "Purchase Return",
-                color: "#d62728",
-                data: [0, 0, 0, 0, 0, 0],
-              },
+              { name: "Sales", color: "#1f77b4", data: [245000, 130000, 260000, 5000, 0, 0] },
+              { name: "Purchase", color: "#2ca02c", data: [0, 0, 250000, 0, 0, 0] },
+              { name: "Sales Return", color: "#ff7f0e", data: [0, 0, 0, 0, 0, 0] },
+              { name: "Purchase Return", color: "#d62728", data: [0, 0, 0, 0, 0, 0] },
             ]}
             legends={[
               { color: "#1f77b4", label: "Sales" },
               { color: "#2ca02c", label: "Purchase" },
-              {
-                color: "#ff7f0e",
-                label: "Sales Return",
-              },
-              {
-                color: "#d62728",
-                label: "Purchase Return",
-              },
+              { color: "#ff7f0e", label: "Sales Return" },
+              { color: "#d62728", label: "Purchase Return" },
             ]}
             rangeValue={rangeSVP}
             onRangeChange={setRangeSVP}
@@ -1464,14 +1164,7 @@ export default function Dashboard() {
 
           <ChartCard
             title="TRANSACTION"
-            xLabels={[
-              "17:00",
-              "18:00",
-              "19:00",
-              "20:00",
-              "21:00",
-              "22:00",
-            ]}
+            xLabels={["17:00", "18:00", "19:00", "20:00", "21:00", "22:00"]}
             series={[]}
             legends={[
               { color: "#1f77b4", label: "Cash" },
@@ -1480,14 +1173,8 @@ export default function Dashboard() {
               { color: "#9467bd", label: "Bank" },
               { color: "#8c564b", label: "Wallet" },
               { color: "#6a3d9a", label: "upi" },
-              {
-                color: "#17becf",
-                label: "Instamojo",
-              },
-              {
-                color: "#bcbd22",
-                label: "Razor Pay",
-              },
+              { color: "#17becf", label: "Instamojo" },
+              { color: "#bcbd22", label: "Razor Pay" },
               { color: "#d62728", label: "Other" },
             ]}
             rangeValue={rangeTXN}
@@ -1503,46 +1190,24 @@ export default function Dashboard() {
             onRangeChange={setRangeBSP}
             columns={[
               { key: "pname", label: "Product Name" },
-              {
-                key: "bills",
-                label: "No. of Bills",
-                align: "right",
-              },
-              {
-                key: "qty",
-                label: "Sales Qty",
-                align: "right",
-              },
-              {
-                key: "amount",
-                label: "Sales Amount",
-                align: "right",
-              },
-              {
-                key: "profit",
-                label: "Profit",
-                align: "right",
-              },
-              {
-                key: "pct",
-                label: "Sales(%)",
-                align: "right",
-              },
+              { key: "bills", label: "No. of Bills", align: "right" },
+              { key: "qty", label: "Sales Qty", align: "right" },
+              { key: "amount", label: "Sales Amount", align: "right" },
+              { key: "profit", label: "Profit", align: "right" },
+              { key: "pct", label: "Sales(%)", align: "right" },
             ]}
-            rows={Array.from({ length: 12 }).map(
-              () => ({
-                pname: (
-                  <a href="#!" className="tbl-link">
-                    (150) (L) Blouse
-                  </a>
-                ),
-                bills: 1,
-                qty: 1,
-                amount: money2(200),
-                profit: money2(0),
-                pct: "10.00",
-              })
-            )}
+            rows={Array.from({ length: 12 }).map(() => ({
+              pname: (
+                <a href="#!" className="tbl-link">
+                  (150) (L) Blouse
+                </a>
+              ),
+              bills: 1,
+              qty: 1,
+              amount: money2(200),
+              profit: money2(0),
+              pct: "10.00",
+            }))}
             scrollY={420}
           />
           <TableCard
@@ -1551,46 +1216,24 @@ export default function Dashboard() {
             onRangeChange={setRangeLSP}
             columns={[
               { key: "pname", label: "Product Name" },
-              {
-                key: "bills",
-                label: "No. of Bills",
-                align: "right",
-              },
-              {
-                key: "qty",
-                label: "Sales Qty",
-                align: "right",
-              },
-              {
-                key: "amount",
-                label: "Sales Amount",
-                align: "right",
-              },
-              {
-                key: "profit",
-                label: "Profit",
-                align: "right",
-              },
-              {
-                key: "pct",
-                label: "Sales(%)",
-                align: "right",
-              },
+              { key: "bills", label: "No. of Bills", align: "right" },
+              { key: "qty", label: "Sales Qty", align: "right" },
+              { key: "amount", label: "Sales Amount", align: "right" },
+              { key: "profit", label: "Profit", align: "right" },
+              { key: "pct", label: "Sales(%)", align: "right" },
             ]}
-            rows={Array.from({ length: 12 }).map(
-              () => ({
-                pname: (
-                  <a href="#!" className="tbl-link">
-                    (150) (L) Blouse
-                  </a>
-                ),
-                bills: 1,
-                qty: 1,
-                amount: money2(200),
-                profit: money2(0),
-                pct: "10.00",
-              })
-            )}
+            rows={Array.from({ length: 12 }).map(() => ({
+              pname: (
+                <a href="#!" className="tbl-link">
+                  (150) (L) Blouse
+                </a>
+              ),
+              bills: 1,
+              qty: 1,
+              amount: money2(200),
+              profit: money2(0),
+              pct: "10.00",
+            }))}
             scrollY={420}
           />
         </div>
@@ -1601,39 +1244,14 @@ export default function Dashboard() {
             rangeValue={rangeCAT}
             onRangeChange={setRangeCAT}
             columns={[
-              {
-                key: "name",
-                label: "Category Name",
-              },
-              {
-                key: "qty",
-                label: "Sales Qty",
-                align: "right",
-              },
-              {
-                key: "amount",
-                label: "Sales Amount",
-                align: "right",
-              },
-              {
-                key: "profit",
-                label: "Profit",
-                align: "right",
-              },
-              {
-                key: "pct",
-                label: "Sales(%)",
-                align: "right",
-              },
+              { key: "name", label: "Category Name" },
+              { key: "qty", label: "Sales Qty", align: "right" },
+              { key: "amount", label: "Sales Amount", align: "right" },
+              { key: "profit", label: "Profit", align: "right" },
+              { key: "pct", label: "Sales(%)", align: "right" },
             ]}
             rows={[
-              {
-                name: "Clothing",
-                qty: 30,
-                amount: money2(1200),
-                profit: money2(0),
-                pct: "100.00",
-              },
+              { name: "Clothing", qty: 30, amount: money2(1200), profit: money2(0), pct: "100.00" },
             ]}
           />
 
@@ -1643,10 +1261,7 @@ export default function Dashboard() {
               columns={[
                 { key: "time", label: "Login Time" },
                 { key: "ip", label: "IP Address" },
-                {
-                  key: "system",
-                  label: "System Details",
-                },
+                { key: "system", label: "System Details" },
               ]}
               rows={loginTableRows}
               scrollY={260}
@@ -1655,19 +1270,13 @@ export default function Dashboard() {
             />
             {/* 🔵 Login log loading spinner */}
             {loginLogLoading && (
-              <div
-                className="dash-loading"
-                style={{ marginTop: 4 }}
-              >
+              <div className="dash-loading" style={{ marginTop: 4 }}>
                 <div className="dash-spinner" />
                 <span>Loading login logs…</span>
               </div>
             )}
             {loginLogErr && (
-              <div
-                className="dash-error"
-                style={{ marginTop: 4 }}
-              >
+              <div className="dash-error" style={{ marginTop: 4 }}>
                 ⚠ {loginLogErr}
               </div>
             )}
@@ -1687,10 +1296,7 @@ function useSmartDropdown(open, btnRef) {
       if (!open || !btnRef.current) return;
       const r = btnRef.current.getBoundingClientRect();
       const pad = 8;
-      const left = Math.min(
-        Math.max(pad, r.left),
-        window.innerWidth - DD_WIDTH - pad
-      );
+      const left = Math.min(Math.max(pad, r.left), window.innerWidth - DD_WIDTH - pad);
       const top = r.bottom + 8;
       setStyle({
         position: "fixed",

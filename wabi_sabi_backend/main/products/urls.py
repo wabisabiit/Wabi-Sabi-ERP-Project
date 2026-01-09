@@ -6,7 +6,7 @@ from .views_transfer import (
     print_and_transfer, transfer_list, transfer_details, delete_transfer,
     barcode_last_transfer, transfer_barcodes,
 )
-from .views_sales import SalesView   # <-- add this
+from .views_sales import SalesView
 from .views_credit import CreditNoteView, CreditNoteDetail, CreditNoteRedeem, CreditNoteDelete
 from .views_sales_return import SaleLinesByInvoice, SalesReturn
 from .views_customers import CustomerListCreate
@@ -14,20 +14,21 @@ from .views_masterpack import MasterPackView, MasterPackDetail, MasterPackBulkDe
 from .views_material_consumption import (
     MaterialConsumptionView, MaterialConsumptionDetail, MaterialConsumptionNext
 )
-
 from .views_coupons import (
     CouponListCreate, CouponGenerate, GeneratedCouponList,
     CouponLookup, CouponRedeem
 )
 from .views_reports import DaywiseSalesSummary, ProductWiseSalesReport, CategoryWiseSalesSummary
 from .views_discounts import DiscountListCreate, DiscountDetail
-from .views_reports_masterpacking import master_packing_item_wise 
+from .views_reports_masterpacking import master_packing_item_wise
 from .views_holdbills import HoldBillView, HoldBillRestore
 from .views_supplier import SupplierListCreateView
 from .views_accounts import AccountListCreateView, AccountDetailView
 from .views_expenses import ExpenseListCreateView, ExpenseDetailView
 from .views_register import RegisterClosingView, RegisterClosingSummaryView
 
+# ✅ NEW
+from .views_dashboard import DashboardSummaryView
 
 
 router = DefaultRouter()
@@ -41,24 +42,28 @@ urlpatterns = [
     path("products/transfers/<path:number>/", transfer_details, name="transfer-details"),
     path("products/barcodes/<str:barcode>/transfer/", barcode_last_transfer, name="barcode-last-transfer"),
 
-    # NEW
+    # Sales
     path("sales/", SalesView.as_view(), name="sales"),
+
+    # Credit Notes
     path("credit-notes/", CreditNoteView.as_view(), name="credit-notes"),
     path("credit-notes/<str:note_no>/", CreditNoteDetail.as_view(), name="credit-note-detail"),
     path("credit-notes/<str:note_no>/redeem/", CreditNoteRedeem.as_view(), name="credit-note-redeem"),
     path("credit-notes/<str:note_no>/delete/", CreditNoteDelete.as_view(), name="credit-note-delete"),
 
-
-    # NEW for returns
+    # Sales Return
     path("sales/<str:invoice_no>/lines/", SaleLinesByInvoice.as_view(), name="sale-lines-by-invoice"),
     path("sales/<str:invoice_no>/return/", SalesReturn.as_view(), name="sales-return"),
+
+    # Customers
     path("customers/", CustomerListCreate.as_view(), name="customers"),
 
-    #for Master Packing
+    # Master Pack
     path("master-packs/", MasterPackView.as_view(), name="master-pack-create"),
     path("master-packs/bulk-delete/", MasterPackBulkDelete.as_view(), name="master-pack-bulk-delete"),
     path("master-packs/<str:number>/", MasterPackDetail.as_view(), name="master-pack-detail"),
 
+    # Material Consumption
     path("material-consumptions/", MaterialConsumptionView.as_view(), name="material-consumption-create"),
     path("material-consumptions/next/", MaterialConsumptionNext.as_view(), name="material-consumption-next"),
     path("material-consumptions/<str:number>/", MaterialConsumptionDetail.as_view(), name="material-consumption-detail"),
@@ -70,34 +75,39 @@ urlpatterns = [
     path("coupons/instances/<str:code>/", CouponLookup.as_view(), name="coupon-lookup"),
     path("coupons/instances/<str:code>/redeem/", CouponRedeem.as_view(), name="coupon-redeem"),
 
-    # Summary / Reports
+    # Reports
     path("reports/daywise-sales/", DaywiseSalesSummary.as_view(), name="daywise-sales-summary"),
     path("reports/product-wise-sales/", ProductWiseSalesReport.as_view(), name="report-product-wise-sales"),
     path("reports/category-wise-sales/", CategoryWiseSalesSummary.as_view(), name="report-category-wise-sales"),
 
-    #custom Discount
+    # Discount
     path("discounts/", DiscountListCreate.as_view(), name="discount-list-create"),
     path("discounts/<int:pk>/", DiscountDetail.as_view(), name="discount-detail"),
 
-    # ...existing paths...
+    # Master packing report
     path("reports/master-packing-item-wise/", master_packing_item_wise, name="master-packing-item-wise"),
 
     # Hold Bills
     path("hold-bills/", HoldBillView.as_view(), name="hold-bill-list-create"),
     path("hold-bills/<str:number>/restore/", HoldBillRestore.as_view(), name="hold-bill-restore"),
+
+    # Supplier
     path("suppliers/", SupplierListCreateView.as_view(), name="supplier-list-create"),
 
-        # Chart of Account
+    # Chart of Account
     path("accounts/", AccountListCreateView.as_view(), name="account-list-create"),
     path("accounts/<int:pk>/", AccountDetailView.as_view(), name="account-detail"),
 
-     # 🔵 Expenses
+    # Expenses
     path("expenses/", ExpenseListCreateView.as_view(), name="expense-list-create"),
     path("expenses/<int:pk>/", ExpenseDetailView.as_view(), name="expense-detail"),
 
-        # 🔵 Register close (cash register closing)
+    # Register close
     path("register-closes/", RegisterClosingView.as_view(), name="register-close-list-create"),
     path("register-closes/today-summary/", RegisterClosingSummaryView.as_view(), name="register-close-today-summary"),
+
+    # ✅ NEW Dashboard KPI summary (date filter required)
+    path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
 ]
 
 urlpatterns += router.urls
