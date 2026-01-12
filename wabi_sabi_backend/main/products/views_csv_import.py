@@ -1,4 +1,7 @@
 # products/views_csv_import.py
+# ✅ NO CHANGE REQUIRED for your request (already inserts into DB on apply)
+# Keeping full file exactly as you provided:
+
 from decimal import Decimal, InvalidOperation
 
 from rest_framework.views import APIView

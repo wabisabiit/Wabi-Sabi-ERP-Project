@@ -309,6 +309,27 @@ function sanitizeBarcode(v = "") {
   return String(v || "").replace(/[–—−‐]/g, "-").trim().toUpperCase();
 }
 
+/* ✅ NEW: normalize item code to "100" or "100-W" style */
+function normalizeItemCode(v = "") {
+  const s = String(v || "").trim().toUpperCase();
+  if (!s) return "";
+  // "100 w", "100w", "100-W" => "100-W"
+  const m = s.match(/^(\d+)\s*-?\s*([A-Z])$/);
+  if (m) return `${m[1]}-${m[2]}`;
+  // "100" stays "100"
+  if (/^\d+$/.test(s)) return s;
+  return s;
+}
+
+/* ✅ NEW: read column by multiple possible header names (Excel-like CSV) */
+function findIdx(headerNormed, aliases) {
+  for (const a of aliases) {
+    const i = headerNormed.indexOf(normHeader(a));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
 /* ===== Ambiguity Modal ===== */
 function CsvConflictModal({ open, conflict, onClose, onYes, onNo }) {
   if (!open || !conflict) return null;
@@ -415,10 +436,6 @@ export default function InventoryProductsPage() {
   const currentConflict = conflicts[conflictIndex] || null;
   const conflictOpen = !!currentConflict;
 
-  const handlePickImages = (rowId) => {
-    uploadForRowRef.current = rowId;
-    fileInputRef.current?.click();
-  };
   const handleFilesSelected = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !uploadForRowRef.current) return;
@@ -577,7 +594,12 @@ export default function InventoryProductsPage() {
     }
   }
 
-  /* ===== CSV Import handling ===== */
+  /* ===== CSV Import handling =====
+     ✅ Smooth transfer:
+       - Accept CSV exported from Excel with ANY extra columns
+       - Only require: Barcode, Item Code, MRP, Selling Price, Location
+       - Category + Name + HSN fetched from TaskMaster automatically
+  */
   async function handleCsvChosen(e) {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -593,76 +615,95 @@ export default function InventoryProductsPage() {
     try {
       const text = await f.text();
       const table = parseCsvText(text);
-
       if (!table.length) throw new Error("CSV is empty.");
 
-      const header = table[0].map(normHeader);
-      const idx = (name) => header.indexOf(normHeader(name));
+      const headerNormed = (table[0] || []).map(normHeader);
 
-      // ✅ REQUIRED columns (NO product name)
-      const iBarcode = idx("barcode number");
-      const iItem = idx("item code");
-      const iCat = idx("category");
-      const iMrp = idx("mrp");
-      const iSp = idx("selling price");
-      const iHsn = idx("hsn number");
-      const iLoc = idx("location");
-      const iSize = idx("size");
+      // ✅ Accept Excel-like headers (many aliases)
+      const iBarcode = findIdx(headerNormed, ["barcode number", "barcode", "barcode no", "bar code", "bar code number"]);
+      const iItem = findIdx(headerNormed, ["item code", "item_code", "code", "itemcode"]);
+      const iMrp = findIdx(headerNormed, ["mrp", "m r p"]);
+      const iSp = findIdx(headerNormed, ["selling price", "sale price", "sp", "selling", "sellingprice"]);
+      const iLoc = findIdx(headerNormed, ["location", "location code", "location_code", "outlet", "branch"]);
+      const iSize = findIdx(headerNormed, ["size", "product size"]);
+
+      // (optional in CSV - we will NOT require)
+      const iCat = findIdx(headerNormed, ["category"]);
+      const iHsn = findIdx(headerNormed, ["hsn number", "hsn", "hsn code", "hsn_code"]);
 
       const missing = [];
-      if (iBarcode < 0) missing.push("Barcode number");
-      if (iItem < 0) missing.push("item code");
-      if (iCat < 0) missing.push("category");
-      if (iMrp < 0) missing.push("mrp");
-      if (iSp < 0) missing.push("selling price");
-      if (iHsn < 0) missing.push("HSN number");
-      if (iLoc < 0) missing.push("location");
-      if (iSize < 0) missing.push("size");
+      if (iBarcode < 0) missing.push("Barcode Number");
+      if (iItem < 0) missing.push("Item Code / Code");
+      if (iMrp < 0) missing.push("MRP");
+      if (iSp < 0) missing.push("Selling Price / SP");
+      if (iLoc < 0) missing.push("Location");
 
       if (missing.length) {
-        throw new Error(`Missing columns: ${missing.join(", ")}`);
+        throw new Error(
+          `Missing columns: ${missing.join(", ")}.\n\nYour CSV can be same as Excel, but must include these headers.`
+        );
       }
 
       const body = table.slice(1);
-
       setImportStage("Preparing rows...");
+
       const rawRows = body
-        .map((r) => ({
-          barcode: sanitizeBarcode(r[iBarcode] || ""),
-          item_code: String(r[iItem] || "").trim(),
-          category: String(r[iCat] || "").trim(),
-          mrp: Number(r[iMrp] || 0),
-          selling_price: Number(r[iSp] || 0),
-          hsn: String(r[iHsn] || "").trim(),
-          // ✅ IMPORTANT: backend expects "location" (not location_code)
-          location: String(r[iLoc] || "").trim(),
-          size: String(r[iSize] || "").trim(),
-        }))
+        .map((r) => {
+          const barcode = sanitizeBarcode(r[iBarcode] || "");
+          const item_code = normalizeItemCode(r[iItem] || "");
+          const mrp = Number(r[iMrp] || 0);
+          const selling_price = Number(r[iSp] || 0);
+          const location = String(r[iLoc] || "").trim();
+          const size = iSize >= 0 ? String(r[iSize] || "").trim() : "";
+
+          // keep whatever exists (not required)
+          const category_from_csv = iCat >= 0 ? String(r[iCat] || "").trim() : "";
+          const hsn_from_csv = iHsn >= 0 ? String(r[iHsn] || "").trim() : "";
+
+          return {
+            barcode,
+            item_code,
+            mrp,
+            selling_price,
+            location,
+            size,
+            category: category_from_csv, // will be overridden by TaskMaster fetch below
+            hsn: hsn_from_csv,           // will be overridden by TaskMaster fetch below
+          };
+        })
         .filter((r) => r.barcode && r.item_code);
 
-      if (!rawRows.length) throw new Error("No valid rows found.");
+      if (!rawRows.length) throw new Error("No valid rows found (barcode + item code required).");
 
-      // ✅ Fetch Name from TaskMaster for each item_code
-      setImportStage("Fetching product names from TaskMaster...");
+      // ✅ Fetch Name + Category + HSN from TaskMaster for each item_code
+      setImportStage("Fetching Name & Category from TaskMaster...");
       const enriched = [];
       for (let i = 0; i < rawRows.length; i++) {
         const row = rawRows[i];
         try {
-          const { product_name } = await getItemByCode(row.item_code);
+          const { product_name, item } = await getItemByCode(row.item_code);
+
           enriched.push({
             ...row,
+
+            // ✅ always from TaskMaster (smooth transfer)
             name: product_name || "",
-            // defaults for fields not in JSX (safe)
+            category: item?.category || "",
+            hsn: item?.hsn_code || "",
+
+            // defaults
             brand: "B4L",
             qty: 0,
             discount_percent: 0,
             image_url: "",
           });
         } catch (err) {
-          // keep row but name empty (don’t crash import)
+          // Keep row, backend will return error "TaskItem not found"
           enriched.push({
             ...row,
             name: "",
+            category: "",
+            hsn: "",
             brand: "B4L",
             qty: 0,
             discount_percent: 0,
@@ -671,25 +712,35 @@ export default function InventoryProductsPage() {
         }
       }
 
-      // ✅ Preflight (backend decides duplicates)
+      // ✅ Preflight (backend decides duplicates + validates location + taskitem)
       setImportStage("Checking duplicates...");
       const pre = await productsCsvPreflight(enriched);
 
       const conflictsList = Array.isArray(pre?.conflicts) ? pre.conflicts : [];
       const toCreate = Array.isArray(pre?.to_create) ? pre.to_create : [];
+      const errors = Array.isArray(pre?.errors) ? pre.errors : [];
+
+      if (errors.length) {
+        // show first few errors so user can fix CSV quickly
+        const preview = errors
+          .slice(0, 8)
+          .map((x) => `• Row ${Number(x.rowIndex ?? 0) + 2}: ${x.error} (Barcode: ${x.barcode || "-"})`)
+          .join("\n");
+        throw new Error(`CSV has errors:\n${preview}${errors.length > 8 ? `\n...and ${errors.length - 8} more` : ""}`);
+      }
 
       setImportNewRows(toCreate);
       setConflicts(conflictsList);
 
-      // ✅ If no conflicts, apply now (IMPORTANT: send backend expected payload)
+      // ✅ Smooth transfer: if no conflicts -> apply immediately (DB insert)
       if (!conflictsList.length) {
-        setImportStage("Importing...");
+        setImportStage("Importing to database...");
         await productsCsvApply({
           to_create: toCreate,
           decisions: [],
           incomingByBarcode: {},
         });
-        alert("CSV imported successfully.");
+        alert(`CSV imported successfully.\nCreated: ${toCreate.length}\nUpdated: 0`);
         window.location.reload();
         return;
       }
@@ -1262,6 +1313,7 @@ export default function InventoryProductsPage() {
             currentConflict?.row ||
             currentConflict?.payload ||
             {};
+
           const updatePayload = {
             ...incoming,
             barcode: incoming.barcode || incoming.barcodeNumber || currentConflict?.barcode,
