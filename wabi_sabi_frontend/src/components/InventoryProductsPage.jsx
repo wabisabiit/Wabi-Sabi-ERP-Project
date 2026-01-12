@@ -128,6 +128,7 @@ function toCSV(rows) {
   ];
   return lines.join("\r\n");
 }
+
 function downloadBlob(text, filename, type = "text/plain;charset=utf-8") {
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
@@ -186,6 +187,7 @@ async function exportRowsToPdf(rows, filename) {
       });
       y += headerH;
     };
+
     const drawRow = (r, idx) => {
       let x = margin;
       doc.setFont("helvetica", "normal");
@@ -302,32 +304,41 @@ function normHeader(h) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/\./g, "");
+    .replace(/\./g, "")
+    .replace(/\t+/g, " ")
+    .replace(/\u00a0/g, " ");
 }
 
 function sanitizeBarcode(v = "") {
   return String(v || "").replace(/[–—−‐]/g, "-").trim().toUpperCase();
 }
 
-/* ✅ NEW: normalize item code to "100" or "100-W" style */
-function normalizeItemCode(v = "") {
-  const s = String(v || "").trim().toUpperCase();
-  if (!s) return "";
-  // "100 w", "100w", "100-W" => "100-W"
-  const m = s.match(/^(\d+)\s*-?\s*([A-Z])$/);
-  if (m) return `${m[1]}-${m[2]}`;
-  // "100" stays "100"
-  if (/^\d+$/.test(s)) return s;
-  return s;
+/* ===== NEW: extract item code like (252) or (290-W) from Product Name ===== */
+function extractItemCodeFromName(name = "") {
+  const s = String(name || "").trim();
+  const m = s.match(/\(([^)]+)\)/); // first (...) group
+  if (!m) return "";
+  return String(m[1] || "").trim().toUpperCase();
 }
 
-/* ✅ NEW: read column by multiple possible header names (Excel-like CSV) */
-function findIdx(headerNormed, aliases) {
-  for (const a of aliases) {
-    const i = headerNormed.indexOf(normHeader(a));
-    if (i >= 0) return i;
-  }
-  return -1;
+/* ===== NEW: allow only "100" or "100-W" format (digits + optional -W) ===== */
+function normalizeItemCode(v = "") {
+  const s = String(v || "").trim().toUpperCase();
+  if (/^\d+(-W)?$/.test(s)) return s;
+
+  // try to pull pattern from anywhere (e.g. "ABC (252) ...")
+  const m = s.match(/(\d+)(-W)?/);
+  if (!m) return "";
+  return `${m[1]}${m[2] || ""}`;
+}
+
+/* ===== NEW: derive size from SKU-like Item Code, e.g. 12033-XS => XS ===== */
+function deriveSizeFromSku(sku = "") {
+  const s = String(sku || "").trim().toUpperCase();
+  if (!s.includes("-")) return "";
+  const parts = s.split("-");
+  const last = parts[parts.length - 1].trim();
+  return last || "";
 }
 
 /* ===== Ambiguity Modal ===== */
@@ -436,6 +447,10 @@ export default function InventoryProductsPage() {
   const currentConflict = conflicts[conflictIndex] || null;
   const conflictOpen = !!currentConflict;
 
+  const handlePickImages = (rowId) => {
+    uploadForRowRef.current = rowId;
+    fileInputRef.current?.click();
+  };
   const handleFilesSelected = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !uploadForRowRef.current) return;
@@ -594,12 +609,7 @@ export default function InventoryProductsPage() {
     }
   }
 
-  /* ===== CSV Import handling =====
-     ✅ Smooth transfer:
-       - Accept CSV exported from Excel with ANY extra columns
-       - Only require: Barcode, Item Code, MRP, Selling Price, Location
-       - Category + Name + HSN fetched from TaskMaster automatically
-  */
+  /* ===== CSV Import handling ===== */
   async function handleCsvChosen(e) {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -615,95 +625,91 @@ export default function InventoryProductsPage() {
     try {
       const text = await f.text();
       const table = parseCsvText(text);
+
       if (!table.length) throw new Error("CSV is empty.");
 
-      const headerNormed = (table[0] || []).map(normHeader);
+      const header = table[0].map(normHeader);
+      const idx = (...names) => {
+        for (const n of names) {
+          const i = header.indexOf(normHeader(n));
+          if (i >= 0) return i;
+        }
+        return -1;
+      };
 
-      // ✅ Accept Excel-like headers (many aliases)
-      const iBarcode = findIdx(headerNormed, ["barcode number", "barcode", "barcode no", "bar code", "bar code number"]);
-      const iItem = findIdx(headerNormed, ["item code", "item_code", "code", "itemcode"]);
-      const iMrp = findIdx(headerNormed, ["mrp", "m r p"]);
-      const iSp = findIdx(headerNormed, ["selling price", "sale price", "sp", "selling", "sellingprice"]);
-      const iLoc = findIdx(headerNormed, ["location", "location code", "location_code", "outlet", "branch"]);
-      const iSize = findIdx(headerNormed, ["size", "product size"]);
+      // ✅ Accept your Excel-like CSV
+      const iSkuItemCode = idx("item code", "code", "sku");
+      const iProdName    = idx("product name", "item name", "name");
+      const iMrp         = idx("mrp");
+      const iSp          = idx("selling price", "selling", "sp", "sale price");
+      const iHsn         = idx("hsn", "hsn code", "hsn number");
+      const iLoc         = idx("location", "outlet", "branch");
+      const iSize        = idx("size");
 
-      // (optional in CSV - we will NOT require)
-      const iCat = findIdx(headerNormed, ["category"]);
-      const iHsn = findIdx(headerNormed, ["hsn number", "hsn", "hsn code", "hsn_code"]);
-
-      const missing = [];
-      if (iBarcode < 0) missing.push("Barcode Number");
-      if (iItem < 0) missing.push("Item Code / Code");
-      if (iMrp < 0) missing.push("MRP");
-      if (iSp < 0) missing.push("Selling Price / SP");
-      if (iLoc < 0) missing.push("Location");
-
-      if (missing.length) {
-        throw new Error(
-          `Missing columns: ${missing.join(", ")}.\n\nYour CSV can be same as Excel, but must include these headers.`
-        );
+      // Required minimum: Product Name OR Item Code
+      if (iProdName < 0 && iSkuItemCode < 0) {
+        throw new Error(`Missing columns: need "Product Name" OR "Item Code"`);
       }
 
       const body = table.slice(1);
+
       setImportStage("Preparing rows...");
 
-      const rawRows = body
-        .map((r) => {
-          const barcode = sanitizeBarcode(r[iBarcode] || "");
-          const item_code = normalizeItemCode(r[iItem] || "");
-          const mrp = Number(r[iMrp] || 0);
-          const selling_price = Number(r[iSp] || 0);
-          const location = String(r[iLoc] || "").trim();
-          const size = iSize >= 0 ? String(r[iSize] || "").trim() : "";
+      // limit to 500 rows for smooth transfer
+      const body500 = body.slice(0, 500);
 
-          // keep whatever exists (not required)
-          const category_from_csv = iCat >= 0 ? String(r[iCat] || "").trim() : "";
-          const hsn_from_csv = iHsn >= 0 ? String(r[iHsn] || "").trim() : "";
+      const rawRows = body500
+        .map((r) => {
+          const productName = iProdName >= 0 ? String(r[iProdName] || "").trim() : "";
+          const extracted = normalizeItemCode(extractItemCodeFromName(productName));
+          const sku = iSkuItemCode >= 0 ? String(r[iSkuItemCode] || "").trim() : "";
+
+          const item_code = extracted || normalizeItemCode(sku);
+          const barcode = item_code; // ✅ barcode = item_code
+
+          const sizeFromCsv = iSize >= 0 ? String(r[iSize] || "").trim() : "";
+          const size = sizeFromCsv || deriveSizeFromSku(sku);
+
+          const locFromCsv = iLoc >= 0 ? String(r[iLoc] || "").trim() : "";
+          const location = (locFromCsv || "UV").trim(); // ✅ default UV
 
           return {
-            barcode,
-            item_code,
-            mrp,
-            selling_price,
+            barcode: sanitizeBarcode(barcode),
+            item_code: item_code,
+            mrp: Number(iMrp >= 0 ? r[iMrp] : 0) || 0,
+            selling_price: Number(iSp >= 0 ? r[iSp] : 0) || 0,
+            hsn: String(iHsn >= 0 ? (r[iHsn] || "") : "").trim(),
             location,
             size,
-            category: category_from_csv, // will be overridden by TaskMaster fetch below
-            hsn: hsn_from_csv,           // will be overridden by TaskMaster fetch below
+            _productNameRaw: productName,
           };
         })
-        .filter((r) => r.barcode && r.item_code);
+        .filter((x) => x.barcode && x.item_code);
 
-      if (!rawRows.length) throw new Error("No valid rows found (barcode + item code required).");
+      if (!rawRows.length) throw new Error("No valid rows found (after reading first 500 rows).");
 
-      // ✅ Fetch Name + Category + HSN from TaskMaster for each item_code
+      // ✅ Fetch Name + Category from TaskMaster
       setImportStage("Fetching Name & Category from TaskMaster...");
       const enriched = [];
       for (let i = 0; i < rawRows.length; i++) {
         const row = rawRows[i];
         try {
-          const { product_name, item } = await getItemByCode(row.item_code);
-
+          const { product_name, category } = await getItemByCode(row.item_code);
           enriched.push({
             ...row,
-
-            // ✅ always from TaskMaster (smooth transfer)
             name: product_name || "",
-            category: item?.category || "",
-            hsn: item?.hsn_code || "",
-
-            // defaults
+            category: category || "",
             brand: "B4L",
             qty: 0,
             discount_percent: 0,
             image_url: "",
           });
         } catch (err) {
-          // Keep row, backend will return error "TaskItem not found"
+          // keep row but name/category empty
           enriched.push({
             ...row,
             name: "",
             category: "",
-            hsn: "",
             brand: "B4L",
             qty: 0,
             discount_percent: 0,
@@ -712,40 +718,29 @@ export default function InventoryProductsPage() {
         }
       }
 
-      // ✅ Preflight (backend decides duplicates + validates location + taskitem)
+      // ✅ Preflight
       setImportStage("Checking duplicates...");
       const pre = await productsCsvPreflight(enriched);
 
       const conflictsList = Array.isArray(pre?.conflicts) ? pre.conflicts : [];
       const toCreate = Array.isArray(pre?.to_create) ? pre.to_create : [];
-      const errors = Array.isArray(pre?.errors) ? pre.errors : [];
-
-      if (errors.length) {
-        // show first few errors so user can fix CSV quickly
-        const preview = errors
-          .slice(0, 8)
-          .map((x) => `• Row ${Number(x.rowIndex ?? 0) + 2}: ${x.error} (Barcode: ${x.barcode || "-"})`)
-          .join("\n");
-        throw new Error(`CSV has errors:\n${preview}${errors.length > 8 ? `\n...and ${errors.length - 8} more` : ""}`);
-      }
 
       setImportNewRows(toCreate);
       setConflicts(conflictsList);
 
-      // ✅ Smooth transfer: if no conflicts -> apply immediately (DB insert)
+      // ✅ If no conflicts, apply
       if (!conflictsList.length) {
-        setImportStage("Importing to database...");
+        setImportStage("Importing...");
         await productsCsvApply({
           to_create: toCreate,
           decisions: [],
           incomingByBarcode: {},
         });
-        alert(`CSV imported successfully.\nCreated: ${toCreate.length}\nUpdated: 0`);
+        alert("CSV imported successfully (first 500 rows).");
         window.location.reload();
         return;
       }
 
-      // conflicts exist => user decisions via modal
       setImportStage("");
     } catch (err) {
       console.error(err);
@@ -1298,7 +1293,6 @@ export default function InventoryProductsPage() {
         conflict={currentConflict}
         onClose={() => closeConflictModal()}
         onNo={() => {
-          // skip update
           if (conflictIndex + 1 >= conflicts.length) {
             finishApplyWithUpdates(importUpdates);
           } else {
@@ -1313,7 +1307,6 @@ export default function InventoryProductsPage() {
             currentConflict?.row ||
             currentConflict?.payload ||
             {};
-
           const updatePayload = {
             ...incoming,
             barcode: incoming.barcode || incoming.barcodeNumber || currentConflict?.barcode,

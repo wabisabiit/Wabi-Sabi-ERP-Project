@@ -29,8 +29,14 @@ export async function getItemByCode(code) {
     data.name ||
     "";
 
-  return { product_name, item: data };
+  // ✅ NEW (for category fetch)
+  const category = data.category || "";
+
+  return { product_name, category, item: data };
 }
+
+/* ===== REST OF YOUR FILE IS UNCHANGED ===== */
+
 
 /* ========= Generic JSON HTTP helper (used by Product APIs) ========= */
 

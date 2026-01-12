@@ -1,7 +1,4 @@
 # products/views_csv_import.py
-# ✅ NO CHANGE REQUIRED for your request (already inserts into DB on apply)
-# Keeping full file exactly as you provided:
-
 from decimal import Decimal, InvalidOperation
 
 from rest_framework.views import APIView
@@ -28,12 +25,6 @@ def _to_decimal(v, default="0"):
 
 
 def _find_location(loc_value: str):
-    """
-    Location in CSV is IMPORTANT.
-    Accept either:
-      - Location.code (case-insensitive)
-      - Location.name (case-insensitive)
-    """
     val = (loc_value or "").strip()
     if not val:
         return None
@@ -47,21 +38,6 @@ def _find_location(loc_value: str):
 
 
 class ProductCsvPreflight(APIView):
-    """
-    POST:
-      {
-        rows: [{
-          barcode, item_code, category, mrp, selling_price, hsn, location, size,
-          ...any extra columns allowed...
-        }, ...]
-      }
-
-    Notes:
-      - name is NOT required (fetched via TaskItem on frontend / serializers)
-      - size is supported and will be stored in Product.size
-      - category/hsn are accepted but not stored on Product (they belong to TaskItem)
-    """
-
     def post(self, request):
         rows = request.data.get("rows") or []
         if not isinstance(rows, list) or not rows:
@@ -88,7 +64,6 @@ class ProductCsvPreflight(APIView):
 
         for idx, r in enumerate(rows):
             incoming = {
-                # name is optional and ignored for DB; keep only for UI compatibility if present
                 "name": (r.get("name") or r.get("Name") or "").strip(),
 
                 "barcode": _norm_barcode(
@@ -100,7 +75,6 @@ class ProductCsvPreflight(APIView):
                 ),
                 "item_code": (r.get("item_code") or r.get("Item code") or r.get("itemCode") or "").strip(),
 
-                # accepted (not stored in Product model)
                 "category": (r.get("category") or r.get("Category") or "").strip(),
                 "hsn": (r.get("hsn") or r.get("HSN") or r.get("HSN number") or "").strip(),
 
@@ -108,8 +82,6 @@ class ProductCsvPreflight(APIView):
                 "selling_price": str(_to_decimal(r.get("selling_price") or r.get("Selling price") or r.get("sp") or "0")),
 
                 "location": (r.get("location") or r.get("Location") or "").strip(),
-
-                # ✅ NEW
                 "size": (r.get("size") or r.get("Size") or "").strip(),
             }
 
@@ -138,6 +110,10 @@ class ProductCsvPreflight(APIView):
                 })
                 continue
 
+            # ✅ NEW: Always prefer TaskMaster category/hsn for UI
+            incoming["category"] = (ti.category or incoming["category"] or "").strip()
+            incoming["hsn"] = (ti.hsn_code or incoming["hsn"] or "").strip()
+
             incoming["_location_id"] = loc.id
             incoming["_task_item_code"] = ti.item_code
 
@@ -159,7 +135,7 @@ class ProductCsvPreflight(APIView):
                 "selling_price": str(ex.selling_price or 0),
                 "hsn": getattr(ex.task_item, "hsn_code", "") or "",
                 "location": loc_name,
-                "size": ex.size or "",  # ✅ NEW
+                "size": ex.size or "",
             }
 
             conflicts.append({
@@ -182,20 +158,6 @@ class ProductCsvPreflight(APIView):
 
 
 class ProductCsvApply(APIView):
-    """
-    POST:
-      {
-        to_create: [...],
-        decisions: [{ barcode, action: "update"|"skip" }],
-        incomingByBarcode: { "BARCODE": {...incoming...}, ... }
-      }
-
-    Notes:
-      - name ignored
-      - size is stored/updated
-      - extra columns ignored safely
-    """
-
     def post(self, request):
         to_create = request.data.get("to_create") or []
         decisions = request.data.get("decisions") or []
@@ -225,7 +187,6 @@ class ProductCsvApply(APIView):
         errors = []
 
         with transaction.atomic():
-            # CREATE
             for r in to_create:
                 barcode = _norm_barcode(r.get("barcode"))
                 if not barcode:
@@ -253,11 +214,10 @@ class ProductCsvApply(APIView):
                     mrp=_to_decimal(r.get("mrp"), "0"),
                     selling_price=_to_decimal(r.get("selling_price"), "0"),
                     location=loc,
-                    size=(r.get("size") or "").strip(),  # ✅ NEW
+                    size=(r.get("size") or "").strip(),
                 )
                 created += 1
 
-            # UPDATE
             if update_barcodes:
                 existing = {
                     p.barcode.upper(): p
@@ -294,7 +254,7 @@ class ProductCsvApply(APIView):
                     p.mrp = _to_decimal(inc.get("mrp"), "0")
                     p.selling_price = _to_decimal(inc.get("selling_price"), "0")
                     p.location = loc
-                    p.size = (inc.get("size") or "").strip()  # ✅ NEW
+                    p.size = (inc.get("size") or "").strip()
 
                     p.save(update_fields=["task_item", "mrp", "selling_price", "location", "size", "updated_at"])
                     updated += 1
