@@ -2,7 +2,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/InventoryProductsPage.css";
-import { listProducts, deleteProduct, getItemByCode, productsCsvPreflight, productsCsvApply } from "../api/client";
+import {
+  listProducts,
+  deleteProduct,
+  getItemByCode,
+  productsCsvPreflight,
+  productsCsvApply,
+} from "../api/client";
 
 /* -------------------- helpers -------------------- */
 const PAGE_SIZE_OPTIONS = [10, 15];
@@ -595,13 +601,13 @@ export default function InventoryProductsPage() {
 
       // ✅ REQUIRED columns (NO product name)
       const iBarcode = idx("barcode number");
-      const iItem    = idx("item code");
-      const iCat     = idx("category");
-      const iMrp     = idx("mrp");
-      const iSp      = idx("selling price");
-      const iHsn     = idx("hsn number");
-      const iLoc     = idx("location");
-      const iSize    = idx("size");
+      const iItem = idx("item code");
+      const iCat = idx("category");
+      const iMrp = idx("mrp");
+      const iSp = idx("selling price");
+      const iHsn = idx("hsn number");
+      const iLoc = idx("location");
+      const iSize = idx("size");
 
       const missing = [];
       if (iBarcode < 0) missing.push("Barcode number");
@@ -628,7 +634,8 @@ export default function InventoryProductsPage() {
           mrp: Number(r[iMrp] || 0),
           selling_price: Number(r[iSp] || 0),
           hsn: String(r[iHsn] || "").trim(),
-          location_code: String(r[iLoc] || "").trim(),
+          // ✅ IMPORTANT: backend expects "location" (not location_code)
+          location: String(r[iLoc] || "").trim(),
           size: String(r[iSize] || "").trim(),
         }))
         .filter((r) => r.barcode && r.item_code);
@@ -668,43 +675,26 @@ export default function InventoryProductsPage() {
       setImportStage("Checking duplicates...");
       const pre = await productsCsvPreflight(enriched);
 
-      // Support multiple possible response shapes
-      const preConflicts =
-        pre?.conflicts ||
-        pre?.duplicates ||
-        pre?.ambiguous ||
-        pre?.existing ||
-        [];
+      const conflictsList = Array.isArray(pre?.conflicts) ? pre.conflicts : [];
+      const toCreate = Array.isArray(pre?.to_create) ? pre.to_create : [];
 
-      const preNew =
-        pre?.new_rows ||
-        pre?.creates ||
-        pre?.to_create ||
-        pre?.new ||
-        pre?.ok ||
-        pre?.rows ||
-        [];
-
-      // If backend returns everything as "rows", we still allow
-      const newRows = Array.isArray(preNew) ? preNew : [];
-      const conflictsList = Array.isArray(preConflicts) ? preConflicts : [];
-
-      setImportNewRows(newRows.length ? newRows : enriched); // fallback: create all
+      setImportNewRows(toCreate);
       setConflicts(conflictsList);
 
-      // if no conflicts, apply now
+      // ✅ If no conflicts, apply now (IMPORTANT: send backend expected payload)
       if (!conflictsList.length) {
         setImportStage("Importing...");
         await productsCsvApply({
-          create: newRows.length ? newRows : enriched,
-          update: [],
+          to_create: toCreate,
+          decisions: [],
+          incomingByBarcode: {},
         });
         alert("CSV imported successfully.");
         window.location.reload();
         return;
       }
 
-      // if conflicts exist, open modal (handled by state)
+      // conflicts exist => user decisions via modal
       setImportStage("");
     } catch (err) {
       console.error(err);
@@ -718,10 +708,23 @@ export default function InventoryProductsPage() {
     setImporting(true);
     setImportStage("Importing...");
     try {
-      await productsCsvApply({
-        create: importNewRows || [],
-        update: finalUpdates || [],
+      const decisions = (finalUpdates || []).map((u) => ({
+        barcode: u.barcode,
+        action: "update",
+      }));
+
+      const incomingByBarcode = {};
+      (finalUpdates || []).forEach((u) => {
+        const key = String(u.barcode || "").toUpperCase();
+        if (key) incomingByBarcode[key] = u;
       });
+
+      await productsCsvApply({
+        to_create: importNewRows || [],
+        decisions,
+        incomingByBarcode,
+      });
+
       alert("CSV imported successfully.");
       window.location.reload();
     } catch (e) {
