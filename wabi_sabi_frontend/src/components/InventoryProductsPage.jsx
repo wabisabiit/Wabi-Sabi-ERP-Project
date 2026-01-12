@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/InventoryProductsPage.css";
-import { listProducts, deleteProduct, productsCsvPreflight, productsCsvApply } from "../api/client";
+import { listProducts, deleteProduct, getItemByCode, productsCsvPreflight, productsCsvApply } from "../api/client";
 
 /* -------------------- helpers -------------------- */
 const PAGE_SIZE_OPTIONS = [10, 15];
@@ -134,49 +134,6 @@ function downloadBlob(text, filename, type = "text/plain;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-/* ===== Import CSV util ===== */
-function parseCsvText(text) {
-  // Simple CSV parser: supports quoted fields
-  const rows = [];
-  let i = 0, field = "", row = [], inQuotes = false;
-
-  const pushField = () => { row.push(field); field = ""; };
-  const pushRow = () => {
-    if (row.some((x) => String(x || "").trim() !== "")) rows.push(row);
-    row = [];
-  };
-
-  while (i < text.length) {
-    const c = text[i];
-
-    if (c === '"') {
-      if (inQuotes && text[i + 1] === '"') { field += '"'; i += 2; continue; }
-      inQuotes = !inQuotes;
-      i++;
-      continue;
-    }
-
-    if (!inQuotes && (c === ",")) { pushField(); i++; continue; }
-    if (!inQuotes && (c === "\n")) { pushField(); pushRow(); i++; continue; }
-    if (!inQuotes && (c === "\r")) { i++; continue; }
-
-    field += c;
-    i++;
-  }
-  pushField();
-  pushRow();
-
-  if (!rows.length) return { headers: [], data: [] };
-  const headers = rows[0].map((h) => String(h || "").trim());
-  const data = rows.slice(1);
-  return { headers, data };
-}
-
-function buildImportTemplateCSV() {
-  const headers = ["Name","Barcode number","Item code","Category","MRP","Selling price","HSN number","Location"];
-  return headers.map((h) => `"${h}"`).join(",") + "\r\n";
-}
-
 /* ===== Real PDF export (jspdf) ===== */
 async function exportRowsToPdf(rows, filename) {
   try {
@@ -281,6 +238,133 @@ async function exportRowsToPdf(rows, filename) {
   }
 }
 
+/* ===== CSV parsing helper (safe for quoted CSV) ===== */
+function parseCsvText(text) {
+  const rows = [];
+  let cur = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        cell += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        cell += ch;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inQuotes = true;
+      continue;
+    }
+
+    if (ch === ",") {
+      cur.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if (ch === "\n") {
+      cur.push(cell);
+      cell = "";
+      if (cur.some((x) => String(x ?? "").trim() !== "")) rows.push(cur);
+      cur = [];
+      continue;
+    }
+
+    if (ch === "\r") continue;
+
+    cell += ch;
+  }
+
+  cur.push(cell);
+  if (cur.some((x) => String(x ?? "").trim() !== "")) rows.push(cur);
+
+  return rows;
+}
+
+function normHeader(h) {
+  return String(h || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\./g, "");
+}
+
+function sanitizeBarcode(v = "") {
+  return String(v || "").replace(/[–—−‐]/g, "-").trim().toUpperCase();
+}
+
+/* ===== Ambiguity Modal ===== */
+function CsvConflictModal({ open, conflict, onClose, onYes, onNo }) {
+  if (!open || !conflict) return null;
+
+  const existing = conflict.existing || conflict.current || conflict.db || {};
+  const incoming = conflict.incoming || conflict.csv || conflict.new || conflict.row || conflict.payload || {};
+
+  return (
+    <div className="pp-modal-backdrop">
+      <div className="pp-modal">
+        <div className="pp-modal-head">
+          <div className="pp-modal-title">Ambiguity Found</div>
+          <button className="pp-modal-x" onClick={onClose} aria-label="Close">
+            <span className="mi">close</span>
+          </button>
+        </div>
+
+        <div className="pp-modal-body">
+          <div style={{ fontSize: 13, marginBottom: 10 }}>
+            Barcode: <b className="mono">{incoming.barcode || incoming.barcodeNumber || conflict.barcode}</b>
+          </div>
+
+          <div className="pp-modal-grid">
+            <div className="pp-modal-card">
+              <div className="pp-modal-card-title">Existing</div>
+              <div className="pp-modal-row"><span>Item Code</span><b className="mono">{existing.item_code || existing.task_item_code || existing.taskItemCode || ""}</b></div>
+              <div className="pp-modal-row"><span>Name</span><b>{existing.name || existing.product_name || ""}</b></div>
+              <div className="pp-modal-row"><span>Category</span><b>{existing.category || ""}</b></div>
+              <div className="pp-modal-row"><span>MRP</span><b className="mono">{existing.mrp ?? ""}</b></div>
+              <div className="pp-modal-row"><span>Selling</span><b className="mono">{existing.selling_price ?? existing.sellingPrice ?? ""}</b></div>
+              <div className="pp-modal-row"><span>HSN</span><b className="mono">{existing.hsn || existing.hsn_code || ""}</b></div>
+              <div className="pp-modal-row"><span>Size</span><b className="mono">{existing.size || ""}</b></div>
+              <div className="pp-modal-row"><span>Location</span><b className="mono">{existing.location || existing.location_code || ""}</b></div>
+            </div>
+
+            <div className="pp-modal-card">
+              <div className="pp-modal-card-title">CSV</div>
+              <div className="pp-modal-row"><span>Item Code</span><b className="mono">{incoming.item_code || incoming.itemCode || ""}</b></div>
+              <div className="pp-modal-row"><span>Name</span><b>{incoming.name || ""}</b></div>
+              <div className="pp-modal-row"><span>Category</span><b>{incoming.category || ""}</b></div>
+              <div className="pp-modal-row"><span>MRP</span><b className="mono">{incoming.mrp ?? ""}</b></div>
+              <div className="pp-modal-row"><span>Selling</span><b className="mono">{incoming.selling_price ?? incoming.sellingPrice ?? incoming.sp ?? ""}</b></div>
+              <div className="pp-modal-row"><span>HSN</span><b className="mono">{incoming.hsn || ""}</b></div>
+              <div className="pp-modal-row"><span>Size</span><b className="mono">{incoming.size || ""}</b></div>
+              <div className="pp-modal-row"><span>Location</span><b className="mono">{incoming.location || incoming.location_code || ""}</b></div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 10, fontSize: 13, color: "#6b7280" }}>
+            Do you want to update the existing product with CSV data?
+          </div>
+        </div>
+
+        <div className="pp-modal-foot">
+          <button className="pp-btn outline" onClick={onNo}>No</button>
+          <button className="pp-btn blue" onClick={onYes}>Yes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------- main component -------------------- */
 export default function InventoryProductsPage() {
   const navigate = useNavigate();
@@ -310,6 +394,21 @@ export default function InventoryProductsPage() {
   // image upload
   const fileInputRef = useRef(null);
   const uploadForRowRef = useRef(null);
+
+  // ✅ CSV import
+  const csvInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
+  const [importStage, setImportStage] = useState("");
+
+  // ambiguity flow
+  const [conflicts, setConflicts] = useState([]);
+  const [conflictIndex, setConflictIndex] = useState(0);
+  const [importNewRows, setImportNewRows] = useState([]);
+  const [importUpdates, setImportUpdates] = useState([]);
+
+  const currentConflict = conflicts[conflictIndex] || null;
+  const conflictOpen = !!currentConflict;
+
   const handlePickImages = (rowId) => {
     uploadForRowRef.current = rowId;
     fileInputRef.current?.click();
@@ -331,142 +430,6 @@ export default function InventoryProductsPage() {
     },
     [] // eslint-disable-line
   );
-
-  // ✅ CSV Import state
-  const productCsvInputRef = useRef(null);
-  const [importBusy, setImportBusy] = useState(false);
-  const [importErr, setImportErr] = useState("");
-
-  const [csvToCreate, setCsvToCreate] = useState([]);
-  const [csvConflicts, setCsvConflicts] = useState([]); // queue
-  const [csvIncomingMap, setCsvIncomingMap] = useState({}); // barcode -> incoming row
-  const [conflictOpen, setConflictOpen] = useState(false);
-  const [activeConflict, setActiveConflict] = useState(null);
-  const [decisions, setDecisions] = useState([]); // {barcode, action:update|skip}
-
-  function normalizeBarcode(v = "") {
-    return String(v || "").replace(/[–—−‐]/g, "-").trim().toUpperCase();
-  }
-
-  async function handlePickProductCsv() {
-    setImportErr("");
-    productCsvInputRef.current?.click();
-  }
-
-  async function handleProductCsvSelected(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setImportBusy(true);
-    setImportErr("");
-
-    try {
-      const text = await file.text();
-      const { headers, data } = parseCsvText(text);
-
-      const idx = (name) => headers.findIndex((h) => h.toLowerCase() === name.toLowerCase());
-
-      const iName = idx("Name");
-      const iBarcode = idx("Barcode number");
-      const iItemCode = idx("Item code");
-      const iCategory = idx("Category");
-      const iMrp = idx("MRP");
-      const iSp = idx("Selling price");
-      const iHsn = idx("HSN number");
-      const iLoc = idx("Location");
-
-      const required = [
-        ["Barcode number", iBarcode],
-        ["Item code", iItemCode],
-        ["Location", iLoc],
-      ];
-      const missing = required.filter(([, ix]) => ix < 0).map(([n]) => n);
-      if (missing.length) throw new Error(`CSV headers missing: ${missing.join(", ")}`);
-
-      const rowsIn = data.map((r) => ({
-        name: iName >= 0 ? String(r[iName] || "").trim() : "",
-        barcode: normalizeBarcode(r[iBarcode]),
-        item_code: String(r[iItemCode] || "").trim(),
-        category: iCategory >= 0 ? String(r[iCategory] || "").trim() : "",
-        mrp: iMrp >= 0 ? String(r[iMrp] || "").trim() : "0",
-        selling_price: iSp >= 0 ? String(r[iSp] || "").trim() : "0",
-        hsn: iHsn >= 0 ? String(r[iHsn] || "").trim() : "",
-        location: String(r[iLoc] || "").trim(),
-      })).filter((x) => x.barcode);
-
-      if (!rowsIn.length) throw new Error("No valid rows found in CSV.");
-
-      const pre = await productsCsvPreflight(rowsIn);
-
-      const incomingMap = {};
-      (pre?.conflicts || []).forEach((c) => {
-        const b = normalizeBarcode(c?.barcode);
-        if (b) incomingMap[b] = c.incoming;
-      });
-
-      setCsvToCreate(pre?.to_create || []);
-      setCsvConflicts(pre?.conflicts || []);
-      setCsvIncomingMap(incomingMap);
-      setDecisions([]);
-
-      if ((pre?.conflicts || []).length) {
-        setActiveConflict(pre.conflicts[0]);
-        setConflictOpen(true);
-      } else {
-        const res = await productsCsvApply({
-          to_create: pre?.to_create || [],
-          decisions: [],
-          incomingByBarcode: {},
-        });
-        alert(`Import done. Created: ${res.created}, Updated: ${res.updated}, Skipped: ${res.skipped}`);
-        setSearch((s) => s);
-      }
-
-      if ((pre?.errors || []).length) {
-        console.warn("CSV preflight errors:", pre.errors);
-        alert(`Some rows were rejected: ${pre.errors.length}. Check console for details.`);
-      }
-    } catch (err) {
-      console.error(err);
-      setImportErr(err?.message || "CSV import failed");
-      alert(err?.message || "CSV import failed");
-    } finally {
-      setImportBusy(false);
-    }
-  }
-
-  function nextConflictAfterDecision() {
-    setCsvConflicts((prev) => {
-      const rest = prev.slice(1);
-      if (rest.length) {
-        setActiveConflict(rest[0]);
-        setConflictOpen(true);
-      } else {
-        setActiveConflict(null);
-        setConflictOpen(false);
-      }
-      return rest;
-    });
-  }
-
-  async function finalizeCsvImportIfDone() {
-    setImportBusy(true);
-    try {
-      const res = await productsCsvApply({
-        to_create: csvToCreate,
-        decisions,
-        incomingByBarcode: csvIncomingMap,
-      });
-      alert(`Import done. Created: ${res.created}, Updated: ${res.updated}, Skipped: ${res.skipped}`);
-      setSearch((s) => s);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to apply CSV import.");
-    } finally {
-      setImportBusy(false);
-    }
-  }
 
   // options
   const DEPT_OPTIONS = ["All", "Test", "S", "clothes", "Miscellaneous", "Sweater"];
@@ -608,6 +571,178 @@ export default function InventoryProductsPage() {
     }
   }
 
+  /* ===== CSV Import handling ===== */
+  async function handleCsvChosen(e) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+
+    setImporting(true);
+    setImportStage("Reading CSV...");
+    setConflicts([]);
+    setConflictIndex(0);
+    setImportNewRows([]);
+    setImportUpdates([]);
+
+    try {
+      const text = await f.text();
+      const table = parseCsvText(text);
+
+      if (!table.length) throw new Error("CSV is empty.");
+
+      const header = table[0].map(normHeader);
+      const idx = (name) => header.indexOf(normHeader(name));
+
+      // ✅ REQUIRED columns (NO product name)
+      const iBarcode = idx("barcode number");
+      const iItem    = idx("item code");
+      const iCat     = idx("category");
+      const iMrp     = idx("mrp");
+      const iSp      = idx("selling price");
+      const iHsn     = idx("hsn number");
+      const iLoc     = idx("location");
+      const iSize    = idx("size");
+
+      const missing = [];
+      if (iBarcode < 0) missing.push("Barcode number");
+      if (iItem < 0) missing.push("item code");
+      if (iCat < 0) missing.push("category");
+      if (iMrp < 0) missing.push("mrp");
+      if (iSp < 0) missing.push("selling price");
+      if (iHsn < 0) missing.push("HSN number");
+      if (iLoc < 0) missing.push("location");
+      if (iSize < 0) missing.push("size");
+
+      if (missing.length) {
+        throw new Error(`Missing columns: ${missing.join(", ")}`);
+      }
+
+      const body = table.slice(1);
+
+      setImportStage("Preparing rows...");
+      const rawRows = body
+        .map((r) => ({
+          barcode: sanitizeBarcode(r[iBarcode] || ""),
+          item_code: String(r[iItem] || "").trim(),
+          category: String(r[iCat] || "").trim(),
+          mrp: Number(r[iMrp] || 0),
+          selling_price: Number(r[iSp] || 0),
+          hsn: String(r[iHsn] || "").trim(),
+          location_code: String(r[iLoc] || "").trim(),
+          size: String(r[iSize] || "").trim(),
+        }))
+        .filter((r) => r.barcode && r.item_code);
+
+      if (!rawRows.length) throw new Error("No valid rows found.");
+
+      // ✅ Fetch Name from TaskMaster for each item_code
+      setImportStage("Fetching product names from TaskMaster...");
+      const enriched = [];
+      for (let i = 0; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        try {
+          const { product_name } = await getItemByCode(row.item_code);
+          enriched.push({
+            ...row,
+            name: product_name || "",
+            // defaults for fields not in JSX (safe)
+            brand: "B4L",
+            qty: 0,
+            discount_percent: 0,
+            image_url: "",
+          });
+        } catch (err) {
+          // keep row but name empty (don’t crash import)
+          enriched.push({
+            ...row,
+            name: "",
+            brand: "B4L",
+            qty: 0,
+            discount_percent: 0,
+            image_url: "",
+          });
+        }
+      }
+
+      // ✅ Preflight (backend decides duplicates)
+      setImportStage("Checking duplicates...");
+      const pre = await productsCsvPreflight(enriched);
+
+      // Support multiple possible response shapes
+      const preConflicts =
+        pre?.conflicts ||
+        pre?.duplicates ||
+        pre?.ambiguous ||
+        pre?.existing ||
+        [];
+
+      const preNew =
+        pre?.new_rows ||
+        pre?.creates ||
+        pre?.to_create ||
+        pre?.new ||
+        pre?.ok ||
+        pre?.rows ||
+        [];
+
+      // If backend returns everything as "rows", we still allow
+      const newRows = Array.isArray(preNew) ? preNew : [];
+      const conflictsList = Array.isArray(preConflicts) ? preConflicts : [];
+
+      setImportNewRows(newRows.length ? newRows : enriched); // fallback: create all
+      setConflicts(conflictsList);
+
+      // if no conflicts, apply now
+      if (!conflictsList.length) {
+        setImportStage("Importing...");
+        await productsCsvApply({
+          create: newRows.length ? newRows : enriched,
+          update: [],
+        });
+        alert("CSV imported successfully.");
+        window.location.reload();
+        return;
+      }
+
+      // if conflicts exist, open modal (handled by state)
+      setImportStage("");
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || "CSV import failed.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function finishApplyWithUpdates(finalUpdates) {
+    setImporting(true);
+    setImportStage("Importing...");
+    try {
+      await productsCsvApply({
+        create: importNewRows || [],
+        update: finalUpdates || [],
+      });
+      alert("CSV imported successfully.");
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      alert("CSV import failed while saving.");
+    } finally {
+      setImporting(false);
+      setImportStage("");
+    }
+  }
+
+  function closeConflictModal() {
+    setConflicts([]);
+    setConflictIndex(0);
+    setImportUpdates([]);
+  }
+
+  function nextConflict() {
+    setConflictIndex((i) => i + 1);
+  }
+
   /* ===== UI ===== */
   return (
     <div className="pp-wrap">
@@ -633,16 +768,6 @@ export default function InventoryProductsPage() {
                   >
                     <span className="mi icon">table_chart</span>Excel
                   </button>
-
-                  <button
-                    onClick={() => {
-                      downloadBlob(buildImportTemplateCSV(), "product_import_template.csv", "text/csv;charset=utf-8");
-                      setExportOpen(false);
-                    }}
-                  >
-                    <span className="mi icon">download</span>Import CSV Template
-                  </button>
-
                   <button
                     onClick={async () => {
                       await exportRowsToPdf(pageRows, "products_page.pdf");
@@ -700,21 +825,29 @@ export default function InventoryProductsPage() {
 
             <button
               className="pp-btn outline"
+              title="Import Products CSV"
+              onClick={() => csvInputRef.current?.click()}
+            >
+              <span className="mi">upload_file</span> Import CSV
+            </button>
+
+            <button
+              className="pp-btn outline"
               title="Import HSN Code"
               onClick={() => document.getElementById("hsn-file-input")?.click()}
             >
               <span className="mi">upload_file</span> Import HSN Code
             </button>
-
-            <button
-              className="pp-btn outline"
-              title="Import CSV"
-              onClick={handlePickProductCsv}
-              disabled={importBusy}
-            >
-              <span className="mi">upload_file</span> Import CSV
-            </button>
           </div>
+
+          {/* hidden input for Products CSV */}
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            style={{ display: "none" }}
+            onChange={handleCsvChosen}
+          />
 
           {/* hidden input for HSN CSV/TXT */}
           <input
@@ -722,15 +855,6 @@ export default function InventoryProductsPage() {
             type="file"
             accept=".csv,.txt,text/csv,text/plain"
             style={{ display: "none" }}
-          />
-
-          {/* hidden input for Product CSV */}
-          <input
-            ref={productCsvInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            style={{ display: "none" }}
-            onChange={handleProductCsvSelected}
           />
 
           <div className="pp-right">
@@ -1104,149 +1228,52 @@ export default function InventoryProductsPage() {
         </div>
       </div>
 
-      {/* ✅ Conflict Popup */}
-      {conflictOpen && activeConflict && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: 16,
-          }}
-          onClick={() => {
-            setConflictOpen(false);
-            setActiveConflict(null);
-          }}
-        >
-          <div
-            style={{
-              width: "min(900px, 96vw)",
-              background: "#fff",
-              borderRadius: 14,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-              overflow: "hidden",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "14px 16px",
-                borderBottom: "1px solid #e5e7eb",
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>
-                Ambiguity: Barcode already exists ({activeConflict.barcode})
-              </div>
-              <button
-                onClick={() => {
-                  setConflictOpen(false);
-                  setActiveConflict(null);
-                }}
-                style={{
-                  border: 0,
-                  background: "transparent",
-                  cursor: "pointer",
-                  fontSize: 18,
-                  lineHeight: 1,
-                }}
-                aria-label="Close"
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ padding: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 8 }}>Existing Product</div>
-                  <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                    <div><b>Name:</b> {activeConflict.existing?.name || "-"}</div>
-                    <div><b>Item Code:</b> {activeConflict.existing?.task_item_code || "-"}</div>
-                    <div><b>Category:</b> {activeConflict.existing?.category || "-"}</div>
-                    <div><b>MRP:</b> {activeConflict.existing?.mrp || "0"}</div>
-                    <div><b>Selling Price:</b> {activeConflict.existing?.selling_price || "0"}</div>
-                    <div><b>HSN:</b> {activeConflict.existing?.hsn || "-"}</div>
-                    <div><b>Location:</b> {activeConflict.existing?.location || "-"}</div>
-                  </div>
-                </div>
-
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 8 }}>CSV Product</div>
-                  <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                    <div><b>Name:</b> {activeConflict.incoming?.name || "-"}</div>
-                    <div><b>Item Code:</b> {activeConflict.incoming?.item_code || "-"}</div>
-                    <div><b>Category:</b> {activeConflict.incoming?.category || "-"}</div>
-                    <div><b>MRP:</b> {activeConflict.incoming?.mrp || "0"}</div>
-                    <div><b>Selling Price:</b> {activeConflict.incoming?.selling_price || "0"}</div>
-                    <div><b>HSN:</b> {activeConflict.incoming?.hsn || "-"}</div>
-                    <div><b>Location:</b> {activeConflict.incoming?.location || "-"}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 14, fontSize: 13, color: "#6b7280" }}>
-                Do you want to replace the existing product data with the CSV product data?
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                justifyContent: "flex-end",
-                padding: 16,
-                borderTop: "1px solid #e5e7eb",
-              }}
-            >
-              <button
-                className="pp-btn outline"
-                onClick={() => {
-                  setDecisions((d) => [...d, { barcode: activeConflict.barcode, action: "skip" }]);
-
-                  const isLast = (csvConflicts.length <= 1);
-                  nextConflictAfterDecision();
-
-                  if (isLast) {
-                    setConflictOpen(false);
-                    setActiveConflict(null);
-                    finalizeCsvImportIfDone();
-                  }
-                }}
-                disabled={importBusy}
-              >
-                No
-              </button>
-
-              <button
-                className="pp-btn blue"
-                onClick={() => {
-                  setDecisions((d) => [...d, { barcode: activeConflict.barcode, action: "update" }]);
-
-                  const isLast = (csvConflicts.length <= 1);
-                  nextConflictAfterDecision();
-
-                  if (isLast) {
-                    setConflictOpen(false);
-                    setActiveConflict(null);
-                    finalizeCsvImportIfDone();
-                  }
-                }}
-                disabled={importBusy}
-              >
-                Yes
-              </button>
-            </div>
+      {/* ✅ Spinner overlay for import stages */}
+      {importing && (
+        <div className="pp-import-overlay">
+          <div className="pp-import-card">
+            <div className="pp-spinner" />
+            <div style={{ marginTop: 10, fontSize: 13 }}>{importStage || "Working..."}</div>
           </div>
         </div>
       )}
+
+      {/* ✅ Ambiguity modal */}
+      <CsvConflictModal
+        open={conflictOpen}
+        conflict={currentConflict}
+        onClose={() => closeConflictModal()}
+        onNo={() => {
+          // skip update
+          if (conflictIndex + 1 >= conflicts.length) {
+            finishApplyWithUpdates(importUpdates);
+          } else {
+            nextConflict();
+          }
+        }}
+        onYes={() => {
+          const incoming =
+            currentConflict?.incoming ||
+            currentConflict?.csv ||
+            currentConflict?.new ||
+            currentConflict?.row ||
+            currentConflict?.payload ||
+            {};
+          const updatePayload = {
+            ...incoming,
+            barcode: incoming.barcode || incoming.barcodeNumber || currentConflict?.barcode,
+          };
+
+          const nextUpdates = [...importUpdates, updatePayload];
+          setImportUpdates(nextUpdates);
+
+          if (conflictIndex + 1 >= conflicts.length) {
+            finishApplyWithUpdates(nextUpdates);
+          } else {
+            nextConflict();
+          }
+        }}
+      />
     </div>
   );
 }

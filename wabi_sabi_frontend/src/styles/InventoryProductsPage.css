@@ -208,3 +208,94 @@
   to { transform:rotate(360deg); }
 }
 
+/* ===== CSV Import overlay ===== */
+.pp-import-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pp-import-card{
+  width: 340px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===== Modal ===== */
+.pp-modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pp-modal{
+  width: 860px;
+  max-width: calc(100vw - 26px);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.20);
+  overflow: hidden;
+}
+.pp-modal-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.pp-modal-title{
+  font-size: 15px;
+  font-weight: 700;
+}
+.pp-modal-x{
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 10px;
+}
+.pp-modal-x:hover{ background: #f3f4f6; }
+.pp-modal-body{ padding: 14px 16px; }
+.pp-modal-foot{
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.pp-modal-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pp-modal-card{
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fafafa;
+}
+.pp-modal-card-title{
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.pp-modal-row{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(229,231,235,0.8);
+}
+.pp-modal-row:last-child{ border-bottom: 0; }

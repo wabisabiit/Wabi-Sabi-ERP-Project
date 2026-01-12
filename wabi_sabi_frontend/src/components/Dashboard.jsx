@@ -834,6 +834,13 @@ export default function Dashboard() {
           ? salesRes
           : [];
 
+        // ✅ FIX: expenses can be paginated object {results: []}
+        const expenses = Array.isArray(expRes?.results)
+          ? expRes.results
+          : Array.isArray(expRes)
+          ? expRes
+          : [];
+
         let totalSales = 0;
         let totalInvoice = sales.length;
         let soldQty = 0;
@@ -871,7 +878,7 @@ export default function Dashboard() {
         const cashInHand = Number(sum?.cash_in_hand ?? 0);
         const grossProfit = Number(sum?.gross_profit ?? 0);
 
-        const totalExpense = sumExpensesInRange(expRes || [], from, to);
+        const totalExpense = sumExpensesInRange(expenses, from, to);
 
         const baseCards = computeMetricsMock({ from, to, locationIds, channelIds });
 

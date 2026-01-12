@@ -148,7 +148,7 @@ export async function printBarcodes(payload) {
   });
 }
 
-/* ✅✅ ADDITION (from newfile): CSV Import (Products) */
+// ✅ CSV Import (Products)
 export async function productsCsvPreflight(rows) {
   return http(`/products/import-csv/preflight/`, {
     method: "POST",
@@ -162,7 +162,6 @@ export async function productsCsvApply(payload) {
     body: JSON.stringify(payload),
   });
 }
-/* ✅✅ END ADDITION */
 
 function sanitizeBarcode(v = "") {
   return v.replace(/[–—−‐]/g, "-").trim().toUpperCase();
