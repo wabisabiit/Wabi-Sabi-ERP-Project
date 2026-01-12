@@ -46,15 +46,17 @@ def _find_location(loc_value: str):
 class ProductCsvPreflight(APIView):
     """
     POST:
-      { rows: [{ name, barcode, item_code, category, mrp, selling_price, hsn, location }, ...] }
-
-    Returns:
       {
-        to_create: [...],
-        conflicts: [{ barcode, existing: {...}, incoming: {...} }],
-        errors: [{ rowIndex, barcode, error }],
-        summary: {...}
+        rows: [{
+          barcode, item_code, category, mrp, selling_price, hsn, location, size,
+          ...any extra columns allowed...
+        }, ...]
       }
+
+    Notes:
+      - name is NOT required (fetched via TaskItem on frontend / serializers)
+      - size is supported and will be stored in Product.size
+      - category/hsn are accepted but not stored on Product (they belong to TaskItem)
     """
 
     def post(self, request):
@@ -66,7 +68,16 @@ class ProductCsvPreflight(APIView):
         to_create = []
         conflicts = []
 
-        barcodes = [_norm_barcode(r.get("barcode") or r.get("Barcode") or r.get("barcodeNumber") or "") for r in rows]
+        barcodes = [
+            _norm_barcode(
+                r.get("barcode")
+                or r.get("Barcode")
+                or r.get("Barcode number")
+                or r.get("barcodeNumber")
+                or ""
+            )
+            for r in rows
+        ]
         existing_map = {
             p.barcode.upper(): p
             for p in Product.objects.select_related("task_item", "location").filter(barcode__in=barcodes)
@@ -74,7 +85,9 @@ class ProductCsvPreflight(APIView):
 
         for idx, r in enumerate(rows):
             incoming = {
+                # name is optional and ignored for DB; keep only for UI compatibility if present
                 "name": (r.get("name") or r.get("Name") or "").strip(),
+
                 "barcode": _norm_barcode(
                     r.get("barcode")
                     or r.get("Barcode")
@@ -83,11 +96,18 @@ class ProductCsvPreflight(APIView):
                     or ""
                 ),
                 "item_code": (r.get("item_code") or r.get("Item code") or r.get("itemCode") or "").strip(),
+
+                # accepted (not stored in Product model)
                 "category": (r.get("category") or r.get("Category") or "").strip(),
+                "hsn": (r.get("hsn") or r.get("HSN") or r.get("HSN number") or "").strip(),
+
                 "mrp": str(_to_decimal(r.get("mrp") or r.get("MRP") or "0")),
                 "selling_price": str(_to_decimal(r.get("selling_price") or r.get("Selling price") or r.get("sp") or "0")),
-                "hsn": (r.get("hsn") or r.get("HSN") or r.get("HSN number") or "").strip(),
+
                 "location": (r.get("location") or r.get("Location") or "").strip(),
+
+                # ✅ NEW
+                "size": (r.get("size") or r.get("Size") or "").strip(),
             }
 
             if not incoming["barcode"]:
@@ -99,12 +119,20 @@ class ProductCsvPreflight(APIView):
 
             loc = _find_location(incoming["location"])
             if not loc:
-                errors.append({"rowIndex": idx, "barcode": incoming["barcode"], "error": f"Unknown / empty location: '{incoming['location']}'"})
+                errors.append({
+                    "rowIndex": idx,
+                    "barcode": incoming["barcode"],
+                    "error": f"Unknown / empty location: '{incoming['location']}'"
+                })
                 continue
 
             ti = TaskItem.objects.filter(item_code=incoming["item_code"]).first()
             if not ti:
-                errors.append({"rowIndex": idx, "barcode": incoming["barcode"], "error": f"TaskItem not found for item_code: {incoming['item_code']}"})
+                errors.append({
+                    "rowIndex": idx,
+                    "barcode": incoming["barcode"],
+                    "error": f"TaskItem not found for item_code: {incoming['item_code']}"
+                })
                 continue
 
             incoming["_location_id"] = loc.id
@@ -115,6 +143,10 @@ class ProductCsvPreflight(APIView):
                 to_create.append(incoming)
                 continue
 
+            loc_name = ""
+            if ex.location:
+                loc_name = (ex.location.name or ex.location.code or "")
+
             existing_payload = {
                 "barcode": ex.barcode,
                 "task_item_code": getattr(ex.task_item, "item_code", ""),
@@ -123,7 +155,8 @@ class ProductCsvPreflight(APIView):
                 "mrp": str(ex.mrp or 0),
                 "selling_price": str(ex.selling_price or 0),
                 "hsn": getattr(ex.task_item, "hsn_code", "") or "",
-                "location": (ex.location.name if ex.location else "") or (ex.location.code if ex.location else ""),
+                "location": loc_name,
+                "size": ex.size or "",  # ✅ NEW
             }
 
             conflicts.append({
@@ -153,6 +186,11 @@ class ProductCsvApply(APIView):
         decisions: [{ barcode, action: "update"|"skip" }],
         incomingByBarcode: { "BARCODE": {...incoming...}, ... }
       }
+
+    Notes:
+      - name ignored
+      - size is stored/updated
+      - extra columns ignored safely
     """
 
     def post(self, request):
@@ -212,6 +250,7 @@ class ProductCsvApply(APIView):
                     mrp=_to_decimal(r.get("mrp"), "0"),
                     selling_price=_to_decimal(r.get("selling_price"), "0"),
                     location=loc,
+                    size=(r.get("size") or "").strip(),  # ✅ NEW
                 )
                 created += 1
 
@@ -252,7 +291,9 @@ class ProductCsvApply(APIView):
                     p.mrp = _to_decimal(inc.get("mrp"), "0")
                     p.selling_price = _to_decimal(inc.get("selling_price"), "0")
                     p.location = loc
-                    p.save(update_fields=["task_item", "mrp", "selling_price", "location", "updated_at"])
+                    p.size = (inc.get("size") or "").strip()  # ✅ NEW
+
+                    p.save(update_fields=["task_item", "mrp", "selling_price", "location", "size", "updated_at"])
                     updated += 1
 
             skipped = skipped + len(skip_barcodes)
