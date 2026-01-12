@@ -30,6 +30,9 @@ from .views_register import RegisterClosingView, RegisterClosingSummaryView
 # ✅ NEW
 from .views_dashboard import DashboardSummaryView
 
+# ✅ CSV Import (NEW)
+from .views_csv_import import ProductCsvPreflight, ProductCsvApply
+
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -41,6 +44,10 @@ urlpatterns = [
     path("products/transfers/<path:number>/delete/", delete_transfer, name="transfer-delete"),
     path("products/transfers/<path:number>/", transfer_details, name="transfer-details"),
     path("products/barcodes/<str:barcode>/transfer/", barcode_last_transfer, name="barcode-last-transfer"),
+
+    # ✅ CSV Import
+    path("products/import-csv/preflight/", ProductCsvPreflight.as_view(), name="products-import-csv-preflight"),
+    path("products/import-csv/apply/", ProductCsvApply.as_view(), name="products-import-csv-apply"),
 
     # Sales
     path("sales/", SalesView.as_view(), name="sales"),

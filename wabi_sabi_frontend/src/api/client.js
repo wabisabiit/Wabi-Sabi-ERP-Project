@@ -148,6 +148,21 @@ export async function printBarcodes(payload) {
   });
 }
 
+// ✅ CSV Import (Products)
+export async function productsCsvPreflight(rows) {
+  return http(`/products/import-csv/preflight/`, {
+    method: "POST",
+    body: JSON.stringify({ rows }),
+  });
+}
+
+export async function productsCsvApply(payload) {
+  return http(`/products/import-csv/apply/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 function sanitizeBarcode(v = "") {
   return v.replace(/[–—−‐]/g, "-").trim().toUpperCase();
 }
@@ -680,6 +695,10 @@ export default {
 
   createRegisterClose,
   getRegisterClosingSummary,
+
+  // ✅ CSV Import
+  productsCsvPreflight,
+  productsCsvApply,
 
   // ✅ NEW
   dashboardSummary,

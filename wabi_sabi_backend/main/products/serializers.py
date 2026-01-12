@@ -10,6 +10,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             "id", "barcode", "task_item", "size", "image_url",
             "mrp", "selling_price", "qty", "discount_percent",
+            "location",  # ✅ NEW: needed for CSV import update/create
             "created_at", "updated_at",
         ]
         extra_kwargs = {
@@ -119,23 +120,6 @@ class ProductGridSerializer(serializers.ModelSerializer):
             return ""
         return line.location.name or line.location.code or ""
 
-
-        """
-        Pick the MOST RECENT MasterPackLine for this product (i.e. last time
-        it was packed and destined to a location) and return that location name.
-        If never packed, return empty string.
-        """
-        line = (
-            MasterPackLine.objects
-            .filter(product=obj)
-            .select_related("location", "pack")
-            .order_by("-pack__created_at", "-id")
-            .first()
-        )
-        if not line or not line.location:
-            return ""
-        # You can choose `.code` instead if you want WSLLP / TN / etc.
-        return line.location.name or line.location.code or ""    
 
 class MasterPackLineInSerializer(serializers.Serializer):
     barcode = serializers.CharField()
