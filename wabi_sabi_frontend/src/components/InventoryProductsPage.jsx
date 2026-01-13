@@ -526,7 +526,7 @@ export default function InventoryProductsPage() {
           id: r.id,
           images: r.image ? [r.image] : [],
           // printed barcode number
-          barcodeNumber: r.itemCode || r.item_code || r.barcode || "",
+          barcodeNumber: r.barcode || "error" || r.barcode || "",
           // real Taskmaster item code
           itemCode: r.taskItemCode || r.task_item_code || r.task_item_id || "",
           category: r.category || "",
@@ -760,13 +760,16 @@ export default function InventoryProductsPage() {
       };
 
       // ✅ Accept your Excel-like CSV
-      const iSkuItemCode = idx("item code", "code", "sku");
+            const iSkuItemCode = idx("item code", "code", "sku");
       const iProdName    = idx("product name", "item name", "name");
       const iMrp         = idx("mrp");
       const iSp          = idx("selling price", "selling", "sp", "sale price");
       const iHsn         = idx("hsn", "hsn code", "hsn number");
       const iLoc         = idx("location", "outlet", "branch");
       const iSize        = idx("size");
+
+      // ✅ NEW: barcode column support
+      const iBarcode     = idx("barcode number", "barcode", "barcode no", "barcode_number");
 
       // Required minimum: Product Name OR Item Code
       if (iProdName < 0 && iSkuItemCode < 0) {
@@ -781,10 +784,13 @@ export default function InventoryProductsPage() {
         .map((r) => {
           const productName = iProdName >= 0 ? String(r[iProdName] || "").trim() : "";
           const extracted = normalizeItemCode(extractItemCodeFromName(productName));
-          const sku = iSkuItemCode >= 0 ? String(r[iSkuItemCode] || "").trim() : "";
 
+          const sku = iSkuItemCode >= 0 ? String(r[iSkuItemCode] || "").trim() : "";
           const item_code = extracted || normalizeItemCode(sku);
-          const barcode = item_code; // ✅ barcode = item_code
+
+          // ✅ barcode should come from file if present, else fallback to item_code
+          const barcodeFromCsv = iBarcode >= 0 ? String(r[iBarcode] || "").trim() : "";
+          const barcode = barcodeFromCsv || item_code;
 
           const sizeFromCsv = iSize >= 0 ? String(r[iSize] || "").trim() : "";
           const size = sizeFromCsv || deriveSizeFromSku(sku);
@@ -807,6 +813,7 @@ export default function InventoryProductsPage() {
           };
         })
         .filter((x) => x.barcode && x.item_code);
+
 
       if (!rawAll.length) throw new Error("No valid rows found.");
 
