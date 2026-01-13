@@ -29,14 +29,11 @@ export async function getItemByCode(code) {
     data.name ||
     "";
 
-  // ✅ NEW (for category fetch)
+  // ✅ NEW: also return category from taskmaster
   const category = data.category || "";
 
   return { product_name, category, item: data };
 }
-
-/* ===== REST OF YOUR FILE IS UNCHANGED ===== */
-
 
 /* ========= Generic JSON HTTP helper (used by Product APIs) ========= */
 

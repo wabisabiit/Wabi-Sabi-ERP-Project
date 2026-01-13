@@ -1,5 +1,6 @@
 # products/views_csv_import.py
 from decimal import Decimal, InvalidOperation
+from collections import defaultdict
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -24,20 +25,30 @@ def _to_decimal(v, default="0"):
         return Decimal(default)
 
 
-def _find_location(loc_value: str):
-    val = (loc_value or "").strip()
-    if not val:
-        return None
+def _chunked(seq, n=800):
+    seq = list(seq)
+    for i in range(0, len(seq), n):
+        yield seq[i:i + n]
 
-    loc = Location.objects.filter(code__iexact=val).first()
-    if loc:
-        return loc
 
-    loc = Location.objects.filter(name__iexact=val).first()
-    return loc
+def _build_locations_index():
+    """
+    Build a lookup index for locations by both code and name (case-insensitive).
+    """
+    by_key = {}
+    for loc in Location.objects.all():
+        if loc.code:
+            by_key[str(loc.code).strip().lower()] = loc
+        if loc.name:
+            by_key[str(loc.name).strip().lower()] = loc
+    return by_key
 
 
 class ProductCsvPreflight(APIView):
+    """
+    POST: { rows: [ {barcode, item_code, mrp, selling_price, hsn, location, size, ...}, ... ] }
+    """
+
     def post(self, request):
         rows = request.data.get("rows") or []
         if not isinstance(rows, list) or not rows:
@@ -47,25 +58,15 @@ class ProductCsvPreflight(APIView):
         to_create = []
         conflicts = []
 
-        barcodes = [
-            _norm_barcode(
-                r.get("barcode")
-                or r.get("Barcode")
-                or r.get("Barcode number")
-                or r.get("barcodeNumber")
-                or ""
-            )
-            for r in rows
-        ]
-        existing_map = {
-            p.barcode.upper(): p
-            for p in Product.objects.select_related("task_item", "location").filter(barcode__in=barcodes)
-        }
+        # ✅ normalize incoming rows once
+        normalized_rows = []
+        barcodes = set()
+        item_codes = set()
+        location_values = set()
 
         for idx, r in enumerate(rows):
             incoming = {
                 "name": (r.get("name") or r.get("Name") or "").strip(),
-
                 "barcode": _norm_barcode(
                     r.get("barcode")
                     or r.get("Barcode")
@@ -74,15 +75,13 @@ class ProductCsvPreflight(APIView):
                     or ""
                 ),
                 "item_code": (r.get("item_code") or r.get("Item code") or r.get("itemCode") or "").strip(),
-
                 "category": (r.get("category") or r.get("Category") or "").strip(),
                 "hsn": (r.get("hsn") or r.get("HSN") or r.get("HSN number") or "").strip(),
-
                 "mrp": str(_to_decimal(r.get("mrp") or r.get("MRP") or "0")),
                 "selling_price": str(_to_decimal(r.get("selling_price") or r.get("Selling price") or r.get("sp") or "0")),
-
                 "location": (r.get("location") or r.get("Location") or "").strip(),
                 "size": (r.get("size") or r.get("Size") or "").strip(),
+                "_rowIndex": idx,
             }
 
             if not incoming["barcode"]:
@@ -91,40 +90,49 @@ class ProductCsvPreflight(APIView):
             if not incoming["item_code"]:
                 errors.append({"rowIndex": idx, "barcode": incoming["barcode"], "error": "Item code is required"})
                 continue
+            if not incoming["location"]:
+                errors.append({"rowIndex": idx, "barcode": incoming["barcode"], "error": "Location is required"})
+                continue
 
-            loc = _find_location(incoming["location"])
+            normalized_rows.append(incoming)
+            barcodes.add(incoming["barcode"])
+            item_codes.add(incoming["item_code"])
+            location_values.add(incoming["location"].strip().lower())
+
+        # ✅ bulk load taskitems + locations + existing products
+        task_map = {t.item_code: t for t in TaskItem.objects.filter(item_code__in=list(item_codes))}
+        loc_index = _build_locations_index()
+
+        existing_map = {}
+        for chunk in _chunked(list(barcodes), 800):
+            for p in Product.objects.select_related("task_item", "location").filter(barcode__in=chunk):
+                existing_map[p.barcode.upper()] = p
+
+        for inc in normalized_rows:
+            idx = inc["_rowIndex"]
+
+            loc = loc_index.get(inc["location"].strip().lower())
             if not loc:
                 errors.append({
                     "rowIndex": idx,
-                    "barcode": incoming["barcode"],
-                    "error": f"Unknown / empty location: '{incoming['location']}'"
+                    "barcode": inc["barcode"],
+                    "error": f"Unknown location: '{inc['location']}'"
                 })
                 continue
 
-            ti = TaskItem.objects.filter(item_code=incoming["item_code"]).first()
+            ti = task_map.get(inc["item_code"])
             if not ti:
                 errors.append({
                     "rowIndex": idx,
-                    "barcode": incoming["barcode"],
-                    "error": f"TaskItem not found for item_code: {incoming['item_code']}"
+                    "barcode": inc["barcode"],
+                    "error": f"TaskItem not found for item_code: {inc['item_code']}"
                 })
                 continue
 
-            # ✅ NEW: Always prefer TaskMaster category/hsn for UI
-            incoming["category"] = (ti.category or incoming["category"] or "").strip()
-            incoming["hsn"] = (ti.hsn_code or incoming["hsn"] or "").strip()
-
-            incoming["_location_id"] = loc.id
-            incoming["_task_item_code"] = ti.item_code
-
-            ex = existing_map.get(incoming["barcode"].upper())
+            ex = existing_map.get(inc["barcode"].upper())
             if not ex:
-                to_create.append(incoming)
+                to_create.append(inc)
                 continue
-
-            loc_name = ""
-            if ex.location:
-                loc_name = (ex.location.name or ex.location.code or "")
 
             existing_payload = {
                 "barcode": ex.barcode,
@@ -134,14 +142,14 @@ class ProductCsvPreflight(APIView):
                 "mrp": str(ex.mrp or 0),
                 "selling_price": str(ex.selling_price or 0),
                 "hsn": getattr(ex.task_item, "hsn_code", "") or "",
-                "location": loc_name,
+                "location": (ex.location.name or ex.location.code) if ex.location else "",
                 "size": ex.size or "",
             }
 
             conflicts.append({
-                "barcode": incoming["barcode"],
+                "barcode": inc["barcode"],
                 "existing": existing_payload,
-                "incoming": incoming,
+                "incoming": inc,
             })
 
         return Response({
@@ -150,6 +158,7 @@ class ProductCsvPreflight(APIView):
             "errors": errors,
             "summary": {
                 "rows_received": len(rows),
+                "usable_rows": len(normalized_rows),
                 "to_create": len(to_create),
                 "conflicts": len(conflicts),
                 "errors": len(errors),
@@ -158,6 +167,15 @@ class ProductCsvPreflight(APIView):
 
 
 class ProductCsvApply(APIView):
+    """
+    POST:
+      {
+        to_create: [...],
+        decisions: [{ barcode, action: "update"|"skip" }],
+        incomingByBarcode: { "BARCODE": {...incoming...}, ... }
+      }
+    """
+
     def post(self, request):
         to_create = request.data.get("to_create") or []
         decisions = request.data.get("decisions") or []
@@ -186,7 +204,21 @@ class ProductCsvApply(APIView):
         skipped = 0
         errors = []
 
+        # ✅ pre-load everything needed for bulk operations
+        loc_index = _build_locations_index()
+
+        create_item_codes = {str(r.get("item_code") or "").strip() for r in to_create if str(r.get("item_code") or "").strip()}
+        update_item_codes = set()
+        for b in update_barcodes:
+            inc = incoming_by_barcode.get(b) or incoming_by_barcode.get(b.upper()) or incoming_by_barcode.get(b.lower())
+            if inc:
+                update_item_codes.add(str(inc.get("item_code") or "").strip())
+
+        task_map = {t.item_code: t for t in TaskItem.objects.filter(item_code__in=list(create_item_codes | update_item_codes))}
+
         with transaction.atomic():
+            # ✅ CREATE in bulk
+            to_insert = []
             for r in to_create:
                 barcode = _norm_barcode(r.get("barcode"))
                 if not barcode:
@@ -197,33 +229,38 @@ class ProductCsvApply(APIView):
                     skipped += 1
                     continue
 
-                loc = _find_location(r.get("location"))
+                loc = loc_index.get(str(r.get("location") or "").strip().lower())
                 if not loc:
                     errors.append({"barcode": barcode, "error": f"Unknown location: '{r.get('location')}'"})
                     continue
 
-                item_code = (r.get("item_code") or "").strip()
-                ti = TaskItem.objects.filter(item_code=item_code).first()
+                item_code = str(r.get("item_code") or "").strip()
+                ti = task_map.get(item_code)
                 if not ti:
                     errors.append({"barcode": barcode, "error": f"TaskItem not found for item_code: {item_code}"})
                     continue
 
-                Product.objects.create(
+                to_insert.append(Product(
                     barcode=barcode,
                     task_item=ti,
                     mrp=_to_decimal(r.get("mrp"), "0"),
                     selling_price=_to_decimal(r.get("selling_price"), "0"),
                     location=loc,
-                    size=(r.get("size") or "").strip(),
-                )
-                created += 1
+                    size=str(r.get("size") or "").strip(),
+                ))
 
+            if to_insert:
+                Product.objects.bulk_create(to_insert, batch_size=800)
+                created += len(to_insert)
+
+            # ✅ UPDATE in bulk
             if update_barcodes:
-                existing = {
-                    p.barcode.upper(): p
-                    for p in Product.objects.select_related("task_item", "location").filter(barcode__in=list(update_barcodes))
-                }
+                existing = {}
+                for chunk in _chunked(list(update_barcodes), 800):
+                    for p in Product.objects.select_related("task_item", "location").filter(barcode__in=chunk):
+                        existing[p.barcode.upper()] = p
 
+                to_update = []
                 for b in update_barcodes:
                     inc = (
                         incoming_by_barcode.get(b)
@@ -239,13 +276,13 @@ class ProductCsvApply(APIView):
                         errors.append({"barcode": b, "error": "Product not found for update"})
                         continue
 
-                    loc = _find_location(inc.get("location"))
+                    loc = loc_index.get(str(inc.get("location") or "").strip().lower())
                     if not loc:
                         errors.append({"barcode": b, "error": f"Unknown location: '{inc.get('location')}'"})
                         continue
 
-                    item_code = (inc.get("item_code") or "").strip()
-                    ti = TaskItem.objects.filter(item_code=item_code).first()
+                    item_code = str(inc.get("item_code") or "").strip()
+                    ti = task_map.get(item_code)
                     if not ti:
                         errors.append({"barcode": b, "error": f"TaskItem not found for item_code: {item_code}"})
                         continue
@@ -254,10 +291,17 @@ class ProductCsvApply(APIView):
                     p.mrp = _to_decimal(inc.get("mrp"), "0")
                     p.selling_price = _to_decimal(inc.get("selling_price"), "0")
                     p.location = loc
-                    p.size = (inc.get("size") or "").strip()
+                    p.size = str(inc.get("size") or "").strip()
 
-                    p.save(update_fields=["task_item", "mrp", "selling_price", "location", "size", "updated_at"])
-                    updated += 1
+                    to_update.append(p)
+
+                if to_update:
+                    Product.objects.bulk_update(
+                        to_update,
+                        fields=["task_item", "mrp", "selling_price", "location", "size", "updated_at"],
+                        batch_size=800
+                    )
+                    updated += len(to_update)
 
             skipped = skipped + len(skip_barcodes)
 
