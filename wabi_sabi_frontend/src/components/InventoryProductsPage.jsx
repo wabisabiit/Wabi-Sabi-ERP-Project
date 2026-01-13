@@ -458,6 +458,7 @@ export default function InventoryProductsPage() {
     uploadForRowRef.current = rowId;
     fileInputRef.current?.click();
   };
+
   const handleFilesSelected = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !uploadForRowRef.current) return;
@@ -469,6 +470,7 @@ export default function InventoryProductsPage() {
     );
     e.target.value = "";
   };
+
   useEffect(
     () => () => {
       rows.forEach((r) => (r.images || []).forEach((u) => URL.revokeObjectURL(u)));
@@ -579,6 +581,7 @@ export default function InventoryProductsPage() {
   const start = (safePage - 1) * pageSize;
   const end = start + pageSize;
   const pageRows = filtered.slice(start, end);
+
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [totalPages, page]);
@@ -783,8 +786,9 @@ export default function InventoryProductsPage() {
           const extracted = normalizeItemCode(extractItemCodeFromName(productName));
           const sku = iSkuItemCode >= 0 ? String(r[iSkuItemCode] || "").trim() : "";
 
-          const item_code = extracted || normalizeItemCode(sku);
-          const barcode = item_code; // ✅ barcode = item_code
+          // ✅ FIX: barcode is CSV "Item Code" (sku), item_code is extracted from product name
+          const item_code = extracted || "";
+          const barcode = sanitizeBarcode(sku);
 
           const sizeFromCsv = iSize >= 0 ? String(r[iSize] || "").trim() : "";
           const size = sizeFromCsv || deriveSizeFromSku(sku);
