@@ -18,6 +18,9 @@ class ProductSerializer(serializers.ModelSerializer):
         }
 
 class ProductGridSerializer(serializers.ModelSerializer):
+    # ✅ NEW: expose real barcode field also
+    barcode      = serializers.CharField(read_only=True)
+
     # UI field names
     itemCode     = serializers.CharField(source="barcode")
     name         = serializers.SerializerMethodField()
@@ -37,17 +40,21 @@ class ProductGridSerializer(serializers.ModelSerializer):
     # actual Taskmaster item code (FK raw value)
     taskItemCode = serializers.SerializerMethodField()
 
-    # ✅ NEW: destination location (from latest MasterPackLine for this product)
+    # destination location
     location     = serializers.SerializerMethodField()
 
     createdOn = serializers.DateTimeField(source="created_at", format="%Y-%m-%d %H:%M", read_only=True)
-
 
     class Meta:
         model = Product
         fields = [
             "id",
             "createdOn",
+
+            # ✅ NEW (frontend can read r.barcode)
+            "barcode",
+
+            # existing (keep as-is)
             "itemCode",
             "name",
             "taskItemCode",
@@ -59,7 +66,7 @@ class ProductGridSerializer(serializers.ModelSerializer):
             "qty",
             "image",
             "size",
-            "location",      # 👈 include here
+            "location",
         ]
 
     def get_taskItemCode(self, obj):
@@ -100,15 +107,10 @@ class ProductGridSerializer(serializers.ModelSerializer):
             return 0
 
     def get_location(self, obj):
-        """
-        Product is assigned to ONE location (Product.location).
-        Fallback: if old data has no Product.location, try latest MasterPackLine.
-        """
         if getattr(obj, "location_id", None) and getattr(obj, "location", None):
             loc = obj.location
             return loc.name or loc.code or ""
 
-        # fallback for old records (kept so nothing breaks)
         line = (
             MasterPackLine.objects
             .filter(product=obj)
@@ -119,6 +121,7 @@ class ProductGridSerializer(serializers.ModelSerializer):
         if not line or not line.location:
             return ""
         return line.location.name or line.location.code or ""
+
 
 
 class MasterPackLineInSerializer(serializers.Serializer):
