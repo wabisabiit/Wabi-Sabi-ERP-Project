@@ -82,7 +82,10 @@ class ProductCsvPreflight(APIView):
             name = str(r.get("name") or "").strip()
 
             barcode = _norm_barcode(r.get("barcode"))
-            item_code = _extract_item_code_from_name(name)
+
+            # ✅ accept item_code from frontend if present, else extract from name
+            incoming_item_code = str(r.get("item_code") or "").strip().upper()
+            item_code = incoming_item_code or _extract_item_code_from_name(name)
 
             if not barcode:
                 errors.append({"rowIndex": idx, "error": "Barcode missing"})
@@ -226,8 +229,8 @@ class ProductCsvApply(APIView):
                     barcode=barcode,
                     task_item=ti,
                     mrp=r["mrp"],
-                    selling_price=r["mrp"],  # ✅ MRP = SP
-                    qty=1,                    # ✅ ACTIVE
+                    selling_price=r["selling_price"],  # ✅ keep Selling Price from file
+                    qty=1,                              # ✅ ACTIVE
                     location=uv,
                     size=r.get("size", ""),
                 ))
@@ -256,7 +259,7 @@ class ProductCsvApply(APIView):
 
                     p.task_item = ti
                     p.mrp = inc["mrp"]
-                    p.selling_price = inc["mrp"]
+                    p.selling_price = inc["selling_price"]  # ✅ keep Selling Price from file
                     p.qty = 1
                     p.location = uv
                     p.size = inc.get("size", "")
