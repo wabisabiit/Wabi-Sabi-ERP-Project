@@ -203,14 +203,43 @@ export default function Footer({
     !!(currentCustomer && (currentCustomer.name || currentCustomer.phone)) &&
     !!currentSalesman;
 
+  // ✅ NEW: compute cart base amount from items (so footer updates on row discounts)
+  const cartAmount = useMemo(() => {
+    return (items || []).reduce((sum, r) => {
+      const qty = Number(
+        r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1
+      );
+      const q = Number.isFinite(qty) && qty > 0 ? qty : 1;
+
+      const unit = Number(
+        r.sellingPrice ??
+          r.unitPrice ??
+          r.unit_price ??
+          r.price ??
+          r.sp ??
+          r.netAmount ??
+          0
+      );
+
+      const baseUnit = Number.isFinite(unit) ? unit : 0;
+
+      // ₹ discount per unit
+      const discRaw = Number(r.lineDiscountAmount ?? 0) || 0;
+      const disc = Math.max(0, Math.min(baseUnit, discRaw));
+
+      const netUnit = Math.max(0, baseUnit - disc);
+      return sum + netUnit * q;
+    }, 0);
+  }, [items]);
+
   // Base after manual flat discount (NO integer rounding)
   const baseAfterFlat = useMemo(() => {
-    const baseAmount = Number(amount) || 0;
+    const baseAmount = Number(cartAmount || 0);
     const discRaw = Math.max(0, Number(flatDisc) || 0);
     const discAmt = isPercent ? (baseAmount * discRaw) / 100 : discRaw;
     const discCapped = Math.min(baseAmount, discAmt);
     return Math.max(0, +(baseAmount - discCapped).toFixed(2));
-  }, [amount, flatDisc, isPercent]);
+  }, [cartAmount, flatDisc, isPercent]);
 
   // Apply coupon (NO integer rounding)
   const afterCoupon = useMemo(() => {
@@ -316,7 +345,7 @@ export default function Footer({
         email: (effectiveCustomer && effectiveCustomer.email) || "",
       };
 
-      // ✅ attach per-line discounts from cart rows
+      // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
       const linesWithDiscount = lines.map((ln) => {
         const row = (items || []).find((r) => {
           const code =
@@ -324,10 +353,26 @@ export default function Footer({
           return String(code) === String(ln.barcode);
         });
 
+        const qty = Number(ln.qty || 1) || 1;
+        const unit = Number(
+          row?.sellingPrice ??
+            row?.unitPrice ??
+            row?.unit_price ??
+            row?.price ??
+            row?.sp ??
+            row?.netAmount ??
+            0
+        );
+        const baseUnit = Number.isFinite(unit) ? unit : 0;
+
+        const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
+        const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
+        const totalDisc = discPerUnit * qty;
+
         return {
           ...ln,
-          discount_percent: Number(row?.lineDiscountPercent || 0) || 0,
-          discount_amount: 0,
+          discount_percent: 0,
+          discount_amount: Number.isFinite(totalDisc) ? +totalDisc.toFixed(2) : 0,
         };
       });
 
@@ -339,7 +384,7 @@ export default function Footer({
         note: paymentDetails?.note || "",
         salesman_id: currentSalesman?.id || null,
 
-        // ✅ NEW: bill discount
+        // bill discount
         bill_discount_value: Number(flatDisc || 0) || 0,
         bill_discount_is_percent: !!isPercent,
       };
@@ -585,9 +630,7 @@ export default function Footer({
               "Item",
             qty,
             price: +unit.toFixed(2),
-            netAmount: Number(
-              r.netAmount ?? r.amount ?? qty * unit
-            ),
+            netAmount: Number(r.netAmount ?? r.amount ?? qty * unit),
             tax: Number(r.tax ?? r.taxAmount ?? 0),
             barcode:
               r.barcode ??
@@ -601,8 +644,7 @@ export default function Footer({
         navigate("/multiple-pay", {
           state: {
             cart: {
-              customerType:
-                effectiveCustomer?.name || "Walk In Customer",
+              customerType: effectiveCustomer?.name || "Walk In Customer",
               items: cartItems,
               roundoff: 0,
               amount: Number(remainingAfterCredit),

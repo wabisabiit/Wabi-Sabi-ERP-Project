@@ -63,7 +63,10 @@ export default function CartTable({ items = [], onRowsChange }) {
               <th>Product</th>
               <th className="num">Qty</th>
               <th className="num">MRP</th>
-              <th className="num">Discount %</th>
+
+              {/* ✅ DISCOUNT IN ₹ */}
+              <th className="num">Discount ₹</th>
+
               <th className="num">Unit Cost</th>
               <th className="num">Net Amount</th>
               <th className="num"></th>
@@ -87,13 +90,11 @@ export default function CartTable({ items = [], onRowsChange }) {
                     0
                 );
 
-                const discPctNum = Math.max(
-                  0,
-                  Math.min(100, Number(row.lineDiscountPercent ?? 0) || 0)
-                );
+                // ✅ discount ₹ per unit (cannot be > unit)
+                const rawDisc = Number(row.lineDiscountAmount ?? 0) || 0;
+                const discRs = Math.max(0, Math.min(unit || 0, rawDisc));
 
-                const discPerUnit = (unit * discPctNum) / 100;
-                const netUnit = Math.max(0, unit - discPerUnit);
+                const netUnit = Math.max(0, (unit || 0) - discRs);
                 const lineAmount = netUnit * qty;
 
                 return (
@@ -108,13 +109,13 @@ export default function CartTable({ items = [], onRowsChange }) {
                       <input
                         type="number"
                         min="0"
-                        max="100"
                         step="0.01"
-                        placeholder="0"
-                        value={row.lineDiscountPercent ?? ""}
-                        onChange={(e) =>
-                          updateRow(idx, { lineDiscountPercent: e.target.value })
-                        }
+                        placeholder="0.00"
+                        value={row.lineDiscountAmount ?? ""}
+                        onChange={(e) => {
+                          // allow typing freely, cap in calc
+                          updateRow(idx, { lineDiscountAmount: e.target.value });
+                        }}
                       />
                     </td>
 
