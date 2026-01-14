@@ -1,16 +1,25 @@
 # products/serializers_sales.py
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.db import transaction
 from django.db.models import F
-from rest_framework import serializers
 from django.utils import timezone
+from rest_framework import serializers
+
 from .models import Customer, Product, Sale, SaleLine, SalePayment
-from outlets.models import Employee, WowBillEntry
-from outlets.utils_wowbill import create_wow_entry_for_sale   # 👈 NEW IMPORT
+from outlets.models import Employee
+from outlets.utils_wowbill import create_wow_entry_for_sale  # 👈 NEW IMPORT
+
+
+TWOPLACES = Decimal("0.01")
+
+
+def q2(x):
+    return (Decimal(x or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
 
 class CustomerInSerializer(serializers.Serializer):
-    name  = serializers.CharField(max_length=120)
+    name = serializers.CharField(max_length=120)
     phone = serializers.CharField(max_length=20, allow_blank=True, required=False)
     email = serializers.EmailField(allow_blank=True, required=False)
 
@@ -18,72 +27,138 @@ class CustomerInSerializer(serializers.Serializer):
 class SaleLineInSerializer(serializers.Serializer):
     # coming from POS cart rows
     barcode = serializers.CharField(max_length=64)
-    qty     = serializers.IntegerField(min_value=1)
+    qty = serializers.IntegerField(min_value=1)
+
+    # ✅ NEW: per-line discount
+    discount_percent = serializers.DecimalField(
+        max_digits=6, decimal_places=2, required=False, default=0
+    )
+    discount_amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False, default=0
+    )
 
 
 class PaymentInSerializer(serializers.Serializer):
     method = serializers.ChoiceField(choices=[m[0] for m in Sale.PAYMENT_METHODS])
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    reference         = serializers.CharField(required=False, allow_blank=True)
-    card_holder       = serializers.CharField(required=False, allow_blank=True)
+    reference = serializers.CharField(required=False, allow_blank=True)
+    card_holder = serializers.CharField(required=False, allow_blank=True)
     card_holder_phone = serializers.CharField(required=False, allow_blank=True)
-    customer_bank     = serializers.CharField(required=False, allow_blank=True)
-    account           = serializers.CharField(required=False, allow_blank=True)
+    customer_bank = serializers.CharField(required=False, allow_blank=True)
+    account = serializers.CharField(required=False, allow_blank=True)
 
 
 class SaleCreateSerializer(serializers.Serializer):
     customer = CustomerInSerializer()
-    lines    = SaleLineInSerializer(many=True)
+    lines = SaleLineInSerializer(many=True)
     payments = PaymentInSerializer(many=True)  # for MULTIPAY: 2+ rows, else 1 row
-    store    = serializers.CharField(max_length=64, required=False, default="Wabi - Sabi")
-    note     = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    store = serializers.CharField(max_length=64, required=False, default="Wabi - Sabi")
+    note = serializers.CharField(max_length=255, required=False, allow_blank=True)
     salesman_id = serializers.IntegerField(required=False, allow_null=True)
+
+    # ✅ NEW: bill discount
+    bill_discount_value = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False, default=0
+    )
+    bill_discount_is_percent = serializers.BooleanField(required=False, default=True)
 
     def validate(self, data):
         if not data["lines"]:
             raise serializers.ValidationError("At least one line is required.")
 
-        # quantity per barcode requested (aggregate duplicates)
+        # aggregate duplicates
         want = {}
-        total = 0
         for ln in data["lines"]:
             code = str(ln["barcode"]).strip()
-            qty  = int(ln["qty"])
+            qty = int(ln["qty"])
             if qty < 1:
                 raise serializers.ValidationError(f"Invalid qty for {code}.")
             want[code] = want.get(code, 0) + qty
 
         products = {
             p.barcode: p
-            for p in Product.objects.select_related("task_item").filter(barcode__in=want.keys())
+            for p in Product.objects.select_related("task_item").filter(
+                barcode__in=want.keys()
+            )
         }
 
         missing = [bc for bc in want.keys() if bc not in products]
         if missing:
             raise serializers.ValidationError(f"Products not found: {', '.join(missing)}")
 
-        for bc, need in want.items():
-            p = products[bc]
-            if (p.qty or 0) < need:
-                raise serializers.ValidationError(
-                    f"{bc} not available (stock {p.qty}, need {need})."
-                )
-            total += (p.selling_price or 0) * need
+        # stock check + compute totals
+        subtotal = Decimal("0.00")
+        item_discount_total = Decimal("0.00")
 
-        pay_total = sum([float(p["amount"]) for p in data["payments"]])
-        if round(pay_total, 2) != round(float(total), 2):
+        for ln in data["lines"]:
+            bc = str(ln["barcode"]).strip()
+            qty = int(ln["qty"])
+            p = products[bc]
+
+            if (p.qty or 0) < qty:
+                raise serializers.ValidationError(
+                    f"{bc} not available (stock {p.qty}, need {qty})."
+                )
+
+            unit = q2(p.selling_price)
+            line_base = unit * qty
+            subtotal += line_base
+
+            dp = q2(ln.get("discount_percent", 0))
+            da = q2(ln.get("discount_amount", 0))
+
+            # percent wins if provided, else amount
+            if dp > 0:
+                disc = (line_base * dp / Decimal("100")).quantize(
+                    TWOPLACES, rounding=ROUND_HALF_UP
+                )
+            else:
+                disc = da
+
+            disc = min(line_base, max(Decimal("0.00"), disc))
+            item_discount_total += disc
+
+        base_after_item = max(Decimal("0.00"), subtotal - item_discount_total)
+
+        bill_val = q2(data.get("bill_discount_value", 0))
+        bill_is_pct = bool(data.get("bill_discount_is_percent", True))
+
+        if bill_is_pct:
+            bill_disc = (base_after_item * bill_val / Decimal("100")).quantize(
+                TWOPLACES, rounding=ROUND_HALF_UP
+            )
+        else:
+            bill_disc = bill_val
+
+        bill_disc = min(base_after_item, max(Decimal("0.00"), bill_disc))
+
+        grand_total = (base_after_item - bill_disc).quantize(
+            TWOPLACES, rounding=ROUND_HALF_UP
+        )
+
+        pay_total = sum([q2(p["amount"]) for p in data["payments"]]).quantize(TWOPLACES)
+
+        if pay_total != grand_total:
             raise serializers.ValidationError(
-                f"Payments total ({pay_total}) must equal cart total ({total})."
+                f"Payments total ({pay_total}) must equal payable amount ({grand_total})."
             )
 
+        data["_computed"] = {
+            "subtotal": subtotal,
+            "item_discount_total": item_discount_total,
+            "bill_discount": bill_disc,
+            "grand_total": grand_total,
+        }
         return data
 
     def create(self, validated):
-        cust_in   = validated["customer"]
-        lines_in  = validated["lines"]
-        pays_in   = validated["payments"]
-        note      = validated.get("note", "")
-        store     = validated.get("store", "Wabi - Sabi")
+        comp = validated.pop("_computed", None) or {}
+
+        cust_in = validated["customer"]
+        lines_in = validated["lines"]
+        pays_in = validated["payments"]
+        note = validated.get("note", "")
+        store = validated.get("store", "Wabi - Sabi")
         salesman_id = validated.get("salesman_id")
 
         # --- resolve salesman (must be STAFF) ---
@@ -100,7 +175,7 @@ class SaleCreateSerializer(serializers.Serializer):
 
         # --- customer upsert ---
         phone = (cust_in.get("phone") or "").strip()
-        name  = (cust_in.get("name") or "").strip() or "Guest"
+        name = (cust_in.get("name") or "").strip() or "Guest"
         email = cust_in.get("email", "")
         if phone:
             customer, _ = Customer.objects.get_or_create(
@@ -126,8 +201,7 @@ class SaleCreateSerializer(serializers.Serializer):
                 salesman=salesman,
             )
 
-            subtotal = 0
-
+            # lock + reduce stock
             want = {}
             for ln in lines_in:
                 bc = str(ln["barcode"]).strip()
@@ -142,6 +216,8 @@ class SaleCreateSerializer(serializers.Serializer):
                 if updated == 0:
                     raise serializers.ValidationError(f"{bc} not available anymore.")
 
+            # create lines
+            subtotal = Decimal("0.00")
             for ln in lines_in:
                 p = Product.objects.get(barcode=ln["barcode"])
                 qty = int(ln["qty"])
@@ -153,14 +229,16 @@ class SaleCreateSerializer(serializers.Serializer):
                     mrp=p.mrp or 0,
                     sp=p.selling_price or 0,
                 )
-                subtotal += (p.selling_price or 0) * qty
+                subtotal += q2(p.selling_price) * qty
 
-            sale.subtotal = subtotal
-            sale.discount_total = 0
-            sale.grand_total = subtotal
+            sale.subtotal = q2(comp.get("subtotal", subtotal))
+            sale.discount_total = q2(
+                q2(comp.get("item_discount_total", 0)) + q2(comp.get("bill_discount", 0))
+            )
+            sale.grand_total = q2(comp.get("grand_total", sale.subtotal))
             sale.save(update_fields=["subtotal", "discount_total", "grand_total"])
 
-            # ✅ SAVE PAYMENT BREAKUP (CASH / CARD / UPI / MULTIPAY)
+            # save payment breakup
             pay_rows = []
             for p in pays_in:
                 pay_rows.append(
@@ -177,7 +255,7 @@ class SaleCreateSerializer(serializers.Serializer):
                 )
             SalePayment.objects.bulk_create(pay_rows)
 
-            # 🔵 WOW BILL LOGIC
+            # WOW BILL LOGIC
             if salesman is not None:
                 create_wow_entry_for_sale(sale)
 
@@ -201,21 +279,21 @@ class SaleCreateSerializer(serializers.Serializer):
         }
 
 
-
-
 # ---- List / table serializer (read-only) ----
 class SaleListSerializer(serializers.ModelSerializer):
-    customer_name   = serializers.CharField(source="customer.name")
-    customer_phone  = serializers.CharField(source="customer.phone", allow_null=True)
-    total_amount    = serializers.DecimalField(source="grand_total", max_digits=12, decimal_places=2)
-    due_amount      = serializers.SerializerMethodField()
-    credit_applied  = serializers.SerializerMethodField()
-    order_type      = serializers.SerializerMethodField()
-    feedback        = serializers.SerializerMethodField()
-    payment_status  = serializers.SerializerMethodField()
+    customer_name = serializers.CharField(source="customer.name")
+    customer_phone = serializers.CharField(source="customer.phone", allow_null=True)
+    total_amount = serializers.DecimalField(
+        source="grand_total", max_digits=12, decimal_places=2
+    )
+    due_amount = serializers.SerializerMethodField()
+    credit_applied = serializers.SerializerMethodField()
+    order_type = serializers.SerializerMethodField()
+    feedback = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
 
     class Meta:
-        model  = Sale
+        model = Sale
         fields = [
             "id",
             "invoice_no",
@@ -231,17 +309,17 @@ class SaleListSerializer(serializers.ModelSerializer):
             "feedback",
         ]
 
-    def get_due_amount(self, obj):       # default 0
+    def get_due_amount(self, obj):
         return "0.00"
 
-    def get_credit_applied(self, obj):   # default 0
+    def get_credit_applied(self, obj):
         return "0.00"
 
-    def get_order_type(self, obj):       # In-Store
+    def get_order_type(self, obj):
         return "In-Store"
 
-    def get_feedback(self, obj):         # NaN/blank
+    def get_feedback(self, obj):
         return None
 
-    def get_payment_status(self, obj):   # all paid since due = 0
+    def get_payment_status(self, obj):
         return "Paid"

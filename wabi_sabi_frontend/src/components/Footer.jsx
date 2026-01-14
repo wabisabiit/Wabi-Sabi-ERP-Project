@@ -1,12 +1,11 @@
 // src/components/Footer.jsx
-import React,
-  {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-  } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import "../styles/Footer.css";
 import CardDetail from "./CardDetail";
 import {
@@ -204,30 +203,30 @@ export default function Footer({
     !!(currentCustomer && (currentCustomer.name || currentCustomer.phone)) &&
     !!currentSalesman;
 
-  // Base after manual flat discount
+  // Base after manual flat discount (NO integer rounding)
   const baseAfterFlat = useMemo(() => {
     const baseAmount = Number(amount) || 0;
     const discRaw = Math.max(0, Number(flatDisc) || 0);
     const discAmt = isPercent ? (baseAmount * discRaw) / 100 : discRaw;
     const discCapped = Math.min(baseAmount, discAmt);
-    return Math.max(0, Math.round(baseAmount - discCapped));
+    return Math.max(0, +(baseAmount - discCapped).toFixed(2));
   }, [amount, flatDisc, isPercent]);
 
-  // Apply coupon
+  // Apply coupon (NO integer rounding)
   const afterCoupon = useMemo(() => {
     const c = Number(couponUse?.amount || 0);
     return Math.max(
       0,
-      Math.round(baseAfterFlat - Math.max(0, Math.min(c, baseAfterFlat)))
+      +(baseAfterFlat - Math.max(0, Math.min(c, baseAfterFlat))).toFixed(2)
     );
   }, [baseAfterFlat, couponUse]);
 
   const payableAmount = afterCoupon;
 
-  // Remaining after credit
+  // Remaining after credit (NO integer rounding)
   const remainingAfterCredit = useMemo(() => {
     const credit = Number(creditUse?.amount || 0);
-    return Math.max(0, Math.round(payableAmount - credit));
+    return Math.max(0, +(payableAmount - credit).toFixed(2));
   }, [payableAmount, creditUse]);
 
   // Cart lines builder
@@ -258,8 +257,6 @@ export default function Footer({
         addToast("Add minimum 1 product.");
         return;
       }
-
-      const grandTotal = Number(payableAmount) || 0;
 
       const couponRow =
         couponUse && Number(couponUse.amount) > 0
@@ -316,18 +313,35 @@ export default function Footer({
             ? (paymentDetails?.cardHolderPhone || "").trim()
             : "") ||
           "",
-        email:
-          (effectiveCustomer && effectiveCustomer.email) || "",
+        email: (effectiveCustomer && effectiveCustomer.email) || "",
       };
+
+      // ✅ attach per-line discounts from cart rows
+      const linesWithDiscount = lines.map((ln) => {
+        const row = (items || []).find((r) => {
+          const code =
+            r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+          return String(code) === String(ln.barcode);
+        });
+
+        return {
+          ...ln,
+          discount_percent: Number(row?.lineDiscountPercent || 0) || 0,
+          discount_amount: 0,
+        };
+      });
 
       const payload = {
         customer: customerPayload,
-        lines,
+        lines: linesWithDiscount,
         payments,
         store: "Wabi - Sabi",
         note: paymentDetails?.note || "",
-        // 🔵 send salesman to backend; required for WOW bill
         salesman_id: currentSalesman?.id || null,
+
+        // ✅ NEW: bill discount
+        bill_discount_value: Number(flatDisc || 0) || 0,
+        bill_discount_is_percent: !!isPercent,
       };
 
       const res = await createSale(payload);
@@ -714,9 +728,7 @@ export default function Footer({
             <div className="label">
               Amount
               {couponUse?.amount
-                ? ` (after ₹${Number(couponUse.amount).toFixed(
-                    2
-                  )} coupon`
+                ? ` (after ₹${Number(couponUse.amount).toFixed(2)} coupon`
                 : ""}
               {creditUse?.amount
                 ? `${
@@ -745,10 +757,7 @@ export default function Footer({
                 key={text}
                 className="kbtn"
                 onClick={() => handleActionClick(text)}
-                disabled={
-                  (isPaymentBtn && !canPay) ||
-                  (isHoldBtn && holdBusy)
-                }
+                disabled={(isPaymentBtn && !canPay) || (isHoldBtn && holdBusy)}
                 title={
                   isPaymentBtn && !canPay
                     ? "Select the customer and salesman first"
@@ -759,17 +768,13 @@ export default function Footer({
                   <span className="material-icons">credit_card</span>
                 )}
                 {text.includes("Cash") && (
-                  <span className="material-icons">
-                    currency_rupee
-                  </span>
+                  <span className="material-icons">currency_rupee</span>
                 )}
                 {text.includes("UPI") && (
                   <span className="material-icons">near_me</span>
                 )}
                 {text.includes("Hold") && !text.includes("Multiple") && (
-                  <span className="material-icons">
-                    pause_presentation
-                  </span>
+                  <span className="material-icons">pause_presentation</span>
                 )}
                 {text.includes("Multiple") && (
                   <span className="material-icons">view_week</span>
@@ -838,9 +843,7 @@ export default function Footer({
       {showRedeem && (
         <RedeemCreditModal
           initialMode={redeemMode}
-          invoiceBalance={
-            redeemMode === "credit" ? payableAmount : baseAfterFlat
-          }
+          invoiceBalance={redeemMode === "credit" ? payableAmount : baseAfterFlat}
           onClose={() => setShowRedeem(false)}
           onApply={({ mode, noteNo, amount, code }) => {
             if (mode === "credit") {
@@ -850,10 +853,7 @@ export default function Footer({
                 return;
               }
               setCreditUse({ noteNo, amount: Number(amount) });
-              addToast(
-                `Credit applied: ₹${Number(amount).toFixed(2)}`,
-                "success"
-              );
+              addToast(`Credit applied: ₹${Number(amount).toFixed(2)}`, "success");
             } else {
               if (!code || !amount) {
                 addToast("No coupon used");
@@ -861,10 +861,7 @@ export default function Footer({
                 return;
               }
               setCouponUse({ code, amount: Number(amount) });
-              addToast(
-                `Coupon applied: ₹${Number(amount).toFixed(2)}`,
-                "success"
-              );
+              addToast(`Coupon applied: ₹${Number(amount).toFixed(2)}`, "success");
             }
             setShowRedeem(false);
           }}
@@ -885,11 +882,9 @@ export default function Footer({
             finalizeSale({
               method: "CASH",
               paymentDetails: {
-                cashReference: `Tendered:${Number(
-                  payload?.tendered || 0
-                ).toFixed(2)}|Change:${Number(
-                  payload?.change || 0
-                ).toFixed(2)}`,
+                cashReference: `Tendered:${Number(payload?.tendered || 0).toFixed(
+                  2
+                )}|Change:${Number(payload?.change || 0).toFixed(2)}`,
               },
               andPrint: printFlag,
             });
