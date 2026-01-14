@@ -20,9 +20,8 @@
   font-weight: 600;
   padding: 6px 15px;
   border: 0;                  /* ❗ no separators at all */
-  white-space: nowrap; 
+  white-space: nowrap;
   text-align: center;
-
 }
 
 /* numeric headers right aligned if needed */
@@ -45,7 +44,6 @@
 }
 
 /* Big white blank area when no items (no message) */
-
 .empty-spacer td {
   height: 260px;
   background: #fff;
@@ -100,24 +98,8 @@
   color: #ef4444;
 }
 
-/* src/styles/CartTable.css */
-
-.cart-scroll {
-  /* ✅ show only 6 rows, rest scroll */
-  max-height: 312px;  /* 6 rows * ~52px */
-  overflow-y: auto;
-}
-
-
-.cart-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
 /* ✅ Cart rows scroll: show ONLY 6 products, rest scroll */
 .cart-scroll {
-  /* header + 6 rows */
   --head-h: 48px;
   --row-h: 56px;
 
