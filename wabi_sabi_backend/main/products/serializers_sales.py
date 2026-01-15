@@ -161,7 +161,7 @@ class SaleCreateSerializer(serializers.Serializer):
         store = validated.get("store", "Wabi - Sabi")
         salesman_id = validated.get("salesman_id")
 
-        # ✅ NEW: created_by (admin/manager) passed from view
+        # ✅ created_by (admin/manager) passed from view
         created_by = validated.pop("created_by", None)
 
         # --- resolve salesman (must be STAFF) ---
@@ -299,7 +299,7 @@ class SaleListSerializer(serializers.ModelSerializer):
     feedback = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
 
-    # ✅ NEW: created_by display (admin/manager who created the sale)
+    # ✅ created_by display (admin/manager who created the sale)
     created_by = serializers.SerializerMethodField()
 
     class Meta:
@@ -317,7 +317,7 @@ class SaleListSerializer(serializers.ModelSerializer):
             "credit_applied",
             "order_type",
             "feedback",
-            "created_by",  # ✅ NEW
+            "created_by",
         ]
 
     def get_due_amount(self, obj):
