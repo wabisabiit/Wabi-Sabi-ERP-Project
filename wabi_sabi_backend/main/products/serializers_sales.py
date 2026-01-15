@@ -164,10 +164,6 @@ class SaleCreateSerializer(serializers.Serializer):
         store = validated.get("store", "Wabi - Sabi")
         salesman_id = validated.get("salesman_id")
 
-<<<<<<< HEAD
-        # ✅ created_by (admin/manager) passed from view
-=======
->>>>>>> 6bd56e2 (Add created by in sales module)
         created_by = validated.pop("created_by", None)
 
         salesman = None
@@ -298,10 +294,6 @@ class SaleListSerializer(serializers.ModelSerializer):
     feedback = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
 
-<<<<<<< HEAD
-    # ✅ created_by display (admin/manager who created the sale)
-=======
->>>>>>> 6bd56e2 (Add created by in sales module)
     created_by = serializers.SerializerMethodField()
 
     class Meta:
