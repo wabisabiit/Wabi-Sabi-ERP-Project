@@ -26,7 +26,7 @@ class SalesView(APIView):
     GET /api/sales/ - List sales (filtered by outlet for managers)
     POST /api/sales/ - Create new sale
     """
-    
+
     def get(self, request):
         qs = Sale.objects.select_related("customer").order_by(
             "-transaction_date",
@@ -121,6 +121,9 @@ class SalesView(APIView):
         loc_code = _get_user_location_code(request)
         if loc_code and not request.user.is_superuser:
             extra["store"] = loc_code
+
+        # ✅ NEW: save who created the sale (admin/manager)
+        extra["created_by"] = request.user
 
         with transaction.atomic():
             result = ser.save(**extra)

@@ -90,9 +90,6 @@ class SaleCreateSerializer(serializers.Serializer):
         subtotal = Decimal("0.00")
         item_discount_total = Decimal("0.00")
 
-        # ✅ NEW: keep per-line computed amounts so we can store actual billed unit price in SaleLine.sp
-        per_line = []  # aligned to incoming lines order
-
         for ln in data["lines"]:
             bc = str(ln["barcode"]).strip()
             qty = int(ln["qty"])
@@ -121,20 +118,6 @@ class SaleCreateSerializer(serializers.Serializer):
             disc = min(line_base, max(Decimal("0.00"), disc))
             item_discount_total += disc
 
-            line_after_item = (line_base - disc).quantize(
-                TWOPLACES, rounding=ROUND_HALF_UP
-            )
-            per_line.append(
-                {
-                    "barcode": bc,
-                    "qty": qty,
-                    "unit_base": unit,             # before discounts
-                    "line_base": line_base,        # before discounts
-                    "item_disc": disc,             # per-line discount total
-                    "after_item": line_after_item, # after per-line discount
-                }
-            )
-
         base_after_item = max(Decimal("0.00"), subtotal - item_discount_total)
 
         bill_val = q2(data.get("bill_discount_value", 0))
@@ -160,44 +143,11 @@ class SaleCreateSerializer(serializers.Serializer):
                 f"Payments total ({pay_total}) must equal payable amount ({grand_total})."
             )
 
-        # ✅ NEW: allocate bill discount proportionally across lines to get FINAL billed unit price
-        final_unit_prices = []
-        if per_line:
-            if base_after_item > 0 and bill_disc > 0:
-                allocated = Decimal("0.00")
-                for i, row in enumerate(per_line):
-                    if i == len(per_line) - 1:
-                        share = (bill_disc - allocated).quantize(
-                            TWOPLACES, rounding=ROUND_HALF_UP
-                        )
-                    else:
-                        share = (bill_disc * row["after_item"] / base_after_item).quantize(
-                            TWOPLACES, rounding=ROUND_HALF_UP
-                        )
-                        allocated += share
-
-                    line_final = (row["after_item"] - share).quantize(
-                        TWOPLACES, rounding=ROUND_HALF_UP
-                    )
-                    unit_final = (line_final / Decimal(row["qty"])).quantize(
-                        TWOPLACES, rounding=ROUND_HALF_UP
-                    )
-                    final_unit_prices.append(unit_final)
-            else:
-                # no bill discount; final is after per-line discount
-                for row in per_line:
-                    unit_final = (row["after_item"] / Decimal(row["qty"])).quantize(
-                        TWOPLACES, rounding=ROUND_HALF_UP
-                    )
-                    final_unit_prices.append(unit_final)
-
         data["_computed"] = {
             "subtotal": subtotal,
             "item_discount_total": item_discount_total,
             "bill_discount": bill_disc,
             "grand_total": grand_total,
-            # ✅ NEW: final unit prices aligned with incoming lines order
-            "final_unit_prices": final_unit_prices,
         }
         return data
 
@@ -210,6 +160,9 @@ class SaleCreateSerializer(serializers.Serializer):
         note = validated.get("note", "")
         store = validated.get("store", "Wabi - Sabi")
         salesman_id = validated.get("salesman_id")
+
+        # ✅ NEW: created_by (admin/manager) passed from view
+        created_by = validated.get("created_by", None)
 
         # --- resolve salesman (must be STAFF) ---
         salesman = None
@@ -249,6 +202,7 @@ class SaleCreateSerializer(serializers.Serializer):
                 transaction_date=timezone.now(),
                 note=note,
                 salesman=salesman,
+                created_by=created_by,  # ✅ NEW
             )
 
             # lock + reduce stock
@@ -268,22 +222,16 @@ class SaleCreateSerializer(serializers.Serializer):
 
             # create lines
             subtotal = Decimal("0.00")
-            final_units = comp.get("final_unit_prices") or []
-
-            for idx, ln in enumerate(lines_in):
+            for ln in lines_in:
                 p = Product.objects.get(barcode=ln["barcode"])
                 qty = int(ln["qty"])
-
-                # ✅ NEW: save actual billed unit price (after discounts) in SaleLine.sp
-                billed_unit = final_units[idx] if idx < len(final_units) else q2(p.selling_price)
-
                 SaleLine.objects.create(
                     sale=sale,
                     product=p,
                     qty=qty,
                     barcode=p.barcode,
                     mrp=p.mrp or 0,
-                    sp=billed_unit,
+                    sp=p.selling_price or 0,
                 )
                 subtotal += q2(p.selling_price) * qty
 
@@ -348,6 +296,9 @@ class SaleListSerializer(serializers.ModelSerializer):
     feedback = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
 
+    # ✅ NEW: created_by display (admin/manager who created the sale)
+    created_by = serializers.SerializerMethodField()
+
     class Meta:
         model = Sale
         fields = [
@@ -363,6 +314,7 @@ class SaleListSerializer(serializers.ModelSerializer):
             "credit_applied",
             "order_type",
             "feedback",
+            "created_by",  # ✅ NEW
         ]
 
     def get_due_amount(self, obj):
@@ -379,3 +331,10 @@ class SaleListSerializer(serializers.ModelSerializer):
 
     def get_payment_status(self, obj):
         return "Paid"
+
+    def get_created_by(self, obj):
+        u = getattr(obj, "created_by", None)
+        if not u:
+            return "-"
+        full = (u.get_full_name() or "").strip()
+        return full or (u.username or "-")

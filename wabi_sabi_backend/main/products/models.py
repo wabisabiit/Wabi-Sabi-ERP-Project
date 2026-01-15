@@ -3,6 +3,7 @@ from django.db import models,transaction
 from taskmaster.models import TaskItem,Location   # <-- your TaskItem
 from django.utils import timezone
 from django.core.validators import RegexValidator,MinValueValidator
+from django.contrib.auth.models import User
 
 
 alnum_validator = RegexValidator(
@@ -692,9 +693,13 @@ class HoldBill(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
-        "outlets.Employee", null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="hold_bills"
+    User,
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="sales_created",
     )
+
 
     class Meta:
         ordering = ["-created_at", "-id"]
