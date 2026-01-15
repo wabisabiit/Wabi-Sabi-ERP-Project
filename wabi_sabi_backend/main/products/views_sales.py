@@ -1,6 +1,6 @@
 # products/views_sales.py
-from django.contrib.auth.models import User
 from django.db.models import Q
+from django.core.exceptions import FieldDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
@@ -17,6 +17,14 @@ def _get_employee(user):
     return getattr(user, "employee", None)
 
 
+def _has_created_by_field():
+    try:
+        Sale._meta.get_field("created_by")
+        return True
+    except FieldDoesNotExist:
+        return False
+
+
 def _resolve_created_by_user(request):
     """
     ✅ RULE:
@@ -29,15 +37,13 @@ def _resolve_created_by_user(request):
     if not user or not user.is_authenticated:
         return None
 
-    # Admin/superuser: keep admin as creator
     if user.is_superuser:
         return user
 
     emp = _get_employee(user)
     if not emp or not emp.outlet_id:
-        return user  # fallback
+        return user
 
-    # Find outlet manager
     mgr = (
         Employee.objects.select_related("user")
         .filter(outlet_id=emp.outlet_id, role="MANAGER", is_active=True)
@@ -46,7 +52,6 @@ def _resolve_created_by_user(request):
     if mgr and mgr.user:
         return mgr.user
 
-    # If no manager found, fallback to the logged-in user
     return user
 
 
@@ -67,7 +72,13 @@ class SalesView(APIView):
         - ?q=...   (search)
         - ?all=1   (return all without pagination)
         """
-        qs = Sale.objects.select_related("customer", "created_by").order_by("-id")
+        qs = Sale.objects.select_related("customer")
+
+        # ✅ only add created_by if field exists in DB/model
+        if _has_created_by_field():
+            qs = qs.select_related("created_by")
+
+        qs = qs.order_by("-id")
 
         q = (request.query_params.get("q") or "").strip()
         if q:
@@ -78,7 +89,6 @@ class SalesView(APIView):
                 | Q(payment_method__icontains=q)
             )
 
-        # keep existing behavior: allow "all=1" to return all rows
         all_flag = str(request.query_params.get("all") or "").strip() in ("1", "true", "True")
 
         if all_flag:
@@ -100,5 +110,6 @@ class SalesView(APIView):
         ser = SaleCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
 
+        # pass created_by into serializer.create()
         payload = ser.save(created_by=created_by_user)
         return Response(payload, status=status.HTTP_201_CREATED)

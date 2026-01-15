@@ -1,8 +1,8 @@
 # Create your models here.
-from django.db import models,transaction
-from taskmaster.models import TaskItem,Location   # <-- your TaskItem
+from django.db import models, transaction
+from taskmaster.models import TaskItem, Location   # <-- your TaskItem
 from django.utils import timezone
-from django.core.validators import RegexValidator,MinValueValidator
+from django.core.validators import RegexValidator, MinValueValidator
 from django.contrib.auth.models import User
 
 
@@ -15,6 +15,7 @@ discount_code_validator = RegexValidator(
     regex=r"^[A-Z0-9]{6}$",
     message="Discount Code must be 6 characters, capital letters & digits (e.g. RDF214).",
 )
+
 
 class Product(models.Model):
     """
@@ -55,7 +56,6 @@ class Product(models.Model):
         blank=True,
     )
 
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -64,6 +64,7 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.barcode} -> {self.task_item_id}"
+
 
 class StockTransfer(models.Model):
     number = models.CharField(max_length=32, unique=True, db_index=True)  # e.g. STF/WS/0001
@@ -98,6 +99,7 @@ class StockTransferLine(models.Model):
 from django.db import models, transaction
 from django.utils import timezone
 
+
 class Customer(models.Model):
     """
     Basic customer master. Keep it minimal; extend later if needed.
@@ -121,7 +123,7 @@ class InvoiceSequence(models.Model):
     """
     prefix       = models.CharField(max_length=16, unique=True, default="INV")
     next_number  = models.PositiveIntegerField(default=1)
-    pad_width    = models.PositiveSmallIntegerField(default=2)  
+    pad_width    = models.PositiveSmallIntegerField(default=2)
 
     def __str__(self):
         return f"{self.prefix} next={self.next_number}"
@@ -165,6 +167,16 @@ class Sale(models.Model):
         blank=True,
     )
 
+    # ✅ NEW: created_by (Admin / Outlet Manager)
+    # (unique related_name to avoid clash with HoldBill.created_by which already uses "sales_created")
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pos_sales_created",
+    )
+
     invoice_no       = models.CharField(max_length=32, unique=True, db_index=True)
     customer         = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="sales")
     store            = models.CharField(max_length=64, default="Wabi - Sabi")
@@ -189,6 +201,7 @@ class Sale(models.Model):
         if not self.invoice_no:
             self.invoice_no = InvoiceSequence.next_invoice_no(prefix="INV")
         super().save(*args, **kwargs)
+
 
 class SalePayment(models.Model):
     """
@@ -224,8 +237,6 @@ class SalePayment(models.Model):
         return f"{self.sale.invoice_no} {self.method} {self.amount}"
 
 
-
-
 class SaleLine(models.Model):
     """
     Invoice lines mapped to your existing Product (by FK) and denormalized barcode.
@@ -256,7 +267,6 @@ class SaleLine(models.Model):
             if not self.sp:
                 self.sp = self.product.selling_price
         super().save(*args, **kwargs)
-
 
 
 #Credit Note
@@ -296,7 +306,7 @@ class CreditNote(models.Model):
         blank=True,
     )
 
-    date = models.DateTimeField(default=timezone.now) 
+    date = models.DateTimeField(default=timezone.now)
     product         = models.ForeignKey('Product', on_delete=models.PROTECT)
     barcode         = models.CharField(max_length=64, db_index=True)
     qty             = models.PositiveIntegerField(default=1)  # always 1 as requested
@@ -307,16 +317,15 @@ class CreditNote(models.Model):
     redeemed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     redeemed_at     = models.DateTimeField(null=True, blank=True)
     redeemed_invoice= models.CharField(max_length=32, blank=True, default="")
+
     ...
-
-
     """
     One row per product that reached qty==0 due to a successful sale.
     """
     note_no         = models.CharField(max_length=32, unique=True, db_index=True)
     sale            = models.ForeignKey('Sale', on_delete=models.PROTECT, related_name='credit_notes')
     customer        = models.ForeignKey('Customer', on_delete=models.PROTECT, related_name='credit_notes')
-    date = models.DateTimeField(default=timezone.now) 
+    date = models.DateTimeField(default=timezone.now)
     product         = models.ForeignKey('Product', on_delete=models.PROTECT)
     barcode         = models.CharField(max_length=64, db_index=True)
     qty             = models.PositiveIntegerField(default=1)  # always 1 as requested
@@ -339,6 +348,7 @@ class CreditNote(models.Model):
         if not self.note_no:
             self.note_no = CreditNoteSequence.next_no(prefix="CRN")
         super().save(*args, **kwargs)
+
 
 class MasterPack(models.Model):
     """
@@ -390,7 +400,7 @@ class MasterPackLine(models.Model):
 
     def __str__(self):
         return f"{self.pack.number} • {self.barcode} x{self.qty}"
-    
+
 
 class MaterialConsumptionSequence(models.Model):
     prefix      = models.CharField(max_length=16, unique=True, default="CONWS")
@@ -458,6 +468,7 @@ class MaterialConsumptionLine(models.Model):
     class Meta:
         ordering = ["barcode"]
         indexes  = [models.Index(fields=["barcode"])]
+
 
 class Coupon(models.Model):
     """
@@ -566,6 +577,7 @@ class GeneratedCoupon(models.Model):
             "assigned_to", "customer_no"
         ])
 
+
 class Discount(models.Model):
     """
     Custom discount master. Ignores the UI's 'dummy' fields by design.
@@ -644,7 +656,8 @@ class Discount(models.Model):
 
     def __str__(self):
         return f"{self.title} [{self.code}]"
-    
+
+
 # --- Hold Bill Sequence & Models ---
 
 class HoldBillSequence(models.Model):
@@ -693,13 +706,12 @@ class HoldBill(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
-    User,
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name="sales_created",
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sales_created",
     )
-
 
     class Meta:
         ordering = ["-created_at", "-id"]
@@ -774,7 +786,6 @@ class Supplier(models.Model):
 
 # -------------------- Chart of Account --------------------
 
-
 class Account(models.Model):
     """
     Simple ledger account used in 'Chart of Account' screen.
@@ -844,7 +855,7 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"Expense {self.id} - {self.supplier}"
-    
+
     # 🔹 NEW: show location / HQ in admin
     def created_by_location(self):
         """
@@ -860,6 +871,7 @@ class Expense(models.Model):
         return "HQ"
 
     created_by_location.short_description = "Created By"
+
 
 class RegisterClosing(models.Model):
     """

@@ -5,10 +5,11 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from rest_framework import serializers
+from django.core.exceptions import FieldDoesNotExist
 
 from .models import Customer, Product, Sale, SaleLine, SalePayment
 from outlets.models import Employee
-from outlets.utils_wowbill import create_wow_entry_for_sale  # 👈 NEW IMPORT
+from outlets.utils_wowbill import create_wow_entry_for_sale
 
 
 TWOPLACES = Decimal("0.01")
@@ -18,6 +19,14 @@ def q2(x):
     return (Decimal(x or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
 
+def _sale_has_created_by():
+    try:
+        Sale._meta.get_field("created_by")
+        return True
+    except FieldDoesNotExist:
+        return False
+
+
 class CustomerInSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
     phone = serializers.CharField(max_length=20, allow_blank=True, required=False)
@@ -25,11 +34,9 @@ class CustomerInSerializer(serializers.Serializer):
 
 
 class SaleLineInSerializer(serializers.Serializer):
-    # coming from POS cart rows
     barcode = serializers.CharField(max_length=64)
     qty = serializers.IntegerField(min_value=1)
 
-    # ✅ NEW: per-line discount
     discount_percent = serializers.DecimalField(
         max_digits=6, decimal_places=2, required=False, default=0
     )
@@ -51,12 +58,11 @@ class PaymentInSerializer(serializers.Serializer):
 class SaleCreateSerializer(serializers.Serializer):
     customer = CustomerInSerializer()
     lines = SaleLineInSerializer(many=True)
-    payments = PaymentInSerializer(many=True)  # for MULTIPAY: 2+ rows, else 1 row
+    payments = PaymentInSerializer(many=True)
     store = serializers.CharField(max_length=64, required=False, default="Wabi - Sabi")
     note = serializers.CharField(max_length=255, required=False, allow_blank=True)
     salesman_id = serializers.IntegerField(required=False, allow_null=True)
 
-    # ✅ NEW: bill discount
     bill_discount_value = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, default=0
     )
@@ -66,7 +72,6 @@ class SaleCreateSerializer(serializers.Serializer):
         if not data["lines"]:
             raise serializers.ValidationError("At least one line is required.")
 
-        # aggregate duplicates
         want = {}
         for ln in data["lines"]:
             code = str(ln["barcode"]).strip()
@@ -86,7 +91,6 @@ class SaleCreateSerializer(serializers.Serializer):
         if missing:
             raise serializers.ValidationError(f"Products not found: {', '.join(missing)}")
 
-        # stock check + compute totals
         subtotal = Decimal("0.00")
         item_discount_total = Decimal("0.00")
 
@@ -107,7 +111,6 @@ class SaleCreateSerializer(serializers.Serializer):
             dp = q2(ln.get("discount_percent", 0))
             da = q2(ln.get("discount_amount", 0))
 
-            # percent wins if provided, else amount
             if dp > 0:
                 disc = (line_base * dp / Decimal("100")).quantize(
                     TWOPLACES, rounding=ROUND_HALF_UP
@@ -161,10 +164,12 @@ class SaleCreateSerializer(serializers.Serializer):
         store = validated.get("store", "Wabi - Sabi")
         salesman_id = validated.get("salesman_id")
 
+<<<<<<< HEAD
         # ✅ created_by (admin/manager) passed from view
+=======
+>>>>>>> 6bd56e2 (Add created by in sales module)
         created_by = validated.pop("created_by", None)
 
-        # --- resolve salesman (must be STAFF) ---
         salesman = None
         if salesman_id:
             try:
@@ -176,7 +181,6 @@ class SaleCreateSerializer(serializers.Serializer):
             except Employee.DoesNotExist:
                 raise serializers.ValidationError("Invalid salesman selected.")
 
-        # --- customer upsert ---
         phone = (cust_in.get("phone") or "").strip()
         name = (cust_in.get("name") or "").strip() or "Guest"
         email = cust_in.get("email", "")
@@ -203,12 +207,13 @@ class SaleCreateSerializer(serializers.Serializer):
                 note=note,
                 salesman=salesman,
             )
-            if hasattr(Sale, "created_by"):
+
+            # ✅ only set if field exists (after migration)
+            if _sale_has_created_by():
                 sale_kwargs["created_by"] = created_by
 
             sale = Sale.objects.create(**sale_kwargs)
 
-            # lock + reduce stock
             want = {}
             for ln in lines_in:
                 bc = str(ln["barcode"]).strip()
@@ -223,7 +228,6 @@ class SaleCreateSerializer(serializers.Serializer):
                 if updated == 0:
                     raise serializers.ValidationError(f"{bc} not available anymore.")
 
-            # create lines
             subtotal = Decimal("0.00")
             for ln in lines_in:
                 p = Product.objects.get(barcode=ln["barcode"])
@@ -245,7 +249,6 @@ class SaleCreateSerializer(serializers.Serializer):
             sale.grand_total = q2(comp.get("grand_total", sale.subtotal))
             sale.save(update_fields=["subtotal", "discount_total", "grand_total"])
 
-            # save payment breakup
             pay_rows = []
             for p in pays_in:
                 pay_rows.append(
@@ -262,7 +265,6 @@ class SaleCreateSerializer(serializers.Serializer):
                 )
             SalePayment.objects.bulk_create(pay_rows)
 
-            # WOW BILL LOGIC
             if salesman is not None:
                 create_wow_entry_for_sale(sale)
 
@@ -286,20 +288,20 @@ class SaleCreateSerializer(serializers.Serializer):
         }
 
 
-# ---- List / table serializer (read-only) ----
 class SaleListSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source="customer.name")
     customer_phone = serializers.CharField(source="customer.phone", allow_null=True)
-    total_amount = serializers.DecimalField(
-        source="grand_total", max_digits=12, decimal_places=2
-    )
+    total_amount = serializers.DecimalField(source="grand_total", max_digits=12, decimal_places=2)
     due_amount = serializers.SerializerMethodField()
     credit_applied = serializers.SerializerMethodField()
     order_type = serializers.SerializerMethodField()
     feedback = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
 
+<<<<<<< HEAD
     # ✅ created_by display (admin/manager who created the sale)
+=======
+>>>>>>> 6bd56e2 (Add created by in sales module)
     created_by = serializers.SerializerMethodField()
 
     class Meta:
@@ -336,6 +338,7 @@ class SaleListSerializer(serializers.ModelSerializer):
         return "Paid"
 
     def get_created_by(self, obj):
+        # ✅ Safe even before migration
         u = getattr(obj, "created_by", None)
         if not u:
             return "-"
