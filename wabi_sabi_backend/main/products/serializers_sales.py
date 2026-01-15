@@ -162,7 +162,7 @@ class SaleCreateSerializer(serializers.Serializer):
         salesman_id = validated.get("salesman_id")
 
         # ✅ NEW: created_by (admin/manager) passed from view
-        created_by = validated.get("created_by", None)
+        created_by = validated.pop("created_by", None)
 
         # --- resolve salesman (must be STAFF) ---
         salesman = None
@@ -195,15 +195,18 @@ class SaleCreateSerializer(serializers.Serializer):
         method = Sale.PAYMENT_MULTIPAY if len(pays_in) > 1 else pays_in[0]["method"]
 
         with transaction.atomic():
-            sale = Sale.objects.create(
+            sale_kwargs = dict(
                 customer=customer,
                 store=store,
                 payment_method=method,
                 transaction_date=timezone.now(),
                 note=note,
                 salesman=salesman,
-                created_by=created_by,  # ✅ NEW
             )
+            if hasattr(Sale, "created_by"):
+                sale_kwargs["created_by"] = created_by
+
+            sale = Sale.objects.create(**sale_kwargs)
 
             # lock + reduce stock
             want = {}
