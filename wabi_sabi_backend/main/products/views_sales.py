@@ -123,7 +123,10 @@ class SalesView(APIView):
             extra["store"] = loc_code
 
         # ✅ NEW: save who created the sale (admin/manager)
-        extra["created_by"] = request.user
+        # ✅ save who created the sale (only if field exists)
+        if hasattr(Sale, "created_by"):
+            extra["created_by"] = request.user
+
 
         with transaction.atomic():
             result = ser.save(**extra)
