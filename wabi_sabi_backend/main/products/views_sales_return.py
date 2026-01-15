@@ -47,8 +47,17 @@ class SaleLinesByInvoice(APIView):
 class SalesReturn(APIView):
     """
     POST /api/sales/<invoice_no>/return/
-    Creates Credit Notes (CRN01, CRN02, ...) for this sale's lines.
-    Idempotent: if CRNs already exist for this sale, we just report them.
+
+    ✅ NEW (optional body):
+      - { "barcode": "ABC" }                          -> return 1 qty of ABC
+      - { "barcodes": ["A","B"] }                     -> return 1 qty each
+      - { "items": [{"barcode":"A","qty":1}, ...] }   -> return qty per barcode
+
+    Old behavior preserved:
+      - if body is empty -> creates Credit Notes for ALL sale lines.
+
+    Idempotent:
+      - if CRNs already exist for this sale, we just report them.
     """
 
     def post(self, request, invoice_no: str):
@@ -58,10 +67,17 @@ class SalesReturn(APIView):
             invoice_no__iexact=inv,
         )
 
-        existing = list(CreditNote.objects.filter(sale=sale).values_list("note_no", flat=True))
+        existing = list(
+            CreditNote.objects.filter(sale=sale).values_list("note_no", flat=True)
+        )
         if existing:
             return Response(
-                {"ok": True, "created": False, "notes": existing, "msg": "Credit note(s) already exist."}
+                {
+                    "ok": True,
+                    "created": False,
+                    "notes": existing,
+                    "msg": "Credit note(s) already exist.",
+                }
             )
 
         # ✅ set location for dashboard scoping
@@ -74,9 +90,57 @@ class SalesReturn(APIView):
         except Exception:
             loc = None
 
+        # ---------------- NEW: read selection (optional) ----------------
+        data = request.data or {}
+
+        barcode_single = (data.get("barcode") or "").strip()
+        barcodes_list = data.get("barcodes")
+        items_list = data.get("items")
+
+        # Normalize to dict: { barcode: qty_to_return }
+        selected = {}
+
+        if barcode_single:
+            selected[barcode_single] = selected.get(barcode_single, 0) + 1
+
+        if isinstance(barcodes_list, list):
+            for bc in barcodes_list:
+                bc = str(bc or "").strip()
+                if bc:
+                    selected[bc] = selected.get(bc, 0) + 1
+
+        if isinstance(items_list, list):
+            for row in items_list:
+                bc = str((row or {}).get("barcode") or "").strip()
+                try:
+                    qty = int((row or {}).get("qty") or 1)
+                except Exception:
+                    qty = 1
+                if bc and qty > 0:
+                    selected[bc] = selected.get(bc, 0) + qty
+
         created_nos = []
+
         with transaction.atomic():
-            for ln in sale.lines.select_related("product").all():
+            # If selected is empty -> old behavior (all lines)
+            lines_qs = sale.lines.select_related("product").all()
+            if selected:
+                lines_qs = lines_qs.filter(barcode__in=list(selected.keys()))
+
+            for ln in lines_qs:
+                # Determine qty to return
+                if selected:
+                    qty_to_return = int(selected.get(ln.barcode, 0) or 0)
+                    # don't allow returning more than purchased qty
+                    qty_to_return = max(0, min(qty_to_return, int(ln.qty or 0)))
+                else:
+                    qty_to_return = int(ln.qty or 0)
+
+                if qty_to_return <= 0:
+                    continue
+
+                # ✅ Your current CreditNote model stores qty and amount
+                # amount should be based on SaleLine.sp (billed price)
                 cn = CreditNote.objects.create(
                     sale=sale,
                     customer=sale.customer,
@@ -85,10 +149,16 @@ class SalesReturn(APIView):
                     note_date=sale.transaction_date,
                     product=ln.product,
                     barcode=ln.barcode,
-                    qty=ln.qty,
-                    amount=(ln.sp or 0) * ln.qty,
+                    qty=qty_to_return,
+                    amount=(ln.sp or 0) * qty_to_return,
                 )
                 created_nos.append(cn.note_no)
+
+        if not created_nos:
+            return Response(
+                {"ok": False, "created": False, "notes": [], "msg": "No items selected for return."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             {"ok": True, "created": True, "notes": created_nos, "msg": "Credit note created."},

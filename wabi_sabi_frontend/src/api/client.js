@@ -230,9 +230,18 @@ export async function redeemCreditNote(noteNo, payload) {
   });
 }
 
-export async function createSalesReturn(invoiceNo) {
+// ✅ UPDATED: allow selecting items to return
+// Usage examples:
+//   createSalesReturn("INV34")                          -> old behavior (return all)
+//   createSalesReturn("INV34", { barcode: "ABC" })      -> return 1 qty of barcode
+//   createSalesReturn("INV34", { barcodes: ["A","B"] }) -> return 1 qty each
+//   createSalesReturn("INV34", { items: [{barcode:"A", qty:1}] })
+export async function createSalesReturn(invoiceNo, payload = {}) {
   const safe = String(invoiceNo || "").trim();
-  return http(`/sales/${encodeURIComponent(safe)}/return/`, { method: "POST" });
+  return http(`/sales/${encodeURIComponent(safe)}/return/`, {
+    method: "POST",
+    body: JSON.stringify(payload || {}),
+  });
 }
 
 // Customers
