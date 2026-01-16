@@ -9,7 +9,7 @@ from django.db.models import Q
 from .models import Product
 from .serializers import ProductSerializer, ProductGridSerializer
 from taskmaster.models import TaskItem
-
+from .pagination import ProductPagination
 
 # ------------------ BARCODE GENERATOR HELPERS (local) ------------------
 import re
@@ -258,3 +258,29 @@ class ProductViewSet(viewsets.ModelViewSet):
             },
         }
         return Response(data, status=status.HTTP_200_OK)
+
+
+
+class ProductViewSet(ModelViewSet):
+    queryset = Product.objects.all()
+    pagination_class = ProductPagination
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        # ✅ speed: avoid N+1
+        qs = qs.select_related("task_item", "location")
+
+        # optional but usually helps a lot (only if you don't need every column)
+        # qs = qs.only(
+        #     "id","barcode","task_item","size","image_url","mrp","selling_price",
+        #     "qty","discount_percent","location","created_at"
+        # )
+
+        return qs
+
+    def get_serializer_class(self):
+        # keep your existing logic if you already switch serializers by action
+        if self.action == "list":
+            return ProductGridSerializer
+        return ProductSerializer
