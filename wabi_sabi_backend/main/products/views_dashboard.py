@@ -99,6 +99,9 @@ class DashboardSummaryView(APIView):
 
         total_bills = sales_qs.count()
 
+        # ✅ NEW: Total Sales (needed because Gross Profit = Total Sales)
+        total_sales = sales_qs.aggregate(x=Sum("grand_total"))["x"] or 0
+
         # ---------- Total Suppliers ----------
         # Total outlets excluding HQ (best-effort without changing your outlet models)
         total_suppliers = 0
@@ -154,25 +157,23 @@ class DashboardSummaryView(APIView):
             fallback_sales = sales_qs.filter(payment_method__iexact="cash")
             cash_in_hand = fallback_sales.aggregate(x=Sum("grand_total"))["x"] or 0
 
-        # ---------- Gross Profit ----------
-        # Definition you gave: (mrp - sellingprice) * qty sold
+        # ---------- Sold Qty ----------
+        # Definition you gave: sold quantities = number of products sold from inventory means product.qty == 0
         sl_qs = SaleLine.objects.filter(
             sale__transaction_date__range=(start_dt, end_dt)
         )
         if loc:
             sl_qs = sl_qs.filter(sale__store__icontains=loc.code)
 
-        gross_profit = (
-            sl_qs.aggregate(
-                x=Sum(
-                    ExpressionWrapper(
-                        (F("mrp") - F("sp")) * F("qty"),
-                        output_field=DecimalField(max_digits=18, decimal_places=2),
-                    )
-                )
-            )["x"]
-            or 0
-        )
+        sold_qs = sl_qs.filter(product__qty=0)
+        if loc:
+            sold_qs = sold_qs.filter(product__location=loc)
+
+        sold_qty = sold_qs.aggregate(x=Sum("qty"))["x"] or 0
+
+        # ---------- Gross Profit ----------
+        # Definition you gave now: Gross Profit = Total Sales
+        gross_profit = total_sales
 
         return Response(
             {
@@ -192,6 +193,9 @@ class DashboardSummaryView(APIView):
                 "gross_profit": gross_profit,
 
                 "purchase_qty": purchase_qty,
+
+                # ✅ NEW
+                "sold_qty": sold_qty,
             },
             status=status.HTTP_200_OK,
         )
