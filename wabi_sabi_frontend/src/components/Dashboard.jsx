@@ -821,11 +821,21 @@ export default function Dashboard() {
       try {
         const params = { date_from: from, date_to: to, all: "1" };
 
+        // ✅ superuser filters: pass locations/channels down
+        if (isSuper) {
+          if (Array.isArray(locationIds) && locationIds.length) params.location = locationIds;
+          if (Array.isArray(channelIds) && channelIds.length) params.channel = channelIds;
+        }
+
         // backend scopes sales by outlet for non-admin; admin sees all
         const [salesRes, expRes, sumRes] = await Promise.all([
           listSales(params),
           listExpenses({ limit: 2500 }), // backend scopes for outlet; admin gets all
-          dashboardSummary({ date_from: from, date_to: to }),
+          dashboardSummary({
+            date_from: from,
+            date_to: to,
+            ...(isSuper ? { location: locationIds, channel: channelIds } : {}),
+          }),
         ]);
 
         const sales = Array.isArray(salesRes?.results)
@@ -865,7 +875,13 @@ export default function Dashboard() {
           }
         }
 
-        if (soldQty <= 0) soldQty = totalInvoice;
+        // ✅ SOLD QTY from backend summary: sold_qty (products.qty == 0 logic)
+        if (Number(sumRes?.sold_qty ?? 0) > 0) {
+          soldQty = Number(sumRes.sold_qty);
+        } else if (soldQty <= 0) {
+          soldQty = totalInvoice;
+        }
+
         const totalCustomers = customerKeys.size;
 
         const sum = sumRes || {};
@@ -876,7 +892,9 @@ export default function Dashboard() {
         const purchaseQty = Number(sum?.purchase_qty ?? 0);
         const totalProductsAmount = Number(sum?.total_products_amount ?? 0);
         const cashInHand = Number(sum?.cash_in_hand ?? 0);
-        const grossProfit = Number(sum?.gross_profit ?? 0);
+
+        // ✅ GROSS PROFIT = Total Sales (backend already sets gross_profit = total_sales)
+        const grossProfit = Number(sum?.gross_profit ?? totalSales);
 
         const totalExpense = sumExpensesInRange(expenses, from, to);
 
@@ -905,7 +923,9 @@ export default function Dashboard() {
 
         if (!cancelled) setMetrics(cards);
       } catch (e) {
-        console.error("Dashboard KPI load failed:", e); // ✅ requested
+        // ✅ requested: add log for console in case of failure
+        console.error("Dashboard KPI load failed:", e);
+
         if (!cancelled) {
           setErr(e?.message || "Failed to load");
           const { from, to } = parseRange(globalRange);
@@ -919,7 +939,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [globalRange, locationIds, channelIds]);
+  }, [globalRange, locationIds, channelIds, isSuper]);
 
   const [rangeSVP, setRangeSVP] = useState(defaultRange);
   const [rangeTXN, setRangeTXN] = useState(defaultRange);
@@ -996,7 +1016,8 @@ export default function Dashboard() {
         });
         if (!cancelled) setLoginLogs(res || []);
       } catch (e) {
-        console.error("Login logs load failed:", e); // ✅ helpful
+        // ✅ already had console log; keep
+        console.error("Login logs load failed:", e);
         if (!cancelled) setLoginLogErr(e?.message || "Failed to load login logs");
       } finally {
         if (!cancelled) setLoginLogLoading(false);
