@@ -18,7 +18,7 @@
 
 /* ===== Dialog ===== */
 .rc-overlay .rc-modal{
-  width: 320px !important;
+  width: 400px !important;
   height: auto;
   background: #fff !important;
   border: 1px solid #d4d4d8 !important;
@@ -98,4 +98,136 @@
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
+}
+
+/* ===== Discount list UI ===== */
+.rc-overlay .rc-discount-wrap{
+  margin-top: 6px !important;
+}
+
+.rc-overlay .rc-discount-head{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 8px !important;
+}
+
+.rc-overlay .rc-label-tight{
+  margin-bottom: 0 !important;
+}
+
+.rc-overlay .rc-mini{
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #444 !important;
+}
+
+.rc-overlay .rc-discount-list{
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.rc-overlay .rc-discount-scroll{
+  margin-top: 8px !important;
+  max-height: 170px !important;
+  overflow-y: auto !important;
+  padding-right: 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 6px !important;
+  padding: 8px !important;
+  background: #fafafa !important;
+}
+
+.rc-overlay .rc-more{
+  margin-top: 10px !important;
+  font-weight: 800 !important;
+  font-size: 12px !important;
+}
+
+.rc-overlay .rc-discount-item{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 10px 10px !important;
+  background: #fff !important;
+}
+
+.rc-overlay .rc-discount-item.is-expired{
+  opacity: 0.65 !important;
+}
+
+.rc-overlay .rc-discount-main{
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+.rc-overlay .rc-discount-title{
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.rc-overlay .rc-discount-sub{
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.rc-overlay .rc-discount-code{
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #222 !important;
+}
+
+.rc-overlay .rc-badge{
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.rc-overlay .rc-badge-active{
+  background: #e7f8ee !important;
+  border-color: #b8ebcd !important;
+}
+
+.rc-overlay .rc-badge-expired{
+  background: #ffecec !important;
+  border-color: #ffc7c7 !important;
+}
+
+.rc-overlay .rc-apply-btn{
+  height: 30px !important;
+  padding: 0 12px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  background: #111 !important;
+  color: #fff !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  flex: 0 0 auto !important;
+}
+
+.rc-overlay .rc-apply-btn:disabled{
+  background: #bdbdbd !important;
+  cursor: not-allowed !important;
+}
+
+.rc-overlay .rc-empty{
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  padding: 10px 0 !important;
+  color: #555 !important;
 }

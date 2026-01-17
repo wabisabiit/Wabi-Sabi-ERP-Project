@@ -5,7 +5,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Q
-from rest_framework import viewsets
 
 from .models import Product
 from .serializers import ProductSerializer, ProductGridSerializer
@@ -15,7 +14,7 @@ from .pagination import ProductPagination
 # ------------------ BARCODE GENERATOR HELPERS (local) ------------------
 import re
 
-_BAR_RE = re.compile(r'^[A-Z]-\d{3}$')  # e.g., A-001
+_BAR_RE = re.compile(r"^[A-Z]-\d{3}$")  # e.g., A-001
 
 
 def _fmt(letter: str, num: int) -> str:
@@ -32,8 +31,8 @@ def _bump(letter: str, num: int):
         return letter, num
     # carry to next letter
     num = 1
-    idx = (ord(letter) - ord('A') + 1) % 26
-    return chr(ord('A') + idx), num
+    idx = (ord(letter) - ord("A") + 1) % 26
+    return chr(ord("A") + idx), num
 
 
 def _parse(code: str):
@@ -51,10 +50,9 @@ def _last_seen_letter_num():
     If none found, return ('A', 0) so next is A-001.
     """
     last = (
-        Product.objects
-        .filter(barcode__regex=r'^[A-Z]-\d{3}$')
-        .order_by('-created_at', '-id')
-        .values_list('barcode', flat=True)
+        Product.objects.filter(barcode__regex=r"^[A-Z]-\d{3}$")
+        .order_by("-created_at", "-id")
+        .values_list("barcode", flat=True)
         .first()
     )
     parsed = _parse(last) if last else None
@@ -83,6 +81,8 @@ def _get_user_location(request):
     outlet = getattr(emp, "outlet", None) if emp else None
     loc = getattr(outlet, "location", None) if outlet else None
     return loc
+
+
 # ------------------------------------------------------------------
 
 
@@ -96,11 +96,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     /api/products/bulk-upsert/   POST -> create/update many (from Print step payload)
     /api/products/by-barcode/<barcode>/   GET -> fetch minimal product info by barcode
     """
+
     permission_classes = [permissions.IsAuthenticated]
+
+    # ✅ NEW: pagination (your new requirement)
+    pagination_class = ProductPagination
+
+    # ✅ keep existing base queryset
     queryset = Product.objects.select_related("task_item")
 
     # ✅ Manager scoping uses Product.location ONLY (NO StockTransferLine)
-    
     def get_queryset(self):
         qs = super().get_queryset().select_related("task_item", "location")
 
@@ -119,8 +124,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         return qs.filter(location=loc)
 
-
-
     def get_serializer_class(self):
         return ProductGridSerializer if self.action in ["list"] else ProductSerializer
 
@@ -133,10 +136,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         q = request.query_params.get("q", "").strip()
         qs = self.get_queryset()
         if q:
-            qs = qs.filter(
-                Q(barcode__icontains=q) |
-                Q(task_item__item_vasy_name__icontains=q)
-            )
+            qs = qs.filter(Q(barcode__icontains=q) | Q(task_item__item_vasy_name__icontains=q))
 
         page = self.paginate_queryset(qs)
         ser = self.get_serializer(page or qs, many=True)
@@ -149,8 +149,10 @@ class ProductViewSet(viewsets.ModelViewSet):
     def bulk_upsert(self, request):
         items = request.data if isinstance(request.data, list) else request.data.get("rows", [])
         if not isinstance(items, list):
-            return Response({"detail": "Expected a list or {rows: [...]}."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Expected a list or {rows: [...]}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         created, updated, errors = 0, 0, []
         results = []
@@ -198,26 +200,26 @@ class ProductViewSet(viewsets.ModelViewSet):
                     else:
                         updated += 1
 
-                    results.append({
-                        "row": i,
-                        "id": obj.id,
-                        "itemCode": item_code,
-                        "barcode": obj.barcode,
-                    })
+                    results.append(
+                        {
+                            "row": i,
+                            "id": obj.id,
+                            "itemCode": item_code,
+                            "barcode": obj.barcode,
+                        }
+                    )
 
                 except TaskItem.DoesNotExist:
                     errors.append(f"row {i}: TaskItem {item_code!r} not found")
                 except Exception as e:
                     errors.append(f"row {i}: {e}")
 
-        return Response({"created": created, "updated": updated, "errors": errors, "results": results})
+        return Response(
+            {"created": created, "updated": updated, "errors": errors, "results": results}
+        )
 
     # ---------- BY BARCODE LOOKUP ----------
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path=r"by-barcode/(?P<barcode>[^/]+)"
-    )
+    @action(detail=False, methods=["get"], url_path=r"by-barcode/(?P<barcode>[^/]+)")
     def by_barcode(self, request, barcode=None):
         def clean_barcode(v: str) -> str:
             if not v:
@@ -227,10 +229,16 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         clean = clean_barcode(barcode)
 
-        p = Product.objects.select_related("task_item", "location").filter(barcode__iexact=clean).first()
+        p = (
+            Product.objects.select_related("task_item", "location")
+            .filter(barcode__iexact=clean)
+            .first()
+        )
         if not p:
-            return Response({"detail": f"Product {clean} not found."},
-                            status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": f"Product {clean} not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         # ✅ Manager restriction uses Product.location only
         loc = _get_user_location(request)
@@ -253,35 +261,10 @@ class ProductViewSet(viewsets.ModelViewSet):
             "discount_percent": getattr(p, "discount_percent", 0) or 0,
             "task_item": {
                 "item_vasy_name": getattr(p.task_item, "item_vasy_name", "") or "",
-                "item_print_friendly_name": getattr(p.task_item, "item_print_friendly_name", "") or "",
+                "item_print_friendly_name": getattr(p.task_item, "item_print_friendly_name", "")
+                or "",
                 "item_full_name": getattr(p.task_item, "item_full_name", "") or "",
                 "item_code": getattr(p.task_item, "item_code", "") or "",
             },
         }
         return Response(data, status=status.HTTP_200_OK)
-
-
-
-class ProductViewSet(ModelViewSet):
-    queryset = Product.objects.all()
-    pagination_class = ProductPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-
-        # ✅ speed: avoid N+1
-        qs = qs.select_related("task_item", "location")
-
-        # optional but usually helps a lot (only if you don't need every column)
-        # qs = qs.only(
-        #     "id","barcode","task_item","size","image_url","mrp","selling_price",
-        #     "qty","discount_percent","location","created_at"
-        # )
-
-        return qs
-
-    def get_serializer_class(self):
-        # keep your existing logic if you already switch serializers by action
-        if self.action == "list":
-            return ProductGridSerializer
-        return ProductSerializer

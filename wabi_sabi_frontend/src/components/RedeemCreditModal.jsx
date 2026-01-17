@@ -19,11 +19,16 @@ export default function RedeemCreditModal({
   // discount: {code, title, start_date, end_date, status, value, value_type, mode, applicable, ...}
   const [data, setData] = useState(null);
 
+  // ✅ NEW: discount listing mode
+  const [discounts, setDiscounts] = useState([]);
+  const [discountsLoading, setDiscountsLoading] = useState(false);
+
   useEffect(() => {
     setMode(initialMode || "credit");
     setNoteNo("");
     setData(null);
     setErr("");
+    setDiscounts([]);
   }, [initialMode]);
 
   const invBal = Math.max(0, Number(invoiceBalance) || 0);
@@ -62,8 +67,12 @@ export default function RedeemCreditModal({
     const ed = data.end_date ? new Date(data.end_date) : null;
 
     // treat date-only strings as local dates
-    const notStarted = sd ? today < new Date(sd.getFullYear(), sd.getMonth(), sd.getDate() + 0, 0, 0, 0) : false;
-    const ended = ed ? today > new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), 23, 59, 59, 999) : false;
+    const notStarted = sd
+      ? today < new Date(sd.getFullYear(), sd.getMonth(), sd.getDate() + 0, 0, 0, 0)
+      : false;
+    const ended = ed
+      ? today > new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), 23, 59, 59, 999)
+      : false;
 
     // backend may also give a status like "Active"/"Expired"
     const st = String(data.status || "").toLowerCase();
@@ -113,6 +122,62 @@ export default function RedeemCreditModal({
     [invBal, available]
   );
 
+  // ---------- NEW: load discounts when mode=discount ----------
+  useEffect(() => {
+    let alive = true;
+
+    async function loadDiscounts() {
+      if (mode !== "discount") return;
+      setErr("");
+      setData(null);
+      setNoteNo("");
+      setDiscounts([]);
+      setDiscountsLoading(true);
+
+      try {
+        const list = await listDiscounts();
+        const arr = Array.isArray(list) ? list : [];
+        if (!alive) return;
+
+        // normalize status locally also using dates (extra safety)
+        const normalized = arr.map((d) => {
+          const today = new Date();
+          const sd = d?.start_date ? new Date(d.start_date) : null;
+          const ed = d?.end_date ? new Date(d.end_date) : null;
+
+          const notStarted = sd
+            ? today < new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), 0, 0, 0, 0)
+            : false;
+          const ended = ed
+            ? today > new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), 23, 59, 59, 999)
+            : false;
+
+          const apiStatus = String(d?.status || "").toLowerCase();
+          const notActive = apiStatus && apiStatus !== "active";
+
+          const expired = notStarted || ended || notActive;
+
+          return {
+            ...d,
+            __expired: expired,
+          };
+        });
+
+        setDiscounts(normalized);
+      } catch (e) {
+        if (!alive) return;
+        setErr("Failed to load discounts.");
+      } finally {
+        if (alive) setDiscountsLoading(false);
+      }
+    }
+
+    loadDiscounts();
+    return () => {
+      alive = false;
+    };
+  }, [mode]);
+
   // ---------- lookups ----------
   async function lookup(codeOrNo) {
     const n = (codeOrNo || "").trim();
@@ -137,15 +202,19 @@ export default function RedeemCreditModal({
           ),
           status: raw?.status ?? (raw?.is_redeemed ? "Redeemed" : "Available"),
           is_redeemed: Boolean(raw?.is_redeemed),
-          created_date: raw?.created_date || raw?.created_at || raw?.date || raw?.issued_at || null,
-          available_redeem: raw?.available_redeem ?? raw?.balance ?? raw?.remaining_value ?? null,
+          created_date:
+            raw?.created_date ||
+            raw?.created_at ||
+            raw?.date ||
+            raw?.issued_at ||
+            null,
+          available_redeem:
+            raw?.available_redeem ?? raw?.balance ?? raw?.remaining_value ?? null,
         };
         if (!normalized.price) setErr("Coupon has no redeemable value.");
         setData(normalized);
       } else if (mode === "discount") {
-        // Try to find a discount by code.
-        // Your listDiscounts() should return an array of discounts with fields like:
-        // { id, code, title, start_date, end_date, status, value, value_type, mode, applicable, ... }
+        // (typing disabled now in UI, but keep logic untouched)
         const list = await listDiscounts();
         const found = (Array.isArray(list) ? list : []).find(
           (d) => String(d.code || "").toUpperCase() === n.toUpperCase()
@@ -155,15 +224,18 @@ export default function RedeemCreditModal({
           setErr("Discount not found.");
           setData(null);
         } else {
-          // If the discount is expired or not active, mark error.
           const expired = (() => {
             const today = new Date();
             const sd = found.start_date ? new Date(found.start_date) : null;
             const ed = found.end_date ? new Date(found.end_date) : null;
             const st = String(found.status || "").toLowerCase();
 
-            const notStarted = sd ? today < new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), 0, 0, 0, 0) : false;
-            const ended = ed ? today > new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), 23, 59, 59, 999) : false;
+            const notStarted = sd
+              ? today < new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), 0, 0, 0, 0)
+              : false;
+            const ended = ed
+              ? today > new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), 23, 59, 59, 999)
+              : false;
             const notActive = st && st !== "active";
             return notStarted || ended || notActive;
           })();
@@ -205,7 +277,6 @@ export default function RedeemCreditModal({
       return data?.created_date ? new Date(data.created_date).toLocaleDateString() : "—";
     }
     if (mode === "discount") {
-      // show start date (from) for consistency; you could show a range if you like
       return data?.start_date ? new Date(data.start_date).toLocaleDateString() : "—";
     }
     return data?.date ? new Date(data.date).toLocaleDateString() : "—";
@@ -245,6 +316,32 @@ export default function RedeemCreditModal({
       : mode === "discount"
       ? "Apply Discount"
       : "Apply Credit";
+
+  // ✅ NEW: apply a selected discount from list
+  function applySelectedDiscount(d) {
+    if (!d) return;
+
+    const v = Number(d.value || 0);
+    const type = String(d.value_type || "").toUpperCase(); // PERCENT | AMOUNT
+    if (!invBal || !v) return;
+
+    let computed = 0;
+    if (type === "PERCENT") computed = (invBal * v) / 100;
+    else computed = v;
+
+    const amt = Math.max(0, Math.min(invBal, Math.round(computed)));
+    if (amt <= 0) return;
+
+    onApply?.({
+      mode: "discount",
+      noteNo: "",
+      amount: amt,
+      code: d?.code || "",
+    });
+  }
+
+  const topThreeDiscounts = useMemo(() => discounts.slice(0, 3), [discounts]);
+  const remainingDiscounts = useMemo(() => discounts.slice(3), [discounts]);
 
   return (
     <div className="rc-overlay" role="dialog" aria-modal="true">
@@ -311,108 +408,185 @@ export default function RedeemCreditModal({
           <span className="pill">Invoice Balance: {formatAmt(invBal)}</span>
         </div>
 
-        <div className="rc-row">
-          <div className="rc-label">Scan Barcode/Type Number</div>
-          <input
-            type="text"
-            className="rc-input"
-            value={noteNo}
-            onChange={(e) => setNoteNo(e.target.value)}
-            onBlur={() => lookup(noteNo)}
-            onKeyDown={(e) => { if (e.key === "Enter") lookup(noteNo); }}
-            placeholder={placeholderText}
-            aria-invalid={Boolean(err)}
-          />
-        </div>
-
-        {/* Status pill */}
-        <div className="rc-status">
-          <span className={`pill ${unavailable ? "pill-red" : data ? "pill-green" : ""}`}>
-            Status: {statusText}
-          </span>
-        </div>
-
-        {mode === "advance" ? (
-          <>
-            <div className="rc-line"><div className="rc-k">Adv Payment Date</div><div className="rc-v">—</div></div>
-            <div className="rc-line"><div className="rc-k">Adv Payment Amt</div><div className="rc-v">—</div></div>
-            <div className="rc-line"><div className="rc-k">Amount Available</div><div className="rc-v">—</div></div>
-            <div className="rc-line"><div className="rc-k">Apply Amount</div><div className="rc-v"><input className="rc-amt" type="number" value={0} readOnly /></div></div>
-          </>
-        ) : (
-          <>
-            <div className="rc-line">
-              <div className="rc-k">
-                {mode === "coupon" ? "Coupon Date" : mode === "discount" ? "Discount Start Date" : "Credit Note Date"}
-              </div>
-              <div className="rc-v">{formatDate()}</div>
+        {/* ✅ DISCOUNT MODE: show list instead of typing */}
+        {mode === "discount" ? (
+          <div className="rc-discount-wrap">
+            <div className="rc-discount-head">
+              <div className="rc-label rc-label-tight">Available Discounts</div>
+              {discountsLoading ? <div className="rc-mini">Loading...</div> : null}
             </div>
 
-            {/* For discount, show value definition; for others show their raw amounts */}
-            {mode === "discount" ? (
+            {/* Top 3 always visible */}
+            <div className="rc-discount-list">
+              {topThreeDiscounts.map((d) => {
+                const expired = Boolean(d.__expired) || String(d.status || "").toLowerCase() !== "active";
+                return (
+                  <div className={`rc-discount-item ${expired ? "is-expired" : ""}`} key={d.id || d.code}>
+                    <div className="rc-discount-main">
+                      <div className="rc-discount-title">{d.title || d.code || "Discount"}</div>
+                      <div className="rc-discount-sub">
+                        <span className={`rc-badge ${expired ? "rc-badge-expired" : "rc-badge-active"}`}>
+                          {expired ? "Expired" : "Active"}
+                        </span>
+                        <span className="rc-discount-code">{String(d.code || "").toUpperCase()}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      className="rc-apply-btn"
+                      disabled={expired || invBal <= 0}
+                      onClick={() => applySelectedDiscount(d)}
+                      title={expired ? "Expired" : "Apply"}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                );
+              })}
+
+              {!discountsLoading && topThreeDiscounts.length === 0 && (
+                <div className="rc-empty">No discounts found.</div>
+              )}
+            </div>
+
+            {/* Remaining in scroll */}
+            {remainingDiscounts.length > 0 && (
               <>
-                <div className="rc-line">
-                  <div className="rc-k">Discount Value</div>
-                  <div className="rc-v">
-                    {String(data?.value_type).toUpperCase() === "PERCENT"
-                      ? `${Number(data?.value || 0).toFixed(2)}%`
-                      : `₹${formatAmt(data?.value || 0)}`}
-                  </div>
+                <div className="rc-more">More</div>
+                <div className="rc-discount-scroll">
+                  {remainingDiscounts.map((d) => {
+                    const expired = Boolean(d.__expired) || String(d.status || "").toLowerCase() !== "active";
+                    return (
+                      <div className={`rc-discount-item ${expired ? "is-expired" : ""}`} key={d.id || d.code}>
+                        <div className="rc-discount-main">
+                          <div className="rc-discount-title">{d.title || d.code || "Discount"}</div>
+                          <div className="rc-discount-sub">
+                            <span className={`rc-badge ${expired ? "rc-badge-expired" : "rc-badge-active"}`}>
+                              {expired ? "Expired" : "Active"}
+                            </span>
+                            <span className="rc-discount-code">{String(d.code || "").toUpperCase()}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          className="rc-apply-btn"
+                          disabled={expired || invBal <= 0}
+                          onClick={() => applySelectedDiscount(d)}
+                          title={expired ? "Expired" : "Apply"}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="rc-line">
-                  <div className="rc-k">Apply Discount</div>
-                  <div className="rc-v">
-                    <input className="rc-amt" type="number" value={applyAmount} readOnly />
-                  </div>
-                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="rc-row">
+              <div className="rc-label">Scan Barcode/Type Number</div>
+              <input
+                type="text"
+                className="rc-input"
+                value={noteNo}
+                onChange={(e) => setNoteNo(e.target.value)}
+                onBlur={() => lookup(noteNo)}
+                onKeyDown={(e) => { if (e.key === "Enter") lookup(noteNo); }}
+                placeholder={placeholderText}
+                aria-invalid={Boolean(err)}
+              />
+            </div>
+
+            {/* Status pill */}
+            <div className="rc-status">
+              <span className={`pill ${unavailable ? "pill-red" : data ? "pill-green" : ""}`}>
+                Status: {statusText}
+              </span>
+            </div>
+
+            {mode === "advance" ? (
+              <>
+                <div className="rc-line"><div className="rc-k">Adv Payment Date</div><div className="rc-v">—</div></div>
+                <div className="rc-line"><div className="rc-k">Adv Payment Amt</div><div className="rc-v">—</div></div>
+                <div className="rc-line"><div className="rc-k">Amount Available</div><div className="rc-v">—</div></div>
+                <div className="rc-line"><div className="rc-k">Apply Amount</div><div className="rc-v"><input className="rc-amt" type="number" value={0} readOnly /></div></div>
               </>
             ) : (
               <>
                 <div className="rc-line">
-                  <div className="rc-k">{mode === "coupon" ? "Coupon Value" : "Credit Amount"}</div>
-                  <div className="rc-v">{formatAmt(amountNum)}</div>
-                </div>
-                <div className="rc-line">
-                  <div className="rc-k">{mode === "coupon" ? "Coupon Available" : "Credit Available"}</div>
-                  <div className="rc-v">{formatAmt(available)}</div>
-                </div>
-                <div className="rc-line">
-                  <div className="rc-k">Apply {mode === "coupon" ? "Coupon" : "Credit"}</div>
-                  <div className="rc-v">
-                    <input className="rc-amt" type="number" value={applyAmount} readOnly />
+                  <div className="rc-k">
+                    {mode === "coupon" ? "Coupon Date" : mode === "discount" ? "Discount Start Date" : "Credit Note Date"}
                   </div>
+                  <div className="rc-v">{formatDate()}</div>
                 </div>
+
+                {mode === "discount" ? (
+                  <>
+                    <div className="rc-line">
+                      <div className="rc-k">Discount Value</div>
+                      <div className="rc-v">
+                        {String(data?.value_type).toUpperCase() === "PERCENT"
+                          ? `${Number(data?.value || 0).toFixed(2)}%`
+                          : `₹${formatAmt(data?.value || 0)}`}
+                      </div>
+                    </div>
+                    <div className="rc-line">
+                      <div className="rc-k">Apply Discount</div>
+                      <div className="rc-v">
+                        <input className="rc-amt" type="number" value={applyAmount} readOnly />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="rc-line">
+                      <div className="rc-k">{mode === "coupon" ? "Coupon Value" : "Credit Amount"}</div>
+                      <div className="rc-v">{formatAmt(amountNum)}</div>
+                    </div>
+                    <div className="rc-line">
+                      <div className="rc-k">{mode === "coupon" ? "Coupon Available" : "Credit Available"}</div>
+                      <div className="rc-v">{formatAmt(available)}</div>
+                    </div>
+                    <div className="rc-line">
+                      <div className="rc-k">Apply {mode === "coupon" ? "Coupon" : "Credit"}</div>
+                      <div className="rc-v">
+                        <input className="rc-amt" type="number" value={applyAmount} readOnly />
+                      </div>
+                    </div>
+                  </>
+                )}
               </>
             )}
+
+            <button
+              className="rc-cta"
+              disabled={loading || !data || err || unavailable || applyAmount <= 0}
+              onClick={() => {
+                if (mode === "discount") {
+                  onApply?.({
+                    mode: "discount",
+                    noteNo: "",
+                    amount: applyAmount,
+                    code: data?.code || noteNo,
+                  });
+                } else if (mode === "coupon") {
+                  onApply?.({
+                    mode: "coupon",
+                    noteNo: "",
+                    amount: applyAmount,
+                    code: data?.code || noteNo,
+                  });
+                } else {
+                  onApply?.({ mode: "credit", noteNo: data?.note_no || noteNo, amount: applyAmount });
+                }
+              }}
+            >
+              {ctaText}
+            </button>
           </>
         )}
-
-        <button
-          className="rc-cta"
-          disabled={loading || !data || err || unavailable || applyAmount <= 0}
-          onClick={() => {
-            if (mode === "discount") {
-              // Return discount as a “coupon-like” line (Footer already subtracts these)
-              onApply?.({
-                mode: "discount",
-                noteNo: "",
-                amount: applyAmount,
-                code: data?.code || noteNo,
-              });
-            } else if (mode === "coupon") {
-              onApply?.({
-                mode: "coupon",
-                noteNo: "",
-                amount: applyAmount,
-                code: data?.code || noteNo,
-              });
-            } else {
-              onApply?.({ mode: "credit", noteNo: data?.note_no || noteNo, amount: applyAmount });
-            }
-          }}
-        >
-          {ctaText}
-        </button>
       </div>
     </div>
   );
