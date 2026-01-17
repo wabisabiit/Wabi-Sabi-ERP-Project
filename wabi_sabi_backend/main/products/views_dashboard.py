@@ -3,6 +3,7 @@ from datetime import datetime, time
 
 from django.db.models import Sum, F, Q, DecimalField, ExpressionWrapper
 from django.utils.dateparse import parse_date
+from django.core.exceptions import FieldDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
@@ -27,6 +28,35 @@ def _user_location(user):
     return getattr(outlet, "location", None) if outlet else None
 
 
+def _has_created_by_field():
+    try:
+        Sale._meta.get_field("created_by")
+        return True
+    except FieldDoesNotExist:
+        return False
+
+
+def _user_outlet_id(user):
+    emp = getattr(user, "employee", None)
+    return getattr(emp, "outlet_id", None) if emp else None
+
+
+def _sale_scope_q_for_user(user):
+    """
+    Same scoping as Sales list:
+      - salesman outlet
+      - OR created_by user's employee outlet (if created_by exists)
+    """
+    outlet_id = _user_outlet_id(user)
+    if not outlet_id:
+        return Q(pk__in=[])  # none
+
+    q = Q(salesman__outlet_id=outlet_id)
+    if _has_created_by_field():
+        q = q | Q(created_by__employee__outlet_id=outlet_id)
+    return q
+
+
 def _parse_dates(request):
     df = (request.GET.get("date_from") or "").strip()
     dt = (request.GET.get("date_to") or "").strip()
@@ -34,8 +64,20 @@ def _parse_dates(request):
     dfrom = parse_date(df)
     dto = parse_date(dt)
 
+    # ✅ allow DD/MM/YYYY too (frontend picker sometimes sends this)
+    if not dfrom:
+        try:
+            dfrom = datetime.strptime(df, "%d/%m/%Y").date()
+        except Exception:
+            dfrom = None
+    if not dto:
+        try:
+            dto = datetime.strptime(dt, "%d/%m/%Y").date()
+        except Exception:
+            dto = None
+
     if not dfrom or not dto:
-      # date filter is mandatory
+        # date filter is mandatory
         return None, None
 
     start_dt = datetime.combine(dfrom, time.min)
@@ -49,7 +91,7 @@ class DashboardSummaryView(APIView):
 
     Scoping:
       - Admin/superuser: all outlets
-      - Manager/outlet: only their outlet location
+      - Manager/outlet: only their outlet
 
     Uses date range for every metric.
     """
@@ -69,45 +111,37 @@ class DashboardSummaryView(APIView):
         loc = None if is_admin else _user_location(user)
 
         # ---------- Total Sales Return / Total Purchase / Purchase Qty ----------
-        # Definition: sum of MasterPack totals created by outlet (manager) or all (admin)
-        # We scope by MasterPackLine.location == outlet location (same-location packing flow)
         mp_qs = MasterPack.objects.filter(created_at__range=(start_dt, end_dt))
 
         if loc:
             mp_qs = mp_qs.filter(lines__location=loc).distinct()
 
         total_sales_return = mp_qs.aggregate(x=Sum("amount_total"))["x"] or 0
-        total_purchase = total_sales_return  # you asked: same as sales return
+        total_purchase = total_sales_return
         purchase_qty = (
             MasterPackLine.objects.filter(pack__in=mp_qs).aggregate(x=Sum("qty"))["x"] or 0
         )
 
         # ---------- Total Receive ----------
-        # Definition: sum of CreditNote.amount generated in outlet; admin sees all
         cn_qs = CreditNote.objects.filter(date__range=(start_dt, end_dt))
         if loc:
-            # include legacy nulls only if you want; currently we limit to exact outlet location
             cn_qs = cn_qs.filter(Q(location=loc) | Q(location__isnull=True))
         total_receive = cn_qs.aggregate(x=Sum("amount"))["x"] or 0
 
-        # ---------- Total Bills ----------
-        # FIX: bills should be COUNT (not sum of totals)
+        # ---------- Total Bills / Total Sales ----------
         sales_qs = Sale.objects.filter(transaction_date__range=(start_dt, end_dt))
-        if loc:
-            # your sales scoping uses store contains location code
-            sales_qs = sales_qs.filter(store__icontains=loc.code)
+
+        # ✅ FIX: manager scope by outlet (NOT store__icontains)
+        if not is_admin:
+            sales_qs = sales_qs.filter(_sale_scope_q_for_user(user))
 
         total_bills = sales_qs.count()
-
-        # ✅ NEW: Total Sales (needed because Gross Profit = Total Sales)
         total_sales = sales_qs.aggregate(x=Sum("grand_total"))["x"] or 0
 
         # ---------- Total Suppliers ----------
-        # Total outlets excluding HQ (best-effort without changing your outlet models)
         total_suppliers = 0
         try:
-            from outlets.models import Outlet  # if exists
-            # exclude HQ-like outlets by name/code heuristic
+            from outlets.models import Outlet
             qs_out = Outlet.objects.select_related("location").all()
             qs_out = qs_out.exclude(
                 Q(location__code__iexact="HQ")
@@ -116,15 +150,12 @@ class DashboardSummaryView(APIView):
             )
             total_suppliers = qs_out.count()
         except Exception:
-            # fallback: locations excluding HQ-like
             qs_loc = Location.objects.all().exclude(
                 Q(code__iexact="HQ") | Q(name__icontains="head")
             )
             total_suppliers = qs_loc.count()
 
         # ---------- Total Products (inventory amount) ----------
-        # Definition: sum of amount of active inventory in branch
-        # Use selling_price * qty where qty > 0
         prod_qs = Product.objects.all()
         if loc:
             prod_qs = prod_qs.filter(location=loc)
@@ -143,13 +174,12 @@ class DashboardSummaryView(APIView):
         )
 
         # ---------- Cash in hand ----------
-        # FIX: your DB has method values like "Cash", not "CASH"
         cash_qs = SalePayment.objects.filter(
             sale__transaction_date__range=(start_dt, end_dt),
             method__iexact="cash",
         )
-        if loc:
-            cash_qs = cash_qs.filter(sale__store__icontains=loc.code)
+        if not is_admin:
+            cash_qs = cash_qs.filter(sale__in=sales_qs)
 
         cash_in_hand = cash_qs.aggregate(x=Sum("amount"))["x"] or 0
 
@@ -158,12 +188,11 @@ class DashboardSummaryView(APIView):
             cash_in_hand = fallback_sales.aggregate(x=Sum("grand_total"))["x"] or 0
 
         # ---------- Sold Qty ----------
-        # Definition you gave: sold quantities = number of products sold from inventory means product.qty == 0
         sl_qs = SaleLine.objects.filter(
             sale__transaction_date__range=(start_dt, end_dt)
         )
-        if loc:
-            sl_qs = sl_qs.filter(sale__store__icontains=loc.code)
+        if not is_admin:
+            sl_qs = sl_qs.filter(sale__in=sales_qs)
 
         sold_qs = sl_qs.filter(product__qty=0)
         if loc:
@@ -172,7 +201,6 @@ class DashboardSummaryView(APIView):
         sold_qty = sold_qs.aggregate(x=Sum("qty"))["x"] or 0
 
         # ---------- Gross Profit ----------
-        # Definition you gave now: Gross Profit = Total Sales
         gross_profit = total_sales
 
         return Response(
@@ -193,8 +221,6 @@ class DashboardSummaryView(APIView):
                 "gross_profit": gross_profit,
 
                 "purchase_qty": purchase_qty,
-
-                # ✅ NEW
                 "sold_qty": sold_qty,
             },
             status=status.HTTP_200_OK,

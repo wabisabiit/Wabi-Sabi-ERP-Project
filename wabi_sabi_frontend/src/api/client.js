@@ -614,9 +614,28 @@ export async function getRegisterClosingSummary() {
 }
 
 // ✅ NEW: Dashboard Summary endpoint
+// ✅ NEW: Dashboard Summary endpoint
 export async function dashboardSummary(params = {}) {
-  return http(`/dashboard/summary/${buildQuery(params)}`);
+  // normalize Date objects to YYYY-MM-DD (so backend can filter correctly)
+  const fixed = { ...(params || {}) };
+
+  const toYMD = (d) => {
+    const dt = (d instanceof Date) ? d : new Date(d);
+    if (Number.isNaN(dt.getTime())) return String(d || "").trim();
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  // support common keys without breaking existing code
+  ["date_from", "date_to", "from", "to", "start", "end"].forEach((k) => {
+    if (fixed[k] instanceof Date) fixed[k] = toYMD(fixed[k]);
+  });
+
+  return http(`/dashboard/summary/${buildQuery(fixed)}`);
 }
+
 
 /* ========= Optional convenience default export ========= */
 export default {
@@ -716,5 +735,5 @@ export default {
   productsCsvApply,
 
   // ✅ NEW
-  dashboardSummary,
+  dashboardSummary,a
 };

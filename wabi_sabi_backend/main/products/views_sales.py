@@ -74,9 +74,20 @@ class SalesView(APIView):
         """
         qs = Sale.objects.select_related("customer")
 
-        # ✅ only add created_by if field exists in DB/model
         if _has_created_by_field():
             qs = qs.select_related("created_by")
+
+        # ✅ FIX: manager/staff should only see their outlet sales
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated and not user.is_superuser:
+            emp = _get_employee(user)
+            if emp and emp.outlet_id:
+                outlet_q = Q(salesman__outlet_id=emp.outlet_id)
+                if _has_created_by_field():
+                    outlet_q = outlet_q | Q(created_by__employee__outlet_id=emp.outlet_id)
+                qs = qs.filter(outlet_q)
+            else:
+                qs = qs.none()
 
         qs = qs.order_by("-id")
 
@@ -110,6 +121,5 @@ class SalesView(APIView):
         ser = SaleCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
 
-        # pass created_by into serializer.create()
         payload = ser.save(created_by=created_by_user)
         return Response(payload, status=status.HTTP_201_CREATED)
