@@ -32,18 +32,29 @@ class HoldBillView(APIView):
             return getattr(emp.outlet, "location", None)
         return None
 
-    def get(self, request):
-        user = request.user
-
-        qs = HoldBill.objects.filter(is_active=True)
-
-        # Manager: only their location
+    def _is_admin_user(self, user):
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
         emp = getattr(user, "employee", None)
         role = getattr(emp, "role", "") if emp else ""
-        if not user.is_superuser and role != "ADMIN":
+        return role == "ADMIN"
+
+    def get(self, request):
+        user = request.user
+        qs = HoldBill.objects.filter(is_active=True)
+
+        # ✅ Admin sees all locations
+        if not self._is_admin_user(user):
+            # ✅ Manager/staff must have a location and only see that location
             loc = self._user_location(user)
-            if loc:
-                qs = qs.filter(location=loc)
+            if not loc:
+                return Response(
+                    {"ok": False, "message": "No location assigned to this user."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(location=loc)
 
         data = []
         for idx, hb in enumerate(qs.order_by("-created_at"), start=1):
@@ -74,7 +85,11 @@ class HoldBillView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        loc = self._user_location(request.user)
+        user = request.user
+
+        # ✅ Admin CAN create too, but still needs an explicit location from their profile
+        # (keeping your existing behavior: uses _user_location only)
+        loc = self._user_location(user)
         if not loc:
             return Response(
                 {"ok": False, "message": "No location assigned to this user."},
@@ -134,8 +149,36 @@ class HoldBillRestore(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    def _user_location(self, user):
+        emp = getattr(user, "employee", None)
+        if emp and getattr(emp, "outlet", None):
+            return getattr(emp.outlet, "location", None)
+        return None
+
+    def _is_admin_user(self, user):
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        emp = getattr(user, "employee", None)
+        role = getattr(emp, "role", "") if emp else ""
+        return role == "ADMIN"
+
     def post(self, request, number):
-        bill = get_object_or_404(HoldBill, number=number, is_active=True)
+        user = request.user
+
+        # ✅ Admin can restore any hold bill (all locations)
+        if self._is_admin_user(user):
+            bill = get_object_or_404(HoldBill, number=number, is_active=True)
+        else:
+            # ✅ Manager/staff can restore only their location
+            loc = self._user_location(user)
+            if not loc:
+                return Response(
+                    {"ok": False, "message": "No location assigned to this user."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            bill = get_object_or_404(HoldBill, number=number, is_active=True, location=loc)
 
         bill.is_active = False
         bill.save(update_fields=["is_active"])
