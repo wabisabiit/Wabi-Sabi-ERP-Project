@@ -1,6 +1,7 @@
+// src/components/CreditNoteModal.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import "../styles/CreditNoteModal.css";
-import { listCreditNotes } from "../api/client";
+import { listCreditNotes, deleteCreditNote } from "../api/client";
 
 export default function CreditNoteModal({ open, onClose }) {
   // lock background scroll while open
@@ -31,15 +32,22 @@ export default function CreditNoteModal({ open, onClose }) {
   const fetchNotes = async () => {
     setLoading(true);
     try {
-      const res = await listCreditNotes({
+      const params = {
         page,
         page_size: pageSize,
         query: search.trim() || undefined,
-      });
+      };
+
+      console.debug("[CreditNoteModal] listCreditNotes params:", params);
+
+      const res = await listCreditNotes(params);
+
+      console.debug("[CreditNoteModal] listCreditNotes response:", res);
+
       setRows(res?.results || []);
       setTotal(res?.total || 0);
     } catch (e) {
-      console.error("Failed to load credit notes:", e);
+      console.error("[CreditNoteModal] Failed to load credit notes:", e);
       setRows([]);
       setTotal(0);
     } finally {
@@ -77,10 +85,36 @@ export default function CreditNoteModal({ open, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total, page, pageSize, rows.length]);
 
+  const handleDelete = async (noteNo) => {
+    const safe = String(noteNo || "").trim();
+    if (!safe) return;
+
+    const ok = window.confirm(`Delete credit note ${safe}? This cannot be undone.`);
+    if (!ok) return;
+
+    console.debug("[CreditNoteModal] deleteCreditNote note_no:", safe);
+
+    try {
+      await deleteCreditNote(safe);
+      console.debug("[CreditNoteModal] deleteCreditNote success:", safe);
+
+      // keep page stable if possible
+      await fetchNotes();
+    } catch (e) {
+      console.error("[CreditNoteModal] deleteCreditNote failed:", e);
+      alert("Failed to delete credit note.");
+    }
+  };
+
   if (!open) return null;
 
   return (
-    <div className="cn-overlay" role="dialog" aria-modal="true" aria-label="Credit Note Details">
+    <div
+      className="cn-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Credit Note Details"
+    >
       <div className="cn-card">
         {/* Header */}
         <div className="cn-header">
@@ -138,13 +172,31 @@ export default function CreditNoteModal({ open, onClose }) {
             <table className="cn-table">
               <thead>
                 <tr>
-                  <th>Sr.<br />No.</th>
-                  <th>Credit<br />Note No.</th>
+                  <th>
+                    Sr.<br />
+                    No.
+                  </th>
+                  <th>
+                    Credit<br />
+                    Note No.
+                  </th>
                   <th>Date</th>
-                  <th>Customer<br />Name</th>
-                  <th>Total<br />Amount</th>
-                  <th>Credits<br />Used</th>
-                  <th>Credits<br />Remaining</th>
+                  <th>
+                    Customer<br />
+                    Name
+                  </th>
+                  <th>
+                    Total<br />
+                    Amount
+                  </th>
+                  <th>
+                    Credits<br />
+                    Used
+                  </th>
+                  <th>
+                    Credits<br />
+                    Remaining
+                  </th>
                   <th>Created By</th>
                   <th>Action</th>
                 </tr>
@@ -159,20 +211,88 @@ export default function CreditNoteModal({ open, onClose }) {
                     <td colSpan={9}>No data available in table</td>
                   </tr>
                 ) : (
-                  rows.map((r, i) => (
-                    <tr key={r.id || r.note_no}>
-                      <td>{(page - 1) * pageSize + i + 1}</td>
-                      <td>{r.note_no}</td>
-                      <td>{fmtDate(r.date)}</td>
-                      <td>{r.customer_name}</td>
-                      <td>{Number(r.amount || 0).toFixed(2)}</td>
-                      {/* Leave these blank for now */}
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                    </tr>
-                  ))
+                  rows.map((r, i) => {
+                    const totalAmt = Number(r?.amount || 0);
+
+                    const usedAmt = Number(
+                      r?.redeemed_amount ??
+                        r?.credits_used ??
+                        r?.used_amount ??
+                        0
+                    );
+
+                    const remainingAmt = Number(
+                      r?.credits_remaining ??
+                        r?.remaining ??
+                        Math.max(0, totalAmt - usedAmt)
+                    );
+
+                    const isUsed =
+                      Boolean(r?.is_redeemed) ||
+                      String(r?.status || "").toLowerCase().includes("used") ||
+                      String(r?.status || "").toLowerCase().includes("not") ||
+                      remainingAmt <= 0;
+
+                    const createdBy =
+                      r?.created_by_name ||
+                      r?.created_by ||
+                      r?.created_by_username ||
+                      r?.createdBy ||
+                      "";
+
+                    return (
+                      <tr key={r.id || r.note_no}>
+                        <td>{(page - 1) * pageSize + i + 1}</td>
+                        <td>{r.note_no}</td>
+                        <td>{fmtDate(r.date)}</td>
+                        <td>{r.customer_name}</td>
+                        <td>{totalAmt.toFixed(2)}</td>
+
+                        <td>{usedAmt.toFixed(2)}</td>
+
+                        <td>
+                          {remainingAmt.toFixed(2)}
+                          {/* status indicator (green=active, red=used) */}
+                          <div style={{ marginTop: 4 }}>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "#fff",
+                                background: isUsed ? "#d32f2f" : "#2e7d32",
+                              }}
+                            >
+                              {isUsed ? "USED" : "ACTIVE"}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td>{createdBy || "-"}</td>
+
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(r.note_no)}
+                            title="Delete"
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 6,
+                              border: "1px solid #d32f2f",
+                              background: "#fff",
+                              color: "#d32f2f",
+                              cursor: "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -190,7 +310,9 @@ export default function CreditNoteModal({ open, onClose }) {
               >
                 ‹
               </button>
-              <span style={{ padding: "0 8px" }}>{page} / {totalPages}</span>
+              <span style={{ padding: "0 8px" }}>
+                {page} / {totalPages}
+              </span>
               <button
                 className="cn-page"
                 title="Next"
