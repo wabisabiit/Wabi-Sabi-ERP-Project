@@ -36,43 +36,43 @@ export default function MultiplePay({
   const banks = ["AXIS BANK UDYOG VIHAR", "SBI", "HDFC", "Punjab National Bank"];
   const upiApps = ["Google Pay", "Paytm", "PhonePe", "Amazon Pay"];
 
-  // ===== Totals aligned with backend validation =====
+  // ===== Totals aligned with POS (use discounted payable, NOT MRP sum) =====
   const totals = useMemo(() => {
     const items = cart.items || [];
-    const sum = items.reduce((acc, it) => {
+
+    // 1) Prefer POS-passed payable (includes discounts/coupon/credit effects already applied)
+    const passedPayable = Number(cart.amount);
+    const hasPassedPayable = Number.isFinite(passedPayable) && passedPayable > 0;
+
+    // 2) Fallback: sum discounted line totals (netAmount / priceAfterDiscount), NEVER MRP
+    const itemsSum = items.reduce((acc, it) => {
       const qty = Number(it.qty ?? 1) || 1;
 
-      const lineFromFooter = Number(it.netAmount ?? it.amount ?? NaN);
-      if (Number.isFinite(lineFromFooter) && lineFromFooter > 0) {
-        return acc + lineFromFooter;
-      }
+      // strongest: explicit line net (already discounted)
+      const lineNet = Number(it.netAmount ?? it.amount ?? NaN);
+      if (Number.isFinite(lineNet) && lineNet >= 0) return acc + lineNet;
 
-      const candidates = [
-        Number(it.sellingPrice),
-        Number(it.sp),
-        Number(it.selling_price),
-        Number(it.priceAfterDiscount),
-        Number(it.discountedPrice),
-        Number(it.unitPrice),
-        Number(it.unit_price),
-        Number(it.price),
-      ].filter((v) => Number.isFinite(v) && v > 0);
+      // next: discounted unit
+      const unitNet = Number(
+        it.priceAfterDiscount ??
+          it.discountedPrice ??
+          it.unitCost ??
+          it.unit_cost ??
+          it.sellingPrice ??
+          it.sp ??
+          it.selling_price ??
+          it.unitPrice ??
+          it.unit_price ??
+          it.price ??
+          0
+      );
 
-      const mrpNum = Number(it.mrp) || 0;
-      let unit = candidates.length ? candidates[0] : 0;
-
-      if (!unit) {
-        const line = Number(it.netAmount ?? it.amount ?? 0) || 0;
-        unit = qty > 0 ? line / qty : 0;
-      }
-
-      if (!unit && mrpNum) unit = mrpNum;
-      if (mrpNum && unit > mrpNum) unit = mrpNum;
-
-      return acc + qty * (Number.isFinite(unit) ? unit : 0);
+      const safeUnit = Number.isFinite(unitNet) ? unitNet : 0;
+      return acc + qty * safeUnit;
     }, 0);
 
-    const total = +sum.toFixed(2);
+    const total = +(hasPassedPayable ? passedPayable : itemsSum).toFixed(2);
+
     return {
       taxAmount: 0,
       total,
@@ -102,6 +102,7 @@ export default function MultiplePay({
       cardTxnNo: "",
     },
   ]);
+
   const totalReceived = payments.reduce(
     (s, p) => s + (parseFloat(p.amount) || 0),
     0
@@ -124,8 +125,10 @@ export default function MultiplePay({
       },
     ]);
   };
+
   const removePayment = (id) =>
     setPayments((p) => (p.length > 1 ? p.filter((x) => x.id !== id) : p));
+
   const update = (id, patch) =>
     setPayments((p) =>
       p.map((row) => (row.id === id ? { ...row, ...patch } : row))
@@ -135,7 +138,6 @@ export default function MultiplePay({
   const [banner, setBanner] = useState(null); // {type:'success'|'error', text}
   const [busy, setBusy] = useState(false);
 
-  // Small helper to show popup
   const showBanner = (type, text) => {
     setBanner({ type, text });
   };
@@ -160,12 +162,23 @@ export default function MultiplePay({
     }
 
     // Build lines by barcode for server lookup
+    // ✅ Keep discounts if they were passed in cart items (discount_amount = total for line)
     const lines = (cart.items || [])
       .map((it) => {
         const code =
           it.barcode ?? it.itemCode ?? it.itemcode ?? it.code ?? it.id ?? "";
         const qty = Number(it.qty ?? 1) || 1;
-        return code ? { barcode: String(code), qty } : null;
+
+        if (!code) return null;
+
+        const discAmt = Number(it.discount_amount ?? 0) || 0;
+
+        return {
+          barcode: String(code),
+          qty,
+          discount_percent: 0,
+          discount_amount: Number.isFinite(discAmt) ? +discAmt.toFixed(2) : 0,
+        };
       })
       .filter(Boolean);
 
@@ -279,10 +292,7 @@ export default function MultiplePay({
   return (
     <div className="mp-layout">
       <header className="mp-topbar">
-        <button
-          className="mp-back"
-          onClick={onBack || (() => navigate(-1))}
-        >
+        <button className="mp-back" onClick={onBack || (() => navigate(-1))}>
           ⟵ Back to Sale
         </button>
         <div />
@@ -494,7 +504,6 @@ export default function MultiplePay({
             )}
           </div>
 
-          {/* ✅ Proceed button with spinner */}
           <button
             style={{ backgroundColor: "black", color: "white" }}
             className="mp-proceed"
@@ -505,7 +514,6 @@ export default function MultiplePay({
             <span>{busy ? "Processing Payment..." : "Proceed To Pay →"}</span>
           </button>
 
-          {/* ✅ Popup (toast) for success / error */}
           {banner && (
             <div
               className={`mp-banner ${
