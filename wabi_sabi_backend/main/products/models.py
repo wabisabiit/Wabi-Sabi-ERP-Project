@@ -288,17 +288,22 @@ class CreditNoteSequence(models.Model):
             seq.save(update_fields=["next_number"])
             return f"{prefix}{str(num).zfill(seq.pad_width)}"
 
-
 class CreditNote(models.Model):
     """
-    One row per product that reached qty==0 due to a successful sale.
+    Credit note that can be redeemed partially or fully.
+    UI expects:
+      - total amount = amount
+      - credits used = redeemed_amount
+      - remaining = amount - redeemed_amount
+      - status = AVAILABLE / USED
+      - created_by shown as username
     """
-    note_no         = models.CharField(max_length=32, unique=True, db_index=True)
-    sale            = models.ForeignKey('Sale', on_delete=models.PROTECT, related_name='credit_notes')
-    customer        = models.ForeignKey('Customer', on_delete=models.PROTECT, related_name='credit_notes')
+    note_no = models.CharField(max_length=32, unique=True, db_index=True)
+    sale = models.ForeignKey("Sale", on_delete=models.PROTECT, related_name="credit_notes")
+    customer = models.ForeignKey("Customer", on_delete=models.PROTECT, related_name="credit_notes")
 
-    # 🔵 NEW: location for outlet-based scoping
-    location        = models.ForeignKey(
+    # location scoping
+    location = models.ForeignKey(
         Location,
         on_delete=models.PROTECT,
         related_name="credit_notes",
@@ -307,47 +312,58 @@ class CreditNote(models.Model):
     )
 
     date = models.DateTimeField(default=timezone.now)
-    product         = models.ForeignKey('Product', on_delete=models.PROTECT)
-    barcode         = models.CharField(max_length=64, db_index=True)
-    qty             = models.PositiveIntegerField(default=1)  # always 1 as requested
-    amount          = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # product.selling_price
-    created_at      = models.DateTimeField(auto_now_add=True)
-    note_date       = models.DateTimeField()  # equal to sale.transaction_date
-    is_redeemed     = models.BooleanField(default=False)
-    redeemed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    redeemed_at     = models.DateTimeField(null=True, blank=True)
-    redeemed_invoice= models.CharField(max_length=32, blank=True, default="")
 
-    ...
-    """
-    One row per product that reached qty==0 due to a successful sale.
-    """
-    note_no         = models.CharField(max_length=32, unique=True, db_index=True)
-    sale            = models.ForeignKey('Sale', on_delete=models.PROTECT, related_name='credit_notes')
-    customer        = models.ForeignKey('Customer', on_delete=models.PROTECT, related_name='credit_notes')
-    date = models.DateTimeField(default=timezone.now)
-    product         = models.ForeignKey('Product', on_delete=models.PROTECT)
-    barcode         = models.CharField(max_length=64, db_index=True)
-    qty             = models.PositiveIntegerField(default=1)  # always 1 as requested
-    amount          = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # product.selling_price
-    created_at      = models.DateTimeField(auto_now_add=True)
-    note_date       = models.DateTimeField()  # equal to sale.transaction_date
-    is_redeemed     = models.BooleanField(default=False)          # ⬅️ NEW
-    redeemed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # ⬅️ NEW
-    redeemed_at     = models.DateTimeField(null=True, blank=True) # ⬅️ NEW
-    redeemed_invoice= models.CharField(max_length=32, blank=True, default="")         # ⬅️ NEW
+    product = models.ForeignKey("Product", on_delete=models.PROTECT)
+    barcode = models.CharField(max_length=64, db_index=True)
+    qty = models.PositiveIntegerField(default=1)
+
+    # total credit value
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    note_date = models.DateTimeField()
+
+    # redemption tracking (supports partial usage)
+    is_redeemed = models.BooleanField(default=False)
+    redeemed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    redeemed_at = models.DateTimeField(null=True, blank=True)
+    redeemed_invoice = models.CharField(max_length=32, blank=True, default="")
+
+    # ✅ created by (same as Sale.created_by)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="credit_notes_created",
+    )
 
     class Meta:
         ordering = ["-note_date", "-id"]
-        indexes  = [models.Index(fields=["barcode"])]
+        indexes = [models.Index(fields=["barcode"])]
 
     def __str__(self):
         return self.note_no
 
+    @property
+    def credits_remaining(self):
+        rem = (self.amount or 0) - (self.redeemed_amount or 0)
+        return rem if rem > 0 else 0
+
+    @property
+    def status(self):
+        return "USED" if self.credits_remaining <= 0 else "AVAILABLE"
+
     def save(self, *args, **kwargs):
         if not self.note_no:
             self.note_no = CreditNoteSequence.next_no(prefix="CRN")
+
+        # ✅ auto fill created_by from sale if missing
+        if not self.created_by_id and self.sale_id and getattr(self.sale, "created_by_id", None):
+            self.created_by_id = self.sale.created_by_id
+
         super().save(*args, **kwargs)
+
 
 
 class MasterPack(models.Model):

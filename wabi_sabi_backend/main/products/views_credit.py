@@ -1,15 +1,13 @@
 # products/views_credit.py
 from datetime import datetime
 
-from django.db import transaction, DatabaseError
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from taskmaster.models import Location
-from outlets.models import Employee
 from .models import CreditNote
 from .serializers_credit import CreditNoteListSerializer
 
@@ -39,21 +37,19 @@ class CreditNoteView(APIView):
         return None
 
     def get(self, request):
-        qs = CreditNote.objects.select_related("customer").order_by("-date", "-id")
+        # ✅ include created_by for Created By column
+        qs = CreditNote.objects.select_related("customer", "created_by").order_by("-date", "-id")
 
         user = request.user
         emp = getattr(user, "employee", None)
         role = getattr(emp, "role", "") if emp else ""
 
-        # 🔹 HQ / Admin see all locations
-        # 🔹 Others are restricted to their own location (+ legacy notes without location)
+        # HQ / Admin see all locations
+        # Others are restricted to their own location (+ legacy notes without location)
         if not user.is_superuser and role != "ADMIN":
             loc = self._user_location(user)
             if loc:
-                # Manager: credit notes of their own location OR old notes where location is null
                 qs = qs.filter(Q(location=loc) | Q(location__isnull=True))
-
-        # -------------- existing filters --------------
 
         # text query
         q = (request.GET.get("query") or "").strip()
@@ -76,12 +72,9 @@ class CreditNoteView(APIView):
         if start:
             qs = qs.filter(date__gte=start)
         if end:
-            # include the whole day if only a date is passed (no time)
             if end.hour == 0 and end.minute == 0 and end.second == 0:
                 qs = qs.filter(
-                    date__lt=end.replace(
-                        hour=23, minute=59, second=59, microsecond=999999
-                    )
+                    date__lt=end.replace(hour=23, minute=59, second=59, microsecond=999999)
                 )
             else:
                 qs = qs.filter(date__lte=end)
@@ -104,12 +97,7 @@ class CreditNoteView(APIView):
         if want_all:
             data = CreditNoteListSerializer(qs, many=True).data
             return Response(
-                {
-                    "results": data,
-                    "total": len(data),
-                    "page": 1,
-                    "page_size": len(data),
-                },
+                {"results": data, "total": len(data), "page": 1, "page_size": len(data)},
                 status=status.HTTP_200_OK,
             )
 
@@ -130,12 +118,7 @@ class CreditNoteView(APIView):
 
         data = CreditNoteListSerializer(items, many=True).data
         return Response(
-            {
-                "results": data,
-                "total": total,
-                "page": page,
-                "page_size": page_size,
-            },
+            {"results": data, "total": total, "page": page, "page_size": page_size},
             status=status.HTTP_200_OK,
         )
 
@@ -149,9 +132,7 @@ class CreditNoteDetail(APIView):
     def get(self, request, note_no: str):
         note_no = (note_no or "").strip()
         try:
-            cn = CreditNote.objects.select_related("customer").get(
-                note_no__iexact=note_no
-            )
+            cn = CreditNote.objects.select_related("customer", "created_by").get(note_no__iexact=note_no)
         except CreditNote.DoesNotExist:
             return Response(
                 {"ok": False, "msg": "Credit note not found."},
@@ -166,6 +147,9 @@ class CreditNoteDetail(APIView):
             "amount": str(cn.amount),
             "is_redeemed": bool(cn.is_redeemed),
             "redeemed_amount": str(cn.redeemed_amount),
+            "credits_remaining": str(cn.credits_remaining),
+            "status": cn.status,
+            "created_by": getattr(cn.created_by, "username", "") if cn.created_by_id else "",
         }
         return Response(data, status=status.HTTP_200_OK)
 
@@ -173,7 +157,7 @@ class CreditNoteDetail(APIView):
 class CreditNoteRedeem(APIView):
     """
     POST /api/credit-notes/<note_no>/redeem/
-    body: { "invoice_no": "TRANS0007", "amount": 123.45 }
+    body: { "invoice_no": "INV82", "amount": 123.45 }
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -182,19 +166,11 @@ class CreditNoteRedeem(APIView):
         note_no = (note_no or "").strip()
 
         try:
-            cn = CreditNote.objects.select_for_update().get(
-                note_no__iexact=note_no
-            )
+            cn = CreditNote.objects.select_for_update().get(note_no__iexact=note_no)
         except CreditNote.DoesNotExist:
             return Response(
                 {"ok": False, "msg": "Credit note not found."},
                 status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if cn.is_redeemed:
-            return Response(
-                {"ok": False, "msg": "Credit note already redeemed."},
-                status=status.HTTP_409_CONFLICT,
             )
 
         try:
@@ -212,28 +188,33 @@ class CreditNoteRedeem(APIView):
             )
 
         total = float(cn.amount or 0)
-        if amt - total > 1e-6:
+        used = float(cn.redeemed_amount or 0)
+        remaining = total - used
+
+        if remaining <= 0:
             return Response(
-                {"ok": False, "msg": "Amount exceeds credit note value."},
+                {"ok": False, "msg": "Credit note already fully used."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if amt - remaining > 1e-6:
+            return Response(
+                {"ok": False, "msg": "Amount exceeds remaining credit note value."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # mark redeemed
-        cn.is_redeemed = True
-        cn.redeemed_amount = amt
+        # ✅ accumulate redemption (partial allowed)
+        cn.redeemed_amount = (cn.redeemed_amount or 0) + amt
         cn.redeemed_at = timezone.now()
         cn.redeemed_invoice = (request.data.get("invoice_no") or "").strip()
-        cn.save(
-            update_fields=[
-                "is_redeemed",
-                "redeemed_amount",
-                "redeemed_at",
-                "redeemed_invoice",
-            ]
-        )
+
+        # ✅ mark fully redeemed only when remaining becomes 0
+        cn.is_redeemed = (float(cn.amount or 0) - float(cn.redeemed_amount or 0)) <= 1e-6
+
+        cn.save(update_fields=["is_redeemed", "redeemed_amount", "redeemed_at", "redeemed_invoice"])
 
         return Response(
-            {"ok": True, "msg": "Credit note redeemed."},
+            {"ok": True, "msg": "Credit note redeemed.", "remaining": str(cn.credits_remaining), "status": cn.status},
             status=status.HTTP_200_OK,
         )
 
@@ -271,7 +252,6 @@ class CreditNoteDelete(APIView):
         # HQ (superuser / ADMIN) -> can delete anything
         if not user.is_superuser and role != "ADMIN":
             loc = self._user_location(user)
-            # if credit note is linked to a location and it doesn't match manager's location → block
             if cn.location_id and loc and cn.location_id != loc.id:
                 return Response(
                     {"ok": False, "msg": "Not allowed to delete this credit note."},
