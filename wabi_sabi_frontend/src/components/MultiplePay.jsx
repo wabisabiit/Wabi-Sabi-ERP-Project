@@ -1,10 +1,20 @@
+// src/components/MultiplePay.jsx
 import React, { useMemo, useState } from "react";
 import "../styles/MultiplePay.css";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createSale, getSelectedCustomer, clearSelectedCustomer } from "../api/client";
+import {
+  createSale,
+  getSelectedCustomer,
+  clearSelectedCustomer,
+} from "../api/client";
 
 export default function MultiplePay({
-  cart: cartProp = { customerType: "Walk In Customer", items: [], roundoff: 0, amount: 0 },
+  cart: cartProp = {
+    customerType: "Walk In Customer",
+    items: [],
+    roundoff: 0,
+    amount: 0,
+  },
   onBack,
   onProceed,
   redirectPath = "/new",
@@ -73,10 +83,29 @@ export default function MultiplePay({
 
   // ===== Payment rows UI =====
   const [payments, setPayments] = useState([
-    { id: 1, method: "Cash", channel: "Cash", account: "", amount: "", cardHolder: "", cardTxnNo: "" },
-    { id: 2, method: "Card", channel: "Card", account: banks[0], amount: "", cardHolder: "", cardTxnNo: "" },
+    {
+      id: 1,
+      method: "Cash",
+      channel: "Cash",
+      account: "",
+      amount: "",
+      cardHolder: "",
+      cardTxnNo: "",
+    },
+    {
+      id: 2,
+      method: "Card",
+      channel: "Card",
+      account: banks[0],
+      amount: "",
+      cardHolder: "",
+      cardTxnNo: "",
+    },
   ]);
-  const totalReceived = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const totalReceived = payments.reduce(
+    (s, p) => s + (parseFloat(p.amount) || 0),
+    0
+  );
   const remaining = +(totals.payableAmount - totalReceived).toFixed(2);
   const overpay = Math.max(0, -remaining);
 
@@ -84,13 +113,23 @@ export default function MultiplePay({
     const id = (payments.at(-1)?.id || 0) + 1;
     setPayments((p) => [
       ...p,
-      { id, method: "Card", channel: "Card", account: banks[0], amount: "", cardHolder: "", cardTxnNo: "" },
+      {
+        id,
+        method: "Card",
+        channel: "Card",
+        account: banks[0],
+        amount: "",
+        cardHolder: "",
+        cardTxnNo: "",
+      },
     ]);
   };
   const removePayment = (id) =>
     setPayments((p) => (p.length > 1 ? p.filter((x) => x.id !== id) : p));
   const update = (id, patch) =>
-    setPayments((p) => p.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setPayments((p) =>
+      p.map((row) => (row.id === id ? { ...row, ...patch } : row))
+    );
 
   // ===== UX state =====
   const [banner, setBanner] = useState(null); // {type:'success'|'error', text}
@@ -113,7 +152,9 @@ export default function MultiplePay({
     }
 
     // Must equal backend total
-    if (Math.round(totalReceived * 100) !== Math.round(totals.payableAmount * 100)) {
+    if (
+      Math.round(totalReceived * 100) !== Math.round(totals.payableAmount * 100)
+    ) {
       showBanner("error", "Payments total must equal payable amount.");
       return;
     }
@@ -121,7 +162,8 @@ export default function MultiplePay({
     // Build lines by barcode for server lookup
     const lines = (cart.items || [])
       .map((it) => {
-        const code = it.barcode ?? it.itemCode ?? it.itemcode ?? it.code ?? it.id ?? "";
+        const code =
+          it.barcode ?? it.itemCode ?? it.itemcode ?? it.code ?? it.id ?? "";
         const qty = Number(it.qty ?? 1) || 1;
         return code ? { barcode: String(code), qty } : null;
       })
@@ -166,7 +208,10 @@ export default function MultiplePay({
           taxAmount: totals.taxAmount,
           roundoff: totals.roundoff,
           payableAmount: totals.payableAmount,
-          payments: payments.map((p) => ({ ...p, amount: +(parseFloat(p.amount) || 0).toFixed(2) })),
+          payments: payments.map((p) => ({
+            ...p,
+            amount: +(parseFloat(p.amount) || 0).toFixed(2),
+          })),
           remaining: remaining > 0 ? remaining : 0,
           payload,
         }));
@@ -183,9 +228,10 @@ export default function MultiplePay({
 
       const res = await createSale(payload);
 
-      const firstRef = Array.isArray(res?.payments) && res.payments.length
-        ? (res.payments[0].reference || "")
-        : (pays[0]?.reference || "");
+      const firstRef =
+        Array.isArray(res?.payments) && res.payments.length
+          ? res.payments[0].reference || ""
+          : pays[0]?.reference || "";
 
       const msg =
         `Payment successful. Invoice: ${res?.invoice_no || "—"}` +
@@ -203,7 +249,8 @@ export default function MultiplePay({
     } catch (e) {
       console.error(e);
 
-      let msg = "Payment failed: could not update the database. Please try again.";
+      let msg =
+        "Payment failed: could not update the database. Please try again.";
       if (typeof e?.message === "string" && e.message) {
         const parts = e.message.split("–");
         if (parts[1]) {
@@ -232,7 +279,12 @@ export default function MultiplePay({
   return (
     <div className="mp-layout">
       <header className="mp-topbar">
-        <button className="mp-back" onClick={onBack || (() => navigate(-1))}>⟵ Back to Sale</button>
+        <button
+          className="mp-back"
+          onClick={onBack || (() => navigate(-1))}
+        >
+          ⟵ Back to Sale
+        </button>
         <div />
       </header>
 
@@ -241,7 +293,10 @@ export default function MultiplePay({
         <aside className="mp-left">
           <div className="mp-section-title">Sale Summary</div>
           <div className="mp-subtitle">
-            Customer: <span className="mp-link">{cart.customerType || "Walk In Customer"}</span>
+            Customer:{" "}
+            <span className="mp-link">
+              {cart.customerType || "Walk In Customer"}
+            </span>
           </div>
 
           <div className="mp-table">
@@ -323,7 +378,9 @@ export default function MultiplePay({
                         inputMode="decimal"
                         placeholder="0.00"
                         value={row.amount}
-                        onChange={(e) => update(row.id, { amount: e.target.value })}
+                        onChange={(e) =>
+                          update(row.id, { amount: e.target.value })
+                        }
                         disabled={busy}
                       />
                     </div>
@@ -337,7 +394,12 @@ export default function MultiplePay({
                           update(row.id, {
                             method: m,
                             channel: m === "Cash" ? "Cash" : m,
-                            account: m === "Card" ? banks[0] : m === "UPI" ? upiApps[0] : "",
+                            account:
+                              m === "Card"
+                                ? banks[0]
+                                : m === "UPI"
+                                ? upiApps[0]
+                                : "",
                           });
                         }}
                         disabled={busy}
@@ -353,11 +415,15 @@ export default function MultiplePay({
                         <label>{isCard ? "Payment Account:" : "UPI App:"}</label>
                         <select
                           value={row.account}
-                          onChange={(e) => update(row.id, { account: e.target.value })}
+                          onChange={(e) =>
+                            update(row.id, { account: e.target.value })
+                          }
                           disabled={busy}
                         >
                           {(isCard ? banks : upiApps).map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -370,7 +436,9 @@ export default function MultiplePay({
                           <input
                             placeholder="Card holder name"
                             value={row.cardHolder}
-                            onChange={(e) => update(row.id, { cardHolder: e.target.value })}
+                            onChange={(e) =>
+                              update(row.id, { cardHolder: e.target.value })
+                            }
                             disabled={busy}
                           />
                         </div>
@@ -380,7 +448,9 @@ export default function MultiplePay({
                           <input
                             placeholder="Card Transaction No."
                             value={row.cardTxnNo}
-                            onChange={(e) => update(row.id, { cardTxnNo: e.target.value })}
+                            onChange={(e) =>
+                              update(row.id, { cardTxnNo: e.target.value })
+                            }
                             disabled={busy}
                           />
                         </div>
@@ -406,11 +476,14 @@ export default function MultiplePay({
           </button>
 
           <div className="mp-note">
-            Note : If you don't pay in full, the remaining amount will be considered as <b>Pay Later</b>.
+            Note : If you don't pay in full, the remaining amount will be
+            considered as <b>Pay Later</b>.
           </div>
 
           <div className="mp-summary-strip">
-            <div><span>Received:</span> {totalReceived.toFixed(2)}</div>
+            <div>
+              <span>Received:</span> {totalReceived.toFixed(2)}
+            </div>
             <div className={remaining > 0 ? "due" : "ok"}>
               <span>Remaining:</span> {Math.max(0, remaining).toFixed(2)}
             </div>
@@ -435,7 +508,9 @@ export default function MultiplePay({
           {/* ✅ Popup (toast) for success / error */}
           {banner && (
             <div
-              className={`mp-banner ${banner.type === "success" ? "ok" : "err"}`}
+              className={`mp-banner ${
+                banner.type === "success" ? "ok" : "err"
+              }`}
               role="status"
               aria-live="polite"
             >

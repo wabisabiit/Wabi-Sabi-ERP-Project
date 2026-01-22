@@ -68,6 +68,7 @@ function UpiModal({ amount = 0, onClose, onSubmit, busy = false }) {
             ×
           </button>
         </div>
+
         <form className="cd-body" onSubmit={submit}>
           <label className="cd-field">
             <span>UPI Amount</span>
@@ -80,6 +81,7 @@ function UpiModal({ amount = 0, onClose, onSubmit, busy = false }) {
               disabled={busy}
             />
           </label>
+
           <label className="cd-field">
             <span>UPI Txn ID</span>
             <input
@@ -90,6 +92,7 @@ function UpiModal({ amount = 0, onClose, onSubmit, busy = false }) {
               disabled={busy}
             />
           </label>
+
           <div className="cd-actions">
             <button type="submit" className="cd-primary" disabled={busy}>
               {busy && <span className="cd-spinner" aria-hidden="true" />}
@@ -115,6 +118,7 @@ export default function Footer({
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef({});
   const idRef = useRef(0);
+
   const addToast = useCallback((text, type = "error") => {
     const id = ++idRef.current;
     setToasts((prev) => [{ id, text, type }, ...prev].slice(0, 3));
@@ -123,6 +127,7 @@ export default function Footer({
       delete timersRef.current[id];
     }, 2000);
   }, []);
+
   useEffect(
     () => () => Object.values(timersRef.current).forEach(clearTimeout),
     []
@@ -155,6 +160,7 @@ export default function Footer({
   const [currentCustomer, setCurrentCustomer] = useState(() =>
     getSelectedCustomer()
   );
+
   useEffect(() => {
     const handleCust = () => setCurrentCustomer(getSelectedCustomer());
     window.addEventListener("pos:customer", handleCust);
@@ -220,14 +226,13 @@ export default function Footer({
           r.netAmount ??
           0
       );
-
       const baseUnit = Number.isFinite(unit) ? unit : 0;
 
       // ₹ discount per unit
       const discRaw = Number(r.lineDiscountAmount ?? 0) || 0;
       const disc = Math.max(0, Math.min(baseUnit, discRaw));
-
       const netUnit = Math.max(0, baseUnit - disc);
+
       return sum + netUnit * q;
     }, 0);
   }, [items]);
@@ -262,8 +267,7 @@ export default function Footer({
   const buildLines = useCallback(() => {
     return (items || [])
       .map((r) => {
-        const code =
-          r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+        const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
         const qtyNum = Number(
           r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1
         );
@@ -274,9 +278,7 @@ export default function Footer({
   }, [items]);
 
   const effectiveCustomer =
-    customer && (customer.name || customer.phone)
-      ? customer
-      : currentCustomer;
+    customer && (customer.name || customer.phone) ? customer : currentCustomer;
 
   // Finalize sale
   async function finalizeSale({ method, paymentDetails, andPrint = false }) {
@@ -332,9 +334,7 @@ export default function Footer({
       const customerPayload = {
         name:
           (effectiveCustomer && effectiveCustomer.name) ||
-          (method === "CARD"
-            ? (paymentDetails?.cardHolder || "").trim()
-            : "") ||
+          (method === "CARD" ? (paymentDetails?.cardHolder || "").trim() : "") ||
           "Guest",
         phone:
           (effectiveCustomer && effectiveCustomer.phone) ||
@@ -348,12 +348,12 @@ export default function Footer({
       // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
       const linesWithDiscount = lines.map((ln) => {
         const row = (items || []).find((r) => {
-          const code =
-            r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+          const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
           return String(code) === String(ln.barcode);
         });
 
         const qty = Number(ln.qty || 1) || 1;
+
         const unit = Number(
           row?.sellingPrice ??
             row?.unitPrice ??
@@ -372,7 +372,9 @@ export default function Footer({
         return {
           ...ln,
           discount_percent: 0,
-          discount_amount: Number.isFinite(totalDisc) ? +totalDisc.toFixed(2) : 0,
+          discount_amount: Number.isFinite(totalDisc)
+            ? +totalDisc.toFixed(2)
+            : 0,
         };
       });
 
@@ -390,6 +392,7 @@ export default function Footer({
       };
 
       const res = await createSale(payload);
+
       addToast(
         `Payment successful. Invoice: ${res?.invoice_no || "—"}`,
         "success"
@@ -425,7 +428,6 @@ export default function Footer({
       if (andPrint) window.print();
 
       clearSelectedCustomer();
-
       if (typeof onReset === "function") onReset(res);
       else window.location.reload();
     } catch (err) {
@@ -438,7 +440,6 @@ export default function Footer({
   const saveHoldBill = useCallback(
     async (andPrint = false) => {
       setHoldBusy(true);
-
       try {
         const lines = buildLines();
         if (!lines.length) {
@@ -448,18 +449,12 @@ export default function Footer({
         }
 
         const customerPayload = {
-          name:
-            (effectiveCustomer && effectiveCustomer.name) ||
-            "Walk In Customer",
+          name: (effectiveCustomer && effectiveCustomer.name) || "Walk In Customer",
           phone: (effectiveCustomer && effectiveCustomer.phone) || "",
           email: (effectiveCustomer && effectiveCustomer.email) || "",
         };
 
-        const payload = {
-          customer: customerPayload,
-          lines,
-        };
-
+        const payload = { customer: customerPayload, lines };
         const res = await createHoldBill(payload);
 
         if (!res || res.ok === false) {
@@ -468,17 +463,11 @@ export default function Footer({
           return;
         }
 
-        addToast(
-          res.message || `Bill saved on hold as ${res.number}.`,
-          "success"
-        );
+        addToast(res.message || `Bill saved on hold as ${res.number}.`, "success");
 
-        if (andPrint) {
-          window.print();
-        }
+        if (andPrint) window.print();
 
         clearSelectedCustomer();
-
         if (typeof onReset === "function") {
           onReset({ type: "HOLD", number: res.number });
         } else {
@@ -535,6 +524,7 @@ export default function Footer({
         addToast("Refund: coming soon");
         return;
       }
+
       if (label === "Sales Return") {
         const inv = window.__RETURN_INVOICE__;
         if (!inv) {
@@ -547,9 +537,7 @@ export default function Footer({
             const ok = !!res?.ok;
             const msg =
               res?.msg ||
-              (ok
-                ? "Credit note created."
-                : "Failed to create credit note.");
+              (ok ? "Credit note created." : "Failed to create credit note.");
             addToast(msg, ok ? "success" : "error");
             if (ok && Array.isArray(res?.notes) && res.notes.length) {
               alert(`Credit Note(s): ${res.notes.join(", ")}`);
@@ -596,13 +584,8 @@ export default function Footer({
       if (label.startsWith("Multiple Pay")) {
         const cartItems = (items || []).map((r, i) => {
           const qty =
-            Number(
-              r.qty ??
-                r.quantity ??
-                r.qtyOrdered ??
-                r.qty_ordered ??
-                1
-            ) || 1;
+            Number(r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1) ||
+            1;
 
           const unit =
             Number(
@@ -615,6 +598,15 @@ export default function Footer({
             ) ||
             Number(r.netAmount ?? r.amount ?? 0) / qty ||
             0;
+
+          // ✅ NEW: compute discounted amounts for multipay screen + backend
+          const baseUnit = Number.isFinite(unit) ? unit : 0;
+          const discRaw = Number(r.lineDiscountAmount ?? 0) || 0;
+          const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
+          const netUnit = Math.max(0, baseUnit - discPerUnit);
+
+          const lineNet = +(netUnit * qty).toFixed(2);
+          const totalDisc = +(discPerUnit * qty).toFixed(2);
 
           return {
             id: r.id ?? i + 1,
@@ -629,15 +621,15 @@ export default function Footer({
               r.barcode ||
               "Item",
             qty,
-            price: +unit.toFixed(2),
-            netAmount: Number(r.netAmount ?? r.amount ?? qty * unit),
+            price: +baseUnit.toFixed(2),
+
+            // ✅ NEW: pass discounted values
+            priceAfterDiscount: +netUnit.toFixed(2),
+            netAmount: lineNet,
+            discount_amount: totalDisc,
+
             tax: Number(r.tax ?? r.taxAmount ?? 0),
-            barcode:
-              r.barcode ??
-              r.itemCode ??
-              r.itemcode ??
-              r.code ??
-              "",
+            barcode: r.barcode ?? r.itemCode ?? r.itemcode ?? r.code ?? "",
           };
         });
 
@@ -686,7 +678,6 @@ export default function Footer({
         saveHoldBill(false);
         return;
       }
-
       if (label === "Hold & Print (F7)") {
         if (holdBusy) return;
         saveHoldBill(true);
@@ -720,14 +711,17 @@ export default function Footer({
             <div className="value">{Number(totalQty).toFixed(3)}</div>
             <div className="label">Quantity</div>
           </div>
+
           <div className="metric">
             <div className="value">0.00</div>
             <div className="label">MRP</div>
           </div>
+
           <div className="metric">
             <div className="value">0.00</div>
             <div className="label">Tax Amount</div>
           </div>
+
           <div className="metric has-badge">
             <div className="value">0.00</div>
             <button type="button" className="badge">
@@ -735,6 +729,7 @@ export default function Footer({
             </button>
             <div className="label">Discount</div>
           </div>
+
           <div className="metric compact">
             <button
               type="button"
@@ -758,6 +753,7 @@ export default function Footer({
             />
             <div className="label">Flat Discount</div>
           </div>
+
           <div className="metric compact">
             <input className="mini" placeholder="0.00" defaultValue="0.00" />
             <div className="label">Round OFF</div>
@@ -768,14 +764,14 @@ export default function Footer({
               {Number(remainingAfterCredit).toLocaleString()}
             </div>
             <div className="label">
-              Amount
+              Amount{" "}
               {couponUse?.amount
-                ? ` (after ₹${Number(couponUse.amount).toFixed(2)} coupon`
+                ? `(after ₹${Number(couponUse.amount).toFixed(2)} coupon`
                 : ""}
               {creditUse?.amount
-                ? `${
-                    couponUse?.amount ? " & " : " (after "
-                  }₹${Number(creditUse.amount).toFixed(2)} credit`
+                ? `${couponUse?.amount ? " & " : " (after "}₹${Number(
+                    creditUse.amount
+                  ).toFixed(2)} credit`
                 : ""}
               {couponUse?.amount || creditUse?.amount ? ")" : ""}
             </div>
@@ -790,9 +786,7 @@ export default function Footer({
               text.includes("UPI") ||
               text.startsWith("Multiple Pay") ||
               text === "Redeem Credit";
-
-            const isHoldBtn =
-              text === "Hold (F6)" || text === "Hold & Print (F7)";
+            const isHoldBtn = text === "Hold (F6)" || text === "Hold & Print (F7)";
 
             return (
               <button
@@ -800,11 +794,7 @@ export default function Footer({
                 className="kbtn"
                 onClick={() => handleActionClick(text)}
                 disabled={(isPaymentBtn && !canPay) || (isHoldBtn && holdBusy)}
-                title={
-                  isPaymentBtn && !canPay
-                    ? "Select the customer and salesman first"
-                    : ""
-                }
+                title={isPaymentBtn && !canPay ? "Select the customer and salesman first" : ""}
               >
                 {text.includes("Card") && (
                   <span className="material-icons">credit_card</span>
@@ -827,7 +817,6 @@ export default function Footer({
                 {text.includes("Pay Later") && (
                   <span className="material-icons">event</span>
                 )}
-
                 {isHoldBtn && holdBusy && (
                   <span
                     className="cd-spinner"
@@ -835,7 +824,6 @@ export default function Footer({
                     aria-hidden="true"
                   />
                 )}
-
                 {text}
               </button>
             );
