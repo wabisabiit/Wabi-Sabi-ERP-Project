@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/ContactPage.css";
 import ContactForm from "../components/ContactForm";
-import { searchCustomers, listSuppliers } from "../api/client";
+import { searchCustomers, listSuppliers, apiMe } from "../api/client";
 
 /** --- Columns master (ALL possible columns) --- */
 /* Reordered to: Sr. No., Name, Contact, Whatsapp, GSTIN, Created By, Mobile No status, Status, Loyalty Point, Actions */
@@ -226,6 +226,12 @@ export default function ContactPage() {
   const [pageSize, setPageSize] = useState(15);
   const [query, setQuery] = useState("");
 
+  // ✅ pagination state
+  const [page, setPage] = useState(1);
+
+  // ✅ role state (admin sees Filter; manager does not)
+  const [isAdmin, setIsAdmin] = useState(true);
+
   // rows from backend
   const [customerRows, setCustomerRows] = useState([]);
   const [vendorRows, setVendorRows] = useState([]);
@@ -269,6 +275,7 @@ export default function ContactPage() {
     setTab(key);
     setColOpen(false);
     setVisible(new Set(key === "vendor" ? VENDOR_VISIBLE : CUSTOMER_VISIBLE));
+    setPage(1);
   };
 
   // --- Filter states (Set Location only) ---
@@ -317,11 +324,7 @@ export default function ContactPage() {
     if (kind === "excel")
       downloadBlob("contacts.csv", "text/csv;charset=utf-8", makeCsv(shown));
     if (kind === "all")
-      downloadBlob(
-        "contacts_all.csv",
-        "text/csv;charset=utf-8",
-        makeCsv(all)
-      );
+      downloadBlob("contacts_all.csv", "text/csv;charset=utf-8", makeCsv(all));
     if (kind === "pdf")
       downloadBlob("contacts.pdf", "application/pdf", "Contacts");
     setDlOpen(false);
@@ -335,7 +338,25 @@ export default function ContactPage() {
     return () => window.removeEventListener("supplier:created", onCreated);
   }, []);
 
-  // 🔗 FETCH customers
+  // ✅ determine admin/manager
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const me = await apiMe();
+        // admin = superuser OR staff
+        const admin = !!me?.is_superuser || !!me?.is_staff;
+        if (alive) setIsAdmin(admin);
+      } catch {
+        // if cannot read, keep default true
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // 🔗 FETCH customers (server already scopes by role/location)
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -347,6 +368,7 @@ export default function ContactPage() {
           : Array.isArray(data)
           ? data
           : [];
+
         const mapped = list.map((c, idx) => {
           const phone = c?.phone || "";
           return {
@@ -355,8 +377,9 @@ export default function ContactPage() {
             contact: phone,
             whatsapp: phone,
             gstin: "",
-            createdBy: "mail@harmeet.com",
-            mobileStatus: "Verified",
+            // ✅ real Created By from backend
+            createdBy: c?.created_by_display || "",
+            mobileStatus: phone ? "Verified" : "",
             status: "ACTIVE",
             loyalty: "0.00",
             email: c?.email || "",
@@ -364,6 +387,7 @@ export default function ContactPage() {
             state: c?.state || "",
           };
         });
+
         if (alive) setCustomerRows(mapped);
       } catch (e) {
         console.error("Failed to load customers:", e);
@@ -429,33 +453,59 @@ export default function ContactPage() {
 
     if (q) {
       out = out.filter((r) =>
-        [r.name, r.contact, r.whatsapp, r.gstin, r.createdBy, r.mobileStatus, r.status].some(
-          (v) => String(v || "").toLowerCase().includes(q)
-        )
+        [
+          r.name,
+          r.contact,
+          r.whatsapp,
+          r.gstin,
+          r.createdBy,
+          r.mobileStatus,
+          r.status,
+        ].some((v) => String(v || "").toLowerCase().includes(q))
       );
     }
-    if (locations.length > 0) {
+
+    // ✅ Only Admin can use location filter UI
+    if (isAdmin && locations.length > 0) {
       out = out.filter((r) =>
         locations.some((loc) =>
           String(r.name || "").toLowerCase().includes(loc.toLowerCase())
         )
       );
     }
-    return out;
-  }, [query, locations, rows]);
 
-  const showingFrom = filtered.length ? 1 : 0;
-  const showingTo = Math.min(filtered.length, pageSize);
-  const shownCols = useMemo(
-    () => COLS.filter((c) => visible.has(c.id)),
-    [visible]
-  );
+    return out;
+  }, [query, locations, rows, isAdmin]);
+
+  // ✅ reset page when filters/pageSize change
+  useEffect(() => {
+    setPage(1);
+  }, [query, locations, pageSize, tab]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIdx = (safePage - 1) * pageSize;
+  const endIdx = startIdx + pageSize;
+
+  const pageRows = useMemo(() => filtered.slice(startIdx, endIdx), [
+    filtered,
+    startIdx,
+    endIdx,
+  ]);
+
+  const showingFrom = filtered.length ? startIdx + 1 : 0;
+  const showingTo = Math.min(filtered.length, endIdx);
+
+  const shownCols = useMemo(() => COLS.filter((c) => visible.has(c.id)), [visible]);
 
   // handler to open the form matching current tab
   const openCreate = () => {
     setFormType(tab === "vendor" ? "vendor" : "customer");
     setFormOpen(true);
   };
+
+  const goPrev = () => setPage((p) => Math.max(1, p - 1));
+  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
     <div className="con-wrap">
@@ -491,25 +541,13 @@ export default function ContactPage() {
             </button>
             {dlOpen && (
               <div className="dl-menu" role="menu">
-                <button
-                  className="dl-item"
-                  onClick={() => onDownload("excel")}
-                  role="menuitem"
-                >
+                <button className="dl-item" onClick={() => onDownload("excel")} role="menuitem">
                   Excel
                 </button>
-                <button
-                  className="dl-item"
-                  onClick={() => onDownload("pdf")}
-                  role="menuitem"
-                >
+                <button className="dl-item" onClick={() => onDownload("pdf")} role="menuitem">
                   PDF
                 </button>
-                <button
-                  className="dl-item"
-                  onClick={() => onDownload("all")}
-                  role="menuitem"
-                >
+                <button className="dl-item" onClick={() => onDownload("all")} role="menuitem">
                   All Data Excel
                 </button>
               </div>
@@ -530,14 +568,16 @@ export default function ContactPage() {
             ))}
           </select>
 
-          {/* Filter toggle */}
-          <button
-            className={`con-btn filter ${openFilter ? "is-active" : ""}`}
-            onClick={() => setOpenFilter((v) => !v)}
-          >
-            <span className="material-icons">filter_alt</span>
-            <span>Filter</span>
-          </button>
+          {/* ✅ Filter toggle (Admin only) */}
+          {isAdmin && (
+            <button
+              className={`con-btn filter ${openFilter ? "is-active" : ""}`}
+              onClick={() => setOpenFilter((v) => !v)}
+            >
+              <span className="material-icons">filter_alt</span>
+              <span>Filter</span>
+            </button>
+          )}
 
           {/* Search */}
           <div className="con-search">
@@ -556,8 +596,8 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* FILTER STRIP: Set Location only */}
-      {openFilter && (
+      {/* ✅ FILTER STRIP: Set Location only (Admin only) */}
+      {isAdmin && openFilter && (
         <div className="con-filterstrip">
           <div className="con-field">
             <div className="con-field-label">Select Location</div>
@@ -573,10 +613,7 @@ export default function ContactPage() {
       {/* SECOND ROW: Columns – only for Customer */}
       {tab === "customer" && (
         <div className="con-row-columns" ref={colRef}>
-          <button
-            className="con-btn primary"
-            onClick={() => setColOpen((v) => !v)}
-          >
+          <button className="con-btn primary" onClick={() => setColOpen((v) => !v)}>
             <span className="material-icons">view_column</span>
             <span>Columns</span>
             <span className="material-icons caret">arrow_drop_down</span>
@@ -598,9 +635,7 @@ export default function ContactPage() {
                   );
                 })}
                 <button
-                  className={`col-chip restore ${
-                    isDefault ? "disabled" : ""
-                  }`}
+                  className={`col-chip restore ${isDefault ? "disabled" : ""}`}
                   onClick={restoreCols}
                   disabled={isDefault}
                 >
@@ -636,8 +671,8 @@ export default function ContactPage() {
                     </div>
                   </td>
                 </tr>
-              ) : filtered.slice(0, pageSize).length > 0 ? (
-                filtered.slice(0, pageSize).map((r) => (
+              ) : pageRows.length > 0 ? (
+                pageRows.map((r) => (
                   <tr key={r.sr}>
                     <td className="col-check">
                       <input type="checkbox" />
@@ -665,11 +700,23 @@ export default function ContactPage() {
             {`Showing ${showingFrom} to ${showingTo} of ${filtered.length} entries`}
           </div>
           <div className="foot-right">
-            <button className="page arrow" title="Previous">
+            <button
+              className="page arrow"
+              title="Previous"
+              onClick={goPrev}
+              disabled={safePage <= 1}
+            >
               <span className="material-icons">chevron_left</span>
             </button>
-            <button className="page current">1</button>
-            <button className="page arrow" title="Next">
+
+            <button className="page current">{safePage}</button>
+
+            <button
+              className="page arrow"
+              title="Next"
+              onClick={goNext}
+              disabled={safePage >= totalPages}
+            >
               <span className="material-icons">chevron_right</span>
             </button>
           </div>

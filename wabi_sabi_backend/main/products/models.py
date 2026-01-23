@@ -109,6 +109,24 @@ class Customer(models.Model):
     email       = models.EmailField(blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
 
+    # ✅ NEW: location scoping
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="customers",
+        null=True,
+        blank=True,
+    )
+
+    # ✅ NEW: created_by (so frontend can show manager name)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers_created",
+    )
+
     class Meta:
         ordering = ["name"]
         indexes  = [models.Index(fields=["phone"])]
