@@ -1,13 +1,17 @@
 # main/products/admin.py
 from django.contrib import admin
-from .models import Product, StockTransfer, StockTransferLine,Customer, Sale, SaleLine, InvoiceSequence, CreditNoteSequence, CreditNote
-from taskmaster.models import TaskItem, Location
-from .models import MasterPack, MasterPackLine, SalePayment
+from decimal import Decimal, ROUND_HALF_UP
+
 from .models import (
-    MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,Coupon, GeneratedCoupon
+    Product, StockTransfer, StockTransferLine, Customer, Sale, SaleLine,
+    InvoiceSequence, CreditNoteSequence, CreditNote,
+    MasterPack, MasterPackLine, SalePayment,
+    MaterialConsumption, MaterialConsumptionLine, MaterialConsumptionSequence,
+    Coupon, GeneratedCoupon,
+    RegisterClosing,
+    Discount, Expense, HoldBill, HoldBillLine, HoldBillSequence
 )
-from .models import RegisterClosing
-from .models import Discount,Expense,HoldBill,HoldBillLine,HoldBillSequence
+from taskmaster.models import TaskItem, Location
 
 
 @admin.register(Product)
@@ -91,19 +95,22 @@ class StockTransferLineAdmin(admin.ModelAdmin):
 
 
 # products/admin.py
-from django.contrib import admin
-from .models import Customer, Sale, SaleLine, InvoiceSequence
-
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ("name", "phone", "email", "created_at")
     search_fields = ("name", "phone", "email")
 
+
 @admin.register(Sale)
 class SaleAdmin(admin.ModelAdmin):
-    list_display  = ("invoice_no", "customer", "store", "payment_method", "transaction_date", "grand_total")
-    list_filter   = ("store", "payment_method", "transaction_date")
+    list_display = ("invoice_no", "customer", "store", "payment_method", "transaction_date", "grand_total")
+    list_filter = ("store", "payment_method", "transaction_date")
     search_fields = ("invoice_no", "customer__name", "customer__phone")
+
+
+# ✅ helper for admin calc
+TWOPLACES = Decimal("0.01")
+
 
 @admin.register(SaleLine)
 class SaleLineAdmin(admin.ModelAdmin):
@@ -116,29 +123,30 @@ class SaleLineAdmin(admin.ModelAdmin):
         "discount_percent",
         "discount_amount",
         "unit_cost_after_disc",
+        "line_total_after_disc",
     )
     search_fields = ("barcode", "sale__invoice_no")
 
     @admin.display(description="Unit Cost (After Disc)")
     def unit_cost_after_disc(self, obj):
-        sp = obj.sp or 0
-        dp = obj.discount_percent or 0
-        da = obj.discount_amount or 0  # per unit
-
-        try:
-            sp = float(sp)
-            dp = float(dp)
-            da = float(da)
-        except Exception:
-            return ""
+        sp = (Decimal(obj.sp or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        dp = (Decimal(obj.discount_percent or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        da = (Decimal(obj.discount_amount or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)  # per unit
 
         if dp > 0:
-            disc = (sp * dp) / 100.0
+            disc = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
         else:
             disc = da
 
-        disc = max(0.0, min(sp, disc))
-        return f"{(sp - disc):.2f}"
+        disc = min(sp, max(Decimal("0.00"), disc))
+        return (sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    @admin.display(description="Line Total (After Disc)")
+    def line_total_after_disc(self, obj):
+        qty = int(obj.qty or 0)
+        return (Decimal(self.unit_cost_after_disc(obj)) * Decimal(qty)).quantize(
+            TWOPLACES, rounding=ROUND_HALF_UP
+        )
 
 
 @admin.register(InvoiceSequence)
@@ -150,22 +158,20 @@ class InvoiceSequenceAdmin(admin.ModelAdmin):
 class CreditNoteSequenceAdmin(admin.ModelAdmin):
     list_display = ("prefix", "next_number", "pad_width")
     search_fields = ("prefix",)
-    # readonly_fields = ("prefix", "next_number", "pad_width")
-
 
 
 @admin.register(CreditNote)
 class CreditNoteAdmin(admin.ModelAdmin):
-    list_display  = ("note_no", "date", "customer", "barcode", "amount", "qty", "sale", "status_display")
+    list_display = ("note_no", "date", "customer", "barcode", "amount", "qty", "sale", "status_display")
     search_fields = ("note_no", "barcode", "customer__name", "customer__phone")
-    list_filter   = ("date", "customer")  # keeping your filters as-is
-    ordering      = ("-date", "-id")
+    list_filter = ("date", "customer")
+    ordering = ("-date", "-id")
     date_hierarchy = "date"
 
     @admin.display(description="Status", ordering="is_redeemed")
     def status_display(self, obj):
-        # Active if not redeemed, Not Active if already redeemed
         return "Active" if not obj.is_redeemed else "Not Active"
+
 
 @admin.register(MasterPack)
 class MasterPackAdmin(admin.ModelAdmin):
@@ -173,31 +179,37 @@ class MasterPackAdmin(admin.ModelAdmin):
     search_fields = ("number",)
     date_hierarchy = "created_at"
 
+
 @admin.register(MasterPackLine)
 class MasterPackLineAdmin(admin.ModelAdmin):
     list_display = ("pack", "barcode", "qty", "sp", "location")
     search_fields = ("barcode", "pack__number")
     list_filter = ("location",)
 
+
 @admin.register(MaterialConsumption)
 class MaterialConsumptionAdmin(admin.ModelAdmin):
-    list_display = ("number","date","location","consumption_type","total_amount","created_at")
-    search_fields = ("number","location__code","location__name")
-    list_filter = ("consumption_type","location")
+    list_display = ("number", "date", "location", "consumption_type", "total_amount", "created_at")
+    search_fields = ("number", "location__code", "location__name")
+    list_filter = ("consumption_type", "location")
+
 
 @admin.register(MaterialConsumptionLine)
 class MaterialConsumptionLineAdmin(admin.ModelAdmin):
-    list_display = ("consumption","barcode","name","qty","price","total")
-    search_fields = ("barcode","name","consumption__number")
+    list_display = ("consumption", "barcode", "name", "qty", "price", "total")
+    search_fields = ("barcode", "name", "consumption__number")
+
 
 @admin.register(MaterialConsumptionSequence)
 class MaterialConsumptionSequenceAdmin(admin.ModelAdmin):
-    list_display = ("prefix","next_number","pad_width")
+    list_display = ("prefix", "next_number", "pad_width")
+
 
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
     list_display = ("name", "price", "created_at")
     search_fields = ("name",)
+
 
 @admin.register(GeneratedCoupon)
 class GeneratedCouponAdmin(admin.ModelAdmin):
@@ -205,16 +217,17 @@ class GeneratedCouponAdmin(admin.ModelAdmin):
     list_filter = ("status", "issued_by", "coupon")
     search_fields = ("code", "redeemed_invoice_no", "customer_no")
 
+
 @admin.register(Discount)
 class DiscountAdmin(admin.ModelAdmin):
     list_display = (
         "title", "code", "mode", "applicable",
         "value_type", "value", "start_date", "end_date", "is_active",
     )
-    list_filter  = ("mode", "applicable", "value_type", "start_date", "end_date")
+    list_filter = ("mode", "applicable", "value_type", "start_date", "end_date")
     search_fields = ("title", "code", "applies_category", "branches__name", "branches__code")
     date_hierarchy = "start_date"
-    filter_horizontal = ("branches",)   # easy multi-select for locations
+    filter_horizontal = ("branches",)
     readonly_fields = ("created_at",)
 
     fieldsets = (
@@ -245,6 +258,7 @@ class DiscountAdmin(admin.ModelAdmin):
         }),
     )
 
+
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
     list_display = (
@@ -262,6 +276,7 @@ class ExpenseAdmin(admin.ModelAdmin):
         "account__name",
         "remark",
     )
+
 
 @admin.register(RegisterClosing)
 class RegisterClosingAdmin(admin.ModelAdmin):
@@ -284,6 +299,7 @@ class RegisterClosingAdmin(admin.ModelAdmin):
         "created_by__user__username",
     )
 
+
 @admin.register(HoldBill)
 class HoldBillAdmin(admin.ModelAdmin):
     list_display = (
@@ -298,7 +314,7 @@ class HoldBillAdmin(admin.ModelAdmin):
     list_filter = ("location", "is_active", "created_at")
     date_hierarchy = "created_at"
     search_fields = ("number", "customer_name", "customer_phone")
-    
+
 
 @admin.register(SalePayment)
 class SalePaymentAdmin(admin.ModelAdmin):

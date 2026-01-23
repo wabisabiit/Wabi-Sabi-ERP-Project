@@ -359,9 +359,16 @@ class SaleListSerializer(serializers.ModelSerializer):
 
 
 class SaleLineOutSerializer(serializers.ModelSerializer):
+    # existing
     product_name = serializers.SerializerMethodField()
     itemcode = serializers.SerializerMethodField()
     unit_cost_after_disc = serializers.SerializerMethodField()
+
+    # ✅ NEW: frontend-friendly aliases for invoice restore
+    sellingPrice = serializers.SerializerMethodField()       # sale-time SP
+    lineDiscountAmount = serializers.SerializerMethodField() # per-unit discount at sale-time
+    unitCost = serializers.SerializerMethodField()           # after discount
+    netAmount = serializers.SerializerMethodField()          # unitCost * qty
 
     class Meta:
         model = SaleLine
@@ -372,10 +379,16 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
             "mrp",
             "sp",
             "discount_percent",
-            "discount_amount",      # ✅ now per-unit in DB
-            "unit_cost_after_disc", # ✅ sp - per unit discount
+            "discount_amount",          # per-unit in DB
+            "unit_cost_after_disc",     # existing
             "product_name",
             "itemcode",
+
+            # ✅ NEW
+            "sellingPrice",
+            "lineDiscountAmount",
+            "unitCost",
+            "netAmount",
         ]
 
     def get_product_name(self, obj):
@@ -395,10 +408,10 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
             return obj.barcode or ""
         return getattr(ti, "code", None) or getattr(ti, "item_code", None) or (obj.barcode or "")
 
-    def get_unit_cost_after_disc(self, obj):
+    def _per_unit_discount(self, obj) -> Decimal:
         sp = q2(getattr(obj, "sp", 0) or 0)
         dp = q2(getattr(obj, "discount_percent", 0) or 0)
-        da = q2(getattr(obj, "discount_amount", 0) or 0)  # per unit
+        da = q2(getattr(obj, "discount_amount", 0) or 0)  # per unit stored
 
         if dp > 0:
             disc = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
@@ -406,4 +419,31 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
             disc = da
 
         disc = min(sp, max(Decimal("0.00"), disc))
+        return disc
+
+    def get_unit_cost_after_disc(self, obj):
+        sp = q2(getattr(obj, "sp", 0) or 0)
+        disc = self._per_unit_discount(obj)
         return str((sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
+
+    # ✅ NEW fields
+    def get_sellingPrice(self, obj):
+        # sale-time SP
+        return str(q2(getattr(obj, "sp", 0) or 0))
+
+    def get_lineDiscountAmount(self, obj):
+        # per-unit discount
+        return str(self._per_unit_discount(obj))
+
+    def get_unitCost(self, obj):
+        # after discount
+        sp = q2(getattr(obj, "sp", 0) or 0)
+        disc = self._per_unit_discount(obj)
+        return str((sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
+
+    def get_netAmount(self, obj):
+        qty = int(getattr(obj, "qty", 0) or 0)
+        sp = q2(getattr(obj, "sp", 0) or 0)
+        disc = self._per_unit_discount(obj)
+        net_unit = (sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        return str((net_unit * Decimal(qty)).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
