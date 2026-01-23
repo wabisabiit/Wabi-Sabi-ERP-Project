@@ -251,6 +251,9 @@ class SaleLine(models.Model):
     mrp      = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     sp       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
+    discount_percent = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    discount_amount  = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # ₹ per unit
+
     class Meta:
         ordering = ["barcode"]
         indexes  = [models.Index(fields=["barcode"])]

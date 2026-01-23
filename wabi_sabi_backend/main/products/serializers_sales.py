@@ -228,6 +228,10 @@ class SaleCreateSerializer(serializers.Serializer):
             for ln in lines_in:
                 p = Product.objects.get(barcode=ln["barcode"])
                 qty = int(ln["qty"])
+
+                dp = q2(ln.get("discount_percent", 0))
+                da = q2(ln.get("discount_amount", 0))
+
                 SaleLine.objects.create(
                     sale=sale,
                     product=p,
@@ -235,6 +239,23 @@ class SaleCreateSerializer(serializers.Serializer):
                     barcode=p.barcode,
                     mrp=p.mrp or 0,
                     sp=p.selling_price or 0,
+
+                    # ✅ NEW
+                    discount_percent=dp,
+                    discount_amount=da,
+                )
+
+                p = Product.objects.get(barcode=ln["barcode"])
+                qty = int(ln["qty"])
+                SaleLine.objects.create(
+                    sale=sale,
+                    product=p,
+                    qty=qty,
+                    barcode=p.barcode,
+                    mrp=p.mrp or 0,
+                    sp=p.selling_price or 0,
+                    discount_percent=dp,
+                    discount_amount=da,
                 )
                 subtotal += q2(p.selling_price) * qty
 
@@ -351,6 +372,8 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
             "qty",
             "mrp",
             "sp",
+            "discount_percent",   # ✅
+            "discount_amount",
             "product_name",
             "itemcode",
         ]

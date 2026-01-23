@@ -735,5 +735,5 @@ export default {
   productsCsvApply,
 
   // ✅ NEW
-  dashboardSummary,a
+  dashboardSummary,
 };

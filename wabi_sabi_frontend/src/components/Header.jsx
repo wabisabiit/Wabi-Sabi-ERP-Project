@@ -86,7 +86,8 @@ function Header() {
   // once
   useEffect(() => {
     const saved = localStorage.getItem("registerOpenedAt");
-    if (!saved) localStorage.setItem("registerOpenedAt", new Date().toISOString());
+    if (!saved)
+      localStorage.setItem("registerOpenedAt", new Date().toISOString());
   }, []);
 
   // dropdown close on outside/esc
@@ -192,7 +193,11 @@ function Header() {
                   {empLoading ? (
                     <div
                       className="ws-dd-loading"
-                      style={{ display: "flex", alignItems: "center", padding: "10px" }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "10px",
+                      }}
                     >
                       <div className="ws-dd-blue-spinner"></div>
                       <span style={{ color: "#2563eb", fontWeight: 500 }}>
@@ -315,14 +320,8 @@ function Header() {
         onClose={() => setOpenSidebar(false)}
         id="sidebar-nav"
       />
-      <SettingsPanel
-        open={openSettings}
-        onClose={() => setOpenSettings(false)}
-      />
-      <ProductPanel
-        open={openProducts}
-        onClose={() => setOpenProducts(false)}
-      />
+      <SettingsPanel open={openSettings} onClose={() => setOpenSettings(false)} />
+      <ProductPanel open={openProducts} onClose={() => setOpenProducts(false)} />
       <ConfirmModal
         open={openConfirm}
         onOk={() => setOpenConfirm(false)}
