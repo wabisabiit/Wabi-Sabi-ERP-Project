@@ -346,6 +346,7 @@ export default function Footer({
       };
 
       // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
+            // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
       const linesWithDiscount = lines.map((ln) => {
         const row = (items || []).find((r) => {
           const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
@@ -367,16 +368,18 @@ export default function Footer({
 
         const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
         const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
-        const totalDisc = discPerUnit * qty;
 
         return {
           ...ln,
           discount_percent: 0,
-          discount_amount: Number.isFinite(totalDisc)
-            ? +totalDisc.toFixed(2)
+
+          // ✅ IMPORTANT: send ₹ per unit (NOT total)
+          discount_amount: Number.isFinite(discPerUnit)
+            ? +discPerUnit.toFixed(2)
             : 0,
         };
       });
+
 
       const payload = {
         customer: customerPayload,

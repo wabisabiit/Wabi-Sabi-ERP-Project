@@ -37,10 +37,12 @@ class SaleLineInSerializer(serializers.Serializer):
     barcode = serializers.CharField(max_length=64)
     qty = serializers.IntegerField(min_value=1)
 
+    # ✅ discount_percent is % on line base (per unit price * qty)
     discount_percent = serializers.DecimalField(
         max_digits=6, decimal_places=2, required=False, default=0
     )
-    # ✅ IMPORTANT: discount_amount is ₹ PER UNIT (not total)
+
+    # ✅ discount_amount is ₹ PER UNIT (IMPORTANT)
     discount_amount = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, default=0
     )
@@ -110,15 +112,17 @@ class SaleCreateSerializer(serializers.Serializer):
             subtotal += line_base
 
             dp = q2(ln.get("discount_percent", 0))
-            da = q2(ln.get("discount_amount", 0))  # ✅ per unit
+            da_per_unit = q2(ln.get("discount_amount", 0))  # ✅ per unit
 
+            # compute discount for validation (TOTAL for the line)
             if dp > 0:
                 disc = (line_base * dp / Decimal("100")).quantize(
                     TWOPLACES, rounding=ROUND_HALF_UP
                 )
             else:
-                # ✅ per-unit discount -> total discount
-                disc = (da * qty).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+                # ✅ per-unit discount * qty
+                per_unit = max(Decimal("0.00"), min(unit, da_per_unit))
+                disc = (per_unit * qty).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
             disc = min(line_base, max(Decimal("0.00"), disc))
             item_discount_total += disc
@@ -212,6 +216,7 @@ class SaleCreateSerializer(serializers.Serializer):
 
             sale = Sale.objects.create(**sale_kwargs)
 
+            # lock stock once per barcode
             want = {}
             for ln in lines_in:
                 bc = str(ln["barcode"]).strip()
@@ -227,41 +232,27 @@ class SaleCreateSerializer(serializers.Serializer):
                     raise serializers.ValidationError(f"{bc} not available anymore.")
 
             subtotal = Decimal("0.00")
+
+            # ✅ CREATE EACH LINE ONLY ONCE (duplicate removed)
             for ln in lines_in:
                 p = Product.objects.get(barcode=ln["barcode"])
                 qty = int(ln["qty"])
 
                 dp = q2(ln.get("discount_percent", 0))
-                da = q2(ln.get("discount_amount", 0))  # ✅ per unit
+                da_per_unit = q2(ln.get("discount_amount", 0))  # ✅ per unit
 
-                unit_sp = q2(p.selling_price)
-
-                # ✅ normalize and STORE the per-unit discount even for % discounts
-                if dp > 0:
-                    disc_per_unit = (unit_sp * dp / Decimal("100")).quantize(
-                        TWOPLACES, rounding=ROUND_HALF_UP
-                    )
-                else:
-                    disc_per_unit = da
-
-                # cap per unit discount
-                disc_per_unit = min(unit_sp, max(Decimal("0.00"), disc_per_unit))
-
-                # ✅ save exactly what buyer had at that time:
-                # - sp snapshot (unit_sp)
-                # - discount_amount snapshot (per unit)
                 SaleLine.objects.create(
                     sale=sale,
                     product=p,
                     qty=qty,
                     barcode=p.barcode,
                     mrp=p.mrp or 0,
-                    sp=unit_sp,
+                    sp=p.selling_price or 0,   # ✅ base selling price snapshot
                     discount_percent=dp,
-                    discount_amount=disc_per_unit,  # ✅ per unit
+                    discount_amount=da_per_unit,  # ✅ per unit snapshot
                 )
 
-                subtotal += unit_sp * qty
+                subtotal += q2(p.selling_price) * qty
 
             sale.subtotal = q2(comp.get("subtotal", subtotal))
             sale.discount_total = q2(
@@ -355,7 +346,6 @@ class SaleListSerializer(serializers.ModelSerializer):
         return "Paid"
 
     def get_created_by(self, obj):
-        # ✅ Safe even before migration
         u = getattr(obj, "created_by", None)
         if not u:
             return "-"
@@ -363,7 +353,6 @@ class SaleListSerializer(serializers.ModelSerializer):
         return full or (u.username or "-")
 
 
-# ✅ outputs sale-time stored mrp/sp + per-unit discount_amount so invoice reload shows correct net prices
 class SaleLineOutSerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
     itemcode = serializers.SerializerMethodField()
@@ -377,7 +366,7 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
             "mrp",
             "sp",
             "discount_percent",
-            "discount_amount",   # ✅ per unit
+            "discount_amount",   # ✅ now ₹ per unit (snapshot)
             "product_name",
             "itemcode",
         ]
