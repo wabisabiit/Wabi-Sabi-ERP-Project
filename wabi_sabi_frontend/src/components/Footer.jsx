@@ -347,38 +347,38 @@ export default function Footer({
 
       // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
             // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
-      const linesWithDiscount = lines.map((ln) => {
-        const row = (items || []).find((r) => {
-          const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
-          return String(code) === String(ln.barcode);
-        });
+      // inside Footer.jsx -> linesWithDiscount mapping
+const linesWithDiscount = lines.map((ln) => {
+  const row = (items || []).find((r) => {
+    const code =
+      r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+    return String(code) === String(ln.barcode);
+  });
 
-        const qty = Number(ln.qty || 1) || 1;
+  const qty = Number(ln.qty || 1) || 1;
 
-        const unit = Number(
-          row?.sellingPrice ??
-            row?.unitPrice ??
-            row?.unit_price ??
-            row?.price ??
-            row?.sp ??
-            row?.netAmount ??
-            0
-        );
-        const baseUnit = Number.isFinite(unit) ? unit : 0;
+  const unit = Number(
+    row?.sellingPrice ??
+      row?.unitPrice ??
+      row?.unit_price ??
+      row?.price ??
+      row?.sp ??
+      row?.netAmount ??
+      0
+  );
+  const baseUnit = Number.isFinite(unit) ? unit : 0;
 
-        const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
-        const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
+  // ₹ discount per unit (this is what your CartTable uses)
+  const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
+  const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
 
-        return {
-          ...ln,
-          discount_percent: 0,
+  return {
+    ...ln,
+    discount_percent: 0,
+    discount_amount: +discPerUnit.toFixed(2), // ✅ SEND PER UNIT (NOT total)
+  };
+});
 
-          // ✅ IMPORTANT: send ₹ per unit (NOT total)
-          discount_amount: Number.isFinite(discPerUnit)
-            ? +discPerUnit.toFixed(2)
-            : 0,
-        };
-      });
 
 
       const payload = {

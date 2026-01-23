@@ -107,18 +107,39 @@ class SaleAdmin(admin.ModelAdmin):
 
 @admin.register(SaleLine)
 class SaleLineAdmin(admin.ModelAdmin):
-    # ✅ show discount fields + net unit cost (sp - discount_amount)
-    list_display = ("sale", "barcode", "qty", "mrp", "sp", "discount_percent", "discount_amount", "net_unit_cost")
+    list_display = (
+        "sale",
+        "barcode",
+        "qty",
+        "mrp",
+        "sp",
+        "discount_percent",
+        "discount_amount",
+        "unit_cost_after_disc",
+    )
     search_fields = ("barcode", "sale__invoice_no")
 
     @admin.display(description="Unit Cost (After Disc)")
-    def net_unit_cost(self, obj):
+    def unit_cost_after_disc(self, obj):
+        sp = obj.sp or 0
+        dp = obj.discount_percent or 0
+        da = obj.discount_amount or 0  # per unit
+
         try:
-            sp = obj.sp or 0
-            da = obj.discount_amount or 0  # ✅ per unit
-            return max(0, sp - da)
+            sp = float(sp)
+            dp = float(dp)
+            da = float(da)
         except Exception:
             return ""
+
+        if dp > 0:
+            disc = (sp * dp) / 100.0
+        else:
+            disc = da
+
+        disc = max(0.0, min(sp, disc))
+        return f"{(sp - disc):.2f}"
+
 
 @admin.register(InvoiceSequence)
 class InvoiceSequenceAdmin(admin.ModelAdmin):
