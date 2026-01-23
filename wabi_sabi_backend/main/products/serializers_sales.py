@@ -40,6 +40,7 @@ class SaleLineInSerializer(serializers.Serializer):
     discount_percent = serializers.DecimalField(
         max_digits=6, decimal_places=2, required=False, default=0
     )
+    # ✅ IMPORTANT: discount_amount is ₹ PER UNIT (not total)
     discount_amount = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, default=0
     )
@@ -109,14 +110,15 @@ class SaleCreateSerializer(serializers.Serializer):
             subtotal += line_base
 
             dp = q2(ln.get("discount_percent", 0))
-            da = q2(ln.get("discount_amount", 0))
+            da = q2(ln.get("discount_amount", 0))  # ✅ per unit
 
             if dp > 0:
                 disc = (line_base * dp / Decimal("100")).quantize(
                     TWOPLACES, rounding=ROUND_HALF_UP
                 )
             else:
-                disc = da
+                # ✅ per-unit discount -> total discount
+                disc = (da * qty).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
             disc = min(line_base, max(Decimal("0.00"), disc))
             item_discount_total += disc
@@ -230,34 +232,36 @@ class SaleCreateSerializer(serializers.Serializer):
                 qty = int(ln["qty"])
 
                 dp = q2(ln.get("discount_percent", 0))
-                da = q2(ln.get("discount_amount", 0))
+                da = q2(ln.get("discount_amount", 0))  # ✅ per unit
 
+                unit_sp = q2(p.selling_price)
+
+                # ✅ normalize and STORE the per-unit discount even for % discounts
+                if dp > 0:
+                    disc_per_unit = (unit_sp * dp / Decimal("100")).quantize(
+                        TWOPLACES, rounding=ROUND_HALF_UP
+                    )
+                else:
+                    disc_per_unit = da
+
+                # cap per unit discount
+                disc_per_unit = min(unit_sp, max(Decimal("0.00"), disc_per_unit))
+
+                # ✅ save exactly what buyer had at that time:
+                # - sp snapshot (unit_sp)
+                # - discount_amount snapshot (per unit)
                 SaleLine.objects.create(
                     sale=sale,
                     product=p,
                     qty=qty,
                     barcode=p.barcode,
                     mrp=p.mrp or 0,
-                    sp=p.selling_price or 0,
-
-                    # ✅ NEW
+                    sp=unit_sp,
                     discount_percent=dp,
-                    discount_amount=da,
+                    discount_amount=disc_per_unit,  # ✅ per unit
                 )
 
-                p = Product.objects.get(barcode=ln["barcode"])
-                qty = int(ln["qty"])
-                SaleLine.objects.create(
-                    sale=sale,
-                    product=p,
-                    qty=qty,
-                    barcode=p.barcode,
-                    mrp=p.mrp or 0,
-                    sp=p.selling_price or 0,
-                    discount_percent=dp,
-                    discount_amount=da,
-                )
-                subtotal += q2(p.selling_price) * qty
+                subtotal += unit_sp * qty
 
             sale.subtotal = q2(comp.get("subtotal", subtotal))
             sale.discount_total = q2(
@@ -359,7 +363,7 @@ class SaleListSerializer(serializers.ModelSerializer):
         return full or (u.username or "-")
 
 
-# ✅ NEW: outputs sale-time stored mrp/sp so invoice copy shows correct prices
+# ✅ outputs sale-time stored mrp/sp + per-unit discount_amount so invoice reload shows correct net prices
 class SaleLineOutSerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
     itemcode = serializers.SerializerMethodField()
@@ -372,8 +376,8 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
             "qty",
             "mrp",
             "sp",
-            "discount_percent",   # ✅
-            "discount_amount",
+            "discount_percent",
+            "discount_amount",   # ✅ per unit
             "product_name",
             "itemcode",
         ]
