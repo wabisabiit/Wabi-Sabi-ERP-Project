@@ -6,9 +6,9 @@ from .views_transfer import (
     print_and_transfer, transfer_list, transfer_details, delete_transfer,
     barcode_last_transfer, transfer_barcodes,
 )
-from .views_sales import SalesView
+from .views_sales import SalesView, SaleLinesByInvoiceView
 from .views_credit import CreditNoteView, CreditNoteDetail, CreditNoteRedeem, CreditNoteDelete
-from .views_sales_return import SaleLinesByInvoice, SalesReturn
+from .views_sales_return import SalesReturn
 from .views_customers import CustomerListCreate
 from .views_masterpack import MasterPackView, MasterPackDetail, MasterPackBulkDelete
 from .views_material_consumption import (
@@ -59,7 +59,8 @@ urlpatterns = [
     path("credit-notes/<str:note_no>/delete/", CreditNoteDelete.as_view(), name="credit-note-delete"),
 
     # Sales Return
-    path("sales/<str:invoice_no>/lines/", SaleLinesByInvoice.as_view(), name="sale-lines-by-invoice"),
+    # ✅ FIXED: lines endpoint now returns sale-time prices (SaleLine.mrp/sp)
+    path("sales/<str:invoice_no>/lines/", SaleLinesByInvoiceView.as_view(), name="sale-lines-by-invoice"),
     path("sales/<str:invoice_no>/return/", SalesReturn.as_view(), name="sales-return"),
 
     # Customers

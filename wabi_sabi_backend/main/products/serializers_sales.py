@@ -336,3 +336,38 @@ class SaleListSerializer(serializers.ModelSerializer):
             return "-"
         full = (u.get_full_name() or "").strip()
         return full or (u.username or "-")
+
+
+# ✅ NEW: outputs sale-time stored mrp/sp so invoice copy shows correct prices
+class SaleLineOutSerializer(serializers.ModelSerializer):
+    product_name = serializers.SerializerMethodField()
+    itemcode = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SaleLine
+        fields = [
+            "id",
+            "barcode",
+            "qty",
+            "mrp",
+            "sp",
+            "product_name",
+            "itemcode",
+        ]
+
+    def get_product_name(self, obj):
+        ti = getattr(getattr(obj, "product", None), "task_item", None)
+        if not ti:
+            return ""
+        return (
+            getattr(ti, "item_print_friendly_name", None)
+            or getattr(ti, "item_vasy_name", None)
+            or getattr(ti, "item_full_name", None)
+            or ""
+        )
+
+    def get_itemcode(self, obj):
+        ti = getattr(getattr(obj, "product", None), "task_item", None)
+        if not ti:
+            return obj.barcode or ""
+        return getattr(ti, "code", None) or getattr(ti, "item_code", None) or (obj.barcode or "")

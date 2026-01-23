@@ -1,14 +1,15 @@
 # products/views_sales.py
 from django.db.models import Q
 from django.core.exceptions import FieldDoesNotExist
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework.pagination import PageNumberPagination
 
 from outlets.models import Employee
-from .models import Sale
-from .serializers_sales import SaleCreateSerializer, SaleListSerializer
+from .models import Sale, SaleLine
+from .serializers_sales import SaleCreateSerializer, SaleListSerializer, SaleLineOutSerializer
 
 
 def _get_employee(user):
@@ -123,3 +124,35 @@ class SalesView(APIView):
 
         payload = ser.save(created_by=created_by_user)
         return Response(payload, status=status.HTTP_201_CREATED)
+
+
+# ✅ NEW: /api/sales/<invoice_no>/lines/ returns SaleLine.mrp & SaleLine.sp (sale-time prices)
+class SaleLinesByInvoiceView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, invoice_no):
+        sale = get_object_or_404(Sale, invoice_no=invoice_no)
+
+        # same outlet scoping rule as sales list
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated and not user.is_superuser:
+            emp = _get_employee(user)
+            if not emp or not emp.outlet_id:
+                return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            allowed = Sale.objects.filter(pk=sale.pk)
+            outlet_q = Q(salesman__outlet_id=emp.outlet_id)
+            if _has_created_by_field():
+                outlet_q = outlet_q | Q(created_by__employee__outlet_id=emp.outlet_id)
+            allowed = allowed.filter(outlet_q)
+
+            if not allowed.exists():
+                return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        lines = (
+            SaleLine.objects.select_related("product", "product__task_item")
+            .filter(sale=sale)
+            .order_by("id")
+        )
+        ser = SaleLineOutSerializer(lines, many=True)
+        return Response({"invoice_no": sale.invoice_no, "lines": ser.data}, status=status.HTTP_200_OK)
