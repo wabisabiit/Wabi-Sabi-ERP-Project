@@ -43,9 +43,6 @@ class ProductAdmin(admin.ModelAdmin):
 
 # ---------- Inlines ----------
 class StockTransferLineInline(admin.TabularInline):
-    """
-    Used inside StockTransfer admin to add/edit its lines.
-    """
     model = StockTransferLine
     extra = 0
     autocomplete_fields = ("product",)
@@ -54,9 +51,6 @@ class StockTransferLineInline(admin.TabularInline):
 
 
 class ProductMovementInline(admin.TabularInline):
-    """
-    (Optional) Show movements of this Product inside Product admin (read-only).
-    """
     model = StockTransferLine
     fk_name = "product"
     extra = 0
@@ -66,11 +60,10 @@ class ProductMovementInline(admin.TabularInline):
     show_change_link = True
 
 
-# attach the read-only inline to Product admin
 ProductAdmin.inlines = [ProductMovementInline]
 
 
-# ---------- StockTransfer admin ----------
+# ---------- StockTransfer ----------
 @admin.register(StockTransfer)
 class StockTransferAdmin(admin.ModelAdmin):
     list_display = ("number", "from_location", "to_location", "created_at", "note")
@@ -83,7 +76,6 @@ class StockTransferAdmin(admin.ModelAdmin):
     ordering = ("-created_at", "number")
 
 
-# (Optional) also expose lines as their own changelist (handy for searches/reports)
 @admin.register(StockTransferLine)
 class StockTransferLineAdmin(admin.ModelAdmin):
     list_display = ("transfer", "product", "qty", "barcode", "mrp", "sp")
@@ -94,21 +86,43 @@ class StockTransferLineAdmin(admin.ModelAdmin):
     ordering = ("transfer", "barcode")
 
 
-# products/admin.py
+# ---------------- CUSTOMER ----------------
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone", "email", "created_at")
+    list_display = (
+        "name",
+        "phone",
+        "email",
+        "location",        # ✅ added
+        "created_by",      # ✅ added
+        "created_at",
+    )
     search_fields = ("name", "phone", "email")
+    list_filter = ("location",)
+    autocomplete_fields = ("location", "created_by")
+    readonly_fields = ("created_at",)
 
 
+# ---------------- SALE ----------------
 @admin.register(Sale)
 class SaleAdmin(admin.ModelAdmin):
-    list_display = ("invoice_no", "customer", "store", "payment_method", "transaction_date", "grand_total")
+    list_display = (
+        "invoice_no",
+        "customer",
+        "store",
+        "payment_method",
+        "salesman",        # ✅ added
+        "created_by",      # ✅ added
+        "transaction_date",
+        "grand_total",
+    )
     list_filter = ("store", "payment_method", "transaction_date")
     search_fields = ("invoice_no", "customer__name", "customer__phone")
+    autocomplete_fields = ("customer", "salesman", "created_by")
+    date_hierarchy = "transaction_date"
 
 
-# ✅ helper for admin calc
+# ---------- Sale Lines ----------
 TWOPLACES = Decimal("0.01")
 
 
@@ -131,7 +145,7 @@ class SaleLineAdmin(admin.ModelAdmin):
     def unit_cost_after_disc(self, obj):
         sp = (Decimal(obj.sp or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
         dp = (Decimal(obj.discount_percent or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
-        da = (Decimal(obj.discount_amount or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)  # per unit
+        da = (Decimal(obj.discount_amount or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
         if dp > 0:
             disc = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
@@ -213,7 +227,11 @@ class CouponAdmin(admin.ModelAdmin):
 
 @admin.register(GeneratedCoupon)
 class GeneratedCouponAdmin(admin.ModelAdmin):
-    list_display = ("code", "coupon", "price", "status", "issued_by", "assigned_to", "customer_no", "created_date", "redemption_date", "redeemed_invoice_no")
+    list_display = (
+        "code", "coupon", "price", "status",
+        "issued_by", "assigned_to", "customer_no",
+        "created_date", "redemption_date", "redeemed_invoice_no"
+    )
     list_filter = ("status", "issued_by", "coupon")
     search_fields = ("code", "redeemed_invoice_no", "customer_no")
 
@@ -230,34 +248,6 @@ class DiscountAdmin(admin.ModelAdmin):
     filter_horizontal = ("branches",)
     readonly_fields = ("created_at",)
 
-    fieldsets = (
-        ("Basic", {
-            "fields": ("title", "code", "branches", "applies_category"),
-        }),
-        ("How it applies", {
-            "fields": ("applicable", "mode"),
-        }),
-        ("Discount Value", {
-            "fields": ("value_type", "value"),
-            "description": "Percentage (%) or fixed amount (₹).",
-        }),
-        ("Range Wise (optional)", {
-            "fields": ("range_min_amount", "range_max_amount"),
-            "classes": ("collapse",),
-        }),
-        ("Buy X Get Y (optional)", {
-            "fields": ("x_qty", "y_qty"),
-            "classes": ("collapse",),
-        }),
-        ("Product at Fix Amount (optional)", {
-            "fields": ("min_amount_for_fix",),
-            "classes": ("collapse",),
-        }),
-        ("Validity", {
-            "fields": ("start_date", "end_date", "created_at"),
-        }),
-    )
-
 
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
@@ -271,11 +261,7 @@ class ExpenseAdmin(admin.ModelAdmin):
         "created_by_location",
     )
     list_filter = ("non_gst", "account", "supplier")
-    search_fields = (
-        "supplier__company_name",
-        "account__name",
-        "remark",
-    )
+    search_fields = ("supplier__company_name", "account__name", "remark")
 
 
 @admin.register(RegisterClosing)
@@ -293,11 +279,7 @@ class RegisterClosingAdmin(admin.ModelAdmin):
     )
     list_filter = ("location", "physical_drawer", "closed_at")
     date_hierarchy = "closed_at"
-    search_fields = (
-        "location__name",
-        "location__code",
-        "created_by__user__username",
-    )
+    search_fields = ("location__name", "location__code", "created_by__user__username")
 
 
 @admin.register(HoldBill)
@@ -318,12 +300,6 @@ class HoldBillAdmin(admin.ModelAdmin):
 
 @admin.register(SalePayment)
 class SalePaymentAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "sale",
-        "method",
-        "amount",
-        "created_at",
-    )
+    list_display = ("id", "sale", "method", "amount", "created_at")
     list_filter = ("method", "created_at")
     search_fields = ("sale__invoice_no",)
