@@ -2,8 +2,10 @@
 from rest_framework import serializers
 from .models import Customer
 
+
 class CustomerSerializer(serializers.ModelSerializer):
     created_by_display = serializers.SerializerMethodField()
+    location_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
@@ -14,7 +16,14 @@ class CustomerSerializer(serializers.ModelSerializer):
             "email",
             "created_at",
             "created_by_display",
+            "location_display",
         ]
+
+    def get_location_display(self, obj):
+        loc = getattr(obj, "location", None)
+        if not loc:
+            return ""
+        return getattr(loc, "code", "") or getattr(loc, "name", "") or str(loc)
 
     def get_created_by_display(self, obj):
         """
