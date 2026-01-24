@@ -45,6 +45,14 @@ const COLS = [
     label: "GSTIN",
     td: (r) => <span className="two-line">{r.gstin}</span>,
   },
+
+  // ✅ NEW: Location column (from backend)
+  {
+    id: "location",
+    label: "Location",
+    td: (r) => <span className="two-line">{r.location}</span>,
+  },
+
   {
     id: "createdBy",
     label: "Created By",
@@ -126,6 +134,7 @@ const CUSTOMER_VISIBLE = [
   "contact",
   "whatsapp",
   "gstin",
+  "location", // ✅ NEW
   "createdBy",
   "mobileStatus",
   "status",
@@ -138,6 +147,7 @@ const VENDOR_VISIBLE = [
   "contact",
   "whatsapp",
   "gstin",
+  "location", // ✅ NEW
   "createdBy",
   "mobileStatus",
   "status",
@@ -223,7 +233,7 @@ function ContactLocationSelect({ value = [], onChange, options = [] }) {
 /* ========= Page ========= */
 export default function ContactPage() {
   const [tab, setTab] = useState("customer");
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(20); // ✅ default 20 rows visible
   const [query, setQuery] = useState("");
 
   // ✅ pagination state
@@ -377,8 +387,11 @@ export default function ContactPage() {
             contact: phone,
             whatsapp: phone,
             gstin: "",
-            // ✅ real Created By from backend
-            createdBy: c?.created_by_display || "",
+
+            // ✅ real Location + Created By from backend
+            location: c?.location || c?.location_display || "",
+            createdBy: c?.created_by || c?.created_by_display || "",
+
             mobileStatus: phone ? "Verified" : "",
             status: "ACTIVE",
             loyalty: "0.00",
@@ -421,7 +434,11 @@ export default function ContactPage() {
             contact: phone,
             whatsapp: phone,
             gstin: s?.gstin || "",
+
+            // keep as-is (vendors don’t have same fields in your backend)
+            location: "",
             createdBy: s?.email || "",
+
             mobileStatus: phone ? "Verified" : "",
             status: "ACTIVE",
             loyalty: "-",
@@ -458,6 +475,7 @@ export default function ContactPage() {
           r.contact,
           r.whatsapp,
           r.gstin,
+          r.location,
           r.createdBy,
           r.mobileStatus,
           r.status,
@@ -469,7 +487,7 @@ export default function ContactPage() {
     if (isAdmin && locations.length > 0) {
       out = out.filter((r) =>
         locations.some((loc) =>
-          String(r.name || "").toLowerCase().includes(loc.toLowerCase())
+          String(r.location || "").toLowerCase().includes(loc.toLowerCase())
         )
       );
     }

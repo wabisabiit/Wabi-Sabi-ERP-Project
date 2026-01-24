@@ -254,6 +254,11 @@ export async function searchCustomers(q) {
   return http(`/customers/${sp.toString() ? `?${sp.toString()}` : ""}`);
 }
 
+// ✅ NEW: load all customers (frontend pagination)
+export async function listCustomers() {
+  return http(`/customers/`);
+}
+
 export async function createCustomer(payload) {
   return http(`/customers/`, { method: "POST", body: JSON.stringify(payload) });
 }

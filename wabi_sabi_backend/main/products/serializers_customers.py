@@ -4,8 +4,13 @@ from .models import Customer
 
 
 class CustomerSerializer(serializers.ModelSerializer):
+    # ✅ keep display fields
     created_by_display = serializers.SerializerMethodField()
     location_display = serializers.SerializerMethodField()
+
+    # ✅ ALSO expose fields with the names most frontends use
+    created_by = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
@@ -15,19 +20,25 @@ class CustomerSerializer(serializers.ModelSerializer):
             "phone",
             "email",
             "created_at",
+
+            # common names (so frontend table shows values)
+            "created_by",
+            "location",
+
+            # keep your display fields too (POS dropdown uses these)
             "created_by_display",
             "location_display",
         ]
 
-    def get_location_display(self, obj):
+    def _loc_label(self, obj):
         loc = getattr(obj, "location", None)
         if not loc:
             return ""
         return getattr(loc, "code", "") or getattr(loc, "name", "") or str(loc)
 
-    def get_created_by_display(self, obj):
+    def _created_by_label(self, obj):
         """
-        Example format required:
+        Example format:
           "Sandeep, manager of UV"
         """
         user = getattr(obj, "created_by", None)
@@ -36,19 +47,16 @@ class CustomerSerializer(serializers.ModelSerializer):
 
         emp = getattr(user, "employee", None)
         if not emp:
-            # fallback: username / full name
             return user.get_full_name() or user.username or ""
 
-        # try best-effort to get a name
         emp_name = (
             getattr(emp, "name", None)
             or getattr(emp, "full_name", None)
-            or getattr(user, "get_full_name", lambda: "")()
+            or (user.get_full_name() if hasattr(user, "get_full_name") else "")
             or user.username
             or ""
         )
 
-        # outlet/location label
         loc_label = ""
         outlet = getattr(emp, "outlet", None)
         if outlet and getattr(outlet, "location", None):
@@ -58,6 +66,21 @@ class CustomerSerializer(serializers.ModelSerializer):
         if loc_label:
             return f"{emp_name}, manager of {loc_label}"
         return emp_name
+
+    # ✅ “created_by” field (frontend table usually uses this)
+    def get_created_by(self, obj):
+        return self._created_by_label(obj)
+
+    # ✅ “location” field (frontend table usually uses this)
+    def get_location(self, obj):
+        return self._loc_label(obj)
+
+    # ✅ keep existing display fields (used by SearchBar dropdown)
+    def get_location_display(self, obj):
+        return self._loc_label(obj)
+
+    def get_created_by_display(self, obj):
+        return self._created_by_label(obj)
 
     # POS rule: require name + phone on create
     def validate(self, data):
