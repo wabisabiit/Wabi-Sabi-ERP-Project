@@ -165,6 +165,23 @@ function NewCustomerModal({ open, onClose, prefillName = "", onSaved }) {
   );
 }
 
+function normalizeCustomer(raw) {
+  const c = raw || {};
+  const nested = c.customer || {};
+  const name =
+    (c.name ?? c.full_name ?? c.customer_name ?? nested.name ?? "").toString().trim();
+  const phone =
+    (c.phone ?? c.mobile ?? c.phone_number ?? nested.phone ?? "").toString().trim();
+
+  return {
+    ...c,
+    id: c.id ?? nested.id,
+    name,
+    phone,
+    // keep any extra fields (address/verified) if present
+  };
+}
+
 export default function SearchBar({ onAddItem }) {
   const [scan, setScan] = useState("");
   const [query, setQuery] = useState("");
@@ -197,12 +214,12 @@ export default function SearchBar({ onAddItem }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // ✅ FIXED: Live search with loading state
+  // ✅ FIXED: Live search supports name OR phone and always shows name
   useEffect(() => {
     let alive = true;
     const timeoutId = setTimeout(async () => {
       const q = query.trim();
-      
+
       if (!q) {
         setMatches([]);
         setIsSearching(false);
@@ -212,31 +229,35 @@ export default function SearchBar({ onAddItem }) {
       setIsSearching(true);
 
       try {
-        console.log("🔍 Searching for:", q);
         const res = await searchCustomers(q);
-        
         if (!alive) return;
-
-        console.log("📦 API Response:", res);
 
         const arr = Array.isArray(res)
           ? res
           : res?.results || res?.data || res?.items || [];
 
-        console.log("✅ Matched customers:", arr.length, "results");
-        setMatches(arr);
+        // Normalize fields so UI always has {name, phone}
+        const normalized = arr.map(normalizeCustomer);
+
+        // Extra safety: client-side filter by name OR phone
+        const ql = q.toLowerCase();
+        const filtered = normalized.filter((c) => {
+          const nm = (c.name || "").toLowerCase();
+          const ph = (c.phone || "");
+          return nm.includes(ql) || ph.includes(q);
+        });
+
+        setMatches(filtered);
         setIsSearching(false);
       } catch (e) {
         console.error("❌ Customer search error:", e);
-        
         if (!alive) return;
 
         const ql = q.toLowerCase();
-        const mockResults = MOCK_CUSTOMERS.filter(
-          (c) => c.name.toLowerCase().includes(ql) || c.phone.includes(q)
-        );
-        
-        console.log("📋 Using mock data:", mockResults.length, "results");
+        const mockResults = MOCK_CUSTOMERS
+          .map(normalizeCustomer)
+          .filter((c) => (c.name || "").toLowerCase().includes(ql) || (c.phone || "").includes(q));
+
         setMatches(mockResults);
         setIsSearching(false);
       }
@@ -365,10 +386,11 @@ export default function SearchBar({ onAddItem }) {
     }
   }
 
-  const pickCustomer = (c) => {
+  const pickCustomer = (raw) => {
+    const c = normalizeCustomer(raw);
     console.log("✅ Selected customer:", c);
     setCustomer(c);
-    setSelectedCustomer(c);
+    setSelectedCustomer(c); // ✅ do not change existing customer-details logic
     setQuery("");
     setOpenDrop(false);
   };
@@ -404,80 +426,58 @@ export default function SearchBar({ onAddItem }) {
         </div>
 
         {/* Customer dropdown */}
-        <div className="customer-input" ref={wrapRef} style={{ position: 'relative' }}>
+        <div className="customer-input" ref={wrapRef} style={{ position: "relative" }}>
           <input
             type="text"
-            placeholder={customer?.id ? `${customer.name} (${customer.phone})` : "Walk in Customer"}
+            placeholder={
+              customer?.id
+                ? `${customer.name} (${customer.phone})`
+                : "Walk in Customer"
+            }
             value={query}
-            onFocus={() => {
-              console.log("🔵 Input focused, opening dropdown");
-              setOpenDrop(true);
-            }}
+            onFocus={() => setOpenDrop(true)}
             onChange={(e) => {
               const newQuery = e.target.value;
-              console.log("✏️ Query changed:", newQuery);
               setQuery(newQuery);
-              if (newQuery.trim()) {
-                setOpenDrop(true);
-              }
+              if (newQuery.trim()) setOpenDrop(true);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setOpenDrop(false);
-              }
+              if (e.key === "Escape") setOpenDrop(false);
             }}
           />
-          <button 
-            className="edit-btn" 
-            type="button" 
-            aria-label="Edit" 
-            onClick={() => {
-              const newState = !openDrop;
-              console.log("🖊️ Edit button clicked, openDrop:", newState);
-              setOpenDrop(newState);
-            }}
+          <button
+            className="edit-btn"
+            type="button"
+            aria-label="Edit"
+            onClick={() => setOpenDrop((v) => !v)}
           >
             <span className="material-icons">edit</span>
           </button>
 
           {openDrop && (
-            <div style={{
-              position: 'absolute',
-              top: '-20px',
-              right: 0,
-              background: '#22c55e',
-              color: 'white',
-              padding: '2px 8px',
-              borderRadius: '3px',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              zIndex: 10000
-            }}>
-              DROPDOWN OPEN
-            </div>
-          )}
-
-          {openDrop && (
-            <div className="dropdown" style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              backgroundColor: 'white',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              zIndex: 9999,
-              maxHeight: '400px',
-              overflowY: 'auto',
-              marginTop: '4px'
-            }}>
+            <div
+              className="dropdown"
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                backgroundColor: "white",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                zIndex: 9999,
+                maxHeight: "400px",
+                overflowY: "auto",
+                marginTop: "4px",
+              }}
+            >
               {query.trim().length < 1 ? (
-                <div className="dropdown-note" style={{ padding: '12px', color: '#666' }}>
+                <div className="dropdown-note" style={{ padding: "12px", color: "#666" }}>
                   Please enter 1 or more characters
                 </div>
               ) : isSearching ? (
-                <div className="dropdown-note" style={{ padding: '12px', color: '#666' }}>
+                <div className="dropdown-note" style={{ padding: "12px", color: "#666" }}>
                   Searching...
                 </div>
               ) : (
@@ -488,68 +488,79 @@ export default function SearchBar({ onAddItem }) {
                     role="button"
                     tabIndex={0}
                     style={{
-                      padding: '12px',
-                      borderBottom: '1px solid #eee',
-                      cursor: 'pointer',
-                      backgroundColor: '#f8f9fa'
+                      padding: "12px",
+                      borderBottom: "1px solid #eee",
+                      cursor: "pointer",
+                      backgroundColor: "#f8f9fa",
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e9ecef'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e9ecef")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f8f9fa")}
                   >
-                    <div style={{ fontWeight: 500, marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 500, marginBottom: "4px" }}>
                       ➕ Add New Contact: "{query.trim()}"
                     </div>
-                    <div className="muted" style={{ fontSize: '12px', color: '#888' }}>
+                    <div className="muted" style={{ fontSize: "12px", color: "#888" }}>
                       Click to create new customer
                     </div>
                   </div>
 
                   {matches.length > 0 ? (
-                    matches.map((c) => (
-                      <div 
-                        key={c.id} 
-                        className="customer-item" 
-                        onClick={() => pickCustomer(c)}
-                        style={{
-                          padding: '12px',
-                          borderBottom: '1px solid #eee',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f8ff'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                      >
-                        <div className="cust-line" style={{ marginBottom: '4px' }}>
-                          <span className="cust-name" style={{ fontWeight: 500 }}>
-                            {c.name}
-                          </span>
-                          &nbsp;
-                          <span className="cust-phone" style={{ color: '#666' }}>
-                            {c.phone}
-                          </span>
-                        </div>
-                        <div className="cust-sub" style={{ fontSize: '12px', color: '#888' }}>
-                          <span>Address: {c.address || "Not provided"}</span>
-                          {!c.verified && (
-                            <span className="unverified" style={{ 
-                              marginLeft: '8px',
-                              color: '#dc3545',
-                              fontSize: '11px'
-                            }}>
-                              ⚠️ Un-verified
+                    matches.map((raw) => {
+                      const c = normalizeCustomer(raw);
+                      const displayName = c.name || "(No Name)";
+                      const displayPhone = c.phone || "";
+                      return (
+                        <div
+                          key={c.id || `${displayName}-${displayPhone}`}
+                          className="customer-item"
+                          onClick={() => pickCustomer(c)}
+                          style={{
+                            padding: "12px",
+                            borderBottom: "1px solid #eee",
+                            cursor: "pointer",
+                            transition: "background-color 0.2s",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f0f8ff")}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
+                        >
+                          <div className="cust-line" style={{ marginBottom: "4px" }}>
+                            <span className="cust-name" style={{ fontWeight: 500 }}>
+                              {displayName}
                             </span>
-                          )}
+                            &nbsp;
+                            <span className="cust-phone" style={{ color: "#666" }}>
+                              {displayPhone}
+                            </span>
+                          </div>
+                          <div className="cust-sub" style={{ fontSize: "12px", color: "#888" }}>
+                            <span>Address: {c.address || "Not provided"}</span>
+                            {c.verified === false && (
+                              <span
+                                className="unverified"
+                                style={{
+                                  marginLeft: "8px",
+                                  color: "#dc3545",
+                                  fontSize: "11px",
+                                }}
+                              >
+                                ⚠️ Un-verified
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <div className="no-results" style={{ 
-                      padding: '16px',
-                      textAlign: 'center',
-                      color: '#999'
-                    }}>
+                    <div
+                      className="no-results"
+                      style={{
+                        padding: "16px",
+                        textAlign: "center",
+                        color: "#999",
+                      }}
+                    >
                       🔍 No matching customers found
-                      <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                      <div style={{ fontSize: "12px", marginTop: "4px" }}>
                         Click "Add New Contact" above to create one
                       </div>
                     </div>

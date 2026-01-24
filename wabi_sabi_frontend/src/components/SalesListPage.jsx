@@ -52,7 +52,7 @@ function PaymentModeSelect({ value, onChange, options }) {
         return options.filter((o) => o.toLowerCase().includes(q));
     }, [query, options]);
 
-    React.useEffect(() => {
+    React.useEffect(() => {     
         const onDoc = (e) => {
             if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
         };
