@@ -207,7 +207,7 @@ class SaleReceiptPdfView(View):
 
         def _tax_rate_for_total(total: Decimal) -> Decimal:
             # <= 2500 => 15%, else 18%
-            return Decimal("0.15") if q2(total) <= Decimal("2500.00") else Decimal("0.18")
+            return Decimal("0.5") if q2(total) <= Decimal("2500.00") else Decimal("0.18")
 
         def _calc_tax_summary(total: Decimal):
             """
