@@ -206,22 +206,22 @@ class SaleReceiptPdfView(View):
             c.restoreState()
 
         def _tax_rate_for_total(total: Decimal) -> Decimal:
-            # <= 2500 => 15%, else 18%
-            return Decimal("0.5") if q2(total) <= Decimal("2500.00") else Decimal("0.18")
+            # <= 2500 => 5%, else 18%
+            return Decimal("0.05") if q2(total) <= Decimal("2500.00") else Decimal("0.18")
 
         def _calc_tax_summary(total: Decimal):
             """
-            Rules (as requested):
-            - rate = 15% if total <= 2500 else 18%
+            Rules (corrected):
+            - rate = 5% if total <= 2500 else 18%
             - taxable_value = total - (total * rate)
-            - cgst = taxable_value - (taxable_value * rate)
-            - sgst = taxable_value - (taxable_value * rate)
+            - cgst = taxable_value * rate
+            - sgst = taxable_value * rate
             - cess, igst = 0.00
             """
             rate = _tax_rate_for_total(total)
             taxable_value = q2(total - (total * rate))
-            cgst = q2(taxable_value - (taxable_value * rate))
-            sgst = q2(taxable_value - (taxable_value * rate))
+            cgst = q2(taxable_value * rate)
+            sgst = q2(taxable_value * rate)
             cess = Decimal("0.00")
             igst = Decimal("0.00")
             return taxable_value, cgst, sgst, cess, igst
@@ -400,7 +400,6 @@ class SaleReceiptPdfView(View):
         headers = ["TAXABLE\nVALUE", "CGST", "SGST", "Cess", "IGST"]
         for i, htxt in enumerate(headers):
             cx = table_left + col_w * i + col_w / 2
-            # multi-line only for TAXABLE VALUE
             c.setFont("Helvetica-Bold", 7)
             if "\n" in htxt:
                 a, b = htxt.split("\n", 1)
