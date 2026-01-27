@@ -205,6 +205,27 @@ class SaleReceiptPdfView(View):
             c.line(M, y, PAGE_W - M, y)
             c.restoreState()
 
+        def _tax_rate_for_total(total: Decimal) -> Decimal:
+            # <= 2500 => 15%, else 18%
+            return Decimal("0.15") if q2(total) <= Decimal("2500.00") else Decimal("0.18")
+
+        def _calc_tax_summary(total: Decimal):
+            """
+            Rules (as requested):
+            - rate = 15% if total <= 2500 else 18%
+            - taxable_value = total - (total * rate)
+            - cgst = taxable_value - (taxable_value * rate)
+            - sgst = taxable_value - (taxable_value * rate)
+            - cess, igst = 0.00
+            """
+            rate = _tax_rate_for_total(total)
+            taxable_value = q2(total - (total * rate))
+            cgst = q2(taxable_value - (taxable_value * rate))
+            sgst = q2(taxable_value - (taxable_value * rate))
+            cess = Decimal("0.00")
+            igst = Decimal("0.00")
+            return taxable_value, cgst, sgst, cess, igst
+
         # Header (no "DUPLICATE")
         center(y, (loc_code or "OUTLET")[:12], 9, True)
         y -= 14
@@ -226,6 +247,8 @@ class SaleReceiptPdfView(View):
             center(y, f"{shop_at}", 7, True)
             y -= 10
             center(y, f"{shop_domain}", 8, True)
+            y -= 9
+            center(y, "A unit of Wabi-Sabi", 7, False)
             y -= 10
 
         # Customer + meta
@@ -345,10 +368,61 @@ class SaleReceiptPdfView(View):
         txt(M, y, place_supply, 6, False)
         y -= 14
 
-        txt(M, y, "TAX SUMMARY", 8, True)
+        # TAX SUMMARY (table like your image)
+        center(y, "TAX SUMMARY", 8, True)
         y -= 10
-        txt(M, y, "(left empty for now)", 7, False)
-        y -= 14
+
+        taxable_value, cgst, sgst, cess, igst = _calc_tax_summary(total_net)
+
+        # Table geometry (fit roll width)
+        table_left = M
+        table_right = PAGE_W - M
+        table_w = table_right - table_left
+
+        cols = 5
+        col_w = table_w / cols
+        table_top = y
+        row_h1 = 18
+        row_h2 = 16
+
+        # Draw outer box
+        c.rect(table_left, table_top - (row_h1 + row_h2), table_w, (row_h1 + row_h2), stroke=1, fill=0)
+
+        # Vertical lines
+        for i in range(1, cols):
+            x = table_left + (col_w * i)
+            c.line(x, table_top, x, table_top - (row_h1 + row_h2))
+
+        # Horizontal split between header and values
+        c.line(table_left, table_top - row_h1, table_right, table_top - row_h1)
+
+        # Header labels
+        headers = ["TAXABLE\nVALUE", "CGST", "SGST", "Cess", "IGST"]
+        for i, htxt in enumerate(headers):
+            cx = table_left + col_w * i + col_w / 2
+            # multi-line only for TAXABLE VALUE
+            c.setFont("Helvetica-Bold", 7)
+            if "\n" in htxt:
+                a, b = htxt.split("\n", 1)
+                c.drawCentredString(cx, table_top - 10, a)
+                c.drawCentredString(cx, table_top - 18, b)
+            else:
+                c.drawCentredString(cx, table_top - 14, htxt)
+
+        # Values
+        vals = [
+            f"{taxable_value:.2f}",
+            f"{cgst:.2f}",
+            f"{sgst:.2f}",
+            f"{cess:.2f}",
+            f"{igst:.2f}",
+        ]
+        c.setFont("Helvetica", 7)
+        for i, v in enumerate(vals):
+            cx = table_left + col_w * i + col_w / 2
+            c.drawCentredString(cx, table_top - row_h1 - 12, v)
+
+        y = table_top - (row_h1 + row_h2) - 12
 
         txt(M, y, "Customer Details :", 8, False)
         y -= 10
