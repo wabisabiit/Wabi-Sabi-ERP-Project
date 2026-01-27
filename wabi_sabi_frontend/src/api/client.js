@@ -649,6 +649,29 @@ export async function createRegisterClose(payload) {
   });
 }
 
+
+// ✅ NEW: fetch Sale receipt PDF (blob URL)
+export async function getSaleReceiptPdf(invoiceNo) {
+  const safe = String(invoiceNo || "").trim();
+  if (!safe) throw new Error("Missing invoice number.");
+
+  const url = joinUrl(API_BASE, `/sales/${encodeURIComponent(safe)}/receipt/`);
+
+  const res = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/pdf" },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Receipt failed (${res.status}): ${text}`);
+  }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
 export async function getRegisterClosingSummary() {
   return http(`/register-closes/today-summary/`);
 }
@@ -780,4 +803,6 @@ export default {
 
   // ✅ NEW
   dashboardSummary,
+
+  getSaleReceiptPdf,
 };

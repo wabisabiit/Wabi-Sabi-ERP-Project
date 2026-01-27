@@ -12,6 +12,9 @@ import Sidebar from "./components/Sidebar";
 import PosPage from "./components/PosPage";
 import Dashboard from "./components/Dashboard"; // 🔹 from partner co
 
+import ReceiptPdfPage from "./pages/ReceiptPdfPage";
+
+
 /* Keep base styles LAST so they win the cascade */
 import "./App.css";
 
@@ -1110,6 +1113,8 @@ export default function App() {
 
           {/* Fallback → Login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
+
+          <Route path="/receipt/:type/:number" element={<ReceiptPdfPage />} />
         </Routes>
       </Suspense>
     </AuthProvider>
