@@ -2,13 +2,12 @@
 from io import BytesIO
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework.views import APIView
-from rest_framework import permissions
-from rest_framework.response import Response
-from rest_framework import status
+from django.views import View
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -43,8 +42,8 @@ def _user_location_name(user):
 def _can_view_sale(user, sale: Sale) -> bool:
     # Admin/superuser can view everything
     if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
-      # if you want staff restricted too, remove is_staff
-      return True
+        # if you want staff restricted too, remove is_staff
+        return True
 
     # Manager/staff should only see their location (best-effort)
     user_loc = _user_location_code(user)
@@ -112,15 +111,13 @@ def _inr_words(amount: Decimal) -> str:
     return "Rupees " + " ".join([p for p in parts if p]).strip() + " Only"
 
 
-class SaleReceiptPdfView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    renderer_classes = []  # ✅ FIX: avoid DRF Accept-header negotiation (prevents 406)
-
+@method_decorator(login_required, name="dispatch")
+class SaleReceiptPdfView(View):
     def get(self, request, invoice_no: str):
         sale = get_object_or_404(Sale, invoice_no=invoice_no)
 
         if not _can_view_sale(request.user, sale):
-            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+            return JsonResponse({"detail": "Not allowed."}, status=403)
 
         loc_code = _user_location_code(request.user)
         loc_name = _user_location_name(request.user)
@@ -204,7 +201,7 @@ class SaleReceiptPdfView(APIView):
         txt(rx + 210, y, "DUPLICATE", 9, True)
         y -= 18
 
-        txt(rx + 105, y, "Credit Note", 10, True)  # you want receipt style like image
+        txt(rx + 105, y, "Credit Note", 10, True)
         y -= 14
 
         txt(rx + 10, y, address_line, 8, False)
@@ -213,27 +210,23 @@ class SaleReceiptPdfView(APIView):
         if gstin:
             txt(rx + 50, y, f"GSTIN NO : {gstin}", 8, False)
         else:
-            txt(rx + 50, y, "GSTIN NO : ", 8, False)  # TODO: other outlets empty
+            txt(rx + 50, y, "GSTIN NO : ", 8, False)
         y -= 12
 
         txt(rx + 95, y, "Email :", 8, False)
         y -= 12
 
-        # phone line: keep empty for now (image shows phone)
         txt(rx + 20, y, "Phone No : ", 8, False)
         y -= 14
 
-        # shop at
         txt(rx + 180, y + 40, shop_at, 8, True)
         txt(rx + 155, y + 28, shop_domain, 9, True)
 
-        # customer block
         txt(rx + 10, y, f"Name    : {cust_name}", 9, False)
         y -= 12
         txt(rx + 10, y, f"Mobile  : {cust_phone}", 9, False)
         y -= 12
 
-        # Using invoice as "Credit Note No" placeholder (POS receipt style)
         txt(rx + 10, y, f"Credit Note No : {sale.invoice_no}", 8, False)
         y -= 12
 
@@ -283,7 +276,6 @@ class SaleReceiptPdfView(APIView):
             txt(rx + 10, y, f"{idx}", 8, False)
             txt(rx + 30, y, pname[:18], 8, False)
 
-            # Qty must show 1.0 style (per your request)
             txt(rx + 165, y, f"{qty:.1f}", 8, False)
             txt(rx + 195, y, f"{mrp:.2f}", 8, False)
             txt(rx + 240, y, f"{disc_line:.2f}", 8, False)
@@ -294,7 +286,6 @@ class SaleReceiptPdfView(APIView):
                 c.showPage()
                 y = h - 60
 
-        # totals
         y -= 6
         c.line(rx + 10, y, rx + rw - 10, y)
         y -= 14
@@ -303,7 +294,6 @@ class SaleReceiptPdfView(APIView):
         txt(rx + 240, y, f"{total_net:.2f}", 9, True)
         y -= 12
 
-        # leave round off as you said
         txt(rx + 10, y, "ROUND OFF", 8, False)
         txt(rx + 240, y, "0.00", 8, False)
         y -= 14
@@ -325,7 +315,6 @@ class SaleReceiptPdfView(APIView):
         txt(rx + 10, y, place_supply, 7, False)
         y -= 16
 
-        # tax summary left empty (as you asked)
         txt(rx + 10, y, "TAX SUMMARY", 8, True)
         y -= 10
         txt(rx + 10, y, "(left empty for now)", 7, False)
@@ -337,10 +326,9 @@ class SaleReceiptPdfView(APIView):
         if customer_address:
             txt(rx + 10, y, f"Address : {customer_address}", 8, False)
         else:
-            txt(rx + 10, y, "Address : ", 8, False)  # TODO: others empty
+            txt(rx + 10, y, "Address : ", 8, False)
         y -= 28
 
-        # barcode (keep)
         bc_val = sale.invoice_no
         barcode_obj = code128.Code128(bc_val, barHeight=30, barWidth=0.8)
         barcode_obj.drawOn(c, rx + 40, y)
