@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/OrderListModal.css";
 import { listSales } from "../api/client";
+import { useNavigate } from "react-router-dom";
 
 export default function OrderListModal({ open, onClose }) {
   const [rows, setRows] = useState([]);
@@ -12,12 +13,16 @@ export default function OrderListModal({ open, onClose }) {
   const [page, setPage] = useState(1);
   const [searchText, setSearchText] = useState("");
 
+  const navigate = useNavigate();
+
   // Lock body scroll while modal is open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   // Fetch same data as SaleListPage
@@ -36,7 +41,9 @@ export default function OrderListModal({ open, onClose }) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   const fmtDateCell = (iso) => {
@@ -61,7 +68,10 @@ export default function OrderListModal({ open, onClose }) {
         r.order_type,
         r.payment_status,
         String(r.total_amount ?? ""),
-      ].filter(Boolean).join(" ").toLowerCase();
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
       return hay.includes(q);
     });
   }, [rows, searchText]);
@@ -84,7 +94,11 @@ export default function OrderListModal({ open, onClose }) {
         {/* Header */}
         <div className="orders-modal__header">
           <h2>POS Details</h2>
-          <button className="orders-modal__close" aria-label="Close" onClick={onClose}>
+          <button
+            className="orders-modal__close"
+            aria-label="Close"
+            onClick={onClose}
+          >
             ×
           </button>
         </div>
@@ -93,7 +107,10 @@ export default function OrderListModal({ open, onClose }) {
         <div className="orders-modal__filters">
           <div className="orders-modal__filter-left">
             <label className="orders-modal__label">Display</label>
-            <span className="orders-modal__select" style={{ padding: "8px 12px", pointerEvents: "none" }}>
+            <span
+              className="orders-modal__select"
+              style={{ padding: "8px 12px", pointerEvents: "none" }}
+            >
               5
             </span>
           </div>
@@ -135,11 +152,15 @@ export default function OrderListModal({ open, onClose }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="11" className="orders-modal__empty">Loading…</td>
+                  <td colSpan="11" className="orders-modal__empty">
+                    Loading…
+                  </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="orders-modal__empty">No matching records found</td>
+                  <td colSpan="11" className="orders-modal__empty">
+                    No matching records found
+                  </td>
                 </tr>
               ) : (
                 pageRows.map((r, i) => (
@@ -158,7 +179,38 @@ export default function OrderListModal({ open, onClose }) {
                       <button
                         className="orders-modal__action"
                         type="button"
-                        onClick={() => console.log("View", r.invoice_no)}
+                        onClick={() => {
+                          const inv = String(r.invoice_no || "").trim();
+
+                          if (!inv) {
+                            console.error(
+                              "[OrderListModal] ❌ Redirect failed: invoice number missing",
+                              r
+                            );
+                            return;
+                          }
+
+                          const target = `/receipt/sale/${encodeURIComponent(inv)}`;
+
+                          console.log(
+                            "[OrderListModal] ✅ Redirecting to receipt",
+                            {
+                              invoice_no: inv,
+                              path: target,
+                            }
+                          );
+
+                          onClose?.();
+
+                          try {
+                            navigate(target);
+                          } catch (err) {
+                            console.error(
+                              "[OrderListModal] ❌ Navigation error",
+                              err
+                            );
+                          }
+                        }}
                       >
                         View
                       </button>
@@ -171,7 +223,8 @@ export default function OrderListModal({ open, onClose }) {
 
           {/* Footer */}
           <div className="orders-modal__footer">
-            <span>{`Showing ${showingFrom} to ${showingTo} of ${filtered.length || 0} entries`}</span>
+            <span>{`Showing ${showingFrom} to ${showingTo} of ${filtered.length || 0
+              } entries`}</span>
 
             <div className="orders-modal__pager">
               <button
