@@ -114,6 +114,7 @@ def _inr_words(amount: Decimal) -> str:
 
 class SaleReceiptPdfView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    renderer_classes = []  # ✅ FIX: avoid DRF Accept-header negotiation (prevents 406)
 
     def get(self, request, invoice_no: str):
         sale = get_object_or_404(Sale, invoice_no=invoice_no)
@@ -361,4 +362,9 @@ class SaleReceiptPdfView(APIView):
         c.save()
 
         buf.seek(0)
-        return FileResponse(buf, as_attachment=False, filename=f"{sale.invoice_no}.pdf", content_type="application/pdf")
+        return FileResponse(
+            buf,
+            as_attachment=False,
+            filename=f"{sale.invoice_no}.pdf",
+            content_type="application/pdf",
+        )
