@@ -527,6 +527,37 @@ export async function createWowBill(payload) {
   });
 }
 
+// WOW Slabs
+export async function listWowSlabs(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.outlet) sp.append("outlet", params.outlet);
+
+  const qs = sp.toString();
+  return http(`/wow-slabs/${qs ? `?${qs}` : ""}`);
+}
+
+export async function createWowSlab(payload) {
+  return http(`/wow-slabs/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateWowSlab(id, payload) {
+  return http(`/wow-slabs/${encodeURIComponent(id)}/`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteWowSlab(id) {
+  return http(`/wow-slabs/${encodeURIComponent(id)}/`, {
+    method: "DELETE",
+  });
+}
+
+
+
 // Hold Bills
 export async function listHoldBills() {
   const res = await http(`/hold-bills/`);
@@ -719,6 +750,10 @@ export default {
 
   listWowBills,
   createWowBill,
+  listWowSlabs,
+  createWowSlab,
+  updateWowSlab,
+  deleteWowSlab,
 
   listHoldBills,
   createHoldBill,
