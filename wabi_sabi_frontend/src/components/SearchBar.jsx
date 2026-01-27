@@ -439,6 +439,9 @@ export default function SearchBar({ onAddItem }) {
     setOpenDrop(false);
   };
 
+  // ✅ NEW: only allow "Add New Contact" when NO matches exist
+  const hasMatches = matches.length > 0;
+
   return (
     <div className="search-row">
       <div className="container search-bar">
@@ -516,27 +519,30 @@ export default function SearchBar({ onAddItem }) {
                 </div>
               ) : (
                 <>
-                  <div
-                    className="add-contact"
-                    onClick={() => openAddContact(query.trim())}
-                    role="button"
-                    tabIndex={0}
-                    style={{
-                      padding: "12px",
-                      borderBottom: "1px solid #eee",
-                      cursor: "pointer",
-                      backgroundColor: "#f8f9fa",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e9ecef")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f8f9fa")}
-                  >
-                    <div style={{ fontWeight: 500, marginBottom: "4px" }}>
-                      ➕ Add New Contact: "{query.trim()}"
+                  {/* ✅ CHANGE: show "Add New Contact" ONLY if no matches */}
+                  {!hasMatches && (
+                    <div
+                      className="add-contact"
+                      onClick={() => openAddContact(query.trim())}
+                      role="button"
+                      tabIndex={0}
+                      style={{
+                        padding: "12px",
+                        borderBottom: "1px solid #eee",
+                        cursor: "pointer",
+                        backgroundColor: "#f8f9fa",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e9ecef")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f8f9fa")}
+                    >
+                      <div style={{ fontWeight: 500, marginBottom: "4px" }}>
+                        ➕ Add New Contact: "{query.trim()}"
+                      </div>
+                      <div className="muted" style={{ fontSize: "12px", color: "#888" }}>
+                        Click to create new customer
+                      </div>
                     </div>
-                    <div className="muted" style={{ fontSize: "12px", color: "#888" }}>
-                      Click to create new customer
-                    </div>
-                  </div>
+                  )}
 
                   {pagedMatches.length > 0 ? (
                     pagedMatches.map((raw) => {
