@@ -33,6 +33,8 @@ from .views_dashboard import DashboardSummaryView
 # ✅ CSV Import (NEW)
 from .views_csv_import import ProductCsvPreflight, ProductCsvApply
 
+from .views_receipt import SaleReceiptPdfView
+
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -116,6 +118,8 @@ urlpatterns = [
 
     # ✅ NEW Dashboard KPI summary (date filter required)
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
+
+    path("sales/<str:invoice_no>/receipt/", SaleReceiptPdfView.as_view(), name="sale-receipt-pdf"),
 ]
 
 urlpatterns += router.urls
