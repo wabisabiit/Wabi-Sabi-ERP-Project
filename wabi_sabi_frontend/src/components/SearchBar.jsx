@@ -385,8 +385,18 @@ export default function SearchBar({ onAddItem }) {
         //  - unitCost (after discount)
         //  - netAmount (unitCost * qty)
         const qtyNum = Number(ln.qty || 1);
+
         const spNum = Number(ln.sellingPrice ?? ln.sp ?? 0);
-        const discPerUnitNum = Number(ln.lineDiscountAmount ?? 0);
+
+        // backend may return unit_cost_after_disc or unitCost
+        const unitAfterNum = Number(ln.unitCost ?? ln.unit_cost_after_disc ?? 0);
+
+        // ✅ discount per unit: prefer API, else compute from unit cost after discount
+        let discPerUnitNum = Number(ln.lineDiscountAmount ?? 0);
+        if (!discPerUnitNum && Number.isFinite(spNum) && Number.isFinite(unitAfterNum)) {
+          discPerUnitNum = Math.max(0, spNum - unitAfterNum);
+        }
+
 
         onAddItem?.({
           id: ln.id ?? ln.barcode,
