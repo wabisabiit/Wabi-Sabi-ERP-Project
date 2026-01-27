@@ -377,26 +377,19 @@ export default function SearchBar({ onAddItem }) {
 
         INFLIGHT.add(bc);
 
-        // ✅ IMPORTANT FIX:
-        // Use discounted values coming from backend so CartTable shows the REAL amount paid.
+        // ✅ CRITICAL FIX: use ACTUAL PAID PRICE (unitCost = SP - discount)
         // Backend provides:
-        //  - sellingPrice (sale-time sp)
-        //  - lineDiscountAmount (per-unit discount)
-        //  - unitCost (after discount)
-        //  - netAmount (unitCost * qty)
+        //  - sellingPrice: original SP at sale time (e.g. 700)
+        //  - lineDiscountAmount: discount ₹ per unit (e.g. 350)
+        //  - unitCost: ACTUAL price after discount (e.g. 350) ← USE THIS
+        //  - netAmount: unitCost * qty
         const qtyNum = Number(ln.qty || 1);
 
-        const spNum = Number(ln.sellingPrice ?? ln.sp ?? 0);
+        // ✅ USE unitCost (actual paid price) as sellingPrice
+        const actualPaidPrice = Number(ln.unitCost ?? 0);
 
-        // backend may return unit_cost_after_disc or unitCost
-        const unitAfterNum = Number(ln.unitCost ?? ln.unit_cost_after_disc ?? 0);
-
-        // ✅ discount per unit: prefer API, else compute from unit cost after discount
-        let discPerUnitNum = Number(ln.lineDiscountAmount ?? 0);
-        if (!discPerUnitNum && Number.isFinite(spNum) && Number.isFinite(unitAfterNum)) {
-          discPerUnitNum = Math.max(0, spNum - unitAfterNum);
-        }
-
+        // ✅ NO discount when loading invoice (customer already paid discounted price)
+        const discPerUnit = 0;
 
         onAddItem?.({
           id: ln.id ?? ln.barcode,
@@ -409,9 +402,11 @@ export default function SearchBar({ onAddItem }) {
 
           mrp: Number(ln.mrp || 0),
 
-          // ✅ sale-time SP + per-unit discount
-          sellingPrice: Number.isFinite(spNum) ? spNum : 0,
-          lineDiscountAmount: Number.isFinite(discPerUnitNum) ? discPerUnitNum : 0,
+          // ✅ CRITICAL: use unitCost (actual paid) as sellingPrice
+          sellingPrice: Number.isFinite(actualPaidPrice) ? actualPaidPrice : 0,
+          
+          // ✅ NO additional discount (already applied during original sale)
+          lineDiscountAmount: discPerUnit,
 
           // keep existing fallbacks used elsewhere (safe)
           vasyName: ln.product_name || ln.name || ln.barcode,
