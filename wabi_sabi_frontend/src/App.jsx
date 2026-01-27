@@ -12,7 +12,7 @@ import Sidebar from "./components/Sidebar";
 import PosPage from "./components/PosPage";
 import Dashboard from "./components/Dashboard"; // 🔹 from partner co
 
-import ReceiptPdfPage from "./pages/ReceiptPdfPage";
+import ReceiptPdfPage from "./components/ReceiptPdfPage";
 
 
 /* Keep base styles LAST so they win the cascade */
