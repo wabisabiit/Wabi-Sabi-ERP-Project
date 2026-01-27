@@ -672,6 +672,40 @@ export async function getSaleReceiptPdf(invoiceNo) {
   return URL.createObjectURL(blob);
 }
 
+
+// ✅ NEW: fetch Credit Note PDF (blob URL)
+export async function getCreditNotePdf(noteNo) {
+  const safe = String(noteNo || "").trim();
+  if (!safe) throw new Error("Missing credit note number.");
+
+  // try common endpoints (keeps it working even if your backend uses a different path)
+  const tryUrls = [
+    joinUrl(API_BASE, `/credit-notes/${encodeURIComponent(safe)}/pdf/`),
+    joinUrl(API_BASE, `/credit-notes/${encodeURIComponent(safe)}/print/`),
+    joinUrl(API_BASE, `/credit-notes/${encodeURIComponent(safe)}/receipt/`),
+  ];
+
+  let lastErrText = "";
+
+  for (const url of tryUrls) {
+    const res = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+      headers: { Accept: "application/pdf" },
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    }
+
+    lastErrText = await res.text().catch(() => "");
+  }
+
+  throw new Error(`Credit Note PDF failed: ${lastErrText || "Not found"}`);
+}
+
+
 export async function getRegisterClosingSummary() {
   return http(`/register-closes/today-summary/`);
 }
@@ -805,4 +839,6 @@ export default {
   dashboardSummary,
 
   getSaleReceiptPdf,
+
+  getCreditNotePdf,
 };

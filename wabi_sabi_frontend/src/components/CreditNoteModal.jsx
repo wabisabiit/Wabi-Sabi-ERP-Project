@@ -1,7 +1,7 @@
 // src/components/CreditNoteModal.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import "../styles/CreditNoteModal.css";
-import { listCreditNotes, deleteCreditNote } from "../api/client";
+import { listCreditNotes, deleteCreditNote, getCreditNotePdf } from "../api/client";
 
 export default function CreditNoteModal({ open, onClose }) {
   // lock background scroll while open
@@ -103,6 +103,19 @@ export default function CreditNoteModal({ open, onClose }) {
     } catch (e) {
       console.error("[CreditNoteModal] deleteCreditNote failed:", e);
       alert("Failed to delete credit note.");
+    }
+  };
+
+  const handleView = async (noteNo) => {
+    const safe = String(noteNo || "").trim();
+    if (!safe) return;
+
+    try {
+      const url = await getCreditNotePdf(safe);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      console.error("[CreditNoteModal] getCreditNotePdf failed:", e);
+      alert(e?.message || "Failed to open credit note PDF.");
     }
   };
 
@@ -272,7 +285,24 @@ export default function CreditNoteModal({ open, onClose }) {
 
                         <td>{createdBy || "-"}</td>
 
-                        <td>
+                        <td style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleView(r.note_no)}
+                            title="View / Print"
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 6,
+                              border: "1px solid #1976d2",
+                              background: "#fff",
+                              color: "#1976d2",
+                              cursor: "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            View
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleDelete(r.note_no)}

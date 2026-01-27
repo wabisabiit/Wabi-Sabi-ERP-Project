@@ -226,10 +226,12 @@ class SaleReceiptPdfView(View):
             igst = Decimal("0.00")
             return taxable_value, cgst, sgst, cess, igst
 
-        # Header (no "DUPLICATE")
+        # Header (now CREDIT NOTE + DUPLICATE)
         center(y, (loc_code or "OUTLET")[:12], 9, True)
         y -= 14
-        center(y, "Receipt", 10, True)
+        center(y, "Credit Note", 10, True)
+        y -= 10
+        center(y, "DUPLICATE", 8, True)
         y -= 12
 
         if address_line:
@@ -257,8 +259,8 @@ class SaleReceiptPdfView(View):
         txt(M, y, f"Mobile : {cust_phone}", 8, False)
         y -= 11
 
-        # Receipt No (not Credit Note)
-        txt(M, y, f"Receipt No : {sale.invoice_no}", 8, False)
+        # Credit Note No (was Receipt No)
+        txt(M, y, f"Credit Note No : {sale.invoice_no}", 8, False)
         y -= 11
 
         txt(M, y, f"Date : {date_str}", 7, False)
@@ -271,9 +273,7 @@ class SaleReceiptPdfView(View):
         dashline(y)
         y -= 12
 
-        # Table header (reduced gap so right columns sit under the horizontal line)
-        # Columns tuned for 80mm:
-        # Item (left), Qty, SP, Disc, Net (right aligned)
+        # Table header (same columns)
         item_x = M
         qty_x = 118
         sp_x = 148
@@ -282,7 +282,7 @@ class SaleReceiptPdfView(View):
 
         txt(item_x, y, "Item", 8, True)
         rtxt(qty_x, y, "Qty", 8, True)
-        rtxt(sp_x, y, "SP", 8, True)      # MRP -> SP
+        rtxt(sp_x, y, "SP", 8, True)
         rtxt(disc_x, y, "Disc", 8, True)
         rtxt(net_x, y, "Net", 8, True)
         y -= 9
@@ -318,7 +318,6 @@ class SaleReceiptPdfView(View):
             if not pname:
                 pname = (getattr(ln, "barcode", "") or "")
 
-            # 2-line item name if long (thermal friendly)
             name = (pname or "").strip()
             if len(name) > 22:
                 txt(item_x, y, name[:22], 7, False)
@@ -334,7 +333,6 @@ class SaleReceiptPdfView(View):
 
             y -= 14
 
-            # If height ever goes too low, extend page (avoid cutting on roll)
             if y < 140:
                 c.showPage()
                 c.setPageSize((PAGE_W, PAGE_H))
@@ -368,13 +366,12 @@ class SaleReceiptPdfView(View):
         txt(M, y, place_supply, 6, False)
         y -= 14
 
-        # TAX SUMMARY (table like your image)
+        # TAX SUMMARY
         center(y, "TAX SUMMARY", 8, True)
         y -= 10
 
         taxable_value, cgst, sgst, cess, igst = _calc_tax_summary(total_net)
 
-        # Table geometry (fit roll width)
         table_left = M
         table_right = PAGE_W - M
         table_w = table_right - table_left
@@ -385,18 +382,21 @@ class SaleReceiptPdfView(View):
         row_h1 = 18
         row_h2 = 16
 
-        # Draw outer box
-        c.rect(table_left, table_top - (row_h1 + row_h2), table_w, (row_h1 + row_h2), stroke=1, fill=0)
+        c.rect(
+            table_left,
+            table_top - (row_h1 + row_h2),
+            table_w,
+            (row_h1 + row_h2),
+            stroke=1,
+            fill=0,
+        )
 
-        # Vertical lines
         for i in range(1, cols):
             x = table_left + (col_w * i)
             c.line(x, table_top, x, table_top - (row_h1 + row_h2))
 
-        # Horizontal split between header and values
         c.line(table_left, table_top - row_h1, table_right, table_top - row_h1)
 
-        # Header labels
         headers = ["TAXABLE\nVALUE", "CGST", "SGST", "Cess", "IGST"]
         for i, htxt in enumerate(headers):
             cx = table_left + col_w * i + col_w / 2
@@ -408,7 +408,6 @@ class SaleReceiptPdfView(View):
             else:
                 c.drawCentredString(cx, table_top - 14, htxt)
 
-        # Values
         vals = [
             f"{taxable_value:.2f}",
             f"{cgst:.2f}",
@@ -431,10 +430,8 @@ class SaleReceiptPdfView(View):
         else:
             txt(M, y, "Address : ", 8, False)
 
-        # ✅ extra space between Gurugram and barcode
         y -= 40
 
-        # Barcode (centered on roll)
         bc_val = sale.invoice_no
         barcode_obj = code128.Code128(bc_val, barHeight=34, barWidth=0.8)
         bw = barcode_obj.width
