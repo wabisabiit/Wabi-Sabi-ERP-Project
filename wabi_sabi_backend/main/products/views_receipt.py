@@ -9,7 +9,6 @@ from django.views import View
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 
-from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
 
@@ -42,7 +41,6 @@ def _user_location_name(user):
 def _can_view_sale(user, sale: Sale) -> bool:
     # Admin/superuser can view everything
     if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
-        # if you want staff restricted too, remove is_staff
         return True
 
     # Manager/staff should only see their location (best-effort)
@@ -64,7 +62,6 @@ def _can_view_sale(user, sale: Sale) -> bool:
 
 
 def _inr_words(amount: Decimal) -> str:
-    # Simple INR words (enough for receipts)
     n = int(q2(amount))
     if n == 0:
         return "Rupees Zero Only"
@@ -122,31 +119,25 @@ class SaleReceiptPdfView(View):
         loc_code = _user_location_code(request.user)
         loc_name = _user_location_name(request.user)
 
-        # Header rules
-        # UV: Brands4Less + gstin from your image, address Gurugram
-        # Others: keep blanks (with comments)
         if loc_code == "UV":
-            brand_line = "Brands4Less"
             shop_at = "SHOP AT"
-            shop_domain = "Brands4Less"  # you asked BrandsLoot.in -> Brands4Less
+            shop_domain = "Brands4Less"
             gstin = "06AADFW9945P1ZB"
             address_line = "268, Rao Gajraj Road, Phase IV, Gurugram 122015"
             place_supply = "Haryana"
             customer_address = "Gurugram"
         else:
-            brand_line = "Brands4Less"  # keep same brand label
             shop_at = "SHOP AT"
-            shop_domain = ""  # TODO: other outlets domain empty for now
-            gstin = ""        # TODO: other outlets gstin empty for now
-            address_line = "" # TODO: other outlets address empty for now
-            place_supply = "" # TODO: other outlets place of supply empty for now
-            customer_address = ""  # TODO: other outlets address empty for now
+            shop_domain = ""
+            gstin = ""
+            address_line = ""
+            place_supply = ""
+            customer_address = ""
 
         now = timezone.localtime(timezone.now())
         date_str = now.strftime("%d/%m/%Y")
         time_str = now.strftime("%I:%M:%S %p")
 
-        # Customer + salesman
         cust = getattr(sale, "customer", None)
         cust_name = (getattr(cust, "name", "") or "").strip()
         cust_phone = (getattr(cust, "phone", "") or "").strip()
@@ -160,16 +151,14 @@ class SaleReceiptPdfView(View):
             else:
                 salesman_name = (getattr(salesman, "name", "") or "").strip()
 
-        # Lines
         lines = list(SaleLine.objects.filter(sale=sale).order_by("id"))
 
-        # compute totals
         total_qty = Decimal("0.00")
         total_disc = Decimal("0.00")
         total_net = Decimal("0.00")
 
         def per_unit_disc(ln: SaleLine) -> Decimal:
-            # ✅ discount is calculated on SP now (selling price)
+            # ✅ Discount is calculated on SP (selling price) now
             sp = q2(getattr(ln, "sp", 0) or 0)
             dp = q2(getattr(ln, "discount_percent", 0) or 0)
             da = q2(getattr(ln, "discount_amount", 0) or 0)  # per-unit stored
@@ -183,81 +172,103 @@ class SaleReceiptPdfView(View):
                 d = sp
             return d
 
-        # PDF build (receipt style)
+        # ---------------- THERMAL RECEIPT PAGE (prints like machine) ----------------
+        # 80mm roll width -> ~226.77 points (72pt/in). Keep small margins.
+        PAGE_W = 226.8
+        M = 8.0
+
+        # Dynamic height so printer doesn't scale to A4 (main reason your print was blank/huge).
+        # Height estimate in points; we add enough space for lines + footer.
+        est_h = 520 + (len(lines) * 14)
+        PAGE_H = max(600, est_h)
+
         buf = BytesIO()
-        c = canvas.Canvas(buf, pagesize=A4)
-        w, h = A4
+        c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
 
-        # narrow receipt column centered
-        rx = 160
-        rw = 275
-        y = h - 60
+        y = PAGE_H - 18
 
-        def txt(x, y, s, size=9, bold=False):
+        def txt(x, y, s, size=8, bold=False):
             c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
             c.drawString(x, y, s or "")
 
-        # Top header
-        txt(rx + 90, y, (loc_code or "OUTLET")[:12], 10, True)
-        # ✅ removed "DUPLICATE"
-        y -= 18
+        def rtxt(x, y, s, size=8, bold=False):
+            c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
+            c.drawRightString(x, y, s or "")
 
-        # (keeping your exact structure, only changing label text)
-        txt(rx + 105, y, "Receipt", 10, True)
+        def center(y, s, size=9, bold=False):
+            c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
+            c.drawCentredString(PAGE_W / 2, y, s or "")
+
+        def dashline(y):
+            c.saveState()
+            c.setDash(2, 2)
+            c.line(M, y, PAGE_W - M, y)
+            c.restoreState()
+
+        # Header (no "DUPLICATE")
+        center(y, (loc_code or "OUTLET")[:12], 9, True)
         y -= 14
-
-        txt(rx + 10, y, address_line, 8, False)
+        center(y, "Receipt", 10, True)
         y -= 12
+
+        if address_line:
+            center(y, address_line, 7, False)
+            y -= 10
 
         if gstin:
-            txt(rx + 50, y, f"GSTIN NO : {gstin}", 8, False)
+            center(y, f"GSTIN NO : {gstin}", 7, False)
         else:
-            txt(rx + 50, y, "GSTIN NO : ", 8, False)
-        y -= 12
-
-        txt(rx + 95, y, "Email :", 8, False)
-        y -= 12
-
-        txt(rx + 20, y, "Phone No : ", 8, False)
-        y -= 14
-
-        txt(rx + 180, y + 40, shop_at, 8, True)
-        txt(rx + 155, y + 28, shop_domain, 9, True)
-
-        txt(rx + 10, y, f"Name    : {cust_name}", 9, False)
-        y -= 12
-        txt(rx + 10, y, f"Mobile  : {cust_phone}", 9, False)
-        y -= 12
-
-        # ✅ "Credit Note No" -> "Receipt No"
-        txt(rx + 10, y, f"Receipt No : {sale.invoice_no}", 8, False)
-        y -= 12
-
-        txt(rx + 170, y + 24, f"Date   : {date_str}", 8, False)
-        txt(rx + 170, y + 12, f"Time   : {time_str}", 8, False)
-        txt(rx + 170, y,      f"Salesman : {salesman_name}", 8, False)
-        y -= 16
-
-        # table header
-        txt(rx + 10, y, "#", 8, True)
-        txt(rx + 30, y, "Item", 8, True)
-
-        # ✅ reduce spacing so right columns align better under the horizontal line
-        qty_x  = rx + 150
-        sp_x   = rx + 185
-        disc_x = rx + 225
-        net_x  = rx + 255
-
-        txt(qty_x,  y, "Qty", 8, True)
-        txt(sp_x,   y, "SP",  8, True)   # ✅ MRP -> SP
-        txt(disc_x, y, "Disc", 8, True)
-        txt(net_x,  y, "Net", 8, True)
-
+            center(y, "GSTIN NO : ", 7, False)
         y -= 10
-        c.line(rx + 10, y, rx + rw - 10, y)
+
+        # Shop at (keep same placement style, just fit roll width)
+        if shop_domain:
+            center(y, f"{shop_at}", 7, True)
+            y -= 10
+            center(y, f"{shop_domain}", 8, True)
+            y -= 10
+
+        # Customer + meta
+        txt(M, y, f"Name   : {cust_name}", 8, False)
+        y -= 11
+        txt(M, y, f"Mobile : {cust_phone}", 8, False)
+        y -= 11
+
+        # Receipt No (not Credit Note)
+        txt(M, y, f"Receipt No : {sale.invoice_no}", 8, False)
+        y -= 11
+
+        txt(M, y, f"Date : {date_str}", 7, False)
+        y -= 10
+        txt(M, y, f"Time : {time_str}", 7, False)
+        y -= 10
+        txt(M, y, f"Salesman : {salesman_name}", 7, False)
+        y -= 10
+
+        dashline(y)
         y -= 12
 
-        for idx, ln in enumerate(lines, start=1):
+        # Table header (reduced gap so right columns sit under the horizontal line)
+        # Columns tuned for 80mm:
+        # Item (left), Qty, SP, Disc, Net (right aligned)
+        item_x = M
+        qty_x = 118
+        sp_x = 148
+        disc_x = 178
+        net_x = PAGE_W - M
+
+        txt(item_x, y, "Item", 8, True)
+        rtxt(qty_x, y, "Qty", 8, True)
+        rtxt(sp_x, y, "SP", 8, True)      # MRP -> SP
+        rtxt(disc_x, y, "Disc", 8, True)
+        rtxt(net_x, y, "Net", 8, True)
+        y -= 9
+
+        dashline(y)
+        y -= 12
+
+        # Lines
+        for ln in lines:
             qty = Decimal(int(getattr(ln, "qty", 0) or 0))
             sp = q2(getattr(ln, "sp", 0) or 0)
 
@@ -282,82 +293,92 @@ class SaleReceiptPdfView(View):
                     or ""
                 )
             if not pname:
-                pname = (getattr(ln, "barcode", "") or "")[:20]
+                pname = (getattr(ln, "barcode", "") or "")
 
-            txt(rx + 10, y, f"{idx}", 8, False)
-            txt(rx + 30, y, pname[:18], 8, False)
+            # 2-line item name if long (thermal friendly)
+            name = (pname or "").strip()
+            if len(name) > 22:
+                txt(item_x, y, name[:22], 7, False)
+                y -= 10
+                txt(item_x, y, name[22:44], 7, False)
+            else:
+                txt(item_x, y, name, 7, False)
 
-            txt(qty_x,  y, f"{qty:.1f}", 8, False)
-            txt(sp_x,   y, f"{sp:.2f}", 8, False)
-            txt(disc_x, y, f"{disc_line:.2f}", 8, False)
-            txt(net_x,  y, f"{net_line:.2f}", 8, False)
+            rtxt(qty_x, y, f"{qty:.1f}", 7, False)
+            rtxt(sp_x, y, f"{sp:.2f}", 7, False)
+            rtxt(disc_x, y, f"{disc_line:.2f}", 7, False)
+            rtxt(net_x, y, f"{net_line:.2f}", 7, False)
 
             y -= 14
-            if y < 160:
+
+            # If height ever goes too low, extend page (avoid cutting on roll)
+            if y < 140:
                 c.showPage()
-                y = h - 60
+                c.setPageSize((PAGE_W, PAGE_H))
+                y = PAGE_H - 18
 
-        y -= 6
-        c.line(rx + 10, y, rx + rw - 10, y)
+        dashline(y)
         y -= 14
 
-        txt(rx + 10, y, "TOTAL", 9, True)
-        txt(rx + 240, y, f"{total_net:.2f}", 9, True)
+        txt(M, y, "TOTAL", 9, True)
+        rtxt(net_x, y, f"{total_net:.2f}", 9, True)
         y -= 12
 
-        txt(rx + 10, y, "ROUND OFF", 8, False)
-        txt(rx + 240, y, "0.00", 8, False)
+        txt(M, y, "ROUND OFF", 8, False)
+        rtxt(net_x, y, "0.00", 8, False)
+        y -= 12
+
+        dashline(y)
         y -= 14
 
-        c.line(rx + 10, y, rx + rw - 10, y)
-        y -= 14
-
-        txt(rx + 10, y, f"NO OF QTY : {total_qty:.2f}", 8, False)
-        y -= 18
-
-        txt(rx + 10, y, f"You Saved Rs. : {total_disc:.2f}", 10, True)
+        txt(M, y, f"NO OF QTY : {total_qty:.2f}", 8, False)
         y -= 16
 
-        txt(rx + 10, y, _inr_words(total_net), 8, False)
-        y -= 12
+        txt(M, y, f"You Saved Rs. : {total_disc:.2f}", 9, True)
+        y -= 14
 
-        txt(rx + 10, y, "Prices are inclusive of all taxes - Place of Supply :", 7, False)
+        txt(M, y, _inr_words(total_net), 7, False)
+        y -= 14
+
+        txt(M, y, "Prices are inclusive of all taxes - Place of Supply :", 6, False)
+        y -= 9
+        txt(M, y, place_supply, 6, False)
+        y -= 14
+
+        txt(M, y, "TAX SUMMARY", 8, True)
         y -= 10
-        txt(rx + 10, y, place_supply, 7, False)
-        y -= 16
+        txt(M, y, "(left empty for now)", 7, False)
+        y -= 14
 
-        txt(rx + 10, y, "TAX SUMMARY", 8, True)
+        txt(M, y, "Customer Details :", 8, False)
         y -= 10
-        txt(rx + 10, y, "(left empty for now)", 7, False)
-        y -= 18
-
-        txt(rx + 10, y, "Customer Details :", 8, False)
-        y -= 12
 
         if customer_address:
-            txt(rx + 10, y, f"Address : {customer_address}", 8, False)
+            txt(M, y, f"Address : {customer_address}", 8, False)
         else:
-            txt(rx + 10, y, "Address : ", 8, False)
+            txt(M, y, "Address : ", 8, False)
 
-        # ✅ add some extra gap between Gurugram and barcode
-        y -= 42
+        # ✅ extra space between Gurugram and barcode
+        y -= 40
 
+        # Barcode (centered on roll)
         bc_val = sale.invoice_no
-        barcode_obj = code128.Code128(bc_val, barHeight=30, barWidth=0.8)
-        barcode_obj.drawOn(c, rx + 40, y)
+        barcode_obj = code128.Code128(bc_val, barHeight=34, barWidth=0.8)
+        bw = barcode_obj.width
+        barcode_obj.drawOn(c, (PAGE_W - bw) / 2, y)
 
-        y -= 45
-        txt(rx + 55, y, "Thank you for shopping with us", 8, True)
+        y -= 48
+        center(y, "Thank you for shopping with us", 8, True)
         y -= 12
-        txt(rx + 70, y, "For Home Delivery", 8, False)
+        center(y, "For Home Delivery", 8, False)
         y -= 12
-        txt(rx + 85, y, "7303467070", 10, True)
-        y -= 18
+        center(y, "7303467070", 10, True)
+        y -= 16
 
         printed = timezone.localtime(timezone.now()).strftime("%d/%m/%Y %I:%M:%S %p")
-        txt(rx + 10, y, f"Printed On : {printed}", 7, False)
+        txt(M, y, f"Printed On : {printed}", 7, False)
         y -= 10
-        txt(rx + 10, y, "Printed By : ", 7, False)
+        txt(M, y, "Printed By : ", 7, False)
 
         c.showPage()
         c.save()
