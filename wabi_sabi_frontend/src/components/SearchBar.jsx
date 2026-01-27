@@ -374,16 +374,40 @@ export default function SearchBar({ onAddItem }) {
       lines.forEach((ln) => {
         const bc = String(ln.barcode || "").trim();
         if (!bc || ADDED_BARCODES.has(bc) || INFLIGHT.has(bc)) return;
+
         INFLIGHT.add(bc);
+
+        // ✅ IMPORTANT FIX:
+        // Use discounted values coming from backend so CartTable shows the REAL amount paid.
+        // Backend provides:
+        //  - sellingPrice (sale-time sp)
+        //  - lineDiscountAmount (per-unit discount)
+        //  - unitCost (after discount)
+        //  - netAmount (unitCost * qty)
+        const qtyNum = Number(ln.qty || 1);
+        const spNum = Number(ln.sellingPrice ?? ln.sp ?? 0);
+        const discPerUnitNum = Number(ln.lineDiscountAmount ?? 0);
+
         onAddItem?.({
-          id: ln.barcode,
+          id: ln.id ?? ln.barcode,
           barcode: ln.barcode,
-          qty: ln.qty,
+          qty: Number.isFinite(qtyNum) ? qtyNum : 1,
+
+          // CartTable expects these names:
+          itemcode: ln.itemcode ?? ln.barcode,
+          product: ln.product_name ?? ln.name ?? ln.barcode,
+
           mrp: Number(ln.mrp || 0),
-          sellingPrice: Number(ln.sp || 0),
-          vasyName: ln.name || ln.barcode,
-          netAmount: Number(ln.sp || 0),
+
+          // ✅ sale-time SP + per-unit discount
+          sellingPrice: Number.isFinite(spNum) ? spNum : 0,
+          lineDiscountAmount: Number.isFinite(discPerUnitNum) ? discPerUnitNum : 0,
+
+          // keep existing fallbacks used elsewhere (safe)
+          vasyName: ln.product_name || ln.name || ln.barcode,
+          netAmount: Number(ln.netAmount ?? 0),
         });
+
         ADDED_BARCODES.add(bc);
         INFLIGHT.delete(bc);
       });
