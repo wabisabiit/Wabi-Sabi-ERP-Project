@@ -250,9 +250,13 @@ export async function createSalesReturn(invoiceNo, payload = {}) {
 // Customers
 export async function searchCustomers(q) {
   const sp = new URLSearchParams();
-  if (q) sp.append("q", q);
+  if (q) {
+    sp.append("q", q);
+    sp.append("search", q);
+  }
   return http(`/customers/${sp.toString() ? `?${sp.toString()}` : ""}`);
 }
+
 
 // ✅ NEW: load all customers (frontend pagination)
 export async function listCustomers() {
