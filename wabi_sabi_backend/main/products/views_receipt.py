@@ -2,12 +2,13 @@
 from io import BytesIO
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.http import FileResponse, JsonResponse
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.views import View
-from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
+from rest_framework.views import APIView
+from rest_framework import permissions
+from rest_framework.response import Response
+from rest_framework import status
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -42,13 +43,11 @@ def _user_location_name(user):
 def _can_view_sale(user, sale: Sale) -> bool:
     # Admin/superuser can view everything
     if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
-        # if you want staff restricted too, remove is_staff
         return True
 
-    # Manager/staff should only see their location (best-effort)
     user_loc = _user_location_code(user)
     if not user_loc:
-        return True  # if user has no outlet mapping, don't block
+        return True
 
     created_by = getattr(sale, "created_by", None)
     emp = getattr(created_by, "employee", None) if created_by else None
@@ -56,7 +55,6 @@ def _can_view_sale(user, sale: Sale) -> bool:
     loc = getattr(outlet, "location", None) if outlet else None
     sale_loc = (getattr(loc, "code", "") or "").strip().upper()
 
-    # if sale has no created_by/location info, allow
     if not sale_loc:
         return True
 
@@ -64,7 +62,6 @@ def _can_view_sale(user, sale: Sale) -> bool:
 
 
 def _inr_words(amount: Decimal) -> str:
-    # Simple INR words (enough for receipts)
     n = int(q2(amount))
     if n == 0:
         return "Rupees Zero Only"
@@ -111,42 +108,39 @@ def _inr_words(amount: Decimal) -> str:
     return "Rupees " + " ".join([p for p in parts if p]).strip() + " Only"
 
 
-@method_decorator(login_required, name="dispatch")
-class SaleReceiptPdfView(View):
+class SaleReceiptPdfView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, invoice_no: str):
         sale = get_object_or_404(Sale, invoice_no=invoice_no)
 
         if not _can_view_sale(request.user, sale):
-            return JsonResponse({"detail": "Not allowed."}, status=403)
+            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
 
         loc_code = _user_location_code(request.user)
         loc_name = _user_location_name(request.user)
 
-        # Header rules
-        # UV: Brands4Less + gstin from your image, address Gurugram
-        # Others: keep blanks (with comments)
         if loc_code == "UV":
             brand_line = "Brands4Less"
             shop_at = "SHOP AT"
-            shop_domain = "Brands4Less"  # you asked BrandsLoot.in -> Brands4Less
+            shop_domain = "Brands4Less"
             gstin = "06AADFW9945P1ZB"
             address_line = "268, Rao Gajraj Road, Phase IV, Gurugram 122015"
             place_supply = "Haryana"
             customer_address = "Gurugram"
         else:
-            brand_line = "Brands4Less"  # keep same brand label
+            brand_line = "Brands4Less"
             shop_at = "SHOP AT"
-            shop_domain = ""  # TODO: other outlets domain empty for now
-            gstin = ""        # TODO: other outlets gstin empty for now
-            address_line = "" # TODO: other outlets address empty for now
-            place_supply = "" # TODO: other outlets place of supply empty for now
+            shop_domain = ""   # TODO: other outlets domain empty for now
+            gstin = ""         # TODO: other outlets gstin empty for now
+            address_line = ""  # TODO: other outlets address empty for now
+            place_supply = ""  # TODO: other outlets place of supply empty for now
             customer_address = ""  # TODO: other outlets address empty for now
 
         now = timezone.localtime(timezone.now())
         date_str = now.strftime("%d/%m/%Y")
         time_str = now.strftime("%I:%M:%S %p")
 
-        # Customer + salesman
         cust = getattr(sale, "customer", None)
         cust_name = (getattr(cust, "name", "") or "").strip()
         cust_phone = (getattr(cust, "phone", "") or "").strip()
@@ -160,34 +154,31 @@ class SaleReceiptPdfView(View):
             else:
                 salesman_name = (getattr(salesman, "name", "") or "").strip()
 
-        # Lines
         lines = list(SaleLine.objects.filter(sale=sale).order_by("id"))
 
-        # compute totals
         total_qty = Decimal("0.00")
         total_disc = Decimal("0.00")
         total_net = Decimal("0.00")
 
         def per_unit_disc(ln: SaleLine) -> Decimal:
-            mrp = q2(getattr(ln, "mrp", 0) or 0)
+            # ✅ discount calculated on SP (selling price) now
+            sp = q2(getattr(ln, "sp", 0) or 0)
             dp = q2(getattr(ln, "discount_percent", 0) or 0)
             da = q2(getattr(ln, "discount_amount", 0) or 0)  # per-unit stored
             if dp > 0:
-                d = (mrp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+                d = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
             else:
                 d = da
             if d < 0:
                 d = Decimal("0.00")
-            if d > mrp:
-                d = mrp
+            if d > sp:
+                d = sp
             return d
 
-        # PDF build (receipt style)
         buf = BytesIO()
         c = canvas.Canvas(buf, pagesize=A4)
         w, h = A4
 
-        # narrow receipt column centered
         rx = 160
         rw = 275
         y = h - 60
@@ -198,10 +189,11 @@ class SaleReceiptPdfView(View):
 
         # Top header
         txt(rx + 90, y, (loc_code or "OUTLET")[:12], 10, True)
-        txt(rx + 210, y, "DUPLICATE", 9, True)
+        # ❌ removed "DUPLICATE"
         y -= 18
 
-        txt(rx + 105, y, "Credit Note", 10, True)
+        # ✅ change "Credit Note" -> "Receipt"
+        txt(rx + 110, y, "Receipt", 10, True)
         y -= 14
 
         txt(rx + 10, y, address_line, 8, False)
@@ -219,15 +211,18 @@ class SaleReceiptPdfView(View):
         txt(rx + 20, y, "Phone No : ", 8, False)
         y -= 14
 
+        # shop at
         txt(rx + 180, y + 40, shop_at, 8, True)
         txt(rx + 155, y + 28, shop_domain, 9, True)
 
+        # customer block
         txt(rx + 10, y, f"Name    : {cust_name}", 9, False)
         y -= 12
         txt(rx + 10, y, f"Mobile  : {cust_phone}", 9, False)
         y -= 12
 
-        txt(rx + 10, y, f"Credit Note No : {sale.invoice_no}", 8, False)
+        # ✅ change label to Receipt No
+        txt(rx + 10, y, f"Receipt No : {sale.invoice_no}", 8, False)
         y -= 12
 
         txt(rx + 170, y + 24, f"Date   : {date_str}", 8, False)
@@ -238,22 +233,30 @@ class SaleReceiptPdfView(View):
         # table header
         txt(rx + 10, y, "#", 8, True)
         txt(rx + 30, y, "Item", 8, True)
-        txt(rx + 165, y, "Qty", 8, True)
-        txt(rx + 195, y, "MRP", 8, True)
-        txt(rx + 240, y, "Disc", 8, True)
-        txt(rx + 270, y, "Net", 8, True)
+
+        # ✅ reduce spacing so right columns sit tighter under the line
+        qty_x  = rx + 150
+        sp_x   = rx + 185
+        disc_x = rx + 225
+        net_x  = rx + 255
+
+        txt(qty_x,  y, "Qty", 8, True)
+        txt(sp_x,   y, "SP",  8, True)   # ✅ MRP -> SP
+        txt(disc_x, y, "Disc", 8, True)
+        txt(net_x,  y, "Net", 8, True)
+
         y -= 10
         c.line(rx + 10, y, rx + rw - 10, y)
         y -= 12
 
         for idx, ln in enumerate(lines, start=1):
             qty = Decimal(int(getattr(ln, "qty", 0) or 0))
-            mrp = q2(getattr(ln, "mrp", 0) or 0)
+            sp = q2(getattr(ln, "sp", 0) or 0)
 
             dpu = per_unit_disc(ln)
             disc_line = q2(dpu * qty)
 
-            net_unit = q2(mrp - dpu)
+            net_unit = q2(sp - dpu)
             net_line = q2(net_unit * qty)
 
             total_qty += qty
@@ -276,10 +279,10 @@ class SaleReceiptPdfView(View):
             txt(rx + 10, y, f"{idx}", 8, False)
             txt(rx + 30, y, pname[:18], 8, False)
 
-            txt(rx + 165, y, f"{qty:.1f}", 8, False)
-            txt(rx + 195, y, f"{mrp:.2f}", 8, False)
-            txt(rx + 240, y, f"{disc_line:.2f}", 8, False)
-            txt(rx + 270, y, f"{net_line:.2f}", 8, False)
+            txt(qty_x,  y, f"{qty:.1f}", 8, False)
+            txt(sp_x,   y, f"{sp:.2f}", 8, False)
+            txt(disc_x, y, f"{disc_line:.2f}", 8, False)
+            txt(net_x,  y, f"{net_line:.2f}", 8, False)
 
             y -= 14
             if y < 160:
@@ -327,7 +330,9 @@ class SaleReceiptPdfView(View):
             txt(rx + 10, y, f"Address : {customer_address}", 8, False)
         else:
             txt(rx + 10, y, "Address : ", 8, False)
-        y -= 28
+
+        # ✅ add extra gap between Gurugram and barcode
+        y -= 42
 
         bc_val = sale.invoice_no
         barcode_obj = code128.Code128(bc_val, barHeight=30, barWidth=0.8)
