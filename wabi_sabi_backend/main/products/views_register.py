@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
-from django.db.models import Sum
+from django.db.models import Sum, Q
 
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -68,16 +68,6 @@ class RegisterClosingSummaryView(APIView):
     """
     GET /api/register-closes/today-summary/
       -> returns today's total sales & expenses for current outlet.
-
-    Response:
-    {
-      "date": "2025-12-06",
-      "total_sales": "24000.00",
-      "expense": "500.00",
-      "cash_payment": "10000.00",
-      "card_payment": "8000.00",
-      "upi_payment": "6000.00"
-    }
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -90,13 +80,27 @@ class RegisterClosingSummaryView(APIView):
 
         today = timezone.localdate()
 
-        # --- Sales for today (THIS outlet only) ---
+        # --- Sales for today ---
         sales_qs = Sale.objects.filter(transaction_date__date=today)
 
-        # ✅ FIX: scope sales by real relation (Sale.salesman -> Employee -> Outlet -> Location)
-        # (store text is not reliable because default is "Wabi - Sabi")
+        # ✅ FIX: robust scoping for manager/staff (because Sale.salesman can be NULL)
         if loc is not None:
-            sales_qs = sales_qs.filter(salesman__outlet__location=loc)
+            code = (getattr(loc, "code", "") or "").strip()
+            loc_name = (getattr(loc, "name", "") or "").strip()
+
+            outlet_name = ""
+            try:
+                outlet_name = (getattr(outlet, "display_name", "") or "").strip()
+            except Exception:
+                outlet_name = ""
+
+            sales_qs = sales_qs.filter(
+                Q(salesman__outlet__location=loc)  # when salesman is set
+                | Q(created_by__employee__outlet__location=loc)  # when only created_by user is set
+                | (Q(store__icontains=code) if code else Q())  # old fallback
+                | (Q(store__icontains=loc_name) if loc_name else Q())
+                | (Q(store__icontains=outlet_name) if outlet_name else Q())
+            )
 
         # overall total
         sales_total = sales_qs.aggregate(total=Sum("grand_total"))["total"] or Decimal("0.00")
@@ -154,6 +158,10 @@ class RegisterClosingSummaryView(APIView):
                 "cash_payment": str(cash_total),
                 "card_payment": str(card_total),
                 "upi_payment": str(upi_total),
+
+                # ✅ helpful debug (safe): shows what location was used
+                "location_code": (getattr(loc, "code", "") or "") if loc else "",
+                "location_name": (getattr(loc, "name", "") or "") if loc else "",
             },
             status=status.HTTP_200_OK,
         )
