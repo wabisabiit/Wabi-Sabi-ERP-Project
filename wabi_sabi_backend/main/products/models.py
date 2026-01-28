@@ -1,4 +1,4 @@
-# Create your models here.
+# Create your models here. 
 from django.db import models, transaction
 from taskmaster.models import TaskItem, Location   # <-- your TaskItem
 from django.utils import timezone
@@ -379,9 +379,33 @@ class CreditNote(models.Model):
         if not self.note_no:
             self.note_no = CreditNoteSequence.next_no(prefix="CRN")
 
+        # ensure barcode snapshot
+        if self.product_id and not self.barcode:
+            self.barcode = self.product.barcode
+
         # ✅ auto fill created_by from sale if missing
         if not self.created_by_id and self.sale_id and getattr(self.sale, "created_by_id", None):
             self.created_by_id = self.sale.created_by_id
+
+        # ✅ FIX: credit note amount must match customer's net paid price (after discount)
+        # amount = (SaleLine.sp - SaleLine.discount_amount) * qty
+        if self.sale_id and self.barcode:
+            ln = (
+                SaleLine.objects
+                .filter(sale_id=self.sale_id, barcode=self.barcode)
+                .order_by("id")
+                .first()
+            )
+            if ln:
+                from decimal import Decimal, ROUND_HALF_UP
+                TWOPLACES = Decimal("0.01")
+
+                net_unit = (ln.sp or 0) - (ln.discount_amount or 0)
+                if net_unit < 0:
+                    net_unit = 0
+
+                q = Decimal(int(self.qty or 1))
+                self.amount = (Decimal(net_unit) * q).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
         super().save(*args, **kwargs)
 
