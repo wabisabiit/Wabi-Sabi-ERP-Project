@@ -45,7 +45,13 @@ export default function CreditNoteModal({ open, onClose }) {
       console.debug("[CreditNoteModal] listCreditNotes response:", res);
 
       setRows(res?.results || []);
-      setTotal(res?.total || 0);
+
+      // ✅ FIX: DRF usually returns "count" not "total"
+      const totalCount =
+        Number(res?.count ?? res?.total ?? res?.total_count ?? 0) ||
+        (Array.isArray(res?.results) ? res.results.length : 0);
+
+      setTotal(totalCount);
     } catch (e) {
       console.error("[CreditNoteModal] Failed to load credit notes:", e);
       setRows([]);
@@ -152,7 +158,6 @@ export default function CreditNoteModal({ open, onClose }) {
                     setPage(1);
                   }}
                 >
-                  {/* keep small options; default 5 */}
                   <option value="5">5</option>
                   <option value="10">10</option>
                   <option value="20">20</option>
@@ -228,10 +233,7 @@ export default function CreditNoteModal({ open, onClose }) {
                     const totalAmt = Number(r?.amount || 0);
 
                     const usedAmt = Number(
-                      r?.redeemed_amount ??
-                        r?.credits_used ??
-                        r?.used_amount ??
-                        0
+                      r?.redeemed_amount ?? r?.credits_used ?? r?.used_amount ?? 0
                     );
 
                     const remainingAmt = Number(
@@ -260,12 +262,10 @@ export default function CreditNoteModal({ open, onClose }) {
                         <td>{fmtDate(r.date)}</td>
                         <td>{r.customer_name}</td>
                         <td>{totalAmt.toFixed(2)}</td>
-
                         <td>{usedAmt.toFixed(2)}</td>
 
                         <td>
                           {remainingAmt.toFixed(2)}
-                          {/* status indicator (green=active, red=used) */}
                           <div style={{ marginTop: 4 }}>
                             <span
                               style={{
@@ -285,20 +285,13 @@ export default function CreditNoteModal({ open, onClose }) {
 
                         <td>{createdBy || "-"}</td>
 
-                        <td style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {/* ✅ Make sure View always shows */}
+                        <td className="cn-actions">
                           <button
                             type="button"
                             onClick={() => handleView(r.note_no)}
                             title="View / Print"
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 6,
-                              border: "1px solid #1976d2",
-                              background: "#fff",
-                              color: "#1976d2",
-                              cursor: "pointer",
-                              fontWeight: 600,
-                            }}
+                            className="cn-btn cn-btn-view"
                           >
                             View
                           </button>
@@ -307,15 +300,7 @@ export default function CreditNoteModal({ open, onClose }) {
                             type="button"
                             onClick={() => handleDelete(r.note_no)}
                             title="Delete"
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 6,
-                              border: "1px solid #d32f2f",
-                              background: "#fff",
-                              color: "#d32f2f",
-                              cursor: "pointer",
-                              fontWeight: 600,
-                            }}
+                            className="cn-btn cn-btn-del"
                           >
                             Delete
                           </button>

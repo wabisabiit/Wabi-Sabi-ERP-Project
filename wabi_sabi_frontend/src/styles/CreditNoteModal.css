@@ -17,6 +17,11 @@
   border-radius:10px;
   box-shadow:0 16px 32px rgba(0,0,0,.18);
   overflow:hidden;
+
+  /* ✅ allow inner sections to size correctly */
+  display:flex;
+  flex-direction:column;
+  max-height: calc(100vh - 96px);
 }
 
 /* Header */
@@ -25,6 +30,7 @@
   display:flex; align-items:center; justify-content:space-between;
   padding:0 24px;
   border-bottom:1px solid #ececec;
+  flex: 0 0 auto;
 }
 .cn-header h3{
   margin:0;
@@ -38,7 +44,13 @@
 }
 
 /* Body */
-.cn-body{ padding:18px 24px 22px; }
+.cn-body{
+  padding:18px 24px 22px;
+
+  /* ✅ allow table area to scroll instead of clipping rows */
+  flex: 1 1 auto;
+  overflow:auto;
+}
 
 /* Toolbar (Display + Search) */
 .cn-toolbar{
@@ -71,7 +83,14 @@
 }
 
 /* Table */
-.cn-tablewrap{ border:1px solid #e9ebee; border-radius:8px; overflow:hidden; }
+.cn-tablewrap{
+  border:1px solid #e9ebee;
+  border-radius:8px;
+
+  /* ✅ keep header visible and allow scrolling rows */
+  overflow:auto;
+  max-height: 55vh;
+}
 .cn-table{ width:100%; border-collapse:separate; border-spacing:0; }
 .cn-table thead th{
   background:#f2f4f7;             /* light grey header */
@@ -82,6 +101,11 @@
   padding:12px 14px;
   border-bottom:1px solid #e9ebee;
   vertical-align:middle;
+
+  /* ✅ sticky header while scrolling table */
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 .cn-table tbody td{
   font-size:14px; color:#111827;
@@ -92,6 +116,31 @@
 .cn-empty td{
   color:#6b7280; text-align:left; font-weight:500;
   padding:14px;
+}
+
+/* ✅ Action buttons always visible */
+.cn-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-start;
+  min-width: 160px;
+}
+.cn-btn{
+  padding:6px 10px;
+  border-radius:6px;
+  background:#fff;
+  cursor:pointer;
+  font-weight:600;
+}
+.cn-btn-view{
+  border:1px solid #1976d2;
+  color:#1976d2;
+}
+.cn-btn-del{
+  border:1px solid #d32f2f;
+  color:#d32f2f;
 }
 
 /* Footer */
