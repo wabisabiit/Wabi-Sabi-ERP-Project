@@ -1,8 +1,8 @@
 // src/pages/ReceiptPdfPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import "../styles/OrderListModal.css"; // keep existing styling available if you want
-import { getSaleReceiptPdf } from "../api/client";
+import "../styles/OrderListModal.css";
+import { getSaleReceiptPdf, getCreditNotePdf } from "../api/client";
 
 export default function ReceiptPdfPage() {
   const { type, number } = useParams(); // /receipt/:type/:number
@@ -15,6 +15,8 @@ export default function ReceiptPdfPage() {
   const title = useMemo(() => {
     const t = String(type || "").toLowerCase();
     if (t === "sale") return `Receipt - ${number || ""}`;
+    if (t === "credit" || t === "credit-note" || t === "creditnote")
+      return `Credit Note - ${number || ""}`;
     return `Receipt - ${number || ""}`;
   }, [type, number]);
 
@@ -34,6 +36,8 @@ export default function ReceiptPdfPage() {
 
         if (t === "sale") {
           localUrl = await getSaleReceiptPdf(no);
+        } else if (t === "credit" || t === "credit-note" || t === "creditnote") {
+          localUrl = await getCreditNotePdf(no);
         } else {
           throw new Error("Unsupported receipt type for now.");
         }
@@ -88,7 +92,6 @@ export default function ReceiptPdfPage() {
         <button
           type="button"
           onClick={() => {
-            // try print current iframe
             const iframe = document.getElementById("receipt-iframe");
             try {
               iframe?.contentWindow?.focus();

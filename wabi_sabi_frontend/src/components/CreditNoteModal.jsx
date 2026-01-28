@@ -1,9 +1,12 @@
 // src/components/CreditNoteModal.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/CreditNoteModal.css";
-import { listCreditNotes, deleteCreditNote, getCreditNotePdf } from "../api/client";
+import { listCreditNotes, deleteCreditNote } from "../api/client";
 
 export default function CreditNoteModal({ open, onClose }) {
+  const navigate = useNavigate();
+
   // lock background scroll while open
   useEffect(() => {
     if (!open) return;
@@ -104,7 +107,6 @@ export default function CreditNoteModal({ open, onClose }) {
       await deleteCreditNote(safe);
       console.debug("[CreditNoteModal] deleteCreditNote success:", safe);
 
-      // keep page stable if possible
       await fetchNotes();
     } catch (e) {
       console.error("[CreditNoteModal] deleteCreditNote failed:", e);
@@ -112,17 +114,15 @@ export default function CreditNoteModal({ open, onClose }) {
     }
   };
 
-  const handleView = async (noteNo) => {
+  const handleView = (noteNo) => {
     const safe = String(noteNo || "").trim();
     if (!safe) return;
 
+    // elegant redirect to PDF page (same pattern as sale receipt)
     try {
-      const url = await getCreditNotePdf(safe);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (e) {
-      console.error("[CreditNoteModal] getCreditNotePdf failed:", e);
-      alert(e?.message || "Failed to open credit note PDF.");
-    }
+      onClose?.();
+    } catch {}
+    navigate(`/receipt/credit/${encodeURIComponent(safe)}`);
   };
 
   if (!open) return null;
@@ -285,7 +285,6 @@ export default function CreditNoteModal({ open, onClose }) {
 
                         <td>{createdBy || "-"}</td>
 
-                        {/* ✅ Make sure View always shows */}
                         <td className="cn-actions">
                           <button
                             type="button"
