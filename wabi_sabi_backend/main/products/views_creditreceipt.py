@@ -12,7 +12,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
 
-from .models import CreditNote
+from .models import CreditNote, Product
 
 
 TWOPLACES = Decimal("0.01")
@@ -54,16 +54,132 @@ def _creditnote_location_code(note):
     return ""
 
 
-def _get_creditnote_lines(note):
+def _resolve_item_name_from_barcode(barcode: str) -> str:
+    """
+    Best-effort: Product.barcode -> TaskItem names
+    """
+    safe = (barcode or "").strip()
+    if not safe:
+        return "Item"
+
+    p = (
+        Product.objects.select_related("task_item")
+        .filter(barcode__iexact=safe)
+        .first()
+    )
+    if not p:
+        return safe
+
+    ti = getattr(p, "task_item", None)
+    name = (
+        getattr(ti, "item_print_friendly_name", None)
+        or getattr(ti, "item_vasy_name", None)
+        or getattr(ti, "item_full_name", None)
+        or ""
+    )
+    return (name or safe).strip()
+
+
+def _get_creditnote_items(note):
+    """
+    Credit notes in your project (per serializer) store barcode+qty on CreditNote itself.
+    Some projects store separate lines. We support BOTH:
+
+    Returns list of dicts:
+      { name, qty, rate, amount }
+    """
+    # 1) try relations (if your project ever adds a line model)
     for attr in ("lines", "credit_note_lines", "items", "credit_lines"):
         rel = getattr(note, attr, None)
         if rel is None:
             continue
         try:
-            return list(rel.all())
+            lines = list(rel.all())
+            if lines:
+                out = []
+                for ln in lines:
+                    name = (
+                        getattr(ln, "product_name", None)
+                        or getattr(getattr(ln, "product", None), "barcode", None)
+                        or getattr(getattr(ln, "task_item", None), "item_print_friendly_name", None)
+                        or getattr(getattr(ln, "task_item", None), "item_vasy_name", None)
+                        or getattr(ln, "barcode", None)
+                        or "Item"
+                    )
+                    qty = Decimal(str(getattr(ln, "qty", 1) or 1))
+                    rate = Decimal(str(
+                        getattr(ln, "price", None)
+                        or getattr(ln, "rate", None)
+                        or getattr(ln, "unit_price", None)
+                        or 0
+                    ))
+                    amt = Decimal(str(
+                        getattr(ln, "line_total", None)
+                        or getattr(ln, "amount", None)
+                        or (qty * rate)
+                    ))
+                    out.append(
+                        {
+                            "name": str(name) or "Item",
+                            "qty": qty,
+                            "rate": rate,
+                            "amount": amt,
+                        }
+                    )
+                return out
         except Exception:
             pass
-    return []
+
+    # 2) fallback: barcode & qty stored on CreditNote (YOUR CURRENT MODEL/SERIALIZER)
+    barcode = (getattr(note, "barcode", None) or "").strip()
+    qty_raw = getattr(note, "qty", None)
+
+    try:
+        qty = Decimal(str(qty_raw if qty_raw is not None else 1))
+    except Exception:
+        qty = Decimal("1")
+
+    if qty <= 0:
+        qty = Decimal("1")
+
+    total_amt = getattr(note, "amount", None) or getattr(note, "total_amount", None) or getattr(note, "total", None) or 0
+    try:
+        total_amt = Decimal(str(total_amt))
+    except Exception:
+        total_amt = Decimal("0.00")
+
+    if not barcode:
+        # nothing to show
+        return []
+
+    # If barcode contains multiple values separated by comma, show each (best effort)
+    barcodes = [b.strip() for b in barcode.split(",") if b.strip()]
+    if len(barcodes) <= 1:
+        name = _resolve_item_name_from_barcode(barcode)
+        rate = (total_amt / qty) if qty else Decimal("0.00")
+        return [
+            {
+                "name": name,
+                "qty": qty,
+                "rate": rate,
+                "amount": total_amt,
+            }
+        ]
+
+    # multiple barcodes -> split total equally (best-effort)
+    per_amt = (total_amt / Decimal(str(len(barcodes)))) if barcodes else Decimal("0.00")
+    out = []
+    for b in barcodes:
+        name = _resolve_item_name_from_barcode(b)
+        out.append(
+            {
+                "name": name,
+                "qty": Decimal("1"),
+                "rate": per_amt,
+                "amount": per_amt,
+            }
+        )
+    return out
 
 
 @method_decorator(login_required, name="dispatch")
@@ -90,6 +206,7 @@ class CreditNoteReceiptPdfView(View):
             if user_loc_code and note_loc_code and (user_loc_code != note_loc_code):
                 raise Http404("Credit note not found.")
 
+        # --- Prepare PDF ---
         buf = BytesIO()
         c = canvas.Canvas(buf, pagesize=A4)
         w, h = A4
@@ -102,6 +219,7 @@ class CreditNoteReceiptPdfView(View):
             c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
             c.drawString(x, yy, txt)
 
+        # Header
         draw_text("CREDIT NOTE", left, y, size=16, bold=True)
         y -= 22
 
@@ -123,12 +241,14 @@ class CreditNoteReceiptPdfView(View):
         )
         y -= 18
 
+        # Barcode
         try:
             bc = code128.Code128(str(cn_no), barHeight=22, barWidth=0.75)
             bc.drawOn(c, right - 220, h - 90)
         except Exception:
             pass
 
+        # Customer
         cust = getattr(note, "customer", None)
         cust_name = getattr(note, "customer_name", None) or getattr(cust, "name", None) or ""
         cust_phone = getattr(cust, "phone", "") if cust else ""
@@ -150,6 +270,7 @@ class CreditNoteReceiptPdfView(View):
         c.line(left, y, right, y)
         y -= 18
 
+        # Table header
         draw_text("Item", left, y, bold=True)
         draw_text("Qty", left + 280, y, bold=True)
         draw_text("Rate", left + 330, y, bold=True)
@@ -158,28 +279,32 @@ class CreditNoteReceiptPdfView(View):
         c.line(left, y, right, y)
         y -= 16
 
-        lines = _get_creditnote_lines(note)
+        # ✅ Items
+        items = _get_creditnote_items(note)
 
         total = Decimal("0.00")
-        for ln in lines:
-            name = (
-                getattr(ln, "product_name", None)
-                or getattr(getattr(ln, "product", None), "barcode", None)
-                or getattr(getattr(ln, "task_item", None), "item_print_friendly_name", None)
-                or getattr(getattr(ln, "task_item", None), "item_vasy_name", None)
-                or getattr(ln, "barcode", None)
-                or "Item"
-            )
 
-            qty = Decimal(str(getattr(ln, "qty", 1) or 1))
-            rate = Decimal(str(getattr(ln, "price", None) or getattr(ln, "rate", None) or getattr(ln, "unit_price", None) or 0))
-            amt = Decimal(str(getattr(ln, "line_total", None) or getattr(ln, "amount", None) or (qty * rate)))
+        for it in items:
+            name = it.get("name") or "Item"
+            qty = Decimal(str(it.get("qty") or 1))
+            rate = Decimal(str(it.get("rate") or 0))
+            amt = Decimal(str(it.get("amount") or (qty * rate)))
 
             total += amt
 
+            # page break safety
             if y < 120:
                 c.showPage()
                 y = h - 60
+                draw_text("CREDIT NOTE (cont.)", left, y, size=14, bold=True)
+                y -= 26
+                draw_text("Item", left, y, bold=True)
+                draw_text("Qty", left + 280, y, bold=True)
+                draw_text("Rate", left + 330, y, bold=True)
+                draw_text("Amount", left + 420, y, bold=True)
+                y -= 10
+                c.line(left, y, right, y)
+                y -= 16
 
             c.setFont("Helvetica", 10)
             c.drawString(left, y, str(name)[:45])
@@ -188,6 +313,7 @@ class CreditNoteReceiptPdfView(View):
             c.drawRightString(right, y, str(q2(amt)))
             y -= 16
 
+        # If CreditNote already stores amount, prefer it as final total
         stored_total = getattr(note, "amount", None) or getattr(note, "total_amount", None) or getattr(note, "total", None)
         if stored_total is not None:
             try:
@@ -199,6 +325,7 @@ class CreditNoteReceiptPdfView(View):
         c.line(left, y, right, y)
         y -= 18
 
+        # Totals
         draw_text("Total Credit:", left + 300, y, bold=True)
         c.setFont("Helvetica-Bold", 11)
         c.drawRightString(right, y, str(q2(total)))
