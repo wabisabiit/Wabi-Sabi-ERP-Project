@@ -346,40 +346,37 @@ export default function Footer({
       };
 
       // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
-            // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
       // inside Footer.jsx -> linesWithDiscount mapping
-const linesWithDiscount = lines.map((ln) => {
-  const row = (items || []).find((r) => {
-    const code =
-      r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
-    return String(code) === String(ln.barcode);
-  });
+      const linesWithDiscount = lines.map((ln) => {
+        const row = (items || []).find((r) => {
+          const code =
+            r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+          return String(code) === String(ln.barcode);
+        });
 
-  const qty = Number(ln.qty || 1) || 1;
+        const qty = Number(ln.qty || 1) || 1;
 
-  const unit = Number(
-    row?.sellingPrice ??
-      row?.unitPrice ??
-      row?.unit_price ??
-      row?.price ??
-      row?.sp ??
-      row?.netAmount ??
-      0
-  );
-  const baseUnit = Number.isFinite(unit) ? unit : 0;
+        const unit = Number(
+          row?.sellingPrice ??
+            row?.unitPrice ??
+            row?.unit_price ??
+            row?.price ??
+            row?.sp ??
+            row?.netAmount ??
+            0
+        );
+        const baseUnit = Number.isFinite(unit) ? unit : 0;
 
-  // ₹ discount per unit (this is what your CartTable uses)
-  const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
-  const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
+        // ₹ discount per unit (this is what your CartTable uses)
+        const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
+        const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
 
-  return {
-    ...ln,
-    discount_percent: 0,
-    discount_amount: +discPerUnit.toFixed(2), // ✅ SEND PER UNIT (NOT total)
-  };
-});
-
-
+        return {
+          ...ln,
+          discount_percent: 0,
+          discount_amount: +discPerUnit.toFixed(2), // ✅ SEND PER UNIT (NOT total)
+        };
+      });
 
       const payload = {
         customer: customerPayload,
@@ -534,9 +531,25 @@ const linesWithDiscount = lines.map((ln) => {
           addToast("No invoice loaded.");
           return;
         }
+
+        // ✅ FIX: send ONLY currently selected cart items (after user deletes unwanted lines)
+        const selected = (items || [])
+          .map((r) => {
+            const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+            const qtyNum = Number(r.qty ?? r.quantity ?? 1);
+            const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
+            return code ? { barcode: String(code), qty } : null;
+          })
+          .filter(Boolean);
+
+        if (!selected.length) {
+          addToast("Select minimum 1 product for return.");
+          return;
+        }
+
         (async () => {
           try {
-            const res = await createSalesReturn(inv);
+            const res = await createSalesReturn(inv, { items: selected }); // ✅ ONLY CHANGE
             const ok = !!res?.ok;
             const msg =
               res?.msg ||
