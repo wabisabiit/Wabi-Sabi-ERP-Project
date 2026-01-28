@@ -59,6 +59,9 @@ export default function RegisterCloseModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [loadingSummary, setLoadingSummary] = useState(false); // spinner for auto data
 
+  // ✅ NEW: status message for auto-loaded data
+  const [summaryStatus, setSummaryStatus] = useState(""); // "", "ok", "empty", "fail"
+
   const okRef = useRef(null);
 
   const toInt = (v) => {
@@ -102,6 +105,7 @@ export default function RegisterCloseModal({
     setClosingNote("");
     setSuccessMsg("");
     setErrorMsg("");
+    setSummaryStatus(""); // ✅ reset message
 
     setClosingDate(new Date().toISOString().slice(0, 10));
     const d = new Date();
@@ -119,17 +123,37 @@ export default function RegisterCloseModal({
     (async () => {
       try {
         setLoadingSummary(true);
+        setSummaryStatus("loading"); // ✅ show loading state text
         const data = await getRegisterClosingSummary();
-        setSummary((prev) => ({
-          ...prev,
-          totalSales: String(data?.total_sales ?? prev.totalSales ?? 0),
-          expense: String(data?.expense ?? prev.expense ?? 0),
-          cashPayment: String(data?.cash_payment ?? prev.cashPayment ?? 0),
-          cardPayment: String(data?.card_payment ?? prev.cardPayment ?? 0),
-          upiPayment: String(data?.upi_payment ?? prev.upiPayment ?? 0),
+
+        const next = {
+          totalSales: String(data?.total_sales ?? 0),
+          expense: String(data?.expense ?? 0),
+          cashPayment: String(data?.cash_payment ?? 0),
+          cardPayment: String(data?.card_payment ?? 0),
+          upiPayment: String(data?.upi_payment ?? 0),
+        };
+
+        setSummary((prev2) => ({
+          ...prev2,
+          totalSales: String(data?.total_sales ?? prev2.totalSales ?? 0),
+          expense: String(data?.expense ?? prev2.expense ?? 0),
+          cashPayment: String(data?.cash_payment ?? prev2.cashPayment ?? 0),
+          cardPayment: String(data?.card_payment ?? prev2.cardPayment ?? 0),
+          upiPayment: String(data?.upi_payment ?? prev2.upiPayment ?? 0),
         }));
+
+        const hasData =
+          parseFloat(next.totalSales || "0") > 0 ||
+          parseFloat(next.expense || "0") > 0 ||
+          parseFloat(next.cashPayment || "0") > 0 ||
+          parseFloat(next.cardPayment || "0") > 0 ||
+          parseFloat(next.upiPayment || "0") > 0;
+
+        setSummaryStatus(hasData ? "ok" : "empty");
       } catch (err) {
         console.error("Failed to load register summary", err);
+        setSummaryStatus("fail");
       } finally {
         setLoadingSummary(false);
       }
@@ -236,6 +260,28 @@ export default function RegisterCloseModal({
             ×
           </button>
         </div>
+
+        {/* ✅ NEW: data-loaded / not-loaded message (no CSS changes needed) */}
+        {summaryStatus === "ok" && (
+          <div style={{ padding: "8px 14px", fontSize: 13, color: "#1a7f37" }}>
+            ✅ Register summary loaded for your location.
+          </div>
+        )}
+        {summaryStatus === "empty" && (
+          <div style={{ padding: "8px 14px", fontSize: 13, color: "#b45309" }}>
+            ⚠️ No sales/expense data found for your location today (values may be 0).
+          </div>
+        )}
+        {summaryStatus === "fail" && (
+          <div style={{ padding: "8px 14px", fontSize: 13, color: "#b91c1c" }}>
+            ❌ Could not load register summary. Please check connection and try again.
+          </div>
+        )}
+        {summaryStatus === "loading" && (
+          <div style={{ padding: "8px 14px", fontSize: 13, color: "#2563eb" }}>
+            Loading register summary…
+          </div>
+        )}
 
         {/* Body */}
         <div className="rcm-content">
