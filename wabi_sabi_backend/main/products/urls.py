@@ -34,6 +34,7 @@ from .views_dashboard import DashboardSummaryView
 from .views_csv_import import ProductCsvPreflight, ProductCsvApply
 
 from .views_receipt import SaleReceiptPdfView
+from .views_creditreceipt import CreditNoteReceiptPdfView
 
 
 router = DefaultRouter()
@@ -120,6 +121,7 @@ urlpatterns = [
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
 
     path("sales/<str:invoice_no>/receipt/", SaleReceiptPdfView.as_view(), name="sale-receipt-pdf"),
+    path("credit-notes/<str:note_no>/receipt/", CreditNoteReceiptPdfView.as_view(), name="creditnote-receipt-pdf"),
 ]
 
 urlpatterns += router.urls
