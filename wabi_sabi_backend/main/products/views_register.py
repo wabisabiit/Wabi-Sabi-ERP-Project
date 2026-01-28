@@ -3,8 +3,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
-from django.db.models import Sum, Q
-from django.core.exceptions import FieldError
+from django.db.models import Sum
 
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -91,37 +90,16 @@ class RegisterClosingSummaryView(APIView):
 
         today = timezone.localdate()
 
-        # --- Sales for today (scope to this outlet/location for non-admin users) ---
+        # --- Sales for today (THIS outlet only) ---
         sales_qs = Sale.objects.filter(transaction_date__date=today)
 
+        # ✅ FIX: scope sales by real relation (Sale.salesman -> Employee -> Outlet -> Location)
+        # (store text is not reliable because default is "Wabi - Sabi")
         if loc is not None:
-            # 1) Prefer filtering by a real FK if your Sale model has it
-            filtered = False
-            try:
-                sales_qs = sales_qs.filter(location=loc)
-                filtered = True
-            except FieldError:
-                pass
-
-            # 2) Fallback: match by store text (code OR name)
-            if not filtered:
-                code = (getattr(loc, "code", "") or "").strip()
-                name = (getattr(loc, "name", "") or "").strip()
-
-                q = Q()
-                if code:
-                    q |= Q(store__icontains=code)
-                if name:
-                    q |= Q(store__icontains=name)
-
-                if q:
-                    sales_qs = sales_qs.filter(q)
+            sales_qs = sales_qs.filter(salesman__outlet__location=loc)
 
         # overall total
-        sales_total = (
-            sales_qs.aggregate(total=Sum("grand_total"))["total"]
-            or Decimal("0.00")
-        )
+        sales_total = sales_qs.aggregate(total=Sum("grand_total"))["total"] or Decimal("0.00")
 
         # ✅ Per payment method (supports MULTIPAY via SalePayment)
         pay_qs = SalePayment.objects.filter(sale__in=sales_qs)
@@ -166,10 +144,7 @@ class RegisterClosingSummaryView(APIView):
         if loc is not None:
             exp_qs = exp_qs.filter(created_by__outlet__location=loc)
 
-        expense_total = (
-            exp_qs.aggregate(total=Sum("amount"))["total"]
-            or Decimal("0.00")
-        )
+        expense_total = exp_qs.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
 
         return Response(
             {
