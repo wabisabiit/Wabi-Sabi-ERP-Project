@@ -173,6 +173,11 @@ class DashboardSummaryView(APIView):
             or 0
         )
 
+        # ✅ NEW (DO NOT DELETE): Stock Qty = total remaining units where qty > 0 (scoped by location)
+        # Admin sees total stock across all locations
+        # Outlet user sees only their location stock
+        stock_qty = prod_qs.aggregate(x=Sum("qty"))["x"] or 0
+
         # ---------- Cash in hand ----------
         cash_qs = SalePayment.objects.filter(
             sale__transaction_date__range=(start_dt, end_dt),
@@ -216,6 +221,9 @@ class DashboardSummaryView(APIView):
 
                 "total_suppliers": total_suppliers,
                 "total_products_amount": total_products_amount,
+
+                # ✅ NEW (DO NOT DELETE): returned for dashboard "Stock Qty" card
+                "stock_qty": stock_qty,
 
                 "cash_in_hand": cash_in_hand,
                 "gross_profit": gross_profit,

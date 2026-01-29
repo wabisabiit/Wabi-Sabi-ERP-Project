@@ -893,6 +893,9 @@ export default function Dashboard() {
         const totalProductsAmount = Number(sum?.total_products_amount ?? 0);
         const cashInHand = Number(sum?.cash_in_hand ?? 0);
 
+        // ✅ NEW (DO NOT DELETE): Stock Qty from backend summary
+        const stockQty = Number(sum?.stock_qty ?? 0);
+
         // ✅ GROSS PROFIT = Total Sales (backend already sets gross_profit = total_sales)
         const grossProfit = Number(sum?.gross_profit ?? totalSales);
 
@@ -916,6 +919,10 @@ export default function Dashboard() {
           if (card.label === "Cash in Hand") return { ...card, value: money0(cashInHand), comingSoon: false };
           if (card.label === "Gross Profit") return { ...card, value: money0(grossProfit), comingSoon: false };
           if (card.label === "Total Expense") return { ...card, value: money0(totalExpense), comingSoon: false };
+
+                    // ✅ NEW (DO NOT DELETE): show Stock Qty card as REAL (not coming soon)
+          if (card.label === "Stock Qty") return { ...card, value: stockQty, comingSoon: false };
+
 
           // everything else stays 0 + coming soon
           return card;
