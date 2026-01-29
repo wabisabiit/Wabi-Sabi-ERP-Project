@@ -1043,3 +1043,41 @@
   text-align: center;
   white-space: nowrap;
 }
+
+/* keep the last column always visible */
+.ol-th-actions,
+.ol-td-actions {
+  position: sticky;
+  right: 0;
+  background: #fff;
+  z-index: 3;
+  width: 56px;
+  min-width: 56px;
+  text-align: center;
+  white-space: nowrap;
+  border-left: 1px solid #eee;
+}
+
+/* body cell should sit above rows behind */
+.ol-td-actions {
+  z-index: 2;
+}
+
+/* delete button look */
+.ol-delete-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ol-delete-btn .material-icons {
+  font-size: 18px;
+  color: #e53935;
+}
+.ol-delete-btn:hover .material-icons {
+  color: #b71c1c;
+}
