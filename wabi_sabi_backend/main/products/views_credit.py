@@ -158,6 +158,14 @@ class CreditNoteRedeem(APIView):
     """
     POST /api/credit-notes/<note_no>/redeem/
     body: { "invoice_no": "INV82", "amount": 123.45 }
+
+    ✅ IMPORTANT CHANGE:
+    Credit note is ONE-TIME use.
+    The moment it is redeemed once, it becomes fully USED:
+      - is_redeemed = True
+      - redeemed_amount = amount (full)
+      - credits_remaining = 0
+      - qty = 0
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -173,6 +181,7 @@ class CreditNoteRedeem(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # keep your existing validation shape (frontend sends amount)
         try:
             amt = float(request.data.get("amount", 0))
         except Exception:
@@ -197,24 +206,25 @@ class CreditNoteRedeem(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        if amt - remaining > 1e-6:
-            return Response(
-                {"ok": False, "msg": "Amount exceeds remaining credit note value."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # ✅ accumulate redemption (partial allowed)
-        cn.redeemed_amount = (cn.redeemed_amount or 0) + amt
+        # ✅ ONE-TIME USE RULE:
+        # any redeem attempt consumes the FULL remaining amount immediately.
+        cn.redeemed_amount = cn.amount  # fully used
         cn.redeemed_at = timezone.now()
         cn.redeemed_invoice = (request.data.get("invoice_no") or "").strip()
+        cn.is_redeemed = True
 
-        # ✅ mark fully redeemed only when remaining becomes 0
-        cn.is_redeemed = (float(cn.amount or 0) - float(cn.redeemed_amount or 0)) <= 1e-6
+        # ✅ qty becomes 0 after use
+        cn.qty = 0
 
-        cn.save(update_fields=["is_redeemed", "redeemed_amount", "redeemed_at", "redeemed_invoice"])
+        cn.save(update_fields=["is_redeemed", "redeemed_amount", "redeemed_at", "redeemed_invoice", "qty"])
 
         return Response(
-            {"ok": True, "msg": "Credit note redeemed.", "remaining": str(cn.credits_remaining), "status": cn.status},
+            {
+                "ok": True,
+                "msg": "Credit note redeemed (fully used).",
+                "remaining": "0",
+                "status": cn.status,
+            },
             status=status.HTTP_200_OK,
         )
 
