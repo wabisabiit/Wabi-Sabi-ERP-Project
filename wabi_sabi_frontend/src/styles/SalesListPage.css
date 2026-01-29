@@ -1015,3 +1015,31 @@
     transform: rotate(360deg);
   }
 }
+
+
+.ol-tablewrap {
+  overflow-x: auto;
+  width: 100%;
+}
+.ol-delete-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ol-delete-btn .material-icons {
+  font-size: 18px;
+  color: #e53935; /* red dustbin */
+}
+
+.ol-delete-btn:hover .material-icons {
+  color: #b71c1c;
+}
+.ol-td-actions {
+  text-align: center;
+  white-space: nowrap;
+}
