@@ -36,6 +36,9 @@ from .views_csv_import import ProductCsvPreflight, ProductCsvApply
 from .views_receipt import SaleReceiptPdfView
 from .views_creditreceipt import CreditNoteReceiptPdfView
 
+from .views_sales import SalesView, SaleLinesByInvoiceView, SaleDeleteView
+
+
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -122,6 +125,9 @@ urlpatterns = [
 
     path("sales/<str:invoice_no>/receipt/", SaleReceiptPdfView.as_view(), name="sale-receipt-pdf"),
     path("credit-notes/<str:note_no>/receipt/", CreditNoteReceiptPdfView.as_view(), name="creditnote-receipt-pdf"),
+
+    path("sales/<str:invoice_no>/delete/", SaleDeleteView.as_view(), name="sale-delete"),
+
 ]
 
 urlpatterns += router.urls

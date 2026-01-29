@@ -1,17 +1,18 @@
 # products/views_sales.py
-from datetime import datetime, time  # ✅ NEW (needed for date range filtering)
+from datetime import datetime, time  # ✅ (needed for date range filtering)
 
+from django.db import transaction
 from django.db.models import Q
 from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import get_object_or_404
-from django.utils.dateparse import parse_date  # ✅ NEW (safe date parsing)
+from django.utils.dateparse import parse_date  # ✅ (safe date parsing)
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework.pagination import PageNumberPagination
 
 from outlets.models import Employee
-from .models import Sale, SaleLine
+from .models import Sale, SaleLine, CreditNote
 from .serializers_sales import SaleCreateSerializer, SaleListSerializer, SaleLineOutSerializer
 
 
@@ -29,7 +30,7 @@ def _has_created_by_field():
         return False
 
 
-# ✅ NEW: date range parser (supports YYYY-MM-DD and DD/MM/YYYY)
+# ✅ date range parser (supports YYYY-MM-DD and DD/MM/YYYY)
 def _parse_dates(request):
     """
     Accepts:
@@ -93,6 +94,42 @@ def _resolve_created_by_user(request):
     return user
 
 
+def _get_location_filters(request):
+    """
+    Reads ?location=... (can be repeated) and returns list of non-empty strings.
+    Frontend sends location as array => repeated query params.
+    """
+    locs = request.query_params.getlist("location") or request.GET.getlist("location")
+    locs = [str(x).strip() for x in (locs or []) if str(x).strip()]
+    return locs
+
+
+def _normalize_payment_method(v: str) -> str:
+    """
+    Accept common UI labels and map to Sale model constants.
+    If unknown -> return "" (ignore).
+    """
+    s = (v or "").strip().upper()
+    if not s or s in ("ALL",):
+        return ""
+
+    # UI may send "Cash"/"Upi"/"Card"/etc
+    aliases = {
+        "CASH": Sale.PAYMENT_CASH,
+        "CARD": Sale.PAYMENT_CARD,
+        "UPI": Sale.PAYMENT_UPI,
+        "MULTIPAY": Sale.PAYMENT_MULTIPAY,
+        "CREDIT": Sale.PAYMENT_CREDIT,
+        "CREDIT NOTE": Sale.PAYMENT_CREDIT,
+        "COUPON": Sale.PAYMENT_COUPON,
+    }
+    # some UIs show these, but model may not have them -> ignore safely
+    if s in ("BANK", "CHEQUE", "WALLET", "PAY LATER"):
+        return ""
+
+    return aliases.get(s, s if s in dict(Sale.PAYMENT_METHODS) else "")
+
+
 class _StdPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
@@ -110,18 +147,19 @@ class SalesView(APIView):
         - ?q=...   (search)
         - ?all=1   (return all without pagination)
 
-        ✅ NEW:
-        - ?date_from=...&date_to=... (filters by Sale.transaction_date range)
-          This is REQUIRED so Dashboard "Total Sales / Total Invoice / Total Customers"
-          match the selected date filter.
+        ✅ Filters:
+        - ?date_from=...&date_to=... (Sale.transaction_date range)
+        - ?payment_method=...        (exact match on Sale.payment_method)
+        - ?location=... (repeatable) (filters by outlet->location name/code via salesman or created_by)
         """
         qs = Sale.objects.select_related("customer")
 
         if _has_created_by_field():
             qs = qs.select_related("created_by")
 
-        # ✅ FIX: manager/staff should only see their outlet sales
         user = getattr(request, "user", None)
+
+        # ✅ manager/staff should only see their outlet sales
         if user and user.is_authenticated and not user.is_superuser:
             emp = _get_employee(user)
             if emp and emp.outlet_id:
@@ -132,13 +170,30 @@ class SalesView(APIView):
             else:
                 qs = qs.none()
 
-        # ✅ NEW: apply date range filter if provided (do NOT break existing calls)
+        # ✅ date range filter
         start_dt, end_dt = _parse_dates(request)
         if start_dt and end_dt:
             qs = qs.filter(transaction_date__range=(start_dt, end_dt))
 
-        qs = qs.order_by("-id")
+        # ✅ payment method filter
+        pm = _normalize_payment_method(request.query_params.get("payment_method") or request.GET.get("payment_method"))
+        if pm:
+            qs = qs.filter(payment_method=pm)
 
+        # ✅ location filter (supports multiple)
+        locs = _get_location_filters(request)
+        if locs:
+            loc_q = (
+                Q(salesman__outlet__location__name__in=locs)
+                | Q(salesman__outlet__location__code__in=locs)
+            )
+            if _has_created_by_field():
+                loc_q = loc_q | Q(created_by__employee__outlet__location__name__in=locs) | Q(
+                    created_by__employee__outlet__location__code__in=locs
+                )
+            qs = qs.filter(loc_q)
+
+        # ✅ search
         q = (request.query_params.get("q") or "").strip()
         if q:
             qs = qs.filter(
@@ -147,6 +202,8 @@ class SalesView(APIView):
                 | Q(customer__phone__icontains=q)
                 | Q(payment_method__icontains=q)
             )
+
+        qs = qs.order_by("-id")
 
         all_flag = str(request.query_params.get("all") or "").strip() in ("1", "true", "True")
 
@@ -173,7 +230,7 @@ class SalesView(APIView):
         return Response(payload, status=status.HTTP_201_CREATED)
 
 
-# ✅ NEW: /api/sales/<invoice_no>/lines/ returns SaleLine.mrp & SaleLine.sp (sale-time prices)
+# ✅ /api/sales/<invoice_no>/lines/
 class SaleLinesByInvoiceView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -203,3 +260,23 @@ class SaleLinesByInvoiceView(APIView):
         )
         ser = SaleLineOutSerializer(lines, many=True)
         return Response({"invoice_no": sale.invoice_no, "lines": ser.data}, status=status.HTTP_200_OK)
+
+
+# ✅ NEW: Admin-only delete invoice
+# Expected route: /api/sales/<invoice_no>/delete/  (DELETE)
+class SaleDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, invoice_no):
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated or not (user.is_superuser or user.is_staff):
+            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+        sale = get_object_or_404(Sale, invoice_no=invoice_no)
+
+        with transaction.atomic():
+            # If invoice has credit notes, remove them first (Sale is PROTECT in CreditNote)
+            CreditNote.objects.filter(sale=sale).delete()
+            sale.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

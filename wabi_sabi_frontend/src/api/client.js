@@ -649,6 +649,12 @@ export async function createRegisterClose(payload) {
   });
 }
 
+export async function deleteSale(invoiceNo) {
+  const safe = String(invoiceNo || "").trim();
+  if (!safe) throw new Error("Missing invoice number.");
+  return http(`/sales/${encodeURIComponent(safe)}/delete/`, { method: "DELETE" });
+}
+
 
 // ✅ NEW: fetch Sale receipt PDF (blob URL)
 export async function getSaleReceiptPdf(invoiceNo) {
@@ -751,6 +757,7 @@ export default {
   createSale,
   listSales,
   listCreditNotes,
+  deleteSale,
 
   getSaleLinesByInvoice,
   createSalesReturn,
