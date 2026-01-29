@@ -1,7 +1,10 @@
 # products/views_sales.py
+from datetime import datetime, time  # ✅ NEW (needed for date range filtering)
+
 from django.db.models import Q
 from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import get_object_or_404
+from django.utils.dateparse import parse_date  # ✅ NEW (safe date parsing)
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
@@ -24,6 +27,40 @@ def _has_created_by_field():
         return True
     except FieldDoesNotExist:
         return False
+
+
+# ✅ NEW: date range parser (supports YYYY-MM-DD and DD/MM/YYYY)
+def _parse_dates(request):
+    """
+    Accepts:
+      - ?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+      - ?date_from=DD/MM/YYYY&date_to=DD/MM/YYYY
+    Returns (start_dt, end_dt) or (None, None) if missing/invalid.
+    """
+    df = (request.query_params.get("date_from") or request.GET.get("date_from") or "").strip()
+    dt = (request.query_params.get("date_to") or request.GET.get("date_to") or "").strip()
+
+    dfrom = parse_date(df)
+    dto = parse_date(dt)
+
+    # ✅ allow DD/MM/YYYY too (dashboard picker sometimes sends this)
+    if not dfrom:
+        try:
+            dfrom = datetime.strptime(df, "%d/%m/%Y").date()
+        except Exception:
+            dfrom = None
+    if not dto:
+        try:
+            dto = datetime.strptime(dt, "%d/%m/%Y").date()
+        except Exception:
+            dto = None
+
+    if not dfrom or not dto:
+        return None, None
+
+    start_dt = datetime.combine(dfrom, time.min)
+    end_dt = datetime.combine(dto, time.max)
+    return start_dt, end_dt
 
 
 def _resolve_created_by_user(request):
@@ -72,6 +109,11 @@ class SalesView(APIView):
         Supports:
         - ?q=...   (search)
         - ?all=1   (return all without pagination)
+
+        ✅ NEW:
+        - ?date_from=...&date_to=... (filters by Sale.transaction_date range)
+          This is REQUIRED so Dashboard "Total Sales / Total Invoice / Total Customers"
+          match the selected date filter.
         """
         qs = Sale.objects.select_related("customer")
 
@@ -89,6 +131,11 @@ class SalesView(APIView):
                 qs = qs.filter(outlet_q)
             else:
                 qs = qs.none()
+
+        # ✅ NEW: apply date range filter if provided (do NOT break existing calls)
+        start_dt, end_dt = _parse_dates(request)
+        if start_dt and end_dt:
+            qs = qs.filter(transaction_date__range=(start_dt, end_dt))
 
         qs = qs.order_by("-id")
 
