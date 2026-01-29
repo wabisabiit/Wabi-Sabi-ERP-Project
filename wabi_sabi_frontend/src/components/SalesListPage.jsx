@@ -3,7 +3,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../styles/SalesListPage.css";
-import { listSales, apiMe } from "../api/client";
+// import { listSales, apiMe } from "../api/client";
+import { listSales, apiMe, deleteSale } from "../api/client";
+
 
 /* ---------- Columns config (Created Date & Due Date removed) ---------- */
 const COLS = [
@@ -816,11 +818,35 @@ export default function SaleListPage() {
         setCustQuery("");
     };
 
-    const onDeleteInvoice = (invoiceNo) => {
-        // UI only here; backend + client api will be added in next file as you say.
+    const onDeleteInvoice = async (invoiceNo) => {
+        const inv = String(invoiceNo || "").trim();
+        if (!inv) {
+            console.warn("[Sale Delete] Missing invoice number");
+            return;
+        }
+
+        // optional confirm (remove if you don't want)
         // eslint-disable-next-line no-alert
-        alert(`Delete (admin only): ${invoiceNo}`);
+        const ok = window.confirm(`Delete invoice ${inv}? This cannot be undone.`);
+        if (!ok) {
+            console.log(`[Sale Delete] Cancelled: ${inv}`);
+            return;
+        }
+
+        console.log(`[Sale Delete] Requesting delete for: ${inv}`);
+
+        try {
+            await deleteSale(inv);
+
+            // ✅ remove row from UI instantly
+            setRows((prev) => prev.filter((x) => String(x.invoice_no || "").trim() !== inv));
+
+            console.log(`[Sale Delete] ✅ Success: ${inv}`);
+        } catch (err) {
+            console.error(`[Sale Delete] ❌ Failed: ${inv}`, err?.message || err);
+        }
     };
+
 
     return (
         <div className="ol-wrap">
