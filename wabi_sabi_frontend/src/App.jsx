@@ -1127,9 +1127,9 @@ export default function App() {
           />
 
           {/* Fallback → Login */}
+          <Route path="/receipt/:type/:number" element={<ReceiptPdfPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
 
-          <Route path="/receipt/:type/:number" element={<ReceiptPdfPage />} />
         </Routes>
       </Suspense>
     </AuthProvider>

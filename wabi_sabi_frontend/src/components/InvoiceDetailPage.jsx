@@ -1,492 +1,260 @@
-// src/components/InvoiceDetailPage.jsx
+// src/pages/InvoiceViewPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import "../styles/InvoiceDetailPage.css";
-import { getMasterPack } from "../api/client";
+import { useParams } from "react-router-dom";
+import "../styles/InvoiceViewPage.css";
+import { getSaleByInvoice, getSaleLinesByInvoice } from "../api/client";
 
-/* ==== helpers ==== */
-const fmt = (n) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(Number(n || 0));
-const sum = (arr, k) => arr.reduce((a, r) => a + Number(r[k] || 0), 0);
-
-function downloadBlob(name, mime, content) {
-  const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-function itemsToCSV(items) {
-  const headers = [
-    "#","Sales By","Itemcode","Product","Batch",
-    "Invoiced Qty","Invoiced Free Qty","Price","Dis1","Dis2","Taxable","Tax","Total"
-  ];
-  const esc = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const lines = [headers.map(esc).join(",")];
-  items.forEach(r=>{
-    lines.push([
-      r.idx,"-",r.itemCode,r.itemName,r.batch,
-      r.qty,r.free,r.price.toFixed(2),"0.00₹","0.00₹",
-      r.taxable.toFixed(2),r.tax.toFixed(2),r.total.toFixed(2)
-    ].map(esc).join(","));
-  });
-  return lines.join("\r\n");
-}
-
-/* date helpers */
-const toDMY = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
+function fmtDateTime(v) {
+  if (!v) return "";
+  const d = new Date(v);
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = d.getFullYear();
-  return `${dd}/${mm}/${yy}`;
-};
-const toReadableDT = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const dt = d.toLocaleDateString("en-GB");
-  const tm = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  return `${dt} ${tm}`;
-};
+  const yyyy = d.getFullYear();
 
-export default function InvoiceDetailPage() {
-  const { invNo } = useParams();
-  const [topTab, setTopTab] = useState("general");
-  const [tab, setTab] = useState("product");
+  let hh = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const ampm = hh >= 12 ? "PM" : "AM";
+  hh = hh % 12;
+  if (hh === 0) hh = 12;
+  const hhs = String(hh).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hhs}:${min} ${ampm}`;
+}
 
-  // ---- NEW: fetch MasterPack detail and normalize into your previous shape ----
-  const [pack, setPack] = useState(null);
-  const [err, setErr] = useState("");
+function money(n) {
+  const x = Number(n || 0);
+  if (!Number.isFinite(x)) return "0.00";
+  return x.toFixed(2);
+}
+
+export default function InvoiceViewPage() {
+  const params = useParams();
+  const invoiceNo = String(
+    params.invoiceNo ??
+      params.invNo ??
+      params.invoice_no ??
+      params.number ??
+      ""
+  ).trim();
+
+  const [loading, setLoading] = useState(true);
+  const [sale, setSale] = useState(null);
+  const [lines, setLines] = useState([]);
 
   useEffect(() => {
-    let on = true;
-    setErr("");
+    let alive = true;
     (async () => {
+      setLoading(true);
       try {
-        const raw = await getMasterPack(invNo);
-        const p = raw && raw.pack ? raw.pack : raw; // accept wrapped or raw
-        if (!on) return;
-        setPack(p || null);
+        const hdr = await getSaleByInvoice(invoiceNo);
+        const lns = await getSaleLinesByInvoice(invoiceNo);
+
+        if (!alive) return;
+
+        setSale(hdr || null);
+        setLines(Array.isArray(lns) ? lns : lns?.results || []);
       } catch (e) {
-        if (!on) return;
-        setErr(e?.message || "Failed to load invoice");
+        console.error("[InvoiceView] load failed:", e?.message || e);
+        if (!alive) return;
+        setSale(null);
+        setLines([]);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
       }
     })();
-    return () => { on = false; };
-  }, [invNo]);
-
-  const data = useMemo(() => {
-    // If backend not loaded yet OR error, keep a safe fallback so page renders
-    const mp = pack || {};
-    const lines = Array.isArray(mp.lines) ? mp.lines : [];
-
-    const invoiceNo = mp.number || invNo || "INV-NA";
-    const invoiceDate = toDMY(mp.created_at);
-    const createdTime = toReadableDT(mp.created_at);
-    const dueDate = invoiceDate;
-    const totalAmount = Number(mp.amount_total ?? 0);
-
-    // Use first line's location as "Created By"/Place of Supply
-    const firstLoc = lines[0]?.location || {};
-    const locName = firstLoc.name || firstLoc.code || "WABI SABI LLP";
-
-    // Build items (keep numeric fields since your table/CSV calls .toFixed())
-    const items = lines.map((ln, i) => ({
-      idx: i + 1,
-      itemCode: ln?.barcode || "",
-      itemName: ln?.name || "",
-      batch: "",          // empty
-      qty: 1,             // default 1
-      free: 0,
-      price: Number(ln?.sp ?? 0),
-      taxable: 0,         // keep numeric to avoid .toFixed crash
-      tax: 0,             // keep blank in UI by rendering 0 with your existing cells
-      total: Number(ln?.sp ?? 0),
-    }));
-
-    // Build object the rest of your JSX already expects
-    return {
-      party: {
-        name: locName || "Unknown Customer –",
-        slug: encodeURIComponent(locName || "unknown-customer"),
-        placeOfSupply: locName,
-        billing: {
-          line1: "J-1/61, RAJORI GARDEN, New Delhi West Delhi – 110027 Delhi India",
-          line2: "",
-          gstin: "07AADFW9945P1Z6",
-          phone: "+91-9599883461",
-        },
-        shipping: {
-          line1: "J-1/61, RAJORI GARDEN, New Delhi West Delhi – 110027 Delhi India",
-          line2: "",
-          gstin: "07AADFW9945P1Z6",
-          phone: "Mobile no. is not provided",
-        },
-      },
-      meta: {
-        invoiceNo,
-        invoiceDate,
-        dueDate,
-        reverseCharge: "No",
-        paymentTerm: "N/A",
-        exportSez: "No",
-        paymentReminder: "No",
-        accountLedger: "Sales",
-        createdBy: "Krishna Pandit",
-        createdTime,
-        paidAmount: 0,
-        dueAmount: totalAmount,   // Due same as total
-        totalAmount,
-      },
-      items,
-      terms: ["Goods once sold, cannot be returned. Wabi Sabi xxxxxx"],
-      note: "",
-      receipts: [],
-      credits: [],
-      shipping: {
-        type: "Delivery",
-        shipDate: invoiceDate,
-        refNo: "",
-        transportDate: invoiceDate,
-        mode: "",
-        transporter: "",
-        weight: "",
-        vehicle: "",
-      },
-      summary: {
-        grossAmount: totalAmount,
-        discount: 0,
-        taxableAmount: 0,
-        taxAmount: 0,
-        roundoff: 0,
-        netAmount: totalAmount,
-      },
-      history: [{
-        dt: createdTime || invoiceDate,
-        action: "Invoice created Of Amount",
-        amount: totalAmount,
-        by: "krishna Pandit",
-      }],
+    return () => {
+      alive = false;
     };
-  }, [pack, invNo]);
+  }, [invoiceNo]);
 
-  /* icon handlers */
-  const onPrint = () => window.print();
-  const onPDF = () => {
-    const head = `Invoice ${data.meta.invoiceNo}\nCustomer: ${data.party.name}\nDate: ${data.meta.invoiceDate}\n\nItems:\n`;
-    const body = data.items.map(r=>`${r.idx}. ${r.itemName} x${r.qty}  ₹${r.total.toFixed(2)}`).join("\n");
-    const foot = `\n\nNet Amount: ${fmt(data.summary.netAmount)}`;
-    downloadBlob(`${data.meta.invoiceNo}.pdf`,"application/pdf",head+body+foot);
-  };
-  const onCSV = () => downloadBlob(`${data.meta.invoiceNo}_items.csv`,"text/csv;charset=utf-8",itemsToCSV(data.items));
-  const onCopy  = async () => {
-    try { await navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }
-    catch { alert("Copy failed"); }
-  };
-  const onEmail = () => {
-    const s=encodeURIComponent(`Invoice ${data.meta.invoiceNo}`);
-    const b=encodeURIComponent(`Please find Invoice ${data.meta.invoiceNo}.\n\nLink: ${window.location.href}`);
-    window.location.href=`mailto:?subject=${s}&body=${b}`;
-  };
+  const rows = useMemo(() => {
+    return (lines || []).map((ln, idx) => {
+      const barcode = ln?.barcode || ln?.product?.barcode || "";
+
+      const productName =
+        ln?.product_name ||
+        ln?.product?.task_item?.item_print_friendly_name ||
+        ln?.product?.task_item?.item_vasy_name ||
+        ln?.product?.task_item?.item_full_name ||
+        ln?.product?.name ||
+        "";
+
+      const qty = Number(ln?.qty ?? 1) || 1;
+
+      const sp = Number(ln?.sp ?? ln?.selling_price ?? ln?.price ?? 0) || 0;
+
+      // discount per unit (stored as discount_amount in your model)
+      const discUnit = Number(ln?.discount_amount ?? 0) || 0;
+
+      const lineTotalSp = sp * qty;
+      const lineDisc = discUnit * qty;
+      const net = Math.max(0, (sp - discUnit) * qty);
+
+      return {
+        sr: idx + 1,
+        barcode,
+        productName,
+        batch: "",
+        qty,
+        sp,
+        discUnit,
+        lineTotalSp,
+        lineDisc,
+        net,
+      };
+    });
+  }, [lines]);
+
+  const totals = useMemo(() => {
+    const totalAmount = rows.reduce(
+      (a, r) => a + (Number(r.lineTotalSp) || 0),
+      0
+    );
+    const discount = rows.reduce((a, r) => a + (Number(r.lineDisc) || 0), 0);
+    const netAmount = rows.reduce((a, r) => a + (Number(r.net) || 0), 0);
+    return { totalAmount, discount, netAmount };
+  }, [rows]);
+
+  const createdAt = sale?.transaction_date || sale?.created_at || sale?.date || "";
+  const createdBy =
+    sale?.created_by_name ||
+    sale?.created_by ||
+    sale?.manager_name ||
+    sale?.created_by_username ||
+    "";
+
+  const custName = sale?.customer_name || sale?.customer?.name || "";
+  const custPhone = sale?.customer_phone || sale?.customer?.phone || "";
+  const customerPurchaseAmount =
+    sale?.total_amount ?? sale?.grand_total ?? sale?.grandTotal ?? totals.netAmount;
 
   return (
-    <div className="invd-root">
-      {/* header */}
-      <div className="invd-header">
-        <div className="crumb">
-          <span className="code">{data.meta.invoiceNo}</span>
-          <Link className="crumb-link" to="/sales/invoice">- Invoice</Link>
+    <div className="invwrap">
+      <div className="invtop">
+        <div className="invtitle">
+          <div className="invno">{invoiceNo}</div>
+          <div className="invcrumb">
+            <span className="material-icons invhome">home</span>
+            <span className="invsep">-</span>
+            <span className="invsec">Invoice</span>
+          </div>
         </div>
-        <div className="header-actions">
-          <button className="ico b" title="Delivery/Ship (disabled)" disabled><span className="mi">local_shipping</span></button>
-          <button className="ico b" title="Print" onClick={onPrint}><span className="mi">print</span></button>
-          <button className="ico g" title="Email" onClick={onEmail}><span className="mi">mail</span></button>
-          <button className="ico y" title="Download PDF" onClick={onPDF}><span className="mi">picture_as_pdf</span></button>
-          <button className="ico p" title="Export CSV" onClick={onCSV}><span className="mi">table_view</span></button>
-          <button className="ico s" title="Copy Link" onClick={onCopy}><span className="mi">link</span></button>
+
+        <div className="invstatus">
+          <span className="invbadge">INVOICED</span>
         </div>
       </div>
 
-      {/* status + top tabs */}
-      <div className="invd-ribbon"><span className="pill green">INVOICED</span></div>
-      <div className="invd-tabs1">
-        <button className={topTab==="general"?"active":""} onClick={()=>setTopTab("general")}>General</button>
-        <button className={topTab==="history"?"active":""} onClick={()=>setTopTab("history")}>History</button>
+      <div className="invcard">
+        {loading ? (
+          <div className="invloading">
+            <span className="spinner" /> Loading…
+          </div>
+        ) : !sale ? (
+          <div className="invempty">Invoice not found</div>
+        ) : (
+          <>
+            <div className="invmeta">
+              <div className="invmetaRow">
+                <div className="invmetaItem">
+                  <div className="invmetaLbl">Date</div>
+                  <div className="invmetaVal">{fmtDateTime(createdAt)}</div>
+                </div>
+
+                <div className="invmetaItem">
+                  <div className="invmetaLbl">Created By</div>
+                  <div className="invmetaVal">{createdBy || "-"}</div>
+                </div>
+
+                <div className="invmetaItem">
+                  <div className="invmetaLbl">Customer Name</div>
+                  <div className="invmetaVal">{custName || "-"}</div>
+                </div>
+
+                <div className="invmetaItem">
+                  <div className="invmetaLbl">Mobile No.</div>
+                  <div className="invmetaVal">{custPhone || "-"}</div>
+                </div>
+
+                <div className="invmetaItem">
+                  <div className="invmetaLbl">Total Purchase Amount</div>
+                  <div className="invmetaVal">₹{money(customerPurchaseAmount)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="invsection">
+              <div className="invsectionHead">Product Details</div>
+
+              <div className="invgrid">
+                <div className="invtableBox">
+                  <div className="invtableHead">
+                    <table className="invtable">
+                      <thead>
+                        <tr>
+                          <th className="c-sr">Sales By</th>
+                          <th className="c-barcode">Barcode</th>
+                          <th className="c-prod">Product</th>
+                          <th className="c-batch">Batch</th>
+                          <th className="c-qty">Invoiced Qty</th>
+                          <th className="c-sp">Selling Price</th>
+                          <th className="c-disc">Discount Price</th>
+                          <th className="c-net">Net Amount</th>
+                        </tr>
+                      </thead>
+                    </table>
+                  </div>
+
+                  <div className="invtableBody">
+                    <table className="invtable">
+                      <tbody>
+                        {rows.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="invnodata">
+                              No products
+                            </td>
+                          </tr>
+                        ) : (
+                          rows.map((r) => (
+                            <tr key={`${r.barcode}-${r.sr}`}>
+                              <td className="c-sr">{r.sr}</td>
+                              <td className="c-barcode">{r.barcode}</td>
+                              <td className="c-prod">
+                                <div className="invprod">{r.productName || "-"}</div>
+                              </td>
+                              <td className="c-batch">{r.batch}</td>
+                              <td className="c-qty">{r.qty}</td>
+                              <td className="c-sp">{money(r.sp)}</td>
+                              <td className="c-disc">{money(r.discUnit)}</td>
+                              <td className="c-net">{money(r.net)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Right totals like Image-2 (ONLY 3 rows) */}
+                <div className="invsum">
+                  <div className="invsumRow">
+                    <div className="invsumLbl">Total Amount</div>
+                    <div className="invsumVal">{money(totals.totalAmount)}</div>
+                  </div>
+                  <div className="invsumRow">
+                    <div className="invsumLbl">Discount</div>
+                    <div className="invsumVal">{money(totals.discount)}</div>
+                  </div>
+                  <div className="invsumRow invsumNet">
+                    <div className="invsumLbl">Net Amount</div>
+                    <div className="invsumVal">{money(totals.netAmount)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
-
-      {/* top content (general / history) */}
-      {topTab === "general" ? (
-        <div className="invd-grid">
-          <div className="invd-card">
-            <div className="invd-row"><div className="invd-col">
-              <div className="invd-label">Customer</div>
-              <Link
-                className="invd-link"
-                to={`/customer/${encodeURIComponent(data.party.slug || data.party.name)}?inv=${encodeURIComponent(data.meta.invoiceNo)}`}
-                state={{ fromInvoice: data }}
-              >
-                {data.party.name}
-              </Link>
-            </div></div>
-            <div className="invd-row"><div className="invd-col">
-              <div className="invd-label">Place of Supply</div>
-              <div>{data.party.placeOfSupply}</div>
-            </div></div>
-            <div className="invd-row"><div className="invd-col">
-              <div className="invd-label">Billing Address</div>
-              <div className="invd-addr">
-                <div>{data.party.billing.line1}</div>
-                <div>{data.party.billing.line2}</div>
-                <div>GSTIN – {data.party.billing.gstin}</div>
-                <div>📞 {data.party.billing.phone}</div>
-              </div>
-            </div></div>
-            <div className="invd-row"><div className="invd-col">
-              <div className="invd-label">Shipping Address</div>
-              <div className="invd-addr">
-                <div>{data.party.shipping.line1}</div>
-                <div>{data.party.shipping.line2}</div>
-                <div>GSTIN – {data.party.shipping.gstin}</div>
-                <div>📞 {data.party.shipping.phone}</div>
-              </div>
-            </div></div>
-          </div>
-
-          <div className="invd-card">
-            <div className="invd-meta">
-              <Meta label="Invoice Date" value={data.meta.invoiceDate} />
-              <Meta label="Invoice No." value={data.meta.invoiceNo} />
-              <Meta label="Reverse Charge" value={data.meta.reverseCharge} />
-            </div>
-            <div className="invd-meta">
-              <Meta label="Payment Term" value={data.meta.paymentTerm} />
-              <Meta label="Due Date" value={data.meta.dueDate} />
-              <Meta label="Export/SEZ" value={data.meta.exportSez} />
-              <Meta label="Payment Reminder" value={data.meta.paymentReminder} />
-              <Meta label="Account Ledger" value={data.meta.accountLedger} />
-              <Meta label="Created By" value={data.meta.createdBy} />
-              <Meta label="Created Time" value={data.meta.createdTime} />
-            </div>
-            <div className="invd-status">
-              <div>
-                <div className="muted">Payment status</div>
-                <div className="rows"><span>Due Amount</span><strong className="amt">{fmt(data.meta.dueAmount)}</strong></div>
-                <div className="rows"><span>Paid Amount</span><strong className="amt">{fmt(data.meta.paidAmount)}</strong></div>
-                <div className="rows total"><span>Total Amount</span><strong className="amt">{fmt(data.meta.totalAmount)}</strong></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="invd-card invd-historycard">
-          {data.history.map((h, i)=>(
-            <div key={i} className="hist-row">
-              <div className="time">{h.dt}</div>
-              <div className="dotline" aria-hidden />
-              <div className="text">
-                <span className="bold">Invoice</span> created Of Amount <span className="bold">{fmt(h.amount)}</span> by <span className="bold">{h.by}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* bottom tabs */}
-      <div className="invd-tabs2">
-        <button className={tab==="product"?"active":""} onClick={()=>setTab("product")}>Product Details</button>
-        <button className={tab==="terms"?"active":""} onClick={()=>setTab("terms")}>Terms & Condition / Note</button>
-        <button className={tab==="receipt"?"active":""} onClick={()=>setTab("receipt")}>Receipt</button>
-        <button className={tab==="credit"?"active":""} onClick={()=>setTab("credit")}>Credit Note</button>
-        <button className={tab==="ship"?"active":""} onClick={()=>setTab("ship")}>Shipping Details</button>
-      </div>
-
-      {/* tab content */}
-      {tab === "product" && (
-        <div className="invd-card">
-          <div className="invd-table-wrap">
-            <table className="invd-table">
-              <thead>
-                <tr>
-                  <th className="w40">#</th>
-                  <th>Sales By</th>
-                  <th>Itemcode</th>
-                  <th>Product</th>
-                  <th>Batch</th>
-                  <th className="num">Invoiced Qty</th>
-                  <th className="num">Invoiced Free Qty</th>
-                  <th className="num">Price</th>
-                  <th className="num">Dis1</th>
-                  <th className="num">Dis2</th>
-                  <th className="num">Taxable</th>
-                  <th>Tax</th>
-                  <th className="num">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map(r=>(
-                  <tr key={r.idx}>
-                    <td>{r.idx}</td><td>-</td><td>{r.itemCode}</td><td>{r.itemName}</td><td>{r.batch}</td>
-                    <td className="num">{r.qty}</td><td className="num">{r.free}</td>
-                    <td className="num">{r.price.toFixed(2)}</td>
-                    <td className="num">0.00₹</td><td className="num">0.00₹</td>
-                    <td className="num linkish">{r.taxable.toFixed(2)}</td>
-                    <td><div className="tax-lines"><div>GST 5%</div><div className="muted">cess 0%</div><div className="muted">Rs. {r.tax.toFixed(2)}</div></div></td>
-                    <td className="num">{r.total.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={5}/>
-                  <td className="num strong">{sum(data.items,"qty")}</td>
-                  <td className="num strong">{sum(data.items,"free")}</td>
-                  <td/><td/><td/>
-                  <td className="num strong">{sum(data.items,"taxable").toFixed(2)}</td>
-                  <td/>
-                  <td className="num strong">{sum(data.items,"total").toFixed(2)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {tab === "terms" && (
-        <div className="invd-termwrap">
-          <div className="invd-card">
-            <div className="invd-subtitle">Terms & Condition</div>
-            <table className="invd-table mini">
-              <thead>
-                <tr><th className="w40">#</th><th>Terms & Condition</th></tr>
-              </thead>
-              <tbody>
-                {data.terms.map((t,i)=>(
-                  <tr key={i}><td className="num">{i+1}</td><td>{t}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="invd-card invd-note">
-            <div className="note-head">Note</div>
-            <textarea className="note-ta" value={data.note} readOnly placeholder=""/>
-          </div>
-        </div>
-      )}
-
-      {tab === "receipt" && (
-        <div className="invd-card">
-          <div className="invd-table-wrap">
-            <table className="invd-table">
-              <thead>
-                <tr><th className="w40">#</th><th>Receipt No</th><th>Date</th><th>Payment Mode</th><th>Amount</th><th>Action</th></tr>
-              </thead>
-              <tbody>
-                <tr><td colSpan={6} className="muted center">No data available in table</td></tr>
-              </tbody>
-            </table>
-            <div className="mini-foot">
-              <span>Showing 0 to 0 of 0 entries</span>
-              <div className="pager-mini"><button disabled>‹</button><button disabled>›</button></div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "credit" && (
-        <div className="invd-card">
-          <div className="invd-table-wrap">
-            <table className="invd-table">
-              <thead>
-                <tr><th className="w40">#</th><th>Sales No</th><th>Date</th><th>Paid Amount</th><th>Total</th><th>Action</th></tr>
-              </thead>
-              <tbody>
-                <tr><td colSpan={6} className="muted center">No data available in table</td></tr>
-              </tbody>
-            </table>
-            <div className="mini-foot">
-              <span>Showing 0 to 0 of 0 entries</span>
-              <div className="pager-mini"><button disabled>‹</button><button disabled>›</button></div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "ship" && (
-        <div className="invd-shipwrap">
-          <div className="invd-shipcard">
-            <table className="invd-shiptable">
-              <tbody>
-                <ShRow k1="Shipping Type:" v1={data.shipping.type} k2="Shipping Date:" v2={data.shipping.shipDate} />
-                <ShRow k1="Reference No. :" v1={data.shipping.refNo} k2="Transport Date:" v2={data.shipping.transportDate} />
-                <ShRow k1="Mode of Transport. :" v1={data.shipping.mode} k2="Transporter Name:" v2={data.shipping.transporter} />
-                <ShRow k1="Weight:" v1={data.shipping.weight} k2="Vehicle No. :" v2={data.shipping.vehicle} />
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* bottom: Additional & summary */}
-      <div className="invd-south">
-        <div className="invd-card">
-          <div className="invd-subtitle">Additional Charge</div>
-          <table className="invd-table small">
-            <thead><tr><th className="w40">#</th><th>Additional Charge</th><th className="num">Value</th><th>Tax</th><th className="num">Total</th></tr></thead>
-            <tbody><tr><td colSpan={5} className="muted">No Additional Charges</td></tr></tbody>
-            <tfoot><tr><td colSpan={4} className="strong" style={{textAlign:"right"}}>Total</td><td className="num strong">0.0</td></tr></tfoot>
-          </table>
-        </div>
-
-        <div className="invd-summary">
-          <table>
-            <tbody>
-              <Row k="Flat Discount" v="0.00 %" />
-              <Row k="Gross Amount" v={data.summary.grossAmount} money />
-              <Row k="Discount" v={data.summary.discount} money />
-              <Row k="Taxable Amount" v={data.summary.taxableAmount} money />
-              <Row k="Tax Amount" v={data.summary.taxAmount} money highlight />
-              <Row k="Roundoff" v={data.summary.roundoff} money />
-              <Row k="Net Amount" v={data.summary.netAmount} money big />
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {err && <div className="muted" style={{padding:"8px 16px"}}>Note: {err}</div>}
     </div>
-  );
-}
-
-function Meta({ label, value }) {
-  return (
-    <div className="meta">
-      <div className="muted">{label}</div>
-      <div>{value}</div>
-    </div>
-  );
-}
-function Row({ k, v, money, big, highlight }) {
-  const render = money ? fmt(v) : v;
-  return (
-    <tr className={big ? "big" : ""}>
-      <td className="key">{k}</td>
-      <td className={`val ${highlight ? "hl" : ""}`}>{render}</td>
-    </tr>
-  );
-}
-function ShRow({ k1, v1, k2, v2 }) {
-  return (
-    <tr>
-      <td className="k">{k1}</td>
-      <td className="v">{v1}</td>
-      <td className="k">{k2}</td>
-      <td className="v">{v2}</td>
-    </tr>
   );
 }
