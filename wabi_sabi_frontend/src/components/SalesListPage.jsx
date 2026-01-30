@@ -1226,7 +1226,9 @@ export default function SaleListPage() {
                                                 <button
                                                     type="button"
                                                     className="ol-inv-link"
-                                                    onClick={() => navigate(`/invoice/${encodeURIComponent(String(r.invoice_no || "").trim())}`)}
+                                                    onClick={() =>
+                                                        navigate(`/sales/invoice-view/${encodeURIComponent(String(r.invoice_no || "").trim())}`)
+                                                    }
                                                     title="Open Invoice"
                                                 >
                                                     {r.invoice_no}
