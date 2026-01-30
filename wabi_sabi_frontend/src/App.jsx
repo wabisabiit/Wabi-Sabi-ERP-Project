@@ -122,6 +122,9 @@ const ReportCustomerWiseSalesOrder = lazy(() =>
   import("./components/ReportCustomerWiseSalesOrder")
 );
 
+const InvoiceViewPage = lazy(() => import("./components/InvoiceViewPage"));
+
+
 // Settings
 const SettingsHome = lazy(() => import("./components/SettingsHome"));
 const GeneralSettingsPage = lazy(() =>
@@ -336,6 +339,18 @@ export default function App() {
               </RoleRoute>
             }
           />
+
+          <Route
+            path="/sales/invoice-view/:invNo"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <InvoiceViewPage />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
 
           {/* 🔹 POS ROUTES — Admin + Manager */}
           <Route

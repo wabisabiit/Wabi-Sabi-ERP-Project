@@ -5,6 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../styles/SalesListPage.css";
 // import { listSales, apiMe } from "../api/client";
 import { listSales, apiMe, deleteSale } from "../api/client";
+import { useNavigate } from "react-router-dom";
 
 
 /* ---------- Columns config (Created Date & Due Date removed) ---------- */
@@ -624,6 +625,8 @@ DateInput.displayName = "DateInput";
    Main page
    ========================= */
 export default function SaleListPage() {
+    const navigate = useNavigate();
+
     /* columns popover */
     const [openCols, setOpenCols] = useState(false);
     const [visible, setVisible] = useState(() => new Set(DEFAULT_VISIBLE));
@@ -825,7 +828,6 @@ export default function SaleListPage() {
             return;
         }
 
-        // optional confirm (remove if you don't want)
         // eslint-disable-next-line no-alert
         const ok = window.confirm(`Delete invoice ${inv}? This cannot be undone.`);
         if (!ok) {
@@ -1218,7 +1220,20 @@ export default function SaleListPage() {
                                         </td>
 
                                         {visible.has("sr") && <td>{(page - 1) * pageSize + i + 1}</td>}
-                                        {visible.has("inv") && <td>{r.invoice_no}</td>}
+
+                                        {visible.has("inv") && (
+                                            <td>
+                                                <button
+                                                    type="button"
+                                                    className="ol-inv-link"
+                                                    onClick={() => navigate(`/invoice/${encodeURIComponent(String(r.invoice_no || "").trim())}`)}
+                                                    title="Open Invoice"
+                                                >
+                                                    {r.invoice_no}
+                                                </button>
+                                            </td>
+                                        )}
+
                                         {visible.has("date") && <td>{fmtDateCell(r.transaction_date)}</td>}
                                         {visible.has("cust") && <td>{r.customer_name}</td>}
                                         {visible.has("custNo") && <td>{r.customer_phone || ""}</td>}

@@ -1,0 +1,224 @@
+/* src/styles/InvoiceViewPage.css */
+
+.invwrap{
+  padding: 18px 18px 30px;
+}
+
+.invtop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  margin-bottom:14px;
+}
+
+.invtitle{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.invno{
+  font-size:26px;
+  font-weight:600;
+  color:#1d2433;
+}
+
+.invcrumb{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#7b8397;
+  font-size:16px;
+}
+.invhome{ font-size:18px; color:#7b8397; }
+.invsep{ opacity:.7; }
+.invsec{ color:#7b8397; }
+
+.invstatus .invbadge{
+  display:inline-block;
+  padding:6px 12px;
+  background:#22a05a;
+  color:#fff;
+  border-radius:6px;
+  font-weight:700;
+  letter-spacing:.3px;
+}
+
+.invcard{
+  background:#fff;
+  border-radius:14px;
+  box-shadow:0 8px 24px rgba(20,30,60,.08);
+  padding:18px 18px 22px;
+}
+
+.invloading{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#6b7387;
+  font-weight:600;
+}
+
+.invempty{
+  color:#6b7387;
+  font-weight:600;
+  padding:18px 6px;
+}
+
+.invmeta{
+  padding:8px 6px 18px;
+  border-bottom:1px solid #eef0f6;
+}
+
+.invmetaRow{
+  display:grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap:14px;
+}
+
+.invmetaLbl{
+  font-size:12px;
+  color:#7b8397;
+  margin-bottom:6px;
+}
+.invmetaVal{
+  font-size:14px;
+  color:#1f2737;
+  font-weight:600;
+}
+
+.invsection{
+  padding-top:16px;
+}
+
+.invsectionHead{
+  font-size:18px;
+  font-weight:700;
+  color:#1f2737;
+  padding:4px 6px 14px;
+}
+
+.invgrid{
+  display:grid;
+  grid-template-columns: 1fr 280px;
+  gap:16px;
+  align-items:start;
+}
+
+.invtableBox{
+  border:1px solid #eef0f6;
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+}
+
+/* fixed header + scroll body */
+.invtableHead{
+  background:#f4f6fb;
+  border-bottom:1px solid #eef0f6;
+}
+
+.invtableBody{
+  max-height: 360px; /* ~6 rows */
+  overflow-y:auto;
+}
+
+.invtable{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+
+.invtable th,
+.invtable td{
+  padding:12px 10px;
+  border-bottom:1px solid #eef0f6;
+  font-size:14px;
+  color:#1f2737;
+}
+
+.invtable th{
+  font-weight:700;
+  color:#2a3245;
+}
+
+.invtable td{
+  font-weight:500;
+  background:#fff;
+}
+
+.invprod{
+  line-height:1.25;
+}
+
+.invnodata{
+  text-align:center;
+  color:#7b8397;
+  padding:18px 10px;
+}
+
+/* columns widths */
+.c-sr{ width:80px; }
+.c-barcode{ width:170px; }
+.c-prod{ width:auto; }
+.c-batch{ width:130px; }
+.c-qty{ width:120px; text-align:center; }
+.c-sp{ width:130px; text-align:right; }
+.c-disc{ width:140px; text-align:right; }
+.c-net{ width:140px; text-align:right; }
+
+/* Right summary box (only 3 rows) */
+.invsum{
+  background:#f4f6fb;
+  border:1px solid #eef0f6;
+  border-radius:12px;
+  padding:14px 14px 10px;
+}
+
+.invsumRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 2px;
+  border-bottom:1px solid #e9ecf5;
+  font-size:14px;
+}
+
+.invsumRow:last-child{
+  border-bottom:0;
+}
+
+.invsumLbl{
+  color:#2b3346;
+  font-weight:600;
+}
+
+.invsumVal{
+  color:#1f2737;
+  font-weight:700;
+}
+
+.invsumNet{
+  padding-top:12px;
+  font-size:18px;
+}
+
+.spinner{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  border:2px solid rgba(0,0,0,.12);
+  border-top-color: rgba(0,0,0,.55);
+  display:inline-block;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin{
+  to{ transform: rotate(360deg); }
+}
+
+/* responsive */
+@media (max-width: 1100px){
+  .invmetaRow{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .invgrid{ grid-template-columns: 1fr; }
+}

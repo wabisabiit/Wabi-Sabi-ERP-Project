@@ -219,6 +219,42 @@ export async function getSaleLinesByInvoice(invoiceNo) {
   return http(`/sales/${encodeURIComponent(safe)}/lines/`);
 }
 
+/**
+ * ✅ NEW: Sale header by invoice (best-effort)
+ * - tries common endpoints
+ * - fallback: listSales(q=invoiceNo) and match exact invoice_no
+ */
+export async function getSaleByInvoice(invoiceNo) {
+  const safe = String(invoiceNo || "").trim();
+  if (!safe) throw new Error("Missing invoice number.");
+
+  const tryPaths = [
+    `/sales/${encodeURIComponent(safe)}/`,
+    `/sales/${encodeURIComponent(safe)}/detail/`,
+    `/sales/${encodeURIComponent(safe)}/header/`,
+  ];
+
+  for (const p of tryPaths) {
+    try {
+      const data = await http(p);
+      if (data) return data;
+    } catch (e) {
+      // ignore and continue
+    }
+  }
+
+  // fallback via listSales
+  const res = await listSales({ all: 1, q: safe });
+  const arr = res?.results || [];
+  const exact = arr.find((x) => String(x?.invoice_no || "").trim() === safe);
+  if (exact) return exact;
+
+  // last fallback: if backend returns just one row
+  if (arr.length === 1) return arr[0];
+
+  throw new Error("Invoice not found.");
+}
+
 export async function getCreditNote(noteNo) {
   return http(`/credit-notes/${encodeURIComponent(noteNo)}/`);
 }
@@ -759,7 +795,10 @@ export default {
   listCreditNotes,
   deleteSale,
 
+  // ✅ NEW
+  getSaleByInvoice,
   getSaleLinesByInvoice,
+
   createSalesReturn,
   getCreditNote,
   redeemCreditNote,

@@ -1081,3 +1081,15 @@
 .ol-delete-btn:hover .material-icons {
   color: #b71c1c;
 }
+
+
+.ol-inv-link{
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #0b5ed7;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+.ol-inv-link:hover{ opacity: .85; }
