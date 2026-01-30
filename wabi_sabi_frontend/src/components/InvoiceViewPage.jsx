@@ -27,7 +27,9 @@ function money(n) {
 }
 
 export default function InvoiceViewPage() {
-  const { invoiceNo } = useParams();
+  // ✅ FIX: route is /sales/invoice-view/:invNo
+  const { invNo, invoiceNo } = useParams();
+  const invoice = String(invNo || invoiceNo || "").trim();
 
   const [loading, setLoading] = useState(true);
   const [sale, setSale] = useState(null);
@@ -35,18 +37,36 @@ export default function InvoiceViewPage() {
 
   useEffect(() => {
     let alive = true;
+
     (async () => {
       setLoading(true);
+
+      if (!invoice) {
+        console.error("[InvoiceView] load failed: Missing invoice number.");
+        setSale(null);
+        setLines([]);
+        setLoading(false);
+        return;
+      }
+
       try {
-        const hdr = await getSaleByInvoice(invoiceNo);
-        const lns = await getSaleLinesByInvoice(invoiceNo);
+        console.log("[InvoiceView] loading invoice:", invoice);
+
+        const hdr = await getSaleByInvoice(invoice);
+        const lns = await getSaleLinesByInvoice(invoice);
 
         if (!alive) return;
 
         setSale(hdr || null);
         setLines(Array.isArray(lns) ? lns : (lns?.results || []));
+
+        console.log("[InvoiceView] ✅ loaded", {
+          invoice,
+          hasSale: !!hdr,
+          lines: Array.isArray(lns) ? lns.length : (lns?.results || []).length,
+        });
       } catch (e) {
-        console.error("[InvoiceView] load failed:", e?.message || e);
+        console.error("[InvoiceView] ❌ load failed:", e?.message || e);
         if (!alive) return;
         setSale(null);
         setLines([]);
@@ -55,8 +75,11 @@ export default function InvoiceViewPage() {
         setLoading(false);
       }
     })();
-    return () => { alive = false; };
-  }, [invoiceNo]);
+
+    return () => {
+      alive = false;
+    };
+  }, [invoice]);
 
   const rows = useMemo(() => {
     return (lines || []).map((ln, idx) => {
@@ -123,7 +146,7 @@ export default function InvoiceViewPage() {
     <div className="invwrap">
       <div className="invtop">
         <div className="invtitle">
-          <div className="invno">{invoiceNo}</div>
+          <div className="invno">{invoice}</div>
           <div className="invcrumb">
             <span className="material-icons invhome">home</span>
             <span className="invsep">-</span>
@@ -224,7 +247,6 @@ export default function InvoiceViewPage() {
                   </div>
                 </div>
 
-                {/* Right totals like Image-2 (ONLY 3 rows) */}
                 <div className="invsum">
                   <div className="invsumRow">
                     <div className="invsumLbl">Total Amount</div>
