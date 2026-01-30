@@ -744,7 +744,7 @@ export default function App() {
             }
           />
           <Route
-            path="/sales/invoice/:invNo"
+            path="/sales/invoice/:invoiceNo"
             element={
               <RoleRoute allowed={["ADMIN"]}>
                 <SidebarLayout>
