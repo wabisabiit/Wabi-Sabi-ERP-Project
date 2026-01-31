@@ -53,9 +53,11 @@ export default function InvoiceViewPage() {
       try {
         console.log("[InvoiceView] loading invoice:", invoice);
 
+        // ✅ FIX: Use listSales with search query (same as OrderListModal pattern)
         const res = await listSales({ all: 1, q: invoice });
         const salesList = res?.results || [];
 
+        // Find exact match
         const hdr = salesList.find(
           (s) => String(s?.invoice_no || "").trim() === invoice
         );
@@ -69,19 +71,14 @@ export default function InvoiceViewPage() {
           return;
         }
 
+        // ✅ Try to fetch lines (might fail if endpoint doesn't exist)
         let lns = [];
         try {
           const lineRes = await getSaleLinesByInvoice(invoice);
-
-          // ✅ IMPORTANT FIX: backend returns { invoice_no, lines: [...] }
-          lns = Array.isArray(lineRes)
-            ? lineRes
-            : (lineRes?.lines || lineRes?.results || []);
+          lns = Array.isArray(lineRes) ? lineRes : (lineRes?.lines || lineRes?.results || []);
         } catch (lineErr) {
-          console.warn(
-            "[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:",
-            lineErr.message
-          );
+          console.warn("[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:", lineErr.message);
+          // Fallback: use items/lines from the sale object if available
           lns = hdr?.items || hdr?.lines || hdr?.sale_items || [];
         }
 
@@ -112,8 +109,6 @@ export default function InvoiceViewPage() {
   }, [invoice]);
 
   const rows = useMemo(() => {
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-
     return (lines || []).map((ln, idx) => {
       const barcode =
         ln?.barcode ||
@@ -122,6 +117,7 @@ export default function InvoiceViewPage() {
 
       const productName =
         ln?.product_name ||
+        ln?.productName ||
         ln?.product?.task_item?.item_print_friendly_name ||
         ln?.product?.task_item?.item_vasy_name ||
         ln?.product?.task_item?.item_full_name ||
@@ -129,25 +125,27 @@ export default function InvoiceViewPage() {
         "";
 
       const qty = Number(ln?.qty ?? 1) || 1;
-      const sp = Number(ln?.sp ?? ln?.selling_price ?? ln?.price ?? 0) || 0;
 
-      // ✅ Discount rules (same as receipt):
+      const spNum = Number(ln?.sp ?? ln?.selling_price ?? ln?.price ?? 0) || 0;
+      const sp = spNum;
+
+      // ✅ discount per unit: prefer computed field, else use percent, else stored per-unit amount
       const dp = Number(ln?.discount_percent ?? 0) || 0;
-      const da = Number(ln?.discount_amount ?? 0) || 0; // per-unit
 
-      let discUnit = 0;
-      if (dp > 0) discUnit = (sp * dp) / 100;
-      else discUnit = da;
+      // serializer already provides lineDiscountAmount (per-unit computed)
+      const discFromSerializer = Number(ln?.lineDiscountAmount ?? 0) || 0;
 
-      discUnit = clamp(discUnit, 0, sp);
+      // fallback: compute from percent if present
+      const discFromPercent = dp > 0 ? (spNum * dp) / 100 : 0;
+
+      // fallback: stored per-unit discount_amount (only for flat discount)
+      const discFromAmount = Number(ln?.discount_amount ?? 0) || 0;
+
+      const discUnit = discFromSerializer || discFromPercent || discFromAmount;
 
       const lineTotalSp = sp * qty;
-
-      // ✅ cashiers discount (line discount)
       const lineDisc = discUnit * qty;
-
-      // ✅ net = amount - discount
-      const net = Math.max(0, lineTotalSp - lineDisc);
+      const net = Math.max(0, (sp - discUnit) * qty);
 
       return {
         sr: idx + 1,
@@ -167,7 +165,7 @@ export default function InvoiceViewPage() {
   const totals = useMemo(() => {
     const totalAmount = rows.reduce((a, r) => a + (Number(r.lineTotalSp) || 0), 0);
     const discount = rows.reduce((a, r) => a + (Number(r.lineDisc) || 0), 0);
-    const netAmount = Math.max(0, totalAmount - discount);
+    const netAmount = rows.reduce((a, r) => a + (Number(r.net) || 0), 0);
     return { totalAmount, discount, netAmount };
   }, [rows]);
 
@@ -260,8 +258,7 @@ export default function InvoiceViewPage() {
 
               <div className="invgrid">
                 <div className="invtableBox">
-                  {/* ✅ ONE SCROLL CONTAINER => header + body scroll together */}
-                  <div className="invtableScroll">
+                  <div className="invtableHead">
                     <table className="invtable">
                       <thead>
                         <tr>
@@ -271,18 +268,19 @@ export default function InvoiceViewPage() {
                           <th className="c-batch">Batch</th>
                           <th className="c-qty">Invoiced Qty</th>
                           <th className="c-sp">Selling Price</th>
-                          {/* ✅ NEW: cashier discount (line discount) */}
-                          <th className="c-disc">Discount</th>
+                          <th className="c-disc">Discount Price</th>
                           <th className="c-net">Net Amount</th>
                         </tr>
                       </thead>
+                    </table>
+                  </div>
 
+                  <div className="invtableBody">
+                    <table className="invtable">
                       <tbody>
                         {rows.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="invnodata">
-                              No products
-                            </td>
+                            <td colSpan={8} className="invnodata">No products</td>
                           </tr>
                         ) : (
                           rows.map((r) => (
@@ -295,8 +293,7 @@ export default function InvoiceViewPage() {
                               <td className="c-batch">{r.batch}</td>
                               <td className="c-qty">{r.qty}</td>
                               <td className="c-sp">{money(r.sp)}</td>
-                              {/* ✅ show line discount (cashier discount total for that row) */}
-                              <td className="c-disc">{money(r.lineDisc)}</td>
+                              <td className="c-disc">{money(r.discUnit)}</td>
                               <td className="c-net">{money(r.net)}</td>
                             </tr>
                           ))
