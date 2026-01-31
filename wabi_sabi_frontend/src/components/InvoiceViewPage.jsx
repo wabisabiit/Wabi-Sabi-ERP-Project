@@ -56,7 +56,7 @@ export default function InvoiceViewPage() {
         // ✅ FIX: Use listSales with search query (same as OrderListModal pattern)
         const res = await listSales({ all: 1, q: invoice });
         const salesList = res?.results || [];
-        
+
         // Find exact match
         const hdr = salesList.find(
           (s) => String(s?.invoice_no || "").trim() === invoice
@@ -71,13 +71,20 @@ export default function InvoiceViewPage() {
           return;
         }
 
-        // ✅ Try to fetch lines (might fail if endpoint doesn't exist)
+        // ✅ Try to fetch lines
         let lns = [];
         try {
           const lineRes = await getSaleLinesByInvoice(invoice);
-          lns = Array.isArray(lineRes) ? lineRes : (lineRes?.results || []);
+
+          // ✅ IMPORTANT FIX: backend returns { invoice_no, lines: [...] }
+          lns = Array.isArray(lineRes)
+            ? lineRes
+            : (lineRes?.lines || lineRes?.results || []);
         } catch (lineErr) {
-          console.warn("[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:", lineErr.message);
+          console.warn(
+            "[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:",
+            lineErr.message
+          );
           // Fallback: use items/lines from the sale object if available
           lns = hdr?.items || hdr?.lines || hdr?.sale_items || [];
         }
@@ -109,6 +116,8 @@ export default function InvoiceViewPage() {
   }, [invoice]);
 
   const rows = useMemo(() => {
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
     return (lines || []).map((ln, idx) => {
       const barcode =
         ln?.barcode ||
@@ -127,11 +136,22 @@ export default function InvoiceViewPage() {
 
       const sp = Number(ln?.sp ?? ln?.selling_price ?? ln?.price ?? 0) || 0;
 
-      // discount per unit (stored as discount_amount in your model)
-      const discUnit = Number(ln?.discount_amount ?? 0) || 0;
+      // ✅ Discount logic same as backend receipt:
+      // if discount_percent > 0 => sp * percent/100
+      // else => discount_amount (per unit)
+      const dp = Number(ln?.discount_percent ?? 0) || 0;
+      const da = Number(ln?.discount_amount ?? 0) || 0;
+
+      let discUnit = 0;
+      if (dp > 0) discUnit = (sp * dp) / 100;
+      else discUnit = da;
+
+      discUnit = clamp(discUnit, 0, sp);
 
       const lineTotalSp = sp * qty;
       const lineDisc = discUnit * qty;
+
+      // net = (sp - discUnit) * qty
       const net = Math.max(0, (sp - discUnit) * qty);
 
       return {
@@ -152,7 +172,10 @@ export default function InvoiceViewPage() {
   const totals = useMemo(() => {
     const totalAmount = rows.reduce((a, r) => a + (Number(r.lineTotalSp) || 0), 0);
     const discount = rows.reduce((a, r) => a + (Number(r.lineDisc) || 0), 0);
-    const netAmount = rows.reduce((a, r) => a + (Number(r.net) || 0), 0);
+
+    // ✅ Net amount = Amount - Discount
+    const netAmount = Math.max(0, totalAmount - discount);
+
     return { totalAmount, discount, netAmount };
   }, [rows]);
 
@@ -194,16 +217,16 @@ export default function InvoiceViewPage() {
         ) : !sale ? (
           <div className="invempty">
             <p>Invoice not found</p>
-            <button 
+            <button
               onClick={() => navigate(-1)}
               style={{
-                marginTop: '1rem',
-                padding: '8px 16px',
-                background: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
+                marginTop: "1rem",
+                padding: "8px 16px",
+                background: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
               }}
             >
               Go Back
@@ -267,7 +290,9 @@ export default function InvoiceViewPage() {
                       <tbody>
                         {rows.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="invnodata">No products</td>
+                            <td colSpan={8} className="invnodata">
+                              No products
+                            </td>
                           </tr>
                         ) : (
                           rows.map((r) => (
