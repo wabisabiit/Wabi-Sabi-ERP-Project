@@ -85,12 +85,47 @@ def _parse_dates(request):
     return start_dt, end_dt
 
 
+def _admin_location_q(request):
+    """
+    Admin dashboard can optionally pass:
+      ?location=TN&location=M3M   (Location.code)
+
+    Returns:
+      (locs_q, loc_codes, loc_objs_or_none)
+        - locs_q: Q() filter to apply (or None if no filter)
+        - loc_codes: list of normalized codes
+        - loc_objs: queryset of Location (or None)
+    """
+    raw = request.GET.getlist("location")
+    codes = [(c or "").strip().upper() for c in raw if (c or "").strip()]
+    if not codes:
+        return None, [], None
+
+    locs = Location.objects.filter(code__in=codes)
+    # match sales scoping fields:
+    #   salesman__outlet__location
+    #   created_by__employee__outlet__location (optional)
+    q = Q(salesman__outlet__location__in=locs)
+    if _has_created_by_field():
+        q = q | Q(created_by__employee__outlet__location__in=locs)
+    return q, codes, locs
+
+
+def _field_exists(model, field_name):
+    try:
+        model._meta.get_field(field_name)
+        return True
+    except FieldDoesNotExist:
+        return False
+
+
 class DashboardSummaryView(APIView):
     """
     GET /api/dashboard/summary/?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
 
     Scoping:
       - Admin/superuser: all outlets
+        - optional filter by location codes: ?location=TN&location=M3M
       - Manager/outlet: only their outlet
 
     Uses date range for every metric.
@@ -110,11 +145,20 @@ class DashboardSummaryView(APIView):
 
         loc = None if is_admin else _user_location(user)
 
+        # ✅ Admin optional location filter
+        admin_loc_q, admin_loc_codes, admin_loc_objs = (None, [], None)
+        if is_admin:
+            admin_loc_q, admin_loc_codes, admin_loc_objs = _admin_location_q(request)
+
         # ---------- Total Sales Return / Total Purchase / Purchase Qty ----------
         mp_qs = MasterPack.objects.filter(created_at__range=(start_dt, end_dt))
 
-        if loc:
-            mp_qs = mp_qs.filter(lines__location=loc).distinct()
+        if not is_admin:
+            if loc:
+                mp_qs = mp_qs.filter(lines__location=loc).distinct()
+        else:
+            if admin_loc_objs is not None:
+                mp_qs = mp_qs.filter(lines__location__in=admin_loc_objs).distinct()
 
         total_sales_return = mp_qs.aggregate(x=Sum("amount_total"))["x"] or 0
         total_purchase = total_sales_return
@@ -124,19 +168,56 @@ class DashboardSummaryView(APIView):
 
         # ---------- Total Receive ----------
         cn_qs = CreditNote.objects.filter(date__range=(start_dt, end_dt))
-        if loc:
-            cn_qs = cn_qs.filter(Q(location=loc) | Q(location__isnull=True))
+        if not is_admin:
+            if loc:
+                cn_qs = cn_qs.filter(Q(location=loc) | Q(location__isnull=True))
+        else:
+            if admin_loc_objs is not None:
+                cn_qs = cn_qs.filter(Q(location__in=admin_loc_objs) | Q(location__isnull=True))
+
         total_receive = cn_qs.aggregate(x=Sum("amount"))["x"] or 0
 
         # ---------- Total Bills / Total Sales ----------
         sales_qs = Sale.objects.filter(transaction_date__range=(start_dt, end_dt))
 
-        # ✅ FIX: manager scope by outlet (NOT store__icontains)
+        # ✅ manager scope by outlet
         if not is_admin:
             sales_qs = sales_qs.filter(_sale_scope_q_for_user(user))
+        else:
+            # ✅ admin sees ALL by default; only filter when location[] provided
+            if admin_loc_q is not None:
+                sales_qs = sales_qs.filter(admin_loc_q)
 
         total_bills = sales_qs.count()
         total_sales = sales_qs.aggregate(x=Sum("grand_total"))["x"] or 0
+
+        # ✅ NEW: total invoice + total customers from backend summary
+        total_invoice = total_bills
+
+        total_customers = 0
+        if _field_exists(Sale, "customer") or _field_exists(Sale, "customer_id"):
+            try:
+                total_customers = (
+                    sales_qs.exclude(customer_id__isnull=True)
+                    .values("customer_id")
+                    .distinct()
+                    .count()
+                )
+            except Exception:
+                total_customers = 0
+        else:
+            has_name = _field_exists(Sale, "customer_name")
+            has_phone = _field_exists(Sale, "customer_phone")
+            if has_name or has_phone:
+                try:
+                    vals = []
+                    if has_name:
+                        vals.append("customer_name")
+                    if has_phone:
+                        vals.append("customer_phone")
+                    total_customers = sales_qs.values(*vals).distinct().count()
+                except Exception:
+                    total_customers = 0
 
         # ---------- Total Suppliers ----------
         total_suppliers = 0
@@ -157,8 +238,13 @@ class DashboardSummaryView(APIView):
 
         # ---------- Total Products (inventory amount) ----------
         prod_qs = Product.objects.all()
-        if loc:
-            prod_qs = prod_qs.filter(location=loc)
+        if not is_admin:
+            if loc:
+                prod_qs = prod_qs.filter(location=loc)
+        else:
+            if admin_loc_objs is not None:
+                prod_qs = prod_qs.filter(location__in=admin_loc_objs)
+
         prod_qs = prod_qs.filter(qty__gt=0)
 
         total_products_amount = (
@@ -174,8 +260,6 @@ class DashboardSummaryView(APIView):
         )
 
         # ✅ NEW (DO NOT DELETE): Stock Qty = total remaining units where qty > 0 (scoped by location)
-        # Admin sees total stock across all locations
-        # Outlet user sees only their location stock
         stock_qty = prod_qs.aggregate(x=Sum("qty"))["x"] or 0
 
         # ---------- Cash in hand ----------
@@ -183,8 +267,8 @@ class DashboardSummaryView(APIView):
             sale__transaction_date__range=(start_dt, end_dt),
             method__iexact="cash",
         )
-        if not is_admin:
-            cash_qs = cash_qs.filter(sale__in=sales_qs)
+        # keep consistent with sales_qs scope
+        cash_qs = cash_qs.filter(sale__in=sales_qs)
 
         cash_in_hand = cash_qs.aggregate(x=Sum("amount"))["x"] or 0
 
@@ -195,24 +279,35 @@ class DashboardSummaryView(APIView):
         # ---------- Sold Qty ----------
         sl_qs = SaleLine.objects.filter(
             sale__transaction_date__range=(start_dt, end_dt)
-        )
-        if not is_admin:
-            sl_qs = sl_qs.filter(sale__in=sales_qs)
+        ).filter(sale__in=sales_qs)
 
         sold_qs = sl_qs.filter(product__qty=0)
-        if loc:
-            sold_qs = sold_qs.filter(product__location=loc)
+        if not is_admin:
+            if loc:
+                sold_qs = sold_qs.filter(product__location=loc)
+        else:
+            if admin_loc_objs is not None:
+                sold_qs = sold_qs.filter(product__location__in=admin_loc_objs)
 
         sold_qty = sold_qs.aggregate(x=Sum("qty"))["x"] or 0
 
         # ---------- Gross Profit ----------
         gross_profit = total_sales
 
+        scope_label = "ALL" if is_admin else (loc.code if loc else "N/A")
+        if is_admin and admin_loc_codes:
+            scope_label = ",".join(admin_loc_codes)
+
         return Response(
             {
                 "date_from": start_dt.date().isoformat(),
                 "date_to": end_dt.date().isoformat(),
-                "scope": "ALL" if is_admin else (loc.code if loc else "N/A"),
+                "scope": scope_label,
+
+                # ✅ NEW: used by dashboard cards (admin won’t show 0 due to sales filters)
+                "total_sales": total_sales,
+                "total_invoice": total_invoice,
+                "total_customers": total_customers,
 
                 "total_sales_return": total_sales_return,
                 "total_receive": total_receive,
