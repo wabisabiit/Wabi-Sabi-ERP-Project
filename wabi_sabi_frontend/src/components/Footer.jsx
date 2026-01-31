@@ -146,6 +146,9 @@ export default function Footer({
   // Hold-bill busy flag
   const [holdBusy, setHoldBusy] = useState(false);
 
+  // ✅ Sales Return busy flag (prevents multiple taps)
+  const [salesReturnBusy, setSalesReturnBusy] = useState(false);
+
   // Discount UI
   const [flatDisc, setFlatDisc] = useState("0.00");
   const [isPercent, setIsPercent] = useState(true);
@@ -526,6 +529,8 @@ export default function Footer({
       }
 
       if (label === "Sales Return") {
+        if (salesReturnBusy) return; // ✅ prevent double taps
+
         const inv = window.__RETURN_INVOICE__;
         if (!inv) {
           addToast("No invoice loaded.");
@@ -547,7 +552,10 @@ export default function Footer({
           return;
         }
 
+        setSalesReturnBusy(true); // ✅ start spinner/lock
+
         (async () => {
+          let shouldReload = false;
           try {
             const res = await createSalesReturn(inv, { items: selected }); // ✅ ONLY CHANGE
             const ok = !!res?.ok;
@@ -558,10 +566,16 @@ export default function Footer({
             if (ok && Array.isArray(res?.notes) && res.notes.length) {
               alert(`Credit Note(s): ${res.notes.join(", ")}`);
             }
-            setTimeout(() => window.location.reload(), 600);
+            if (ok) {
+              shouldReload = true;
+              setTimeout(() => window.location.reload(), 600);
+            }
           } catch (e) {
             console.error(e);
             addToast("Error: credit note not created.");
+          } finally {
+            // ✅ keep locked if we are about to reload
+            if (!shouldReload) setSalesReturnBusy(false);
           }
         })();
         return;
@@ -716,6 +730,7 @@ export default function Footer({
       addToast,
       saveHoldBill,
       holdBusy,
+      salesReturnBusy,
     ]
   );
 
@@ -803,13 +818,18 @@ export default function Footer({
               text.startsWith("Multiple Pay") ||
               text === "Redeem Credit";
             const isHoldBtn = text === "Hold (F6)" || text === "Hold & Print (F7)";
+            const isReturnBtn = text === "Sales Return";
 
             return (
               <button
                 key={text}
                 className="kbtn"
                 onClick={() => handleActionClick(text)}
-                disabled={(isPaymentBtn && !canPay) || (isHoldBtn && holdBusy)}
+                disabled={
+                  (isPaymentBtn && !canPay) ||
+                  (isHoldBtn && holdBusy) ||
+                  (isReturnBtn && salesReturnBusy)
+                }
                 title={isPaymentBtn && !canPay ? "Select the customer and salesman first" : ""}
               >
                 {text.includes("Card") && (
@@ -834,6 +854,13 @@ export default function Footer({
                   <span className="material-icons">event</span>
                 )}
                 {isHoldBtn && holdBusy && (
+                  <span
+                    className="cd-spinner"
+                    style={{ marginLeft: 6 }}
+                    aria-hidden="true"
+                  />
+                )}
+                {isReturnBtn && salesReturnBusy && (
                   <span
                     className="cd-spinner"
                     style={{ marginLeft: 6 }}
