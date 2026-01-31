@@ -1,8 +1,8 @@
 // src/pages/InvoiceViewPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import "../styles/InvoiceViewPage.css";
-import { getSaleByInvoice, getSaleLinesByInvoice } from "../api/client";
+import { listSales, getSaleLinesByInvoice } from "../api/client";
 
 function fmtDateTime(v) {
   if (!v) return "";
@@ -27,9 +27,10 @@ function money(n) {
 }
 
 export default function InvoiceViewPage() {
-  // ✅ FIX: route is /sales/invoice-view/:invNo
+  // ✅ FIX: support both route params
   const { invNo, invoiceNo } = useParams();
   const invoice = String(invNo || invoiceNo || "").trim();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [sale, setSale] = useState(null);
@@ -52,18 +53,44 @@ export default function InvoiceViewPage() {
       try {
         console.log("[InvoiceView] loading invoice:", invoice);
 
-        const hdr = await getSaleByInvoice(invoice);
-        const lns = await getSaleLinesByInvoice(invoice);
+        // ✅ FIX: Use listSales with search query (same as OrderListModal pattern)
+        const res = await listSales({ all: 1, q: invoice });
+        const salesList = res?.results || [];
+        
+        // Find exact match
+        const hdr = salesList.find(
+          (s) => String(s?.invoice_no || "").trim() === invoice
+        );
+
+        if (!hdr) {
+          console.error("[InvoiceView] ❌ Invoice not found in sales list:", invoice);
+          if (!alive) return;
+          setSale(null);
+          setLines([]);
+          setLoading(false);
+          return;
+        }
+
+        // ✅ Try to fetch lines (might fail if endpoint doesn't exist)
+        let lns = [];
+        try {
+          const lineRes = await getSaleLinesByInvoice(invoice);
+          lns = Array.isArray(lineRes) ? lineRes : (lineRes?.results || []);
+        } catch (lineErr) {
+          console.warn("[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:", lineErr.message);
+          // Fallback: use items/lines from the sale object if available
+          lns = hdr?.items || hdr?.lines || hdr?.sale_items || [];
+        }
 
         if (!alive) return;
 
         setSale(hdr || null);
-        setLines(Array.isArray(lns) ? lns : (lns?.results || []));
+        setLines(lns);
 
         console.log("[InvoiceView] ✅ loaded", {
           invoice,
           hasSale: !!hdr,
-          lines: Array.isArray(lns) ? lns.length : (lns?.results || []).length,
+          linesCount: lns.length,
         });
       } catch (e) {
         console.error("[InvoiceView] ❌ load failed:", e?.message || e);
@@ -165,7 +192,23 @@ export default function InvoiceViewPage() {
             <span className="spinner" /> Loading…
           </div>
         ) : !sale ? (
-          <div className="invempty">Invoice not found</div>
+          <div className="invempty">
+            <p>Invoice not found</p>
+            <button 
+              onClick={() => navigate(-1)}
+              style={{
+                marginTop: '1rem',
+                padding: '8px 16px',
+                background: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Go Back
+            </button>
+          </div>
         ) : (
           <>
             <div className="invmeta">
