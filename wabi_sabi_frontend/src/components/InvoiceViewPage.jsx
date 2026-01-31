@@ -53,11 +53,9 @@ export default function InvoiceViewPage() {
       try {
         console.log("[InvoiceView] loading invoice:", invoice);
 
-        // ✅ FIX: Use listSales with search query (same as OrderListModal pattern)
         const res = await listSales({ all: 1, q: invoice });
         const salesList = res?.results || [];
 
-        // Find exact match
         const hdr = salesList.find(
           (s) => String(s?.invoice_no || "").trim() === invoice
         );
@@ -71,7 +69,6 @@ export default function InvoiceViewPage() {
           return;
         }
 
-        // ✅ Try to fetch lines
         let lns = [];
         try {
           const lineRes = await getSaleLinesByInvoice(invoice);
@@ -85,7 +82,6 @@ export default function InvoiceViewPage() {
             "[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:",
             lineErr.message
           );
-          // Fallback: use items/lines from the sale object if available
           lns = hdr?.items || hdr?.lines || hdr?.sale_items || [];
         }
 
@@ -133,14 +129,11 @@ export default function InvoiceViewPage() {
         "";
 
       const qty = Number(ln?.qty ?? 1) || 1;
-
       const sp = Number(ln?.sp ?? ln?.selling_price ?? ln?.price ?? 0) || 0;
 
-      // ✅ Discount logic same as backend receipt:
-      // if discount_percent > 0 => sp * percent/100
-      // else => discount_amount (per unit)
+      // ✅ Discount rules (same as receipt):
       const dp = Number(ln?.discount_percent ?? 0) || 0;
-      const da = Number(ln?.discount_amount ?? 0) || 0;
+      const da = Number(ln?.discount_amount ?? 0) || 0; // per-unit
 
       let discUnit = 0;
       if (dp > 0) discUnit = (sp * dp) / 100;
@@ -149,10 +142,12 @@ export default function InvoiceViewPage() {
       discUnit = clamp(discUnit, 0, sp);
 
       const lineTotalSp = sp * qty;
+
+      // ✅ cashiers discount (line discount)
       const lineDisc = discUnit * qty;
 
-      // net = (sp - discUnit) * qty
-      const net = Math.max(0, (sp - discUnit) * qty);
+      // ✅ net = amount - discount
+      const net = Math.max(0, lineTotalSp - lineDisc);
 
       return {
         sr: idx + 1,
@@ -172,10 +167,7 @@ export default function InvoiceViewPage() {
   const totals = useMemo(() => {
     const totalAmount = rows.reduce((a, r) => a + (Number(r.lineTotalSp) || 0), 0);
     const discount = rows.reduce((a, r) => a + (Number(r.lineDisc) || 0), 0);
-
-    // ✅ Net amount = Amount - Discount
     const netAmount = Math.max(0, totalAmount - discount);
-
     return { totalAmount, discount, netAmount };
   }, [rows]);
 
@@ -268,7 +260,8 @@ export default function InvoiceViewPage() {
 
               <div className="invgrid">
                 <div className="invtableBox">
-                  <div className="invtableHead">
+                  {/* ✅ ONE SCROLL CONTAINER => header + body scroll together */}
+                  <div className="invtableScroll">
                     <table className="invtable">
                       <thead>
                         <tr>
@@ -278,15 +271,12 @@ export default function InvoiceViewPage() {
                           <th className="c-batch">Batch</th>
                           <th className="c-qty">Invoiced Qty</th>
                           <th className="c-sp">Selling Price</th>
-                          <th className="c-disc">Discount Price</th>
+                          {/* ✅ NEW: cashier discount (line discount) */}
+                          <th className="c-disc">Discount</th>
                           <th className="c-net">Net Amount</th>
                         </tr>
                       </thead>
-                    </table>
-                  </div>
 
-                  <div className="invtableBody">
-                    <table className="invtable">
                       <tbody>
                         {rows.length === 0 ? (
                           <tr>
@@ -305,7 +295,8 @@ export default function InvoiceViewPage() {
                               <td className="c-batch">{r.batch}</td>
                               <td className="c-qty">{r.qty}</td>
                               <td className="c-sp">{money(r.sp)}</td>
-                              <td className="c-disc">{money(r.discUnit)}</td>
+                              {/* ✅ show line discount (cashier discount total for that row) */}
+                              <td className="c-disc">{money(r.lineDisc)}</td>
                               <td className="c-net">{money(r.net)}</td>
                             </tr>
                           ))

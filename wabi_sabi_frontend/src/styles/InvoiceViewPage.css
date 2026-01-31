@@ -112,15 +112,11 @@
   background:#fff;
 }
 
-/* fixed header + scroll body */
-.invtableHead{
-  background:#f4f6fb;
-  border-bottom:1px solid #eef0f6;
-}
-
-.invtableBody{
-  max-height: 360px; /* ~6 rows */
-  overflow-y:auto;
+/* ✅ NEW: one scroll container so header scrolls with body */
+.invtableScroll{
+  max-height: 360px;
+  overflow: auto;   /* vertical + horizontal */
+  background:#fff;
 }
 
 .invtable{
@@ -140,6 +136,20 @@
 .invtable th{
   font-weight:700;
   color:#2a3245;
+
+  /* ✅ FIX: reduce header font size + stop overlapping */
+  font-size:12px;
+  padding:10px 8px;
+  line-height:1.15;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+
+  /* ✅ sticky header */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background:#f4f6fb;
 }
 
 .invtable td{
