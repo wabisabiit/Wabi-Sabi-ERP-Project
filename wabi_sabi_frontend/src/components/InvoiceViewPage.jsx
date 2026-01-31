@@ -27,7 +27,6 @@ function money(n) {
 }
 
 export default function InvoiceViewPage() {
-  // ✅ FIX: support both route params
   const { invNo, invoiceNo } = useParams();
   const invoice = String(invNo || invoiceNo || "").trim();
   const navigate = useNavigate();
@@ -53,11 +52,9 @@ export default function InvoiceViewPage() {
       try {
         console.log("[InvoiceView] loading invoice:", invoice);
 
-        // ✅ FIX: Use listSales with search query (same as OrderListModal pattern)
         const res = await listSales({ all: 1, q: invoice });
         const salesList = res?.results || [];
 
-        // Find exact match
         const hdr = salesList.find(
           (s) => String(s?.invoice_no || "").trim() === invoice
         );
@@ -71,14 +68,19 @@ export default function InvoiceViewPage() {
           return;
         }
 
-        // ✅ Try to fetch lines (might fail if endpoint doesn't exist)
         let lns = [];
         try {
           const lineRes = await getSaleLinesByInvoice(invoice);
-          lns = Array.isArray(lineRes) ? lineRes : (lineRes?.lines || lineRes?.results || []);
+
+          // backend returns { invoice_no, lines: [...] }
+          lns = Array.isArray(lineRes)
+            ? lineRes
+            : (lineRes?.lines || lineRes?.results || []);
         } catch (lineErr) {
-          console.warn("[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:", lineErr.message);
-          // Fallback: use items/lines from the sale object if available
+          console.warn(
+            "[InvoiceView] ⚠️  Could not fetch lines, will use items from sale:",
+            lineErr.message
+          );
           lns = hdr?.items || hdr?.lines || hdr?.sale_items || [];
         }
 
@@ -109,6 +111,8 @@ export default function InvoiceViewPage() {
   }, [invoice]);
 
   const rows = useMemo(() => {
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
     return (lines || []).map((ln, idx) => {
       const barcode =
         ln?.barcode ||
@@ -117,7 +121,6 @@ export default function InvoiceViewPage() {
 
       const productName =
         ln?.product_name ||
-        ln?.productName ||
         ln?.product?.task_item?.item_print_friendly_name ||
         ln?.product?.task_item?.item_vasy_name ||
         ln?.product?.task_item?.item_full_name ||
@@ -125,27 +128,32 @@ export default function InvoiceViewPage() {
         "";
 
       const qty = Number(ln?.qty ?? 1) || 1;
+      const sp = Number(ln?.sp ?? ln?.selling_price ?? ln?.price ?? 0) || 0;
 
-      const spNum = Number(ln?.sp ?? ln?.selling_price ?? ln?.price ?? 0) || 0;
-      const sp = spNum;
-
-      // ✅ discount per unit: prefer computed field, else use percent, else stored per-unit amount
+      // ✅ FIXED: Discount calculation (matching receipt logic)
       const dp = Number(ln?.discount_percent ?? 0) || 0;
+      const da = Number(ln?.discount_amount ?? 0) || 0; // per-unit in DB
 
-      // serializer already provides lineDiscountAmount (per-unit computed)
-      const discFromSerializer = Number(ln?.lineDiscountAmount ?? 0) || 0;
+      let discUnit = 0;
+      if (dp > 0) {
+        // percentage discount on SP
+        discUnit = (sp * dp) / 100;
+      } else {
+        // fixed discount per unit
+        discUnit = da;
+      }
 
-      // fallback: compute from percent if present
-      const discFromPercent = dp > 0 ? (spNum * dp) / 100 : 0;
+      discUnit = clamp(discUnit, 0, sp);
 
-      // fallback: stored per-unit discount_amount (only for flat discount)
-      const discFromAmount = Number(ln?.discount_amount ?? 0) || 0;
-
-      const discUnit = discFromSerializer || discFromPercent || discFromAmount;
-
+      // ✅ Total selling price for line (before discount)
       const lineTotalSp = sp * qty;
+
+      // ✅ Total discount for line
       const lineDisc = discUnit * qty;
-      const net = Math.max(0, (sp - discUnit) * qty);
+
+      // ✅ Net = SP - Discount (per unit), then multiply by qty
+      const netUnit = sp - discUnit;
+      const net = netUnit * qty;
 
       return {
         sr: idx + 1,
@@ -154,10 +162,10 @@ export default function InvoiceViewPage() {
         batch: "",
         qty,
         sp,
-        discUnit,
-        lineTotalSp,
-        lineDisc,
-        net,
+        discUnit,           // discount per unit
+        lineTotalSp,        // total SP before discount
+        lineDisc,           // total discount for line
+        net,                // total net amount after discount
       };
     });
   }, [lines]);
@@ -165,8 +173,9 @@ export default function InvoiceViewPage() {
   const totals = useMemo(() => {
     const totalAmount = rows.reduce((a, r) => a + (Number(r.lineTotalSp) || 0), 0);
     const discount = rows.reduce((a, r) => a + (Number(r.lineDisc) || 0), 0);
-    const netAmount = rows.reduce((a, r) => a + (Number(r.net) || 0), 0);
-    return { totalAmount, discount, netAmount };
+    // ✅ Net = Total Amount - Discount
+    const netAmount = totalAmount - discount;
+    return { totalAmount, discount, netAmount: Math.max(0, netAmount) };
   }, [rows]);
 
   const createdAt = sale?.transaction_date || sale?.created_at || sale?.date || "";
@@ -258,29 +267,27 @@ export default function InvoiceViewPage() {
 
               <div className="invgrid">
                 <div className="invtableBox">
-                  <div className="invtableHead">
+                  <div className="invtableScroll">
                     <table className="invtable">
                       <thead>
                         <tr>
-                          <th className="c-sr">Sales By</th>
+                          <th className="c-sr">Sr. No.</th>
                           <th className="c-barcode">Barcode</th>
                           <th className="c-prod">Product</th>
                           <th className="c-batch">Batch</th>
                           <th className="c-qty">Invoiced Qty</th>
                           <th className="c-sp">Selling Price</th>
-                          <th className="c-disc">Discount Price</th>
+                          <th className="c-disc">Discount</th>
                           <th className="c-net">Net Amount</th>
                         </tr>
                       </thead>
-                    </table>
-                  </div>
 
-                  <div className="invtableBody">
-                    <table className="invtable">
                       <tbody>
                         {rows.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="invnodata">No products</td>
+                            <td colSpan={8} className="invnodata">
+                              No products
+                            </td>
                           </tr>
                         ) : (
                           rows.map((r) => (
@@ -293,7 +300,8 @@ export default function InvoiceViewPage() {
                               <td className="c-batch">{r.batch}</td>
                               <td className="c-qty">{r.qty}</td>
                               <td className="c-sp">{money(r.sp)}</td>
-                              <td className="c-disc">{money(r.discUnit)}</td>
+                              {/* ✅ Show total discount for this line */}
+                              <td className="c-disc">{money(r.lineDisc)}</td>
                               <td className="c-net">{money(r.net)}</td>
                             </tr>
                           ))
