@@ -14,7 +14,6 @@ import Dashboard from "./components/Dashboard"; // 🔹 from partner co
 
 import ReceiptPdfPage from "./components/ReceiptPdfPage";
 
-
 /* Keep base styles LAST so they win the cascade */
 import "./App.css";
 
@@ -124,7 +123,6 @@ const ReportCustomerWiseSalesOrder = lazy(() =>
 
 const InvoiceViewPage = lazy(() => import("./components/InvoiceViewPage"));
 
-
 // Settings
 const SettingsHome = lazy(() => import("./components/SettingsHome"));
 const GeneralSettingsPage = lazy(() =>
@@ -215,7 +213,7 @@ function POSLayout() {
     if (res?.invoice_no) {
       try {
         alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
-      } catch (_) { }
+      } catch (_) {}
     }
     setItems([]); // clear cart for next customer
   };
@@ -260,9 +258,9 @@ function POSLayout() {
           try {
             alert(
               payload.message ||
-              `${payload.number || "Hold bill"} restored into cart.`
+                `${payload.number || "Hold bill"} restored into cart.`
             );
-          } catch (_) { }
+          } catch (_) {}
         }
       })();
     };
@@ -297,7 +295,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => { }} />
+      <Sidebar open={true} persistent onClose={() => {}} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -307,7 +305,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => { }} />
+      <Sidebar open={true} persistent miniHover onClose={() => {}} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>
         {children}
       </div>
@@ -321,7 +319,23 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <div
+            style={{
+              height: "100vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: "system-ui",
+              fontSize: 14,
+              color: "#444",
+            }}
+          >
+            Loading...
+          </div>
+        }
+      >
         <Routes>
           {/* Auth routes */}
           <Route path="/login" element={<Login />} />
@@ -352,7 +366,6 @@ export default function App() {
               </RoleRoute>
             }
           />
-
 
           {/* 🔹 POS ROUTES — Admin + Manager */}
           <Route
@@ -895,7 +908,7 @@ export default function App() {
             }
           />
           <Route
-            path="/reports/wow-bill-slab"        // 👈 NEW ROUTE
+            path="/reports/wow-bill-slab" // 👈 NEW ROUTE
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
                 <SidebarLayout>
@@ -1134,7 +1147,6 @@ export default function App() {
           {/* Fallback → Login */}
           <Route path="/receipt/:type/:number" element={<ReceiptPdfPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
-
         </Routes>
       </Suspense>
     </AuthProvider>

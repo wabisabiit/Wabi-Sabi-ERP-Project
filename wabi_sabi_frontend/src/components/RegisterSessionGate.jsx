@@ -50,8 +50,24 @@ export default function RegisterSessionGate({ children }) {
     }
   };
 
-  // While loading: render nothing (keeps your current UI behavior)
-  if (loading) return null;
+  // While loading: render a lightweight loader (prevents white flash)
+  if (loading) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "system-ui",
+          fontSize: 14,
+          color: "#444",
+        }}
+      >
+        Checking register session...
+      </div>
+    );
+  }
 
   // If session is open → show POS immediately
   if (isOpen) return children;
