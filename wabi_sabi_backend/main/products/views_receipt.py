@@ -1,18 +1,30 @@
 # products/views_receipt.py
 from io import BytesIO
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime, time, timedelta
 
-from django.http import FileResponse, JsonResponse
+from django.http import FileResponse, JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views import View
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 
+from django.utils.dateparse import parse_date
+from django.db.models import Q
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+
 from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
+from reportlab.lib.pagesizes import A4, landscape
 
-from .models import Sale, SaleLine
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+
+from .models import Sale, SaleLine, SalePayment, CreditNote
 
 
 TWOPLACES = Decimal("0.01")
@@ -463,3 +475,502 @@ class SaleReceiptPdfView(View):
             filename=f"{sale.invoice_no}.pdf",
             content_type="application/pdf",
         )
+
+
+# -------------------- Daywise Sales Summary helpers --------------------
+
+def _is_admin(user) -> bool:
+    return bool(getattr(user, "is_superuser", False) or getattr(user, "is_staff", False))
+
+
+def _per_unit_discount(ln: SaleLine) -> Decimal:
+    """
+    Per-unit discount based on SP (same as receipt):
+    - if discount_percent > 0 => SP * % / 100
+    - else use discount_amount (stored per unit)
+    """
+    sp = q2(getattr(ln, "sp", 0) or 0)
+    dp = q2(getattr(ln, "discount_percent", 0) or 0)
+    da = q2(getattr(ln, "discount_amount", 0) or 0)
+
+    if dp > 0:
+        d = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    else:
+        d = da
+
+    if d < 0:
+        d = Decimal("0.00")
+    if d > sp:
+        d = sp
+    return q2(d)
+
+
+def _rate_for_unit_amount(unit_amount: Decimal) -> Decimal:
+    """
+    Tax rule:
+      - <= 2500 => 5%
+      - > 2500  => 18%
+    """
+    return Decimal("0.05") if q2(unit_amount) <= Decimal("2500.00") else Decimal("0.18")
+
+
+def _split_inclusive_amount(inclusive_total: Decimal, rate: Decimal):
+    """
+    inclusive_total includes tax.
+    taxable = inclusive_total / (1 + rate)
+    tax     = inclusive_total - taxable
+    cgst/sgst = tax/2
+    """
+    inclusive_total = q2(inclusive_total)
+    if inclusive_total <= 0:
+        z = Decimal("0.00")
+        return z, z, z, z
+
+    denom = (Decimal("1.00") + q2(rate))
+    taxable = (inclusive_total / denom).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    tax = q2(inclusive_total - taxable)
+    half = (tax / Decimal("2.00")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    # keep totals consistent (cgst+sgst == tax)
+    cgst = half
+    sgst = q2(tax - cgst)
+    return taxable, tax, cgst, sgst
+
+
+class DaywiseSalesSummary(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Query:
+          - date_from=YYYY-MM-DD
+          - date_to=YYYY-MM-DD
+          - location=... (can repeat multiple times)
+          - export=pdf | excel
+        Response:
+          { rows: [...], totals: {...} }
+        """
+
+        # -------- Parse dates --------
+        df = parse_date((request.query_params.get("date_from") or "").strip())
+        dt = parse_date((request.query_params.get("date_to") or "").strip())
+
+        if not df or not dt:
+            return Response(
+                {"detail": "date_from and date_to are required (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if dt < df:
+            df, dt = dt, df
+
+        tz = timezone.get_current_timezone()
+        start_dt = timezone.make_aware(datetime.combine(df, time.min), tz)
+        end_dt = timezone.make_aware(datetime.combine(dt, time.max), tz)
+
+        # -------- Location filtering --------
+        loc_params = request.query_params.getlist("location")
+        loc_params = [str(x).strip() for x in loc_params if str(x).strip()]
+
+        # non-admin must be restricted to their own outlet
+        if not _is_admin(request.user):
+            user_loc = _user_location_code(request.user)
+            if user_loc:
+                loc_params = [user_loc]
+
+        # -------- Fetch sales in range --------
+        sales_qs = Sale.objects.filter(
+            transaction_date__range=(start_dt, end_dt)
+        ).order_by("transaction_date", "id")
+
+        # ✅ FIX: match location by created_by OR salesman (so NULL created_by doesn't wipe sales)
+        if loc_params:
+            q = Q()
+            for lp in loc_params:
+                up = lp.upper()
+                q |= Q(created_by__employee__outlet__location__code__iexact=up)
+                q |= Q(created_by__employee__outlet__location__name__icontains=lp)
+                q |= Q(salesman__outlet__location__code__iexact=up)
+                q |= Q(salesman__outlet__location__name__icontains=lp)
+            sales_qs = sales_qs.filter(q)
+
+        sales = list(sales_qs)
+
+        # group by date
+        day_map = {}
+        for s in sales:
+            d = timezone.localtime(s.transaction_date).date()
+            day_map.setdefault(d, []).append(s.id)
+
+        # -------- Build rows --------
+        rows = []
+        totals = {
+            "gross_amount": Decimal("0.00"),
+            "tax_amount": Decimal("0.00"),
+            "cgst": Decimal("0.00"),
+            "sgst": Decimal("0.00"),
+            "igst": Decimal("0.00"),   # keep for future
+            "tax_5": Decimal("0.00"),
+            "tax_18": Decimal("0.00"),
+
+            # kept for backward compatibility (UI currently has these cols)
+            "tax_12": Decimal("0.00"),
+            "tax_28": Decimal("0.00"),
+            "cess": Decimal("0.00"),
+
+            "discount": Decimal("0.00"),
+            "bank": Decimal("0.00"),
+            "cash": Decimal("0.00"),
+            "credit_notes": Decimal("0.00"),
+            "coupon_discount": Decimal("0.00"),
+            "additional_charge": Decimal("0.00"),
+            "total": Decimal("0.00"),
+        }
+
+        sale_ids_all = [s.id for s in sales]
+        lines_all = list(SaleLine.objects.filter(sale_id__in=sale_ids_all).order_by("id")) if sale_ids_all else []
+        pays_all = list(SalePayment.objects.filter(sale_id__in=sale_ids_all).order_by("id")) if sale_ids_all else []
+
+        lines_by_sale = {}
+        for ln in lines_all:
+            lines_by_sale.setdefault(ln.sale_id, []).append(ln)
+
+        pays_by_sale = {}
+        for p in pays_all:
+            pays_by_sale.setdefault(p.sale_id, []).append(p)
+
+        # credit notes in range + location
+        cn_qs = CreditNote.objects.filter(note_date__range=(start_dt, end_dt))
+        if loc_params:
+            q = Q()
+            for lp in loc_params:
+                up = lp.upper()
+                q |= Q(location__code__iexact=up)
+                q |= Q(location__name__icontains=lp)
+            cn_qs = cn_qs.filter(q)
+
+        credit_notes = list(cn_qs)
+        cn_by_day = {}
+        for cn in credit_notes:
+            d = timezone.localtime(cn.note_date).date()
+            cn_by_day.setdefault(d, Decimal("0.00"))
+            cn_by_day[d] = q2(cn_by_day[d] + q2(cn.amount))
+
+        # iterate days in requested range (so table shows each day)
+        cur = df
+        sr = 1
+        while cur <= dt:
+            sale_ids = day_map.get(cur, [])
+
+            gross_amount = Decimal("0.00")  # taxable value sum
+            tax_amount = Decimal("0.00")
+            cgst = Decimal("0.00")
+            sgst = Decimal("0.00")
+            igst = Decimal("0.00")  # keep 0 for now
+
+            tax_5 = Decimal("0.00")
+            tax_18 = Decimal("0.00")
+
+            # future placeholders (UI safe)
+            tax_12 = Decimal("0.00")
+            tax_28 = Decimal("0.00")
+            cess = Decimal("0.00")
+
+            discount_sum = Decimal("0.00")
+
+            bank = Decimal("0.00")  # UPI + CARD
+            cash = Decimal("0.00")  # CASH
+            coupon_discount = Decimal("0.00")  # COUPON payment bucket
+            additional_charge = Decimal("0.00")  # per requirement
+
+            for sid in sale_ids:
+                # --- lines ---
+                for ln in lines_by_sale.get(sid, []):
+                    qty = Decimal(int(getattr(ln, "qty", 0) or 0))
+                    sp = q2(getattr(ln, "sp", 0) or 0)
+
+                    dpu = _per_unit_discount(ln)
+                    disc_line = q2(dpu * qty)
+                    discount_sum = q2(discount_sum + disc_line)
+
+                    net_unit = q2(sp - dpu)
+                    if net_unit < 0:
+                        net_unit = Decimal("0.00")
+
+                    inclusive_total = q2(net_unit * qty)
+
+                    rate = _rate_for_unit_amount(net_unit)
+                    taxable, tax, c, s = _split_inclusive_amount(inclusive_total, rate)
+
+                    gross_amount = q2(gross_amount + taxable)
+                    tax_amount = q2(tax_amount + tax)
+                    cgst = q2(cgst + c)
+                    sgst = q2(sgst + s)
+
+                    if rate == Decimal("0.05"):
+                        tax_5 = q2(tax_5 + tax)
+                    else:
+                        tax_18 = q2(tax_18 + tax)
+
+                # --- payments ---
+                for p in pays_by_sale.get(sid, []):
+                    m = (getattr(p, "method", "") or "").upper().strip()
+                    amt = q2(getattr(p, "amount", 0) or 0)
+
+                    if m in ("UPI", "CARD"):
+                        bank = q2(bank + amt)
+                    elif m == "CASH":
+                        cash = q2(cash + amt)
+                    elif m == "COUPON":
+                        coupon_discount = q2(coupon_discount + amt)
+
+            credit_notes_sum = q2(cn_by_day.get(cur, Decimal("0.00")))
+
+            total_amount = q2(gross_amount + tax_amount)
+
+            row = {
+                "sr_no": sr,
+                "sales_date": cur.strftime("%Y-%m-%d"),
+                "gross_amount": f"{gross_amount:.2f}",
+                "tax_amount": f"{tax_amount:.2f}",
+                "cgst": f"{cgst:.2f}",
+                "sgst": f"{sgst:.2f}",
+                "igst": f"{igst:.2f}",
+
+                "tax_5": f"{tax_5:.2f}",
+                "tax_18": f"{tax_18:.2f}",
+
+                "tax_12": f"{tax_12:.2f}",
+                "tax_28": f"{tax_28:.2f}",
+                "cess": f"{cess:.2f}",
+
+                "discount": f"{discount_sum:.2f}",
+                "bank": f"{bank:.2f}",
+                "cash": f"{cash:.2f}",
+                "credit_notes": f"{credit_notes_sum:.2f}",
+                "coupon_discount": f"{coupon_discount:.2f}",
+                "additional_charge": f"{additional_charge:.2f}",
+                "total": f"{total_amount:.2f}",
+            }
+
+            rows.append(row)
+
+            for k, v in [
+                ("gross_amount", gross_amount),
+                ("tax_amount", tax_amount),
+                ("cgst", cgst),
+                ("sgst", sgst),
+                ("igst", igst),
+                ("tax_5", tax_5),
+                ("tax_18", tax_18),
+                ("tax_12", tax_12),
+                ("tax_28", tax_28),
+                ("cess", cess),
+                ("discount", discount_sum),
+                ("bank", bank),
+                ("cash", cash),
+                ("credit_notes", credit_notes_sum),
+                ("coupon_discount", coupon_discount),
+                ("additional_charge", additional_charge),
+                ("total", total_amount),
+            ]:
+                totals[k] = q2(totals[k] + q2(v))
+
+            sr += 1
+            cur = cur + timedelta(days=1)
+
+        payload = {
+            "rows": rows,
+            "totals": {k: f"{q2(v):.2f}" for k, v in totals.items()},
+        }
+
+        export = (request.query_params.get("export") or "").strip().lower()
+        if export == "pdf":
+            return self._export_pdf(df, dt, payload)
+        if export in ("xls", "xlsx", "excel"):
+            return self._export_excel(df, dt, payload)
+
+        return Response(payload, status=status.HTTP_200_OK)
+
+    def _export_pdf(self, df, dt, payload):
+        buf = BytesIO()
+        c = canvas.Canvas(buf, pagesize=landscape(A4))
+        W, H = landscape(A4)
+
+        title = "Daily Sales Summary (Day Wise)"
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(24, H - 30, title)
+
+        c.setFont("Helvetica", 10)
+        c.drawString(24, H - 48, f"{df.strftime('%d/%m/%Y')} to {dt.strftime('%d/%m/%Y')}")
+
+        cols = [
+            ("Sr", 30),
+            ("Sales Date", 70),
+            ("Gross", 70),
+            ("Tax", 70),
+            ("CGST", 60),
+            ("SGST", 60),
+            ("IGST", 60),
+            ("5%", 55),
+            ("18%", 55),
+            ("Discount", 70),
+            ("Bank", 70),
+            ("Cash", 70),
+            ("Credit Note", 80),
+            ("Coupon Disc", 80),
+            ("Add. Charge", 80),
+            ("Total", 70),
+        ]
+
+        x0 = 24
+        y = H - 80
+        row_h = 16
+
+        def draw_row(values, y, bold=False):
+            c.setFont("Helvetica-Bold" if bold else "Helvetica", 9)
+            x = x0
+            widths = [w for _, w in cols]
+            for text, w in zip(values, widths):
+                c.drawString(x, y, str(text))
+                x += w
+
+        draw_row([name for name, _ in cols], y, bold=True)
+        y -= row_h
+
+        for r in payload["rows"]:
+            if y < 40:
+                c.showPage()
+                c.setPageSize(landscape(A4))
+                W, H = landscape(A4)
+                y = H - 40
+                draw_row([name for name, _ in cols], y, bold=True)
+                y -= row_h
+
+            draw_row([
+                r["sr_no"],
+                r["sales_date"],
+                r["gross_amount"],
+                r["tax_amount"],
+                r["cgst"],
+                r["sgst"],
+                r["igst"],
+                r["tax_5"],
+                r["tax_18"],
+                r["discount"],
+                r["bank"],
+                r["cash"],
+                r["credit_notes"],
+                r["coupon_discount"],
+                r["additional_charge"],
+                r["total"],
+            ], y, bold=False)
+            y -= row_h
+
+        t = payload["totals"]
+        y -= 6
+        draw_row([
+            "",
+            "TOTAL",
+            t["gross_amount"],
+            t["tax_amount"],
+            t["cgst"],
+            t["sgst"],
+            t["igst"],
+            t["tax_5"],
+            t["tax_18"],
+            t["discount"],
+            t["bank"],
+            t["cash"],
+            t["credit_notes"],
+            t["coupon_discount"],
+            t["additional_charge"],
+            t["total"],
+        ], y, bold=True)
+
+        c.save()
+        buf.seek(0)
+
+        filename = f"daywise_sales_{df.strftime('%Y%m%d')}_{dt.strftime('%Y%m%d')}.pdf"
+        resp = HttpResponse(buf.getvalue(), content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return resp
+
+    def _export_excel(self, df, dt, payload):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Daywise Sales"
+
+        headers = [
+            "Sr.No",
+            "Sales Date",
+            "Gross Amount",
+            "Tax Amount",
+            "CGST",
+            "SGST",
+            "IGST",
+            "5%",
+            "18%",
+            "Discount",
+            "Bank",
+            "Cash",
+            "Credit Note",
+            "Coupon Discount",
+            "Additional Charge",
+            "Total",
+        ]
+        ws.append(headers)
+
+        for r in payload["rows"]:
+            ws.append([
+                r["sr_no"],
+                r["sales_date"],
+                r["gross_amount"],
+                r["tax_amount"],
+                r["cgst"],
+                r["sgst"],
+                r["igst"],
+                r["tax_5"],
+                r["tax_18"],
+                r["discount"],
+                r["bank"],
+                r["cash"],
+                r["credit_notes"],
+                r["coupon_discount"],
+                r["additional_charge"],
+                r["total"],
+            ])
+
+        t = payload["totals"]
+        ws.append([
+            "",
+            "TOTAL",
+            t["gross_amount"],
+            t["tax_amount"],
+            t["cgst"],
+            t["sgst"],
+            t["igst"],
+            t["tax_5"],
+            t["tax_18"],
+            t["discount"],
+            t["bank"],
+            t["cash"],
+            t["credit_notes"],
+            t["coupon_discount"],
+            t["additional_charge"],
+            t["total"],
+        ])
+
+        for i, h in enumerate(headers, start=1):
+            ws.column_dimensions[get_column_letter(i)].width = max(12, len(h) + 2)
+
+        out = BytesIO()
+        wb.save(out)
+        out.seek(0)
+
+        filename = f"daywise_sales_{df.strftime('%Y%m%d')}_{dt.strftime('%Y%m%d')}.xlsx"
+        resp = HttpResponse(
+            out.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return resp
