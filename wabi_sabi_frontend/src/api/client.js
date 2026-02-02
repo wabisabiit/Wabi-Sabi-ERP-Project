@@ -255,6 +255,31 @@ export async function getSaleByInvoice(invoiceNo) {
   throw new Error("Invoice not found.");
 }
 
+// ✅ Daywise Sales export (PDF/Excel)
+export async function exportDaywiseSalesSummary({ date_from, date_to, location, exportType }) {
+  const sp = new URLSearchParams();
+  if (date_from) sp.append("date_from", date_from);
+  if (date_to) sp.append("date_to", date_to);
+  if (location) sp.append("location", location);
+  sp.append("export", exportType); // "pdf" | "excel"
+
+  const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
+
+  const res = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Export failed (${res.status}): ${text}`);
+  }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+
 export async function getCreditNote(noteNo) {
   return http(`/credit-notes/${encodeURIComponent(noteNo)}/`);
 }
@@ -887,4 +912,7 @@ export default {
   getSaleReceiptPdf,
 
   getCreditNotePdf,
+
+  exportDaywiseSalesSummary,
+
 };

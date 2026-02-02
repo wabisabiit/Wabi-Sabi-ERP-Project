@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportsPage.css";
-import { listDaywiseSalesSummary } from "../api/client";
+import { listDaywiseSalesSummary, exportDaywiseSalesSummary } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 /* ───────────────── Report Data Constants ───────────────── */
@@ -219,8 +219,8 @@ export default function ReportsPage() {
           <div className="rp-list">
             {(isManager
               ? SALES_ITEMS.filter((it) =>
-                  ["daywise", "salesSummary", "salesman"].includes(it.key)
-                )
+                ["daywise", "salesSummary", "salesman"].includes(it.key)
+              )
               : SALES_ITEMS
             ).map((it) => (
               <ItemButton
@@ -488,9 +488,8 @@ export function DayWiseSalesSummaryPage() {
                 {["Invoice", "POS"].map((v) => (
                   <button
                     key={v}
-                    className={`rp-popover-item ${
-                      voucherTypes.includes(v) ? "selected" : ""
-                    }`}
+                    className={`rp-popover-item ${voucherTypes.includes(v) ? "selected" : ""
+                      }`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -565,12 +564,59 @@ export function DayWiseSalesSummaryPage() {
           >
             {loading ? "Loading…" : "Search"}
           </button>
-          <button className="btn btn-success" type="button" disabled>
+          <button
+            className="btn btn-success"
+            type="button"
+            onClick={async () => {
+              try {
+                const locationParam = selectedLocs.length === 1 ? selectedLocs[0] : undefined;
+                const url = await exportDaywiseSalesSummary({
+                  date_from: fromDate,
+                  date_to: toDate,
+                  location: locationParam,
+                  exportType: "pdf",
+                });
+                window.open(url, "_blank");
+              } catch (e) {
+                console.error(e);
+                alert("PDF export failed.");
+              }
+            }}
+            disabled={loading || !fromDate || !toDate}
+          >
             PDF
           </button>
-          <button className="btn btn-warning" type="button" disabled>
+
+          <button
+            className="btn btn-warning"
+            type="button"
+            onClick={async () => {
+              try {
+                const locationParam = selectedLocs.length === 1 ? selectedLocs[0] : undefined;
+                const url = await exportDaywiseSalesSummary({
+                  date_from: fromDate,
+                  date_to: toDate,
+                  location: locationParam,
+                  exportType: "excel",
+                });
+
+                // trigger download
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `daywise_sales_${fromDate}_${toDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+              } catch (e) {
+                console.error(e);
+                alert("Excel export failed.");
+              }
+            }}
+            disabled={loading || !fromDate || !toDate}
+          >
             Excel
           </button>
+
         </div>
       </div>
 
@@ -941,9 +987,8 @@ export function TaxWiseSalesSummaryPage() {
                 {["Invoice", "POS"].map((v) => (
                   <button
                     key={v}
-                    className={`rp-popover-item ${
-                      voucherTypes.includes(v) ? "selected" : ""
-                    }`}
+                    className={`rp-popover-item ${voucherTypes.includes(v) ? "selected" : ""
+                      }`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1046,9 +1091,8 @@ export function TaxWiseSalesSummaryPage() {
                 {TAX_SLABS.map((s) => (
                   <button
                     key={s}
-                    className={`rp-popover-item ${
-                      selectedSlabs.includes(s) ? "selected" : ""
-                    }`}
+                    className={`rp-popover-item ${selectedSlabs.includes(s) ? "selected" : ""
+                      }`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
