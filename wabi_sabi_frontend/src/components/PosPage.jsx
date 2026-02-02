@@ -189,12 +189,14 @@ export default function PosPage() {
           data?.range_label ||
           data?.business_date_label ||
           data?.business_date ||
-          "";
+          new Date().toISOString().slice(0, 10);
         setRangeLabel(label);
 
         // If not open => show opening popup
         if (!is_open) {
           setOpenRegisterModal(true);
+        } else {
+          setOpenRegisterModal(false);
         }
       } catch (e) {
         console.error("Failed to load register session:", e);
@@ -213,8 +215,11 @@ export default function PosPage() {
       data?.range_label ||
       data?.business_date_label ||
       data?.business_date ||
-      "";
+      new Date().toISOString().slice(0, 10);
     setRangeLabel(label);
+
+    // ✅ ensure popup closes after opening
+    setOpenRegisterModal(false);
   };
 
   const onAfterCloseSaved = async () => {
@@ -226,7 +231,13 @@ export default function PosPage() {
   return (
     <div className="pos-page" style={{ position: "relative" }}>
       {/* ✅ Top action (simple, no CSS dependency) */}
-      <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 12px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          padding: "8px 12px",
+        }}
+      >
         <button
           onClick={() => setCloseRegisterModal(true)}
           disabled={!sessionOpen}
@@ -261,7 +272,10 @@ export default function PosPage() {
       {/* ✅ OPEN REGISTER POPUP */}
       <RegisterOpenModal
         open={openRegisterModal}
-        onClose={() => setOpenRegisterModal(false)}
+        onClose={() => {
+          // ✅ keep popup mandatory until register is opened
+          if (sessionOpen) setOpenRegisterModal(false);
+        }}
         onOpened={onOpened}
       />
 
