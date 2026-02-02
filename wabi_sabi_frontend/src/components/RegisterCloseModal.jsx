@@ -62,6 +62,10 @@ export default function RegisterCloseModal({
   // ✅ NEW: status message for auto-loaded data
   const [summaryStatus, setSummaryStatus] = useState(""); // "", "ok", "empty", "fail"
 
+  // ✅ NEW: editable total cash left
+  const [totalCashLeft, setTotalCashLeft] = useState("0.00");
+  const [totalCashEdited, setTotalCashEdited] = useState(false);
+
   const okRef = useRef(null);
 
   const toInt = (v) => {
@@ -74,6 +78,13 @@ export default function RegisterCloseModal({
     () => DENOMS.reduce((s, d) => s + d * toInt(counts[d]), 0),
     [counts]
   );
+
+  // ✅ NEW: keep totalCashLeft synced with denomTotal unless user edits
+  useEffect(() => {
+    if (!open) return;
+    if (totalCashEdited) return;
+    setTotalCashLeft(fmt(denomTotal));
+  }, [denomTotal, open, totalCashEdited]);
 
   // Reset + prefill when modal opens
   useEffect(() => {
@@ -106,6 +117,10 @@ export default function RegisterCloseModal({
     setSuccessMsg("");
     setErrorMsg("");
     setSummaryStatus(""); // ✅ reset message
+
+    // ✅ NEW reset editable cash left
+    setTotalCashEdited(false);
+    setTotalCashLeft("0.00");
 
     setClosingDate(new Date().toISOString().slice(0, 10));
     const d = new Date();
@@ -212,7 +227,10 @@ export default function RegisterCloseModal({
       bank_account: bank,
       bank_transfer_register: bankTransferRegister || "0",
       cash_flow: cashFlow || "0",
-      total_cash_left: denomTotal.toFixed(2),
+
+      // ✅ NOW EDITABLE & saved to backend
+      total_cash_left: String(totalCashLeft || "0"),
+
       physical_drawer: physicalDrawer,
       closing_note: closingNote,
     };
@@ -239,7 +257,12 @@ export default function RegisterCloseModal({
 
   return (
     <div className="rcm-backdrop">
-      <div className="rcm-modal" role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className="rcm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         {/* Header */}
         <div className="rcm-header">
           <h3 className="rcm-title">{title}</h3>
@@ -399,10 +422,17 @@ export default function RegisterCloseModal({
             />
 
             <label className="rcm-lab">Total Cash Left In Drawer</label>
+            {/* ✅ NOW EDITABLE */}
             <input
               className="rcm-input"
-              value={`₹${fmt(denomTotal)}`}
-              readOnly
+              type="number"
+              step="0.01"
+              value={totalCashLeft}
+              onChange={(e) => {
+                setTotalCashLeft(e.target.value);
+                setTotalCashEdited(true);
+              }}
+              disabled={submitting}
             />
 
             <label className="rcm-lab">
