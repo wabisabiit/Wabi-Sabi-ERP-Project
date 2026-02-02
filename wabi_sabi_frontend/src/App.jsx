@@ -162,6 +162,8 @@ const MaterialConsumptionDetailPage = lazy(() =>
   import("./components/MaterialConsumptionDetailPage")
 );
 
+import RegisterSessionGate from "./components/RegisterSessionGate";
+
 /* 🔹 Auth pages from partner code */
 const Login = lazy(() => import("./components/Login"));
 // const Signup = lazy(() => import("./components/Signup"));
@@ -357,10 +359,13 @@ export default function App() {
             path="/new"
             element={
               <RoleRoute allowed={["ADMIN", "MANAGER"]}>
-                <POSLayout />
+                <RegisterSessionGate>
+                  <POSLayout />
+                </RegisterSessionGate>
               </RoleRoute>
             }
           />
+
           <Route
             path="/pos"
             element={
