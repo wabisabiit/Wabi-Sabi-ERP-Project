@@ -446,7 +446,6 @@ function asArray(payload) {
 }
 
 // Reports
-// Reports
 export async function listDaywiseSalesSummary(params = {}) {
   const sp = new URLSearchParams();
   if (params.date_from) sp.append("date_from", params.date_from);
@@ -466,7 +465,6 @@ export async function listDaywiseSalesSummary(params = {}) {
 
   const qs = sp.toString();
 
-  // ✅ FIX: use the same slug style as backend: day-wise-sales-summary
   return http(`/reports/day-wise-sales-summary/${qs ? `?${qs}` : ""}`);
 }
 
@@ -487,7 +485,6 @@ export async function getDaywiseSalesPdf(params = {}) {
 
   sp.append("export", "pdf");
 
-  // ✅ FIX: day-wise-sales-summary
   const url = joinUrl(API_BASE, `/reports/day-wise-sales-summary/?${sp.toString()}`);
 
   const res = await fetch(url, {
@@ -522,80 +519,7 @@ export async function getDaywiseSalesExcel(params = {}) {
 
   sp.append("export", "excel");
 
-  // ✅ FIX: day-wise-sales-summary
   const url = joinUrl(API_BASE, `/reports/day-wise-sales-summary/?${sp.toString()}`);
-
-  const res = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-    headers: {
-      Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Excel export failed (${res.status}): ${text}`);
-  }
-
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
-}
-
-
-
-// ✅ NEW: Daywise PDF (blob url)
-export async function getDaywiseSalesPdf(params = {}) {
-  const sp = new URLSearchParams();
-  if (params.date_from) sp.append("date_from", params.date_from);
-  if (params.date_to) sp.append("date_to", params.date_to);
-
-  if (Array.isArray(params.location)) {
-    params.location.forEach((l) => {
-      const s = String(l || "").trim();
-      if (s) sp.append("location", s);
-    });
-  } else if (params.location) {
-    sp.append("location", String(params.location).trim());
-  }
-
-  sp.append("export", "pdf");
-
-  const url = joinUrl(API_BASE, `/reports/daywise-sales-summary/?${sp.toString()}`);
-
-  const res = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-    headers: { Accept: "application/pdf" },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`PDF export failed (${res.status}): ${text}`);
-  }
-
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
-}
-
-// ✅ NEW: Daywise Excel (blob url)
-export async function getDaywiseSalesExcel(params = {}) {
-  const sp = new URLSearchParams();
-  if (params.date_from) sp.append("date_from", params.date_from);
-  if (params.date_to) sp.append("date_to", params.date_to);
-
-  if (Array.isArray(params.location)) {
-    params.location.forEach((l) => {
-      const s = String(l || "").trim();
-      if (s) sp.append("location", s);
-    });
-  } else if (params.location) {
-    sp.append("location", String(params.location).trim());
-  }
-
-  sp.append("export", "excel");
-
-  const url = joinUrl(API_BASE, `/reports/daywise-sales-summary/?${sp.toString()}`);
 
   const res = await fetch(url, {
     method: "GET",
