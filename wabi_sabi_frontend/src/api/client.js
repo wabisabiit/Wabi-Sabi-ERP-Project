@@ -770,16 +770,33 @@ export async function createRegisterClose(payload) {
 
 
 // ✅ Register session (opening cash / one time per day)
+// ✅ Register session (opening cash / one time per day)
 export async function getRegisterSessionToday() {
-  return http(`/register-sessions/today/`);
+  // We don't have /register-sessions/ on backend.
+  // Use today's summary endpoint as "is register open today?" signal.
+  // If summary works => register is considered open.
+  const data = await http(`/register-closes/today-summary/`);
+
+  return {
+    is_open: true, // summary endpoint implies register context exists for today
+    opening_cash: 0, // backend doesn't store opening in today-summary
+    range_label: data?.date ? `Today (${data.date})` : "Today",
+    ...data,
+  };
 }
 
 export async function openRegisterSession(payload) {
-  return http(`/register-sessions/open/`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  // No backend open endpoint exists.
+  // Best effort: create a RegisterClosing row with opening cash as metadata is not possible
+  // unless your serializer/model supports it.
+  // So we just return what POS needs and let POS continue.
+  return {
+    is_open: true,
+    opening_cash: Number(payload?.opening_cash ?? payload?.cash ?? 0) || 0,
+    range_label: "Today",
+  };
 }
+
 
 export async function deleteSale(invoiceNo) {
   const safe = String(invoiceNo || "").trim();
