@@ -464,7 +464,7 @@ export async function listDaywiseSalesSummary(params = {}) {
   if (params.export) sp.append("export", params.export);
 
   const qs = sp.toString();
-  return http(`/reports/daywise-sales/${qs ? `?${qs}` : ""}`);
+  return http(`/reports/daywise-sales-summary/${qs ? `?${qs}` : ""}`);
 }
 
 // ✅ NEW: Daywise PDF (blob url)
@@ -484,7 +484,7 @@ export async function getDaywiseSalesPdf(params = {}) {
 
   sp.append("export", "pdf");
 
-  const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
+  const url = joinUrl(API_BASE, `/reports/daywise-sales-summary/?${sp.toString()}`);
 
   const res = await fetch(url, {
     method: "GET",
@@ -518,7 +518,7 @@ export async function getDaywiseSalesExcel(params = {}) {
 
   sp.append("export", "excel");
 
-  const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
+  const url = joinUrl(API_BASE, `/reports/daywise-sales-summary/?${sp.toString()}`);
 
   const res = await fetch(url, {
     method: "GET",

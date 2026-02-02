@@ -582,15 +582,32 @@ class DaywiseSalesSummary(APIView):
             transaction_date__range=(start_dt, end_dt)
         ).order_by("transaction_date", "id")
 
-        # ✅ FIX: match location by created_by OR salesman (so NULL created_by doesn't wipe sales)
+        # ✅ FIX: location match should include:
+        # - Sale.location (if exists)
+        # - Sale.outlet.location (if exists)
+        # - created_by.employee.outlet.location (existing)
+        # - salesman.outlet.location (existing)
         if loc_params:
             q = Q()
             for lp in loc_params:
                 up = lp.upper()
+
+                # 1) created_by chain (existing)
                 q |= Q(created_by__employee__outlet__location__code__iexact=up)
                 q |= Q(created_by__employee__outlet__location__name__icontains=lp)
+
+                # 2) salesman chain (existing)
                 q |= Q(salesman__outlet__location__code__iexact=up)
                 q |= Q(salesman__outlet__location__name__icontains=lp)
+
+                # 3) Sale.location (NEW - if your Sale has location FK)
+                q |= Q(location__code__iexact=up)
+                q |= Q(location__name__icontains=lp)
+
+                # 4) Sale.outlet.location (NEW - if your Sale has outlet FK)
+                q |= Q(outlet__location__code__iexact=up)
+                q |= Q(outlet__location__name__icontains=lp)
+
             sales_qs = sales_qs.filter(q)
 
         sales = list(sales_qs)

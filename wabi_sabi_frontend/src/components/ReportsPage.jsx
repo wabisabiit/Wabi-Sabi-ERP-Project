@@ -5,7 +5,8 @@ import "../styles/ReportsPage.css";
 import {
   listDaywiseSalesSummary,
   getDaywiseSalesPdf,
-  getDaywiseSalesExcel
+  getDaywiseSalesExcel,
+  listLocations,
 } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
@@ -53,27 +54,31 @@ const INVENTORY_ITEMS = [
 /* ───────────────── Helper Components ───────────────── */
 
 const asLinkKeys = (fn) => (e) => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    fn();
+  }
 };
 
 const ItemButton = ({ it, onClick, fav, setFav }) => {
   const isFav = !!fav[it.key];
   return (
-    <button
-      key={it.key}
-      className="rp-item"
-      type="button"
-      onClick={onClick}
-    >
+    <button key={it.key} className="rp-item" type="button" onClick={onClick}>
       <span className="rp-item-left">
-        <span className="material-icons-outlined rp-item-icon" aria-hidden="true">
+        <span
+          className="material-icons-outlined rp-item-icon"
+          aria-hidden="true"
+        >
           stacked_line_chart
         </span>
         <span className="rp-item-title">{it.title}</span>
       </span>
       <span
         className={`rp-item-star ${isFav ? "active" : ""}`}
-        onClick={(e) => { e.stopPropagation(); setFav((p) => ({ ...p, [it.key]: !p[it.key] })); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setFav((p) => ({ ...p, [it.key]: !p[it.key] }));
+        }}
         role="checkbox"
         aria-checked={isFav}
         aria-label={`Toggle favourite for ${it.title}`}
@@ -111,9 +116,7 @@ export default function ReportsPage() {
     }
   }, [isManager, active]);
 
-  const visibleTabs = isManager
-    ? TABS.filter((t) => t.key === "sales")
-    : TABS;
+  const visibleTabs = isManager ? TABS.filter((t) => t.key === "sales") : TABS;
 
   const onSalesNavigate = (key) => {
     switch (key) {
@@ -141,9 +144,12 @@ export default function ReportsPage() {
       case "taxwise":
         navigate("/reports/tax-wise-sales-summary");
         break;
-
-      case "salesSummary": navigate("/reports/sales-summary"); break;
-      case "customerWiseOrder": navigate("/reports/customer-wise-sales-order-report"); break;
+      case "salesSummary":
+        navigate("/reports/sales-summary");
+        break;
+      case "customerWiseOrder":
+        navigate("/reports/customer-wise-sales-order-report");
+        break;
       default:
         console.warn("Unknown sales report key:", key);
     }
@@ -223,8 +229,8 @@ export default function ReportsPage() {
           <div className="rp-list">
             {(isManager
               ? SALES_ITEMS.filter((it) =>
-                ["daywise", "salesSummary", "salesman"].includes(it.key)
-              )
+                  ["daywise", "salesSummary", "salesman"].includes(it.key)
+                )
               : SALES_ITEMS
             ).map((it) => (
               <ItemButton
@@ -295,18 +301,6 @@ export default function ReportsPage() {
 
 /* ───────────────── Individual Report Pages (named exports) ───────────────── */
 
-const LOCATIONS = [
-  "WABI SABI SUSTAINABILITY",
-  "Brands 4 less – Ansal Plaza",
-  "Brands 4 less – Rajouri Garden",
-  "Brand4Less – Tilak Nagar",
-  "Brands 4 less – M3M Urbana",
-  "Brands 4 less – IFFCO Chowk",
-  "Brands Loot – Udyog Vihar",
-  "Brands loot – Krishna Nagar",
-];
-const ALL_LOCATIONS_COUNT = LOCATIONS.length;
-
 export function DayWiseSalesSummaryPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -314,7 +308,10 @@ export function DayWiseSalesSummaryPage() {
   const [voucherTypes, setVoucherTypes] = useState(["Invoice", "POS"]);
 
   const [locOpen, setLocOpen] = useState(false);
-  const [selectedLocs, setSelectedLocs] = useState([]);
+
+  // ✅ CHANGED: load real locations from backend (code + name)
+  const [locations, setLocations] = useState([]); // [{code, label}]
+  const [selectedLocs, setSelectedLocs] = useState([]); // array of codes
 
   // NEW state for data + UX
   const [rows, setRows] = useState([]);
@@ -327,12 +324,42 @@ export function DayWiseSalesSummaryPage() {
   React.useEffect(() => {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, "0");
-    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-      d.getDate()
-    )}`;
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     setFromDate(iso);
     setToDate(iso);
   }, []);
+
+  // ✅ NEW: fetch locations from API so it matches Django admin (codes)
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await listLocations();
+        const arr = Array.isArray(res) ? res : res?.results || [];
+        const mapped = arr
+          .map((x) => {
+            const code = String(x?.code || "").trim();
+            const name =
+              String(x?.name || "").trim() ||
+              String(x?.display_name || "").trim() ||
+              code;
+            if (!code) return null;
+            // show like: "TN - Tilak Nagar" or "HR-IC - Iffco Chowk"
+            return { code, label: `${code} - ${name}` };
+          })
+          .filter(Boolean);
+        if (mounted) setLocations(mapped);
+      } catch (e) {
+        console.error("Failed to load locations:", e);
+        if (mounted) setLocations([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const ALL_LOCATIONS_COUNT = locations.length;
 
   const toggleVoucher = (v) => {
     setVoucherTypes((prev) =>
@@ -340,14 +367,15 @@ export function DayWiseSalesSummaryPage() {
     );
   };
 
-  const toggleLocation = (l) => {
-    if (l === "All") {
+  const toggleLocation = (codeOrAll) => {
+    if (codeOrAll === "All") {
       setSelectedLocs((p) =>
-        p.length === ALL_LOCATIONS_COUNT ? [] : [...LOCATIONS]
+        p.length === ALL_LOCATIONS_COUNT ? [] : locations.map((x) => x.code)
       );
     } else {
+      const code = codeOrAll;
       setSelectedLocs((p) =>
-        p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
+        p.includes(code) ? p.filter((x) => x !== code) : [...p, code]
       );
     }
   };
@@ -367,8 +395,7 @@ export function DayWiseSalesSummaryPage() {
     }
     setLoading(true);
     try {
-      const locationParam =
-        selectedLocs.length > 0 ? selectedLocs : undefined;
+      const locationParam = selectedLocs.length > 0 ? selectedLocs : undefined;
 
       const res = await listDaywiseSalesSummary({
         date_from: fromDate,
@@ -553,6 +580,7 @@ export function DayWiseSalesSummaryPage() {
             >
               close
             </span>
+
             {locOpen && (
               <div
                 className="rp-popover rp-popover-loc"
@@ -561,19 +589,28 @@ export function DayWiseSalesSummaryPage() {
                 <div className="rp-popover-search">
                   <input placeholder="Search..." aria-label="Search Locations" />
                 </div>
+
                 <div className="rp-popover-list">
-                  {["All", ...LOCATIONS].map((l) => (
-                    <label key={l} className="rp-check">
+                  <label className="rp-check">
+                    <input
+                      type="checkbox"
+                      checked={
+                        ALL_LOCATIONS_COUNT > 0 &&
+                        selectedLocs.length === ALL_LOCATIONS_COUNT
+                      }
+                      onChange={() => toggleLocation("All")}
+                    />
+                    <span>All</span>
+                  </label>
+
+                  {locations.map((l) => (
+                    <label key={l.code} className="rp-check">
                       <input
                         type="checkbox"
-                        checked={
-                          l === "All"
-                            ? selectedLocs.length === ALL_LOCATIONS_COUNT
-                            : selectedLocs.includes(l)
-                        }
-                        onChange={() => toggleLocation(l)}
+                        checked={selectedLocs.includes(l.code)}
+                        onChange={() => toggleLocation(l.code)}
                       />
-                      <span>{l}</span>
+                      <span>{l.label}</span>
                     </label>
                   ))}
                 </div>
@@ -591,10 +628,20 @@ export function DayWiseSalesSummaryPage() {
           >
             {loading ? "Loading…" : "Search"}
           </button>
-          <button className="btn btn-success" type="button" onClick={onPdf} disabled={loading}>
+          <button
+            className="btn btn-success"
+            type="button"
+            onClick={onPdf}
+            disabled={loading}
+          >
             PDF
           </button>
-          <button className="btn btn-warning" type="button" onClick={onExcel} disabled={loading}>
+          <button
+            className="btn btn-warning"
+            type="button"
+            onClick={onExcel}
+            disabled={loading}
+          >
             Excel
           </button>
         </div>
@@ -616,8 +663,12 @@ export function DayWiseSalesSummaryPage() {
                 <tr>
                   <th>Sr.No</th>
                   <th>Sales Date</th>
-                  <th>Gross<br />Amount</th>
-                  <th>Tax<br />Amount</th>
+                  <th>
+                    Gross<br />Amount
+                  </th>
+                  <th>
+                    Tax<br />Amount
+                  </th>
                   <th>CGST</th>
                   <th>SGST</th>
                   <th>IGST</th>
@@ -626,9 +677,15 @@ export function DayWiseSalesSummaryPage() {
                   <th>Discount</th>
                   <th>Bank</th>
                   <th>Cash</th>
-                  <th>Credit<br />Note</th>
-                  <th>Coupon<br />Discount</th>
-                  <th>Additional<br />Charge</th>
+                  <th>
+                    Credit<br />Note
+                  </th>
+                  <th>
+                    Coupon<br />Discount
+                  </th>
+                  <th>
+                    Additional<br />Charge
+                  </th>
                   <th>Total</th>
                 </tr>
               </thead>
@@ -658,7 +715,9 @@ export function DayWiseSalesSummaryPage() {
                     ))}
 
                     <tr>
-                      <td className="dss-strong" colSpan={2}>TOTAL</td>
+                      <td className="dss-strong" colSpan={2}>
+                        TOTAL
+                      </td>
                       <td>{totals?.gross_amount ?? ""}</td>
                       <td>{totals?.tax_amount ?? ""}</td>
                       <td>{totals?.cgst ?? ""}</td>
@@ -683,7 +742,6 @@ export function DayWiseSalesSummaryPage() {
                   </tr>
                 )}
               </tbody>
-
             </table>
           </div>
         </div>
@@ -750,13 +808,9 @@ export function TaxWiseSalesSummaryPage() {
 
   const toggleLocation = (l) => {
     if (l === "All") {
-      setSelectedLocs((p) =>
-        p.length === ALL_LOCATIONS_COUNT ? [] : [...LOCATIONS]
-      );
+      setSelectedLocs((p) => (p.length === 0 ? ["ALL"] : []));
     } else {
-      setSelectedLocs((p) =>
-        p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
-      );
+      setSelectedLocs((p) => (p.includes(l) ? p.filter((x) => x !== l) : [...p, l]));
     }
   };
 
@@ -863,8 +917,9 @@ export function TaxWiseSalesSummaryPage() {
                 {["Invoice", "POS"].map((v) => (
                   <button
                     key={v}
-                    className={`rp-popover-item ${voucherTypes.includes(v) ? "selected" : ""
-                      }`}
+                    className={`rp-popover-item ${
+                      voucherTypes.includes(v) ? "selected" : ""
+                    }`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -881,15 +936,9 @@ export function TaxWiseSalesSummaryPage() {
 
         <div className="rp-field rp-field-loc">
           <label>Location</label>
-          <div
-            className="rp-select"
-            onClick={() => setLocOpen((s) => !s)}
-            tabIndex={0}
-          >
+          <div className="rp-select" onClick={() => setLocOpen((s) => !s)} tabIndex={0}>
             <span className="rp-select-text">
-              {selectedLocs.length
-                ? `${selectedLocs.length} selected`
-                : "Select Location"}
+              {selectedLocs.length ? `${selectedLocs.length} selected` : "Select Location"}
             </span>
             <span
               className="material-icons-outlined rp-clear"
@@ -901,25 +950,19 @@ export function TaxWiseSalesSummaryPage() {
             >
               close
             </span>
+
             {locOpen && (
-              <div
-                className="rp-popover rp-popover-loc"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <div className="rp-popover rp-popover-loc" onClick={(e) => e.stopPropagation()}>
                 <div className="rp-popover-search">
                   <input placeholder="Search..." aria-label="Search Locations" />
                 </div>
                 <div className="rp-popover-list">
-                  {["All", ...LOCATIONS].map((l) => (
+                  {["All"].map((l) => (
                     <label key={l} className="rp-check">
                       <input
                         type="checkbox"
-                        checked={
-                          l === "All"
-                            ? selectedLocs.length === ALL_LOCATIONS_COUNT
-                            : selectedLocs.includes(l)
-                        }
-                        onChange={() => toggleLocation(l)}
+                        checked={selectedLocs.includes("ALL")}
+                        onChange={() => toggleLocation("All")}
                       />
                       <span>{l}</span>
                     </label>
@@ -933,11 +976,7 @@ export function TaxWiseSalesSummaryPage() {
         {/* Tax slab multiselect */}
         <div className="rp-field rp-field-grow">
           <label>Tax Slab</label>
-          <div
-            className="rp-multiselect"
-            onClick={() => setTaxOpen((s) => !s)}
-            tabIndex={0}
-          >
+          <div className="rp-multiselect" onClick={() => setTaxOpen((s) => !s)} tabIndex={0}>
             <div className="rp-chips">
               {selectedSlabs.map((s) => (
                 <span className="rp-chip" key={s}>
@@ -955,20 +994,14 @@ export function TaxWiseSalesSummaryPage() {
                   </button>
                 </span>
               ))}
-              <input
-                className="rp-chip-input"
-                readOnly
-                placeholder=""
-                aria-label="Selected Tax Slabs"
-              />
+              <input className="rp-chip-input" readOnly placeholder="" aria-label="Selected Tax Slabs" />
             </div>
             {taxOpen && (
               <div className="rp-popover">
                 {TAX_SLABS.map((s) => (
                   <button
                     key={s}
-                    className={`rp-popover-item ${selectedSlabs.includes(s) ? "selected" : ""
-                      }`}
+                    className={`rp-popover-item ${selectedSlabs.includes(s) ? "selected" : ""}`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
