@@ -39,6 +39,9 @@ from .views_creditreceipt import CreditNoteReceiptPdfView
 from .views_sales import SalesView, SaleLinesByInvoiceView, SaleDeleteView
 
 
+from .views_register_session import RegisterSessionTodayView, RegisterSessionOpenView
+
+
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -119,6 +122,11 @@ urlpatterns = [
     # Register close
     path("register-closes/", RegisterClosingView.as_view(), name="register-close-list-create"),
     path("register-closes/today-summary/", RegisterClosingSummaryView.as_view(), name="register-close-today-summary"),
+
+    # Register session (opening cash)
+    path("register-sessions/today/", RegisterSessionTodayView.as_view(), name="register-session-today"),
+    path("register-sessions/open/", RegisterSessionOpenView.as_view(), name="register-session-open"),
+
 
     # ✅ NEW Dashboard KPI summary (date filter required)
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),

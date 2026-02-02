@@ -768,6 +768,19 @@ export async function createRegisterClose(payload) {
   });
 }
 
+
+// ✅ Register session (opening cash / one time per day)
+export async function getRegisterSessionToday() {
+  return http(`/register-sessions/today/`);
+}
+
+export async function openRegisterSession(payload) {
+  return http(`/register-sessions/open/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function deleteSale(invoiceNo) {
   const safe = String(invoiceNo || "").trim();
   if (!safe) throw new Error("Missing invoice number.");
@@ -967,4 +980,7 @@ export default {
 
   getDaywiseSalesPdf,
   getDaywiseSalesExcel,
+
+  getRegisterSessionToday,
+  openRegisterSession,
 };

@@ -4,12 +4,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import SearchBar from "./SearchBar";
 import CartTable from "./CartTable";
 import Footer from "./Footer";
-import { getSaleLinesByInvoice } from "../api/client";
+import RegisterOpenModal from "./RegisterOpenModal";
+import RegisterCloseModal from "./RegisterCloseModal";
+import { getSaleLinesByInvoice, getRegisterSessionToday } from "../api/client";
 
 const CART_KEY = "pos.cartItems";
 
 export default function PosPage() {
   console.log("📌 POSPAGE FILE LOADED FROM:", import.meta.url);
+
   // cart state (hydrate from localStorage)
   const [items, setItems] = useState(() => {
     try {
@@ -19,6 +22,14 @@ export default function PosPage() {
       return [];
     }
   });
+
+  // ✅ Register session state
+  const [openingCash, setOpeningCash] = useState(0);
+  const [rangeLabel, setRangeLabel] = useState("");
+  const [sessionOpen, setSessionOpen] = useState(false);
+
+  const [openRegisterModal, setOpenRegisterModal] = useState(false);
+  const [closeRegisterModal, setCloseRegisterModal] = useState(false);
 
   // keep localStorage in sync whenever items change
   useEffect(() => {
@@ -95,8 +106,6 @@ export default function PosPage() {
   };
 
   // ✅ Listen for invoice-paste event fired from anywhere (header/input/etc.)
-  // Dispatch example from your invoice input:
-  // window.dispatchEvent(new CustomEvent("pos:load-invoice", { detail: { invoice_no: "INV103" } }))
   useEffect(() => {
     const onLoad = (e) => {
       const invoiceNo =
@@ -161,10 +170,81 @@ export default function PosPage() {
   };
 
   // you’ll replace this with your actual customer object
-  const someCustomer = null; // or whatever you already had
+  const someCustomer = null;
+
+  // ✅ On POS load: check if register is opened today for this location
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getRegisterSessionToday();
+
+        const is_open = !!data?.is_open;
+        const opening = Number(data?.opening_cash ?? 0) || 0;
+
+        setSessionOpen(is_open);
+        setOpeningCash(opening);
+
+        // nice label in header of close modal
+        const label =
+          data?.range_label ||
+          data?.business_date_label ||
+          data?.business_date ||
+          "";
+        setRangeLabel(label);
+
+        // If not open => show opening popup
+        if (!is_open) {
+          setOpenRegisterModal(true);
+        }
+      } catch (e) {
+        console.error("Failed to load register session:", e);
+        // safest behavior: require opening cash input (so user can't sell without open)
+        setOpenRegisterModal(true);
+      }
+    })();
+  }, []);
+
+  const onOpened = (data) => {
+    const opening = Number(data?.opening_cash ?? 0) || 0;
+    setOpeningCash(opening);
+    setSessionOpen(true);
+
+    const label =
+      data?.range_label ||
+      data?.business_date_label ||
+      data?.business_date ||
+      "";
+    setRangeLabel(label);
+  };
+
+  const onAfterCloseSaved = async () => {
+    // After closing, next visit should show open modal again
+    setSessionOpen(false);
+    setOpenRegisterModal(true);
+  };
 
   return (
-    <div className="pos-page">
+    <div className="pos-page" style={{ position: "relative" }}>
+      {/* ✅ Top action (simple, no CSS dependency) */}
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 12px" }}>
+        <button
+          onClick={() => setCloseRegisterModal(true)}
+          disabled={!sessionOpen}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: "1px solid #ddd",
+            background: sessionOpen ? "#111827" : "#f3f4f6",
+            color: sessionOpen ? "#fff" : "#6b7280",
+            fontWeight: 700,
+            cursor: sessionOpen ? "pointer" : "not-allowed",
+          }}
+          title={!sessionOpen ? "Open register first" : "Close register"}
+        >
+          Close Register
+        </button>
+      </div>
+
       <SearchBar onAddItem={handleAddItem} />
 
       {/* CartTable can delete, and parent updates items */}
@@ -176,6 +256,22 @@ export default function PosPage() {
         amount={totals.amount} // ✅ now respects discount
         onReset={handleReset}
         customer={someCustomer}
+      />
+
+      {/* ✅ OPEN REGISTER POPUP */}
+      <RegisterOpenModal
+        open={openRegisterModal}
+        onClose={() => setOpenRegisterModal(false)}
+        onOpened={onOpened}
+      />
+
+      {/* ✅ CLOSE REGISTER MODAL (YOUR EXISTING) */}
+      <RegisterCloseModal
+        open={closeRegisterModal}
+        onClose={() => setCloseRegisterModal(false)}
+        rangeLabel={rangeLabel}
+        openingCash={openingCash}
+        onAfterSave={onAfterCloseSaved}
       />
     </div>
   );

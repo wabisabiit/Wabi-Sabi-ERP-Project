@@ -9,7 +9,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .models import RegisterClosing, Sale, Expense, SalePayment
+from .models import RegisterClosing, RegisterSession, Sale, Expense, SalePayment
+
 from .serializers_register import RegisterClosingSerializer
 
 
@@ -58,11 +59,25 @@ class RegisterClosingView(generics.ListCreateAPIView):
         outlet = getattr(emp, "outlet", None) if emp else None
         loc = getattr(outlet, "location", None) if outlet else None
 
-        serializer.save(
+        obj = serializer.save(
             location=loc,
-            created_by=emp,
+             created_by=emp,
         )
 
+    # ✅ IMPORTANT: mark today's register session CLOSED
+        try:
+            if loc is not None:
+                today = timezone.localdate()
+                sess = RegisterSession.objects.filter(location=loc, business_date=today).first()
+                if sess and sess.is_open:
+                    sess.is_open = False
+                    sess.closed_at = timezone.now()
+                    sess.save(update_fields=["is_open", "closed_at"])
+        except Exception:
+        # don't break closing if session update fails
+            pass
+
+    
 
 class RegisterClosingSummaryView(APIView):
     """

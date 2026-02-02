@@ -1008,3 +1008,49 @@ class RegisterClosing(models.Model):
     def __str__(self):
         loc = getattr(self.location, "code", None) or getattr(self.location, "name", "") or "N/A"
         return f"{loc} @ {self.closed_at:%Y-%m-%d %H:%M}"
+
+
+class RegisterSession(models.Model):
+    """
+    Keeps track of daily opening cash per location.
+    - One row per (location, business_date)
+    - Opened once per day (or reopened after close, if you want)
+    - When RegisterClosing is created, session becomes closed.
+    """
+
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="register_sessions",
+        null=True,
+        blank=True,
+    )
+
+    business_date = models.DateField(default=timezone.localdate, db_index=True)
+
+    opened_at = models.DateTimeField(default=timezone.now)
+    opening_cash = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    is_open = models.BooleanField(default=True, db_index=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    created_by = models.ForeignKey(
+        "outlets.Employee",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="register_sessions",
+    )
+
+    class Meta:
+        ordering = ["-business_date", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["location", "business_date"],
+                name="uniq_register_session_location_day",
+            )
+        ]
+
+    def __str__(self):
+        loc = getattr(self.location, "code", None) or getattr(self.location, "name", "") or "N/A"
+        return f"{loc} • {self.business_date} • {'OPEN' if self.is_open else 'CLOSED'}"
