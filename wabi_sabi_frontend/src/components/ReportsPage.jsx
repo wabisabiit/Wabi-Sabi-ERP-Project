@@ -2,7 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportsPage.css";
-import { listDaywiseSalesSummary} from "../api/client";
+import {
+  listDaywiseSalesSummary,
+  getDaywiseSalesPdf,
+  getDaywiseSalesExcel
+} from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 /* ───────────────── Report Data Constants ───────────────── */
@@ -314,11 +318,7 @@ export function DayWiseSalesSummaryPage() {
 
   // NEW state for data + UX
   const [rows, setRows] = useState([]);
-  const [totals, setTotals] = useState({
-    cash: "0.00",
-    credit_notes: 0,
-    total: "0.00",
-  });
+  const [totals, setTotals] = useState({});
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -367,10 +367,8 @@ export function DayWiseSalesSummaryPage() {
     }
     setLoading(true);
     try {
-      // Backend expects a single 'location' text (icontains).
-      // If user picked exactly 1 location, pass it; else omit to include all.
       const locationParam =
-        selectedLocs.length === 1 ? selectedLocs[0] : undefined;
+        selectedLocs.length > 0 ? selectedLocs : undefined;
 
       const res = await listDaywiseSalesSummary({
         date_from: fromDate,
@@ -379,16 +377,44 @@ export function DayWiseSalesSummaryPage() {
       });
 
       setRows(res?.rows || []);
-      setTotals(
-        res?.totals || { cash: "0.00", credit_notes: 0, total: "0.00" }
-      );
+      setTotals(res?.totals || {});
     } catch (e) {
       console.error(e);
       setRows([]);
-      setTotals({ cash: "0.00", credit_notes: 0, total: "0.00" });
+      setTotals({});
       alert("Failed to load Day-wise Sales Summary.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onPdf = async () => {
+    if (!fromDate || !toDate) return alert("Select From Date and To Date first.");
+    try {
+      const url = await getDaywiseSalesPdf({
+        date_from: fromDate,
+        date_to: toDate,
+        location: selectedLocs.length > 0 ? selectedLocs : undefined,
+      });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to export PDF.");
+    }
+  };
+
+  const onExcel = async () => {
+    if (!fromDate || !toDate) return alert("Select From Date and To Date first.");
+    try {
+      const url = await getDaywiseSalesExcel({
+        date_from: fromDate,
+        date_to: toDate,
+        location: selectedLocs.length > 0 ? selectedLocs : undefined,
+      });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to export Excel.");
     }
   };
 
@@ -488,8 +514,9 @@ export function DayWiseSalesSummaryPage() {
                 {["Invoice", "POS"].map((v) => (
                   <button
                     key={v}
-                    className={`rp-popover-item ${voucherTypes.includes(v) ? "selected" : ""
-                      }`}
+                    className={`rp-popover-item ${
+                      voucherTypes.includes(v) ? "selected" : ""
+                    }`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -564,66 +591,18 @@ export function DayWiseSalesSummaryPage() {
           >
             {loading ? "Loading…" : "Search"}
           </button>
-          <button
-            className="btn btn-success"
-            type="button"
-            onClick={async () => {
-              try {
-                const locationParam = selectedLocs.length === 1 ? selectedLocs[0] : undefined;
-                const url = await exportDaywiseSalesSummary({
-                  date_from: fromDate,
-                  date_to: toDate,
-                  location: locationParam,
-                  exportType: "pdf",
-                });
-                window.open(url, "_blank");
-              } catch (e) {
-                console.error(e);
-                alert("PDF export failed.");
-              }
-            }}
-            disabled={loading || !fromDate || !toDate}
-          >
+          <button className="btn btn-success" type="button" onClick={onPdf} disabled={loading}>
             PDF
           </button>
-
-          <button
-            className="btn btn-warning"
-            type="button"
-            onClick={async () => {
-              try {
-                const locationParam = selectedLocs.length === 1 ? selectedLocs[0] : undefined;
-                const url = await exportDaywiseSalesSummary({
-                  date_from: fromDate,
-                  date_to: toDate,
-                  location: locationParam,
-                  exportType: "excel",
-                });
-
-                // trigger download
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `daywise_sales_${fromDate}_${toDate}.xlsx`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-              } catch (e) {
-                console.error(e);
-                alert("Excel export failed.");
-              }
-            }}
-            disabled={loading || !fromDate || !toDate}
-          >
+          <button className="btn btn-warning" type="button" onClick={onExcel} disabled={loading}>
             Excel
           </button>
-
         </div>
       </div>
 
       {/* Results */}
       <div className="rp-surface rp-result-surface">
         <div className="dss-wrap">
-          {/* Letterhead (organization & address removed as requested) */}
           <div className="dss-letterhead">
             <div className="dss-title">Daily Sales Summary</div>
             <div className="dss-dates">
@@ -631,52 +610,29 @@ export function DayWiseSalesSummaryPage() {
             </div>
           </div>
 
-          {/* Table */}
           <div className="dss-table-scroll">
             <table className="dss-table">
               <thead>
                 <tr>
                   <th>Sr.No</th>
                   <th>Sales Date</th>
-                  <th>
-                    Gross
-                    <br />
-                    Amount
-                  </th>
-                  <th>
-                    Tax
-                    <br />
-                    Amount
-                  </th>
+                  <th>Gross<br />Amount</th>
+                  <th>Tax<br />Amount</th>
                   <th>CGST</th>
                   <th>SGST</th>
                   <th>IGST</th>
                   <th>5%</th>
-                  <th>12%</th>
                   <th>18%</th>
-                  <th>28%</th>
-                  <th>CESS</th>
                   <th>Discount</th>
                   <th>Bank</th>
                   <th>Cash</th>
-                  <th>
-                    Credit
-                    <br />
-                    Note
-                  </th>
-                  <th>
-                    Coupon
-                    <br />
-                    Discount
-                  </th>
-                  <th>
-                    Additional
-                    <br />
-                    Charge
-                  </th>
+                  <th>Credit<br />Note</th>
+                  <th>Coupon<br />Discount</th>
+                  <th>Additional<br />Charge</th>
                   <th>Total</th>
                 </tr>
               </thead>
+
               <tbody>
                 {rows && rows.length > 0 ? (
                   <>
@@ -690,10 +646,7 @@ export function DayWiseSalesSummaryPage() {
                         <td>{r.sgst ?? ""}</td>
                         <td>{r.igst ?? ""}</td>
                         <td>{r.tax_5 ?? ""}</td>
-                        <td>{r.tax_12 ?? ""}</td>
                         <td>{r.tax_18 ?? ""}</td>
-                        <td>{r.tax_28 ?? ""}</td>
-                        <td>{r.cess ?? ""}</td>
                         <td>{r.discount ?? ""}</td>
                         <td>{r.bank ?? ""}</td>
                         <td>{r.cash ?? ""}</td>
@@ -704,21 +657,15 @@ export function DayWiseSalesSummaryPage() {
                       </tr>
                     ))}
 
-                    {/* TOTAL from API */}
                     <tr>
-                      <td className="dss-strong" colSpan={2}>
-                        TOTAL
-                      </td>
+                      <td className="dss-strong" colSpan={2}>TOTAL</td>
                       <td>{totals?.gross_amount ?? ""}</td>
                       <td>{totals?.tax_amount ?? ""}</td>
                       <td>{totals?.cgst ?? ""}</td>
                       <td>{totals?.sgst ?? ""}</td>
                       <td>{totals?.igst ?? ""}</td>
                       <td>{totals?.tax_5 ?? ""}</td>
-                      <td>{totals?.tax_12 ?? ""}</td>
                       <td>{totals?.tax_18 ?? ""}</td>
-                      <td>{totals?.tax_28 ?? ""}</td>
-                      <td>{totals?.cess ?? ""}</td>
                       <td>{totals?.discount ?? ""}</td>
                       <td>{totals?.bank ?? ""}</td>
                       <td>{totals?.cash ?? ""}</td>
@@ -729,85 +676,14 @@ export function DayWiseSalesSummaryPage() {
                     </tr>
                   </>
                 ) : (
-                  /* Fallback: blank template rows per day, when no data returned */
-                  <>
-                    {(() => {
-                      if (!fromDate || !toDate) {
-                        return (
-                          <tr className="cws-empty">
-                            <td colSpan={19}>Select dates to view</td>
-                          </tr>
-                        );
-                      }
-                      const start = new Date(fromDate);
-                      const end = new Date(toDate);
-                      const out = [];
-                      let i = 1;
-                      for (
-                        let d = new Date(start);
-                        d <= end;
-                        d.setDate(d.getDate() + 1)
-                      ) {
-                        const iso = `${d.getFullYear()}-${String(
-                          d.getMonth() + 1
-                        ).padStart(2, "0")}-${String(d.getDate()).padStart(
-                          2,
-                          "0"
-                        )}`;
-                        out.push(
-                          <tr key={iso}>
-                            <td>{i++}</td>
-                            <td>{dmy(iso)}</td>
-                            {/* remaining 17 numeric columns left blank */}
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                          </tr>
-                        );
-                      }
-                      return out;
-                    })()}
-
-                    <tr>
-                      <td className="dss-strong" colSpan={2}>
-                        TOTAL
-                      </td>
-                      {/* 17 blanks in fallback */}
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                    </tr>
-                  </>
+                  <tr className="cws-empty">
+                    <td colSpan={16}>
+                      {loading ? "Loading…" : "No data. Select dates and Search."}
+                    </td>
+                  </tr>
                 )}
               </tbody>
+
             </table>
           </div>
         </div>

@@ -299,31 +299,6 @@ export async function listCustomers() {
   return http(`/customers/`);
 }
 
-// ✅ Daywise Sales export (PDF/Excel)
-// export async function exportDaywiseSalesSummary({ date_from, date_to, location, exportType }) {
-//   const sp = new URLSearchParams();
-//   if (date_from) sp.append("date_from", date_from);
-//   if (date_to) sp.append("date_to", date_to);
-//   if (location) sp.append("location", location);
-//   sp.append("export", exportType); // "pdf" | "excel"
-
-//   const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
-
-//   const res = await fetch(url, {
-//     method: "GET",
-//     credentials: "include",
-//   });
-
-//   if (!res.ok) {
-//     const text = await res.text().catch(() => "");
-//     throw new Error(`Export failed (${res.status}): ${text}`);
-//   }
-
-//   const blob = await res.blob();
-//   return URL.createObjectURL(blob);
-// }
-
-
 export async function createCustomer(payload) {
   return http(`/customers/`, { method: "POST", body: JSON.stringify(payload) });
 }
@@ -475,8 +450,92 @@ export async function listDaywiseSalesSummary(params = {}) {
   const sp = new URLSearchParams();
   if (params.date_from) sp.append("date_from", params.date_from);
   if (params.date_to) sp.append("date_to", params.date_to);
-  if (params.location) sp.append("location", params.location);
-  return http(`/reports/daywise-sales/?${sp.toString()}`);
+
+  // ✅ support multiple locations (append multiple)
+  if (Array.isArray(params.location)) {
+    params.location.forEach((l) => {
+      const s = String(l || "").trim();
+      if (s) sp.append("location", s);
+    });
+  } else if (params.location) {
+    sp.append("location", String(params.location).trim());
+  }
+
+  if (params.export) sp.append("export", params.export);
+
+  const qs = sp.toString();
+  return http(`/reports/daywise-sales/${qs ? `?${qs}` : ""}`);
+}
+
+// ✅ NEW: Daywise PDF (blob url)
+export async function getDaywiseSalesPdf(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.date_from) sp.append("date_from", params.date_from);
+  if (params.date_to) sp.append("date_to", params.date_to);
+
+  if (Array.isArray(params.location)) {
+    params.location.forEach((l) => {
+      const s = String(l || "").trim();
+      if (s) sp.append("location", s);
+    });
+  } else if (params.location) {
+    sp.append("location", String(params.location).trim());
+  }
+
+  sp.append("export", "pdf");
+
+  const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
+
+  const res = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/pdf" },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`PDF export failed (${res.status}): ${text}`);
+  }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+// ✅ NEW: Daywise Excel (blob url)
+export async function getDaywiseSalesExcel(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.date_from) sp.append("date_from", params.date_from);
+  if (params.date_to) sp.append("date_to", params.date_to);
+
+  if (Array.isArray(params.location)) {
+    params.location.forEach((l) => {
+      const s = String(l || "").trim();
+      if (s) sp.append("location", s);
+    });
+  } else if (params.location) {
+    sp.append("location", String(params.location).trim());
+  }
+
+  sp.append("export", "excel");
+
+  const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
+
+  const res = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Excel export failed (${res.status}): ${text}`);
+  }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
 export async function listProductWiseSales(params = {}) {
@@ -617,8 +676,6 @@ export async function deleteWowSlab(id) {
   });
 }
 
-
-
 // Hold Bills
 export async function listHoldBills() {
   const res = await http(`/hold-bills/`);
@@ -716,7 +773,6 @@ export async function deleteSale(invoiceNo) {
   return http(`/sales/${encodeURIComponent(safe)}/delete/`, { method: "DELETE" });
 }
 
-
 // ✅ NEW: fetch Sale receipt PDF (blob URL)
 export async function getSaleReceiptPdf(invoiceNo) {
   const safe = String(invoiceNo || "").trim();
@@ -738,7 +794,6 @@ export async function getSaleReceiptPdf(invoiceNo) {
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
-
 
 // ✅ NEW: fetch Credit Note PDF (blob URL)
 export async function getCreditNotePdf(noteNo) {
@@ -772,12 +827,10 @@ export async function getCreditNotePdf(noteNo) {
   throw new Error(`Credit Note PDF failed: ${lastErrText || "Not found"}`);
 }
 
-
 export async function getRegisterClosingSummary() {
   return http(`/register-closes/today-summary/`);
 }
 
-// ✅ NEW: Dashboard Summary endpoint
 // ✅ NEW: Dashboard Summary endpoint
 export async function dashboardSummary(params = {}) {
   // normalize Date objects to YYYY-MM-DD (so backend can filter correctly)
@@ -799,7 +852,6 @@ export async function dashboardSummary(params = {}) {
 
   return http(`/dashboard/summary/${buildQuery(fixed)}`);
 }
-
 
 /* ========= Optional convenience default export ========= */
 export default {
@@ -910,8 +962,8 @@ export default {
   dashboardSummary,
 
   getSaleReceiptPdf,
-
   getCreditNotePdf,
 
-  // exportDaywiseSalesSummary,
+  getDaywiseSalesPdf,
+  getDaywiseSalesExcel,
 };
