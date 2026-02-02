@@ -1,4 +1,4 @@
-# products/views_receipt.py
+# products/views_receipt.py - FIXED VERSION
 from io import BytesIO
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, time, timedelta
@@ -582,35 +582,55 @@ class DaywiseSalesSummary(APIView):
             transaction_date__range=(start_dt, end_dt)
         ).order_by("transaction_date", "id")
 
-        # ✅ FIX: location match should include:
-        # - Sale.location (if exists)
-        # - Sale.outlet.location (if exists)
-        # - created_by.employee.outlet.location (existing)
-        # - salesman.outlet.location (existing)
+        # ✅ FIXED: Improved location filtering with proper Q object usage and distinct()
         if loc_params:
             q = Q()
             for lp in loc_params:
                 up = lp.upper()
 
-                # 1) created_by chain (existing)
+                # created_by chain (Admin/Manager who created the sale)
                 q |= Q(created_by__employee__outlet__location__code__iexact=up)
                 q |= Q(created_by__employee__outlet__location__name__icontains=lp)
 
-                # 2) salesman chain (existing)
+                # salesman chain (Staff who made the sale)
                 q |= Q(salesman__outlet__location__code__iexact=up)
                 q |= Q(salesman__outlet__location__name__icontains=lp)
 
-                # 3) Sale.location (NEW - if your Sale has location FK)
-                q |= Q(location__code__iexact=up)
-                q |= Q(location__name__icontains=lp)
-
-                # 4) Sale.outlet.location (NEW - if your Sale has outlet FK)
-                q |= Q(outlet__location__code__iexact=up)
-                q |= Q(outlet__location__name__icontains=lp)
-
-            sales_qs = sales_qs.filter(q)
+            # Apply filter and use distinct() to avoid duplicate rows from joins
+            sales_qs = sales_qs.filter(q).distinct()
 
         sales = list(sales_qs)
+
+        # ✅ DEBUG: Log what we found
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Day-wise Sales Summary: date_from={df}, date_to={dt}, locations={loc_params}")
+        logger.info(f"Found {len(sales)} sales after filtering")
+
+        # If no sales found, return empty result (not 404)
+        if not sales:
+            return Response({
+                "rows": [],
+                "totals": {
+                    "gross_amount": "0.00",
+                    "tax_amount": "0.00",
+                    "cgst": "0.00",
+                    "sgst": "0.00",
+                    "igst": "0.00",
+                    "tax_5": "0.00",
+                    "tax_18": "0.00",
+                    "tax_12": "0.00",
+                    "tax_28": "0.00",
+                    "cess": "0.00",
+                    "discount": "0.00",
+                    "bank": "0.00",
+                    "cash": "0.00",
+                    "credit_notes": "0.00",
+                    "coupon_discount": "0.00",
+                    "additional_charge": "0.00",
+                    "total": "0.00",
+                }
+            }, status=status.HTTP_200_OK)
 
         # group by date
         day_map = {}
