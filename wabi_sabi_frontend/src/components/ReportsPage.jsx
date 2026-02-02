@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportsPage.css";
-import { listDaywiseSalesSummary, exportDaywiseSalesSummary } from "../api/client";
+import { listDaywiseSalesSummary} from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 /* ───────────────── Report Data Constants ───────────────── */
