@@ -676,7 +676,8 @@ class DaywiseSalesSummary(APIView):
             pays_by_sale.setdefault(p.sale_id, []).append(p)
 
         # credit notes in range + location
-        cn_qs = CreditNote.objects.filter(note_date__range=(start_dt, end_dt))
+        # credit notes in range + location  ✅ use created "date"
+        cn_qs = CreditNote.objects.filter(date__range=(start_dt, end_dt))
         if loc_params:
             q = Q()
             for lp in loc_params:
@@ -688,9 +689,10 @@ class DaywiseSalesSummary(APIView):
         credit_notes = list(cn_qs)
         cn_by_day = {}
         for cn in credit_notes:
-            d = timezone.localtime(cn.note_date).date()
+            d = timezone.localtime(cn.date).date()
             cn_by_day.setdefault(d, Decimal("0.00"))
             cn_by_day[d] = q2(cn_by_day[d] + q2(cn.amount))
+
 
         # iterate days in requested range (so table shows each day)
         cur = df
