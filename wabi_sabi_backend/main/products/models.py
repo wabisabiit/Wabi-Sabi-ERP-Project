@@ -1008,6 +1008,16 @@ class RegisterClosing(models.Model):
     def __str__(self):
         loc = getattr(self.location, "code", None) or getattr(self.location, "name", "") or "N/A"
         return f"{loc} @ {self.closed_at:%Y-%m-%d %H:%M}"
+    
+    
+    @property
+    def closing_amount(self):
+        """
+        Closing Amount shown in Sales Register report.
+        Must be the manager-entered 'Total Cash Left In Drawer'.
+        """
+        return self.total_cash_left or 0
+
 
 
 class RegisterSession(models.Model):

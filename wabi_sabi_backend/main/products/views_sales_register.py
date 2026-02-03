@@ -223,7 +223,11 @@ class SalesRegisterReportView(APIView):
             sales_return_amt = cn_map.get((rc.location_id, d), 0) or 0
 
             # closing amount from close register
-            closing_amt = getattr(rc, "total_cash_left", 0) or 0
+                        # ✅ Closing Amount = manager entered "Total Cash Left In Drawer"
+            closing_amt = getattr(rc, "closing_amount", None)
+            if closing_amt is None:
+                closing_amt = getattr(rc, "total_cash_left", 0) or 0
+
 
             cashier_name = _emp_name(getattr(rc, "created_by", None))
 
