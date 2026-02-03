@@ -24,6 +24,8 @@ import RoleRoute from "./auth/RoleRoute";
 /* 🔹 API helper (for restoring hold bills) */
 import { getProductByBarcode } from "./api/client";
 
+import MasterPackInvoicePage from "./components/MasterPackInvoicePage";
+
 /* ---------- Lazy pages ---------- */
 // CRM
 const NewDiscountPage = lazy(() => import("./components/NewDiscountPage"));
@@ -213,7 +215,7 @@ function POSLayout() {
     if (res?.invoice_no) {
       try {
         alert(`Payment successful.\nInvoice: ${res.invoice_no}`);
-      } catch (_) {}
+      } catch (_) { }
     }
     setItems([]); // clear cart for next customer
   };
@@ -258,9 +260,9 @@ function POSLayout() {
           try {
             alert(
               payload.message ||
-                `${payload.number || "Hold bill"} restored into cart.`
+              `${payload.number || "Hold bill"} restored into cart.`
             );
-          } catch (_) {}
+          } catch (_) { }
         }
       })();
     };
@@ -295,7 +297,7 @@ function POSLayout() {
 function SidebarLayout({ children }) {
   return (
     <>
-      <Sidebar open={true} persistent onClose={() => {}} />
+      <Sidebar open={true} persistent onClose={() => { }} />
       <div className="with-sb">{children}</div>
     </>
   );
@@ -305,7 +307,7 @@ function MiniSidebarLayout({ children }) {
   const ICON_RAIL = 56;
   return (
     <>
-      <Sidebar open={true} persistent miniHover onClose={() => {}} />
+      <Sidebar open={true} persistent miniHover onClose={() => { }} />
       <div className="with-sb" style={{ marginLeft: ICON_RAIL }}>
         {children}
       </div>
@@ -607,6 +609,18 @@ export default function App() {
               </RoleRoute>
             }
           />
+
+          <Route
+            path="/inventory/master-packaging/:number"
+            element={
+              <RoleRoute allowed={["ADMIN", "MANAGER"]}>
+                <SidebarLayout>
+                  <MasterPackInvoicePage />
+                </SidebarLayout>
+              </RoleRoute>
+            }
+          />
+
 
           {/* Material Consumption */}
           <Route

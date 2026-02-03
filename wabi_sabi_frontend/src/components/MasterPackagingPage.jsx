@@ -1,8 +1,14 @@
 // src/pages/MasterPackagingPage.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import "../styles/MasterPackagingPage.css";
-import { listLocations, getProductByBarcode, createMasterPack } from "../api/client";
+import {
+  listLocations,
+  getProductByBarcode,
+  createMasterPack,
+  apiMe, // ✅ NEW (used to know admin vs manager)
+} from "../api/client";
 
 function useClickOutside(refs, cb) {
   useEffect(() => {
@@ -17,6 +23,8 @@ function useClickOutside(refs, cb) {
 }
 
 export default function MasterPackagingPage() {
+  const navigate = useNavigate();
+
   const [scan, setScan] = useState("");
   const [rows, setRows] = useState([]);
   const [station] = useState("PACK-01");
@@ -137,7 +145,7 @@ export default function MasterPackagingPage() {
             id: Date.now(),
             barcode,
             name: data.vasyName || "",
-            size: "",                // leave as-is unless you want to snap from product.size
+            size: "", // leave as-is unless you want to snap from product.size
             sellingPrice: Number(data.sellingPrice || 0),
             qty: 1,
             brand: "B4L",
@@ -177,7 +185,6 @@ export default function MasterPackagingPage() {
   const removeRow = (rowId) => setRows((prev) => prev.filter((r) => r.id !== rowId));
 
   /* ───── Save & Preview -> create master pack ───── */
-  // replace your onSaveAndPreview with this version
   async function onSaveAndPreview() {
     if (rows.length === 0) {
       setToast({ type: "err", msg: "Nothing to save." });
@@ -209,6 +216,9 @@ export default function MasterPackagingPage() {
         // 👇 clear the table after successful save
         setRows([]);
         setHeadLocOpen(false);
+
+        // ✅ refresh list table
+        fetchPacks();
       } else {
         throw new Error("Unexpected response");
       }
@@ -224,13 +234,85 @@ export default function MasterPackagingPage() {
     setTimeout(() => setToast(null), 2200);
   }
 
+  // =========================
+  // ✅ NEW: MasterPack List (below empty space)
+  // =========================
+  const [me, setMe] = useState(null);
+  const isAdmin = useMemo(() => {
+    const role = me?.employee?.role || "";
+    return !!me?.is_superuser || role === "ADMIN";
+  }, [me]);
+
+  const [listLoading, setListLoading] = useState(false);
+  const [packs, setPacks] = useState([]);
+
+  const [fltFromLocs, setFltFromLocs] = useState([]); // admin only
+  const [fltToLocs, setFltToLocs] = useState([]); // admin only
+  const [fltDateFrom, setFltDateFrom] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  });
+  const [fltDateTo, setFltDateTo] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const m = await apiMe();
+        setMe(m);
+      } catch {
+        setMe(null);
+      }
+    })();
+  }, []);
+
+  async function fetchPacks() {
+    const sp = new URLSearchParams();
+    sp.append("date_from", fltDateFrom);
+    sp.append("date_to", fltDateTo);
+
+    if (isAdmin && fltFromLocs.length) fltFromLocs.forEach((x) => sp.append("from_location", x));
+    if (isAdmin && fltToLocs.length) fltToLocs.forEach((x) => sp.append("to_location", x));
+
+    setListLoading(true);
+    try {
+      const res = await fetch(`/api/master-packs/?${sp.toString()}`, {
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(`Load failed (${res.status}): ${t}`);
+      }
+      const json = await res.json();
+      setPacks(Array.isArray(json) ? json : []);
+    } catch (e) {
+      setPacks([]);
+      setToast({ type: "err", msg: e.message || String(e) });
+      clearToastSoon();
+    } finally {
+      setListLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!me) return;
+    fetchPacks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
+
   return (
     <div className="mp-wrap">
       {/* Toast */}
       {toast && (
-        <div className={`mp-toast ${toast.type === "ok" ? "ok" : "err"}`}>
-          {toast.msg}
-        </div>
+        <div className={`mp-toast ${toast.type === "ok" ? "ok" : "err"}`}>{toast.msg}</div>
       )}
 
       {/* Header */}
@@ -267,7 +349,9 @@ export default function MasterPackagingPage() {
                 />
               </div>
             </div>
-            <button className="mp-btn mp-btn-dark" onClick={addScanned}>Add</button>
+            <button className="mp-btn mp-btn-dark" onClick={addScanned}>
+              Add
+            </button>
           </div>
 
           {/* Table */}
@@ -300,7 +384,9 @@ export default function MasterPackagingPage() {
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td className="mp-empty" colSpan={8}>Scan products to populate the list…</td>
+                    <td className="mp-empty" colSpan={8}>
+                      Scan products to populate the list…
+                    </td>
                   </tr>
                 ) : (
                   rows.map((r) => (
@@ -318,10 +404,12 @@ export default function MasterPackagingPage() {
                       </td>
                       <td>B4L</td>
                       <td></td>
-                      {/* replace the location <td> in each row with this (no dropdown, always header location) */}
+                      {/* fixed header location */}
                       <td className="mp-location-cell">
                         <div className="mp-loc-fixed">
-                          {defaultLoc ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}` : "Location not set"}
+                          {defaultLoc
+                            ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}`
+                            : "Location not set"}
                         </div>
                       </td>
                       <td>
@@ -339,12 +427,23 @@ export default function MasterPackagingPage() {
           {/* Bottom */}
           <div className="mp-bottom">
             <div className="mp-totals">
-              <div className="mp-total-row"><span>Items</span><b>{itemsCount}</b></div>
-              <div className="mp-total-row"><span>Quantity</span><b>{qtyTotal}</b></div>
-              <div className="mp-total-row"><span>Total Price</span><b>₹{priceTotal.toFixed(2)}</b></div>
+              <div className="mp-total-row">
+                <span>Items</span>
+                <b>{itemsCount}</b>
+              </div>
+              <div className="mp-total-row">
+                <span>Quantity</span>
+                <b>{qtyTotal}</b>
+              </div>
+              <div className="mp-total-row">
+                <span>Total Price</span>
+                <b>₹{priceTotal.toFixed(2)}</b>
+              </div>
             </div>
             <div className="mp-actions">
-              <button className="mp-btn mp-btn-ghost" onClick={() => setRows([])}>Clear</button>
+              <button className="mp-btn mp-btn-ghost" onClick={() => setRows([])}>
+                Clear
+              </button>
               <button className="mp-btn mp-btn-primary" disabled={saving} onClick={onSaveAndPreview}>
                 {saving ? "Saving..." : "Save & Preview"}
               </button>
@@ -356,17 +455,28 @@ export default function MasterPackagingPage() {
         <div className="mp-right-card">
           <div className="mp-preview-head">
             <span className="mp-tag">Station {station}</span>
-            <span className={`mp-status ${packResult ? "saved" : "open"}`}>{packResult ? "Saved" : "Open"}</span>
+            <span className={`mp-status ${packResult ? "saved" : "open"}`}>
+              {packResult ? "Saved" : "Open"}
+            </span>
           </div>
 
           <div className="mp-preview-block">
             <div className="mp-preview-grid">
-              <div className="mp-preview-kv"><span className="mp-k">Items</span><span className="mp-v">{itemsCount}</span></div>
-              <div className="mp-preview-kv"><span className="mp-k">Qty</span><span className="mp-v">{qtyTotal}</span></div>
+              <div className="mp-preview-kv">
+                <span className="mp-k">Items</span>
+                <span className="mp-v">{itemsCount}</span>
+              </div>
+              <div className="mp-preview-kv">
+                <span className="mp-k">Qty</span>
+                <span className="mp-v">{qtyTotal}</span>
+              </div>
             </div>
 
             <div className="mp-preview-sum">
-              <div className="mp-preview-row"><span>Total Price</span><b>₹{priceTotal.toFixed(2)}</b></div>
+              <div className="mp-preview-row">
+                <span>Total Price</span>
+                <b>₹{priceTotal.toFixed(2)}</b>
+              </div>
               <div className="mp-preview-row">
                 <span>{packResult ? "Invoice No." : "Open"}</span>
                 <span>{packResult ? packResult.number : new Date().toLocaleString()}</span>
@@ -389,32 +499,154 @@ export default function MasterPackagingPage() {
         </div>
       </div>
 
+      {/* ✅ NEW: MasterPack List Table (below empty space) */}
+      <div className="mp-list-card">
+        <div className="mp-list-head">
+          <div className="mp-list-title">Master Packs</div>
+
+          <div className="mp-list-filters">
+            <div className="mp-flt">
+              <label>From Date</label>
+              <input type="date" value={fltDateFrom} onChange={(e) => setFltDateFrom(e.target.value)} />
+            </div>
+
+            <div className="mp-flt">
+              <label>To Date</label>
+              <input type="date" value={fltDateTo} onChange={(e) => setFltDateTo(e.target.value)} />
+            </div>
+
+            {/* Admin only filters */}
+            {isAdmin && (
+              <>
+                <div className="mp-flt">
+                  <label>From Location</label>
+                  <select
+                    multiple
+                    value={fltFromLocs}
+                    onChange={(e) =>
+                      setFltFromLocs(Array.from(e.target.selectedOptions).map((o) => o.value))
+                    }
+                  >
+                    {locs.map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.code} - {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mp-flt">
+                  <label>To Location</label>
+                  <select
+                    multiple
+                    value={fltToLocs}
+                    onChange={(e) =>
+                      setFltToLocs(Array.from(e.target.selectedOptions).map((o) => o.value))
+                    }
+                  >
+                    {locs.map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.code} - {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+
+            <button className="mp-btn mp-btn-primary" onClick={fetchPacks} disabled={listLoading}>
+              {listLoading ? "Loading..." : "Apply"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mp-list-tablewrap">
+          <table className="mp-table">
+            <thead>
+              <tr>
+                <th style={{ width: 60 }}>S.No</th>
+                <th>MasterPack No.</th>
+                <th>From Location</th>
+                <th>To Location</th>
+                <th style={{ width: 220 }}>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listLoading ? (
+                <tr>
+                  <td colSpan={5} className="mp-empty">
+                    Loading...
+                  </td>
+                </tr>
+              ) : packs.length ? (
+                packs.map((p, i) => (
+                  <tr key={p.number}>
+                    <td>{p.sr || i + 1}</td>
+                    <td>
+                      <button
+                        className="mp-link"
+                        onClick={() =>
+                          navigate(`/inventory/master-packaging/${encodeURIComponent(p.number)}`)
+                        }
+                      >
+                        {p.number}
+                      </button>
+                    </td>
+                    <td>
+                      {(p.from_location?.code || "")}
+                      {p.from_location?.name ? ` - ${p.from_location.name}` : ""}
+                    </td>
+                    <td>
+                      {(p.to_location?.code || "")}
+                      {p.to_location?.name ? ` - ${p.to_location.name}` : ""}
+                    </td>
+                    <td>{p.created_at ? new Date(p.created_at).toLocaleString() : ""}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="mp-empty">
+                    No master packs found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Floating header dropdown */}
-      {headLocOpen && createPortal(
-        <div
-          ref={headPanelRef}
-          className="mp-popover mp-float-panel"
-          style={{ position: "fixed", top: headLocRect.top, left: headLocRect.left, width: headLocRect.width }}
-        >
-          <div className="mp-pop-search">
-            <input
-              autoFocus
-              placeholder="Search location…"
-              value={headLocQuery}
-              onChange={(e) => setHeadLocQuery(e.target.value)}
-            />
-          </div>
-          <div className="mp-pop-list">
-            {headerFiltered.map((loc) => (
-              <button key={loc.code} className="mp-pop-item" onClick={() => pickHeaderLocation(loc)}>
-                {loc.code} – {loc.name}
-              </button>
-            ))}
-            {headerFiltered.length === 0 && <div className="mp-pop-empty">No matches</div>}
-          </div>
-        </div>,
-        document.body
-      )}
+      {headLocOpen &&
+        createPortal(
+          <div
+            ref={headPanelRef}
+            className="mp-popover mp-float-panel"
+            style={{
+              position: "fixed",
+              top: headLocRect.top,
+              left: headLocRect.left,
+              width: headLocRect.width,
+            }}
+          >
+            <div className="mp-pop-search">
+              <input
+                autoFocus
+                placeholder="Search location…"
+                value={headLocQuery}
+                onChange={(e) => setHeadLocQuery(e.target.value)}
+              />
+            </div>
+            <div className="mp-pop-list">
+              {headerFiltered.map((loc) => (
+                <button key={loc.code} className="mp-pop-item" onClick={() => pickHeaderLocation(loc)}>
+                  {loc.code} – {loc.name}
+                </button>
+              ))}
+              {headerFiltered.length === 0 && <div className="mp-pop-empty">No matches</div>}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

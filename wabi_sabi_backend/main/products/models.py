@@ -416,10 +416,27 @@ class MasterPack(models.Model):
     Master packing header. Generates invoice numbers like INV1, INV2...
     Tracks totals and created time.
     """
+
+    # ✅ NEW: transfer direction
+    from_location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="master_packs_from",
+        null=True,
+        blank=True,
+    )
+    to_location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="master_packs_to",
+        null=True,
+        blank=True,
+    )
+
     number = models.CharField(max_length=32, unique=True, db_index=True)  # e.g. INV1
     created_at = models.DateTimeField(default=timezone.now)
-    items_total = models.PositiveIntegerField(default=0)      # unique barcodes (lines)
-    qty_total = models.PositiveIntegerField(default=0)        # sum of qty across lines
+    items_total = models.PositiveIntegerField(default=0)
+    qty_total = models.PositiveIntegerField(default=0)
     amount_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     class Meta:
@@ -429,11 +446,11 @@ class MasterPack(models.Model):
         return self.number
 
     def save(self, *args, **kwargs):
-        # Use your existing InvoiceSequence to mint INV numbers
         if not self.number:
-            from .models import InvoiceSequence  # same file; safe circular point
+            from .models import InvoiceSequence
             self.number = InvoiceSequence.next_invoice_no(prefix="INV")
         super().save(*args, **kwargs)
+
 
 
 class MasterPackLine(models.Model):
