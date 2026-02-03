@@ -43,6 +43,9 @@ from .views_register_session import RegisterSessionTodayView, RegisterSessionOpe
 
 from .views_locations import LocationListView
 
+from .views_sales_register import SalesRegisterReportView
+
+
 
 
 router = DefaultRouter()
@@ -139,6 +142,9 @@ urlpatterns = [
     path("sales/<str:invoice_no>/delete/", SaleDeleteView.as_view(), name="sale-delete"),
 
     path("locations/", LocationListView.as_view(), name="locations"),
+
+    path("reports/sales-register/", SalesRegisterReportView.as_view(), name="sales-register-report"),
+
 
 
 ]
