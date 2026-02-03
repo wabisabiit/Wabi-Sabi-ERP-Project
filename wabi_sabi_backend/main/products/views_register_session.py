@@ -109,3 +109,4 @@ class RegisterSessionOpenView(APIView):
             opened_at=timezone.now(),
         )
         return Response(RegisterSessionSerializer(created).data, status=status.HTTP_201_CREATED)
+ 
