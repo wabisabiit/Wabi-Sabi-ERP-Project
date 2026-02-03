@@ -7,7 +7,8 @@ import {
   listLocations,
   getProductByBarcode,
   createMasterPack,
-  apiMe, // ✅ NEW (used to know admin vs manager)
+  listMasterPacks,
+  apiMe,
 } from "../api/client";
 
 function useClickOutside(refs, cb) {
@@ -20,6 +21,25 @@ function useClickOutside(refs, cb) {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [refs, cb]);
+}
+
+function fmtDateTime(v) {
+  try {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return String(v || "");
+    return d.toLocaleString();
+  } catch {
+    return String(v || "");
+  }
+}
+
+function yyyyMmDd(d) {
+  if (!d) return "";
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
 }
 
 export default function MasterPackagingPage() {
@@ -36,16 +56,14 @@ export default function MasterPackagingPage() {
   const scanRef = useRef(null);
   const lastScanRef = useRef({ code: "", ts: 0 });
   useEffect(() => {
-    // autofocus on mount
     scanRef.current?.focus();
   }, []);
-  // keep focus on the scan box so hardware scanners always type there
   const ensureScanFocus = () => {
     if (document.activeElement !== scanRef.current) scanRef.current?.focus();
   };
 
   // ---- Locations from backend ----
-  const [locs, setLocs] = useState([]); // [{code,name}]
+  const [locs, setLocs] = useState([]); // [{id,code,name}]
   useEffect(() => {
     listLocations()
       .then((r) => setLocs(Array.isArray(r) ? r : []))
@@ -56,6 +74,18 @@ export default function MasterPackagingPage() {
     locs.forEach((l) => m.set(l.code, l.name));
     return m;
   }, [locs]);
+
+  // ---- Current user (role + outlet location) ----
+  const [me, setMe] = useState(null); // expects { role, location_code } (safe fallback)
+  useEffect(() => {
+    apiMe?.()
+      .then((r) => setMe(r || null))
+      .catch(() => setMe(null));
+  }, []);
+  const myLocCode = (me?.location_code || me?.location || me?.loc || "").trim();
+  const myRole = (me?.role || me?.user_role || me?.type || "").toUpperCase();
+  const isAdmin = myRole === "ADMIN";
+  const isManager = myRole === "MANAGER";
 
   /* ───── Header default Location ───── */
   const [defaultLoc, setDefaultLoc] = useState("");
@@ -101,10 +131,7 @@ export default function MasterPackagingPage() {
 
   /* ───── Totals ───── */
   const itemsCount = rows.length;
-  const qtyTotal = useMemo(
-    () => rows.reduce((t, r) => t + (Number(r.qty) || 0), 0),
-    [rows]
-  );
+  const qtyTotal = useMemo(() => rows.reduce((t, r) => t + (Number(r.qty) || 0), 0), [rows]);
   const priceTotal = useMemo(
     () => rows.reduce((t, r) => t + (Number(r.sellingPrice) || 0) * (Number(r.qty) || 0), 0),
     [rows]
@@ -115,7 +142,6 @@ export default function MasterPackagingPage() {
     const raw = scan.trim();
     if (!raw) return;
 
-    // prevent accidental double fire from some scanners
     const now = Date.now();
     if (lastScanRef.current.code === raw && now - lastScanRef.current.ts < 400) {
       setScan("");
@@ -126,31 +152,29 @@ export default function MasterPackagingPage() {
 
     setScan("");
     try {
-      const data = await getProductByBarcode(raw); // {barcode, vasyName, sellingPrice, qty...}
+      const data = await getProductByBarcode(raw);
       const barcode = String(data.barcode || "").toUpperCase();
       if (!barcode) throw new Error("Barcode not found");
 
       setRows((prev) => {
         const idx = prev.findIndex((r) => r.barcode === barcode);
         if (idx !== -1) {
-          // existing -> qty +1
           const copy = prev.slice();
           copy[idx] = { ...copy[idx], qty: (copy[idx].qty || 0) + 1 };
           return copy;
         }
-        // new row
         return [
           ...prev,
           {
             id: Date.now(),
             barcode,
             name: data.vasyName || "",
-            size: "", // leave as-is unless you want to snap from product.size
+            size: "",
             sellingPrice: Number(data.sellingPrice || 0),
             qty: 1,
             brand: "B4L",
             color: "",
-            location_code: defaultLoc || "", // can change row-wise
+            location_code: defaultLoc || "",
           },
         ];
       });
@@ -161,22 +185,6 @@ export default function MasterPackagingPage() {
       ensureScanFocus();
     }
   }
-
-  /* ───── Row Location ───── */
-  const [locOpenFor, setLocOpenFor] = useState(null);
-  const [locQuery, setLocQuery] = useState("");
-  const rowLocRef = useRef(null);
-  useClickOutside([rowLocRef], () => setLocOpenFor(null));
-  const filteredLocations = useMemo(() => {
-    const q = locQuery.trim().toLowerCase();
-    if (!q) return locs;
-    return locs.filter((l) => (l.code + " " + l.name).toLowerCase().includes(q));
-  }, [locs, locQuery]);
-  const setRowLocation = (rowId, code) => {
-    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, location_code: code } : r)));
-    setLocOpenFor(null);
-    setLocQuery("");
-  };
 
   const updateQty = (rowId, value) => {
     const v = Math.max(0, Number(value) || 0);
@@ -201,8 +209,7 @@ export default function MasterPackagingPage() {
       rows: rows.map((r) => ({
         barcode: r.barcode,
         qty: Number(r.qty) || 0,
-        // 👇 force all rows to use the header location
-        location_code: defaultLoc,
+        location_code: defaultLoc, // force header location
       })),
     };
 
@@ -212,13 +219,10 @@ export default function MasterPackagingPage() {
       if (res?.status === "ok" && res?.pack) {
         setPackResult(res.pack);
         setToast({ type: "ok", msg: `Saved successfully as ${res.pack.number}` });
-
-        // 👇 clear the table after successful save
         setRows([]);
         setHeadLocOpen(false);
-
-        // ✅ refresh list table
-        fetchPacks();
+        // refresh list
+        loadPacks();
       } else {
         throw new Error("Unexpected response");
       }
@@ -234,86 +238,123 @@ export default function MasterPackagingPage() {
     setTimeout(() => setToast(null), 2200);
   }
 
-  // =========================
-  // ✅ NEW: MasterPack List (below empty space)
-  // =========================
-  const [me, setMe] = useState(null);
-  const isAdmin = useMemo(() => {
-    const role = me?.employee?.role || "";
-    return !!me?.is_superuser || role === "ADMIN";
-  }, [me]);
-
-  const [listLoading, setListLoading] = useState(false);
+  /* ==============================
+     Master Packs List + Filters
+     - Admin: From/To location + date range
+     - Manager: date range only
+     - Manager sees only packs where FROM or TO == their location
+     ============================== */
+  const [packsLoading, setPacksLoading] = useState(false);
   const [packs, setPacks] = useState([]);
+  const [packsErr, setPacksErr] = useState("");
 
-  const [fltFromLocs, setFltFromLocs] = useState([]); // admin only
-  const [fltToLocs, setFltToLocs] = useState([]); // admin only
-  const [fltDateFrom, setFltDateFrom] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
-  });
-  const [fltDateTo, setFltDateTo] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
-  });
+  // default date filters = today
+  const todayStr = useMemo(() => yyyyMmDd(new Date()), []);
+  const [fromDate, setFromDate] = useState(todayStr);
+  const [toDate, setToDate] = useState(todayStr);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const m = await apiMe();
-        setMe(m);
-      } catch {
-        setMe(null);
-      }
-    })();
-  }, []);
+  const [fromLocFilter, setFromLocFilter] = useState("");
+  const [toLocFilter, setToLocFilter] = useState("");
 
-  async function fetchPacks() {
-    const sp = new URLSearchParams();
-    sp.append("date_from", fltDateFrom);
-    sp.append("date_to", fltDateTo);
-
-    if (isAdmin && fltFromLocs.length) fltFromLocs.forEach((x) => sp.append("from_location", x));
-    if (isAdmin && fltToLocs.length) fltToLocs.forEach((x) => sp.append("to_location", x));
-
-    setListLoading(true);
+  const loadPacks = async (opts = {}) => {
+    setPacksLoading(true);
+    setPacksErr("");
     try {
-      const res = await fetch(`/api/master-packs/?${sp.toString()}`, {
-        method: "GET",
-        credentials: "include",
-        headers: { Accept: "application/json" },
+      // If your backend supports filters, we pass them.
+      // If it ignores them, frontend filtering still works.
+      const q = {
+        from_date: opts.from_date ?? fromDate,
+        to_date: opts.to_date ?? toDate,
+        from_location: opts.from_location ?? fromLocFilter,
+        to_location: opts.to_location ?? toLocFilter,
+      };
+
+      const res = await listMasterPacks(q);
+      const arr = Array.isArray(res) ? res : [];
+
+      // Normalize fields safely
+      const normalized = arr.map((p) => {
+        const number = p.number || p.masterpack_no || p.masterPackNo || "";
+        const created_at = p.created_at || p.date || p.created || "";
+        const fl = p.from_location || p.fromLocation || p.location_from || p.location || null;
+        const tl = p.to_location || p.toLocation || p.location_to || null;
+
+        // IMPORTANT: Fix swapped mapping (reverse) -> ensure:
+        // "From" shows the source location, "To" shows destination location.
+        // If your API was reversed earlier, this normalization keeps correct keys.
+        const from_location = fl && (fl.code || fl.name) ? fl : null;
+        const to_location = tl && (tl.code || tl.name) ? tl : null;
+
+        return { ...p, number, created_at, from_location, to_location };
       });
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(`Load failed (${res.status}): ${t}`);
+
+      // Frontend filtering (manager visibility rule)
+      let filtered = normalized;
+
+      if (isManager && myLocCode) {
+        filtered = filtered.filter((p) => {
+          const f = (p.from_location?.code || "").trim();
+          const t = (p.to_location?.code || "").trim();
+          return f === myLocCode || t === myLocCode;
+        });
       }
-      const json = await res.json();
-      setPacks(Array.isArray(json) ? json : []);
+
+      // If backend didn’t filter by date/location, apply minimal frontend filters too:
+      const fD = (opts.from_date ?? fromDate) || "";
+      const tD = (opts.to_date ?? toDate) || "";
+
+      if (fD && tD) {
+        const start = new Date(`${fD}T00:00:00`);
+        const end = new Date(`${tD}T23:59:59`);
+        filtered = filtered.filter((p) => {
+          const d = new Date(p.created_at);
+          if (Number.isNaN(d.getTime())) return true;
+          return d >= start && d <= end;
+        });
+      }
+
+      if (isAdmin) {
+        const flc = (opts.from_location ?? fromLocFilter) || "";
+        const tlc = (opts.to_location ?? toLocFilter) || "";
+        if (flc) {
+          filtered = filtered.filter((p) => (p.from_location?.code || "") === flc);
+        }
+        if (tlc) {
+          filtered = filtered.filter((p) => (p.to_location?.code || "") === tlc);
+        }
+      }
+
+      setPacks(filtered);
     } catch (e) {
+      setPacksErr(e?.message || String(e));
       setPacks([]);
-      setToast({ type: "err", msg: e.message || String(e) });
-      clearToastSoon();
     } finally {
-      setListLoading(false);
+      setPacksLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    if (!me) return;
-    fetchPacks();
+    // load once after role/location is known (or timeout-safe)
+    loadPacks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me]);
+  }, [myRole, myLocCode]);
+
+  const onApplyFilters = () => {
+    loadPacks({
+      from_date: fromDate,
+      to_date: toDate,
+      from_location: fromLocFilter,
+      to_location: toLocFilter,
+    });
+  };
+
+  // Table vertical scroll after 4 rows
+  const packsTableMaxHeight = 52 + 4 * 54; // header ~52 + 4 rows ~54 each (approx)
 
   return (
     <div className="mp-wrap">
       {/* Toast */}
-      {toast && (
-        <div className={`mp-toast ${toast.type === "ok" ? "ok" : "err"}`}>{toast.msg}</div>
-      )}
+      {toast && <div className={`mp-toast ${toast.type === "ok" ? "ok" : "err"}`}>{toast.msg}</div>}
 
       {/* Header */}
       <div className="mp-head">
@@ -339,7 +380,6 @@ export default function MasterPackagingPage() {
                   value={scan}
                   onChange={(e) => setScan(e.target.value)}
                   onKeyDown={(e) => {
-                    // scanners usually send Enter or Tab
                     if (e.key === "Enter" || e.key === "Tab") {
                       e.preventDefault();
                       addScanned();
@@ -365,7 +405,6 @@ export default function MasterPackagingPage() {
                   <th>Qty</th>
                   <th>Brand</th>
                   <th>Color</th>
-                  {/* header default location */}
                   <th className="mp-location-cell mp-th-loc">
                     <button
                       ref={headBtnRef}
@@ -404,12 +443,9 @@ export default function MasterPackagingPage() {
                       </td>
                       <td>B4L</td>
                       <td></td>
-                      {/* fixed header location */}
                       <td className="mp-location-cell">
                         <div className="mp-loc-fixed">
-                          {defaultLoc
-                            ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}`
-                            : "Location not set"}
+                          {defaultLoc ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}` : "Location not set"}
                         </div>
                       </td>
                       <td>
@@ -449,15 +485,211 @@ export default function MasterPackagingPage() {
               </button>
             </div>
           </div>
+
+          {/* ===================== Master Packs Table (NEW) ===================== */}
+          <div style={{ marginTop: 14 }}>
+            <div className="mp-section-title" style={{ fontSize: 20 }}>
+              Master Packs
+            </div>
+
+            {/* Filters */}
+            <div style={{ display: "grid", gridTemplateColumns: isAdmin ? "1fr 1fr 1fr" : "1fr 1fr", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: 36,
+                    border: "1px solid #d7dde7",
+                    borderRadius: 8,
+                    padding: "0 10px",
+                    outline: "none",
+                    background: "#fff",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: 36,
+                    border: "1px solid #d7dde7",
+                    borderRadius: 8,
+                    padding: "0 10px",
+                    outline: "none",
+                    background: "#fff",
+                  }}
+                />
+              </div>
+
+              {isAdmin && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
+                      From Location
+                    </label>
+                    <select
+                      value={fromLocFilter}
+                      onChange={(e) => setFromLocFilter(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: 36,
+                        border: "1px solid #d7dde7",
+                        borderRadius: 8,
+                        padding: "0 10px",
+                        outline: "none",
+                        background: "#fff",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <option value="">All</option>
+                      {locs.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.code} - {l.name}
+                        </option>
+                      ))}
+                      <option value="HQ">HQ</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
+                      To Location
+                    </label>
+                    <select
+                      value={toLocFilter}
+                      onChange={(e) => setToLocFilter(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: 36,
+                        border: "1px solid #d7dde7",
+                        borderRadius: 8,
+                        padding: "0 10px",
+                        outline: "none",
+                        background: "#fff",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <option value="">All</option>
+                      {locs.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.code} - {l.name}
+                        </option>
+                      ))}
+                      <option value="HQ">HQ</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
+              <button className="mp-btn mp-btn-primary" onClick={onApplyFilters} disabled={packsLoading}>
+                {packsLoading ? "Loading..." : "Apply"}
+              </button>
+              {packsErr ? <span style={{ color: "#991b1b", fontWeight: 700 }}>{packsErr}</span> : null}
+            </div>
+
+            {/* List table */}
+            <div
+              style={{
+                marginTop: 12,
+                border: "1px solid #eef1f6",
+                borderRadius: 10,
+                overflow: "hidden",
+                background: "#fff",
+              }}
+            >
+              <div style={{ maxHeight: packsTableMaxHeight, overflowY: "auto" }}>
+                <table className="mp-table" style={{ borderRadius: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 80 }}>S.No</th>
+                      <th>MasterPack No.</th>
+                      <th>From Location</th>
+                      <th>To Location</th>
+                      <th style={{ width: 240 }}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {packsLoading ? (
+                      <tr>
+                        <td colSpan={5} className="mp-empty">
+                          Loading…
+                        </td>
+                      </tr>
+                    ) : packs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="mp-empty">
+                          No master packs found.
+                        </td>
+                      </tr>
+                    ) : (
+                      packs.map((p, idx) => {
+                        const fromCode = (p.from_location?.code || "").trim();
+                        const fromName = (p.from_location?.name || "").trim();
+                        const toCode = (p.to_location?.code || "").trim();
+                        const toName = (p.to_location?.name || "").trim();
+
+                        // Show HQ nicely if backend sends blank name
+                        const fromLabel =
+                          fromCode || fromName ? `${fromCode} - ${fromName}`.trim() : "-";
+                        const toLabel =
+                          toCode || toName ? `${toCode} - ${toName}`.trim() : "-";
+
+                        return (
+                          <tr key={p.number || idx}>
+                            <td>{idx + 1}</td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/inventory/master-packaging/${encodeURIComponent(p.number)}`)}
+                                style={{
+                                  border: "none",
+                                  background: "transparent",
+                                  padding: 0,
+                                  color: "#1d4ed8",
+                                  fontWeight: 800,
+                                  cursor: "pointer",
+                                  textDecoration: "underline",
+                                }}
+                                title="Open Master Pack"
+                              >
+                                {p.number}
+                              </button>
+                            </td>
+                            <td>{fromLabel}</td>
+                            <td>{toLabel}</td>
+                            <td>{fmtDateTime(p.created_at)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          {/* ===================== /Master Packs Table ===================== */}
         </div>
 
         {/* RIGHT Preview */}
         <div className="mp-right-card">
           <div className="mp-preview-head">
             <span className="mp-tag">Station {station}</span>
-            <span className={`mp-status ${packResult ? "saved" : "open"}`}>
-              {packResult ? "Saved" : "Open"}
-            </span>
+            <span className={`mp-status ${packResult ? "saved" : "open"}`}>{packResult ? "Saved" : "Open"}</span>
           </div>
 
           <div className="mp-preview-block">
@@ -499,134 +731,13 @@ export default function MasterPackagingPage() {
         </div>
       </div>
 
-      {/* ✅ NEW: MasterPack List Table (below empty space) */}
-      <div className="mp-list-card">
-        <div className="mp-list-head">
-          <div className="mp-list-title">Master Packs</div>
-
-          <div className="mp-list-filters">
-            <div className="mp-flt">
-              <label>From Date</label>
-              <input type="date" value={fltDateFrom} onChange={(e) => setFltDateFrom(e.target.value)} />
-            </div>
-
-            <div className="mp-flt">
-              <label>To Date</label>
-              <input type="date" value={fltDateTo} onChange={(e) => setFltDateTo(e.target.value)} />
-            </div>
-
-            {/* Admin only filters */}
-            {isAdmin && (
-              <>
-                <div className="mp-flt">
-                  <label>From Location</label>
-                  <select
-                    multiple
-                    value={fltFromLocs}
-                    onChange={(e) =>
-                      setFltFromLocs(Array.from(e.target.selectedOptions).map((o) => o.value))
-                    }
-                  >
-                    {locs.map((l) => (
-                      <option key={l.code} value={l.code}>
-                        {l.code} - {l.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mp-flt">
-                  <label>To Location</label>
-                  <select
-                    multiple
-                    value={fltToLocs}
-                    onChange={(e) =>
-                      setFltToLocs(Array.from(e.target.selectedOptions).map((o) => o.value))
-                    }
-                  >
-                    {locs.map((l) => (
-                      <option key={l.code} value={l.code}>
-                        {l.code} - {l.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-
-            <button className="mp-btn mp-btn-primary" onClick={fetchPacks} disabled={listLoading}>
-              {listLoading ? "Loading..." : "Apply"}
-            </button>
-          </div>
-        </div>
-
-        <div className="mp-list-tablewrap">
-          <table className="mp-table">
-            <thead>
-              <tr>
-                <th style={{ width: 60 }}>S.No</th>
-                <th>MasterPack No.</th>
-                <th>From Location</th>
-                <th>To Location</th>
-                <th style={{ width: 220 }}>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {listLoading ? (
-                <tr>
-                  <td colSpan={5} className="mp-empty">
-                    Loading...
-                  </td>
-                </tr>
-              ) : packs.length ? (
-                packs.map((p, i) => (
-                  <tr key={p.number}>
-                    <td>{p.sr || i + 1}</td>
-                    <td>
-                      <button
-                        className="mp-link"
-                        onClick={() =>
-                          navigate(`/inventory/master-packaging/${encodeURIComponent(p.number)}`)
-                        }
-                      >
-                        {p.number}
-                      </button>
-                    </td>
-                    <td>
-                      {(p.from_location?.code || "")}
-                      {p.from_location?.name ? ` - ${p.from_location.name}` : ""}
-                    </td>
-                    <td>
-                      {(p.to_location?.code || "")}
-                      {p.to_location?.name ? ` - ${p.to_location.name}` : ""}
-                    </td>
-                    <td>{p.created_at ? new Date(p.created_at).toLocaleString() : ""}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="mp-empty">
-                    No master packs found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* Floating header dropdown */}
       {headLocOpen &&
         createPortal(
           <div
             ref={headPanelRef}
             className="mp-popover mp-float-panel"
-            style={{
-              position: "fixed",
-              top: headLocRect.top,
-              left: headLocRect.left,
-              width: headLocRect.width,
-            }}
+            style={{ position: "fixed", top: headLocRect.top, left: headLocRect.left, width: headLocRect.width }}
           >
             <div className="mp-pop-search">
               <input
