@@ -18,7 +18,7 @@ from .views_coupons import (
     CouponListCreate, CouponGenerate, GeneratedCouponList,
     CouponLookup, CouponRedeem
 )
-from .views_reports import DaywiseSalesSummary, ProductWiseSalesReport, CategoryWiseSalesSummary
+from .views_reports import  ProductWiseSalesReport, CategoryWiseSalesSummary
 from .views_discounts import DiscountListCreate, DiscountDetail
 from .views_reports_masterpacking import master_packing_item_wise
 from .views_holdbills import HoldBillView, HoldBillRestore
@@ -33,13 +33,15 @@ from .views_dashboard import DashboardSummaryView
 # ✅ CSV Import (NEW)
 from .views_csv_import import ProductCsvPreflight, ProductCsvApply
 
-from .views_receipt import SaleReceiptPdfView
+from .views_receipt import SaleReceiptPdfView,DaywiseSalesSummary
 from .views_creditreceipt import CreditNoteReceiptPdfView
 
 from .views_sales import SalesView, SaleLinesByInvoiceView, SaleDeleteView
 
 
 from .views_register_session import RegisterSessionTodayView, RegisterSessionOpenView
+
+from .views_locations import LocationListView
 
 
 
@@ -135,6 +137,9 @@ urlpatterns = [
     path("credit-notes/<str:note_no>/receipt/", CreditNoteReceiptPdfView.as_view(), name="creditnote-receipt-pdf"),
 
     path("sales/<str:invoice_no>/delete/", SaleDeleteView.as_view(), name="sale-delete"),
+
+    path("locations/", LocationListView.as_view(), name="locations"),
+
 
 ]
 

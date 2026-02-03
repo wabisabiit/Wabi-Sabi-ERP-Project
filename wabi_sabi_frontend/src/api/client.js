@@ -445,12 +445,12 @@ function asArray(payload) {
 }
 
 // Reports
+// Reports
 export async function listDaywiseSalesSummary(params = {}) {
   const sp = new URLSearchParams();
   if (params.date_from) sp.append("date_from", params.date_from);
   if (params.date_to) sp.append("date_to", params.date_to);
 
-  // support multiple locations (append multiple)
   if (Array.isArray(params.location)) {
     params.location.forEach((l) => {
       const s = String(l || "").trim();
@@ -464,7 +464,8 @@ export async function listDaywiseSalesSummary(params = {}) {
 
   const qs = sp.toString();
 
-  return http(`/reports/day-wise-sales-summary/${qs ? `?${qs}` : ""}`);
+  // ✅ FIX: correct backend path (matches products/urls.py)
+  return http(`/reports/daywise-sales/${qs ? `?${qs}` : ""}`);
 }
 
 // ✅ Daywise PDF (blob url)
@@ -484,7 +485,8 @@ export async function getDaywiseSalesPdf(params = {}) {
 
   sp.append("export", "pdf");
 
-  const url = joinUrl(API_BASE, `/reports/day-wise-sales-summary/?${sp.toString()}`);
+  // ✅ FIX: correct backend path
+  const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
 
   const res = await fetch(url, {
     method: "GET",
@@ -518,14 +520,14 @@ export async function getDaywiseSalesExcel(params = {}) {
 
   sp.append("export", "excel");
 
-  const url = joinUrl(API_BASE, `/reports/day-wise-sales-summary/?${sp.toString()}`);
+  // ✅ FIX: correct backend path
+  const url = joinUrl(API_BASE, `/reports/daywise-sales/?${sp.toString()}`);
 
   const res = await fetch(url, {
     method: "GET",
     credentials: "include",
     headers: {
-      Accept:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     },
   });
 
@@ -537,6 +539,7 @@ export async function getDaywiseSalesExcel(params = {}) {
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
+
 
 export async function listProductWiseSales(params = {}) {
   const sp = new URLSearchParams();
