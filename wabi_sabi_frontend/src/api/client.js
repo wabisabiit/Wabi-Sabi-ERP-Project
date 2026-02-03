@@ -491,7 +491,7 @@ export async function getDaywiseSalesPdf(params = {}) {
   const res = await fetch(url, {
     method: "GET",
     credentials: "include",
-    headers: { Accept: "application/pdf" },
+    headers: { Accept: "*/*" },
   });
 
   if (!res.ok) {
