@@ -527,7 +527,7 @@ export async function getDaywiseSalesExcel(params = {}) {
     method: "GET",
     credentials: "include",
     headers: {
-      Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      Accept: "*/*",
     },
   });
 
@@ -798,7 +798,7 @@ export async function getSaleReceiptPdf(invoiceNo) {
   const res = await fetch(url, {
     method: "GET",
     credentials: "include",
-    headers: { Accept: "application/pdf" },
+    headers: { Accept: "*/*" },
   });
 
   if (!res.ok) {
