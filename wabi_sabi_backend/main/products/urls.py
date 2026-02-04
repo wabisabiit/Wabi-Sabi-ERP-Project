@@ -83,7 +83,8 @@ urlpatterns = [
     # Master Pack
     path("master-packs/", MasterPackView.as_view(), name="master-pack-create"),
     path("master-packs/bulk-delete/", MasterPackBulkDelete.as_view(), name="master-pack-bulk-delete"),
-    path("master-packs/<str:number>/", MasterPackDetail.as_view(), name="master-pack-detail"),
+    # ✅ IMPORTANT: MasterPack number contains "/" like MP/HR-UV/0001
+    path("master-packs/<path:number>/", MasterPackDetail.as_view(), name="master-pack-detail"),
 
     # Material Consumption
     path("material-consumptions/", MaterialConsumptionView.as_view(), name="material-consumption-create"),
@@ -144,9 +145,6 @@ urlpatterns = [
     path("locations/", LocationListView.as_view(), name="locations"),
 
     path("reports/sales-register/", SalesRegisterReportView.as_view(), name="sales-register-report"),
-
-
-
 ]
 
 urlpatterns += router.urls

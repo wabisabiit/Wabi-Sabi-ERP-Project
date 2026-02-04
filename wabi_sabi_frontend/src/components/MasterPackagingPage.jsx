@@ -84,6 +84,25 @@ function getSenderName(p) {
   );
 }
 
+/* ✅ NEW: swap helper ONLY for display (HQ/WS should be "From", outlet should be "To") */
+function shouldSwapFromTo(fromLoc, toLoc) {
+  const f = String(fromLoc?.code || "").trim().toUpperCase();
+  const t = String(toLoc?.code || "").trim().toUpperCase();
+
+  // Treat HQ same as WS (legacy)
+  const isHQ = (x) => x === "WS" || x === "HQ";
+
+  // If backend returns HQ/WS in TO but you want it in FROM, swap.
+  // Example desired: From=WS/HQ, To=UV (or any outlet)
+  if (!f && !t) return false;
+  if (isHQ(t) && !isHQ(f)) return true;
+
+  // If From is outlet and To is WS/HQ, swap.
+  if (!isHQ(f) && isHQ(t)) return true;
+
+  return false;
+}
+
 export default function MasterPackagingPage() {
   const navigate = useNavigate();
 
@@ -139,6 +158,21 @@ export default function MasterPackagingPage() {
     left: 0,
     width: 280,
   });
+
+  // ✅ NEW: for managers, lock header location to their outlet location
+  useEffect(() => {
+    if (!isAdmin && myLocCode) {
+      setDefaultLoc(myLocCode);
+      setHeadLocOpen(false);
+      setHeadLocQuery("");
+      setRows((prev) =>
+        prev.map((r) =>
+          r.location_code ? r : { ...r, location_code: myLocCode }
+        )
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, myLocCode]);
 
   const headerFiltered = useMemo(() => {
     const q = headLocQuery.trim().toLowerCase();
@@ -250,7 +284,7 @@ export default function MasterPackagingPage() {
             qty: 1,
             brand: "B4L",
             color: "",
-            location_code: defaultLoc || "",
+            location_code: defaultLoc || myLocCode || "",
           },
         ];
       });
@@ -278,7 +312,10 @@ export default function MasterPackagingPage() {
       clearToastSoon();
       return;
     }
-    if (!defaultLoc) {
+
+    // ✅ Manager: defaultLoc is forced to myLocCode, Admin must pick
+    const effectiveLoc = (defaultLoc || myLocCode || "").trim();
+    if (!effectiveLoc) {
       setToast({
         type: "err",
         msg: "Choose a location from the header first.",
@@ -291,7 +328,7 @@ export default function MasterPackagingPage() {
       rows: rows.map((r) => ({
         barcode: r.barcode,
         qty: Number(r.qty) || 0,
-        location_code: defaultLoc, // force header location
+        location_code: effectiveLoc, // force header/user location
       })),
     };
 
@@ -324,7 +361,7 @@ export default function MasterPackagingPage() {
 
   /* ==============================
      Master Packs List + Filters
-     ✅ FIXED: No location swapping - backend returns correct data
+     ✅ UPDATED: Swap From/To display as per your requirement
      ============================== */
   const [packsLoading, setPacksLoading] = useState(false);
   const [packs, setPacks] = useState([]);
@@ -351,17 +388,24 @@ export default function MasterPackagingPage() {
       const res = await listMasterPacks(q);
       const arr = Array.isArray(res) ? res : [];
 
-      // ✅ FIXED: No swapping - backend already returns correct from/to
       const normalized = arr.map((p) => {
         const number = getPackNumber(p);
         const created_at = p.created_at || p.date || p.created || "";
         const sender = getSenderName(p);
 
-        // Backend returns correct locations
-        const from_location = normLoc(
+        let from_location = normLoc(
           p.from_location || p.fromLocation || p.location_from
         );
-        const to_location = normLoc(p.to_location || p.toLocation || p.location_to);
+        let to_location = normLoc(
+          p.to_location || p.toLocation || p.location_to
+        );
+
+        // ✅ YOUR NEED: show HQ/WS as "From" and outlet as "To"
+        if (shouldSwapFromTo(from_location, to_location)) {
+          const tmp = from_location;
+          from_location = to_location;
+          to_location = tmp;
+        }
 
         return {
           ...p,
@@ -459,24 +503,50 @@ export default function MasterPackagingPage() {
                   <th>Brand</th>
                   <th>Color</th>
                   <th className="mp-location-cell mp-th-loc">
-                    <button
-                      ref={headBtnRef}
-                      type="button"
-                      className={`mp-loc-btn mp-loc-btn--th ${
-                        defaultLoc ? "set" : ""
-                      }`}
-                      onClick={() =>
-                        headLocOpen ? setHeadLocOpen(false) : openHeaderDropdown()
-                      }
-                      title="Default Location for new rows"
-                    >
-                      {defaultLoc
-                        ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}`
-                        : "Location"}
-                      <span className="material-icons-outlined">
-                        arrow_drop_down
-                      </span>
-                    </button>
+                    {/* ✅ Manager: locked location, Admin: dropdown */}
+                    {isAdmin ? (
+                      <button
+                        ref={headBtnRef}
+                        type="button"
+                        className={`mp-loc-btn mp-loc-btn--th ${
+                          defaultLoc ? "set" : ""
+                        }`}
+                        onClick={() =>
+                          headLocOpen
+                            ? setHeadLocOpen(false)
+                            : openHeaderDropdown()
+                        }
+                        title="Default Location for new rows"
+                      >
+                        {defaultLoc
+                          ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}`
+                          : "Location"}
+                        <span className="material-icons-outlined">
+                          arrow_drop_down
+                        </span>
+                      </button>
+                    ) : (
+                      <div
+                        className="mp-loc-fixed"
+                        style={{
+                          fontWeight: 900,
+                          color: "#111827",
+                          padding: "8px 10px",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 10,
+                          background: "#f9fafb",
+                          display: "inline-block",
+                          minWidth: 220,
+                        }}
+                        title="Your outlet location"
+                      >
+                        {(defaultLoc || myLocCode)
+                          ? `${defaultLoc || myLocCode} – ${
+                              locMap.get(defaultLoc || myLocCode) || ""
+                            }`
+                          : "Location not set"}
+                      </div>
+                    )}
                   </th>
                   <th></th>
                 </tr>
@@ -509,8 +579,10 @@ export default function MasterPackagingPage() {
                       <td></td>
                       <td className="mp-location-cell">
                         <div className="mp-loc-fixed">
-                          {defaultLoc
-                            ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}`
+                          {(defaultLoc || myLocCode)
+                            ? `${defaultLoc || myLocCode} – ${
+                                locMap.get(defaultLoc || myLocCode) || ""
+                              }`
                             : "Location not set"}
                         </div>
                       </td>
@@ -626,6 +698,7 @@ export default function MasterPackagingPage() {
                           </option>
                         ))}
                         <option value="WS">WS - Head Office</option>
+                        <option value="HQ">HQ - Head Office</option>
                       </select>
                     </div>
                   </div>
@@ -655,6 +728,7 @@ export default function MasterPackagingPage() {
                           </option>
                         ))}
                         <option value="WS">WS - Head Office</option>
+                        <option value="HQ">HQ - Head Office</option>
                       </select>
                     </div>
                   </div>
@@ -833,6 +907,7 @@ export default function MasterPackagingPage() {
 
       {/* Floating header dropdown */}
       {headLocOpen &&
+        isAdmin &&
         createPortal(
           <div
             ref={headPanelRef}

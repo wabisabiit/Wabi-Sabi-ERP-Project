@@ -62,6 +62,22 @@ def _parse_range(request):
     return df, dt, start_dt, end_dt
 
 
+def _display_name_for_user(u):
+    """
+    ✅ NEW: show human name if available, else username
+    Works for admin and manager both.
+    """
+    if not u:
+        return ""
+    try:
+        full = (u.get_full_name() or "").strip()
+        if full:
+            return full
+    except Exception:
+        pass
+    return (getattr(u, "username", "") or "").strip()
+
+
 class MasterPackView(APIView):
     """
     POST /api/master-packs/  -> create
@@ -93,7 +109,7 @@ class MasterPackView(APIView):
 
         qs = (
             MasterPack.objects
-            .select_related("from_location", "to_location")
+            .select_related("from_location", "to_location", "created_by")
             .prefetch_related(
                 Prefetch("lines", queryset=MasterPackLine.objects.select_related("location"))
             )
@@ -139,10 +155,7 @@ class MasterPackView(APIView):
                 "sr": idx,
                 "number": p.number,
                 "created_at": p.created_at,
-                "sender": (
-                    getattr(getattr(p, "created_by", None), "username", "") or
-                    getattr(getattr(p, "created_by", None), "get_username", lambda: "")()
-                ) if hasattr(p, "created_by") else "",
+                "sender": _display_name_for_user(getattr(p, "created_by", None)),
                 "from_location": {
                     "code": getattr(floc, "code", "") or "",
                     "name": getattr(floc, "name", "") or "",
@@ -163,34 +176,38 @@ class MasterPackView(APIView):
         pack = ser.save()
 
         user = request.user
-        _admin = _is_admin(user)
         user_loc, _emp = _user_location(user)
         hq = _hq_location()
 
-        # ✅ CORRECTED LOGIC:
-        # from_location = outlet where pack is created (user's location)
-        # to_location = WS headquarters
-
-        # from_location = user's outlet location (where items are scanned)
-        from_loc = user_loc
-
-        # to_location = WS headquarters (where items are being sent)
-        to_loc = hq
+        # ✅ CHANGED LOGIC (as per your requirement):
+        # from_location = WS headquarters (HQ)
+        # to_location   = outlet where pack is created (UV etc.)
+        from_loc = hq
+        to_loc = user_loc
 
         # Save from/to locations
         if from_loc and not pack.from_location_id:
             pack.from_location = from_loc
         if to_loc and not pack.to_location_id:
             pack.to_location = to_loc
-        pack.save(update_fields=["from_location", "to_location"])
 
-        # ✅ SPECIAL CASE: outlet -> WS means activate barcodes at WS
-        # Condition: to_location == WS and from_location is an outlet
-        if hq and pack.to_location_id == hq.id and pack.from_location_id and pack.from_location_id != hq.id:
-            # Set qty=1 and move to WS for all barcodes in this pack
+        # ✅ NEW: store creator (admin / manager)
+        if not getattr(pack, "created_by_id", None):
+            pack.created_by = user
+
+        # ✅ IMPORTANT: ensure number is generated based on from_location mapping
+        # (number auto-generates in model save if missing)
+        if not pack.number:
+            pack.number = ""  # triggers model generation on save (safe)
+
+        pack.save()
+
+        # ✅ CHANGED SPECIAL CASE:
+        # HQ -> outlet means barcodes should be active at outlet (TO location)
+        if hq and pack.from_location_id == hq.id and pack.to_location_id and pack.to_location_id != hq.id:
             barcodes = list(pack.lines.values_list("barcode", flat=True))
             if barcodes:
-                Product.objects.filter(barcode__in=barcodes).update(qty=1, location=hq)
+                Product.objects.filter(barcode__in=barcodes).update(qty=1, location=pack.to_location)
 
         out = MasterPackOutSerializer(pack).data
         return Response({"status": "ok", "pack": out}, status=status.HTTP_201_CREATED)
@@ -205,7 +222,7 @@ class MasterPackDetail(APIView):
     def get(self, request, number):
         pack = get_object_or_404(
             MasterPack.objects
-            .select_related("from_location", "to_location")
+            .select_related("from_location", "to_location", "created_by")
             .prefetch_related(
                 Prefetch("lines", queryset=MasterPackLine.objects.select_related("location"))
             ),
@@ -223,6 +240,9 @@ class MasterPackDetail(APIView):
             "code": getattr(getattr(pack, "to_location", None), "code", "") or "",
             "name": getattr(getattr(pack, "to_location", None), "name", "") or "",
         } if pack.to_location_id else {"code": "", "name": ""}
+
+        # ✅ NEW: ensure sender is visible on detail too (if your serializer doesn't include it)
+        data["sender"] = _display_name_for_user(getattr(pack, "created_by", None))
 
         return Response(data, status=status.HTTP_200_OK)
 

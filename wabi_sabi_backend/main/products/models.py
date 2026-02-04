@@ -411,6 +411,37 @@ class CreditNote(models.Model):
 
 
 
+
+# ===========================
+# ✅ NEW: MasterPack sequence
+# ===========================
+class MasterPackSequence(models.Model):
+    """
+    Concurrency-safe sequence for MasterPack numbers.
+    One row per segment (HR-UV / WS / DL-RGR etc.)
+    """
+    segment      = models.CharField(max_length=24, unique=True, db_index=True)  # e.g. HR-UV, WS
+    next_number  = models.PositiveIntegerField(default=1)
+    pad_width    = models.PositiveSmallIntegerField(default=4)  # 0001
+
+    def __str__(self):
+        return f"MP/{self.segment} next={self.next_number}"
+
+    @classmethod
+    def next_no(cls, segment: str):
+        seg = (segment or "").strip().upper()
+        if not seg:
+            seg = "WS"
+        with transaction.atomic():
+            seq, _ = cls.objects.select_for_update().get_or_create(
+                segment=seg, defaults={"next_number": 1, "pad_width": 4}
+            )
+            num = seq.next_number
+            seq.next_number = num + 1
+            seq.save(update_fields=["next_number"])
+            return f"MP/{seg}/{str(num).zfill(int(seq.pad_width or 4))}"
+
+
 class MasterPack(models.Model):
     """
     Master packing header.
@@ -452,6 +483,42 @@ class MasterPack(models.Model):
 
     def __str__(self):
         return self.number
+
+    # ✅ NEW: location->segment mapping as per your requirement
+    @staticmethod
+    def _mp_segment_from_location_code(code: str) -> str:
+        c = (code or "").strip().upper()
+        c_norm = c.replace(" ", "")
+
+        # support both "UPAP" and "UP-AP"
+        if c_norm == "UPAP":
+            c = "UP-AP"
+
+        # Your requested mapping:
+        # HR prefix -> UV, IC, M3M
+        # WS -> WS
+        # UP prefix -> AP (UP-AP)
+        # DL prefix -> RGR (inside), RGO (outside), TN
+        mapping = {
+            "UV":   "HR-UV",
+            "IC":   "HR-IC",
+            "M3M":  "HR-M3M",
+            "UP-AP":"UP-AP",
+            "WS":   "WS",
+            # DB codes are RJR/RJO, but you want RGR/RGO in MP number
+            "RJR":  "DL-RGR",
+            "RJO":  "DL-RGO",
+            "TN":   "DL-TN",
+        }
+        return mapping.get(c, c or "WS")
+
+    def save(self, *args, **kwargs):
+        # ✅ Auto-generate MP number if not set
+        if not self.number:
+            from_code = getattr(self.from_location, "code", "") if self.from_location_id else ""
+            segment = self._mp_segment_from_location_code(from_code)
+            self.number = MasterPackSequence.next_no(segment)
+        super().save(*args, **kwargs)
 
 
 class MasterPackLine(models.Model):
