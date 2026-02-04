@@ -653,8 +653,8 @@ export default function MasterPackagingPage() {
                     <tr>
                       <th style={{ width: 80 }}>S.No</th>
                       <th style={{ width: 170 }}>MasterPack No.</th>
-                      <th>From Location</th>
                       <th>To Location</th>
+                      <th>From Location</th>
                       <th style={{ width: 240 }}>Date</th>
                     </tr>
                   </thead>

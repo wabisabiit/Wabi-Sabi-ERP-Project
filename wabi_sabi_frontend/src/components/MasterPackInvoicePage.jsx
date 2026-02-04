@@ -54,8 +54,8 @@ export default function MasterPackInvoicePage() {
       ) : (
         <>
           <div className="mpi-card mpi-meta">
-            <div><b>From:</b> {(data?.from_location?.code || "")} {data?.from_location?.name ? `- ${data.from_location.name}` : ""}</div>
-            <div><b>To:</b> {(data?.to_location?.code || "")} {data?.to_location?.name ? `- ${data.to_location.name}` : ""}</div>
+            <div><b>To:</b> {(data?.from_location?.code || "")} {data?.from_location?.name ? `- ${data.from_location.name}` : ""}</div>
+            <div><b>From:</b> {(data?.to_location?.code || "")} {data?.to_location?.name ? `- ${data.to_location.name}` : ""}</div>
             <div><b>Date:</b> {data?.created_at ? new Date(data.created_at).toLocaleString() : ""}</div>
           </div>
 
