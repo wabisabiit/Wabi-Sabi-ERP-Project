@@ -85,23 +85,11 @@ function getSenderName(p) {
 }
 
 /* ✅ NEW: swap helper ONLY for display (HQ/WS should be "From", outlet should be "To") */
+/* ✅ UPDATED: do not swap from/to (backend is now correct) */
 function shouldSwapFromTo(fromLoc, toLoc) {
-  const f = String(fromLoc?.code || "").trim().toUpperCase();
-  const t = String(toLoc?.code || "").trim().toUpperCase();
-
-  // Treat HQ same as WS (legacy)
-  const isHQ = (x) => x === "WS" || x === "HQ";
-
-  // If backend returns HQ/WS in TO but you want it in FROM, swap.
-  // Example desired: From=WS/HQ, To=UV (or any outlet)
-  if (!f && !t) return false;
-  if (isHQ(t) && !isHQ(f)) return true;
-
-  // If From is outlet and To is WS/HQ, swap.
-  if (!isHQ(f) && isHQ(t)) return true;
-
   return false;
 }
+
 
 export default function MasterPackagingPage() {
   const navigate = useNavigate();

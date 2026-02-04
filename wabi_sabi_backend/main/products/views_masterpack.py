@@ -10,7 +10,7 @@ from django.utils.dateparse import parse_date
 from datetime import datetime, time
 
 from taskmaster.models import Location
-from .models import MasterPack, MasterPackLine, Product, MasterPackSequence  # ✅ add MasterPackSequence
+from .models import MasterPack, MasterPackLine, Product
 from .serializers import MasterPackCreateSerializer, MasterPackOutSerializer
 
 
@@ -76,9 +76,21 @@ def _display_name_for_user(u):
     return (getattr(u, "username", "") or "").strip()
 
 
-def _is_hq_code(code: str) -> bool:
-    c = (code or "").strip().upper()
-    return c in ("WS", "HQ")
+def _extract_dest_location_from_payload(request):
+    """
+    Reads the destination location_code coming from the frontend payload:
+      { rows: [{ barcode, qty, location_code }, ...] }
+    """
+    try:
+        rows = request.data.get("rows", []) or []
+        if not rows:
+            return None
+        code = (rows[0].get("location_code") or "").strip()
+        if not code:
+            return None
+        return Location.objects.filter(code__iexact=code).first()
+    except Exception:
+        return None
 
 
 class MasterPackView(APIView):
@@ -119,13 +131,14 @@ class MasterPackView(APIView):
             .order_by("-created_at", "-id")
         )
 
-        # Manager visibility: see packs where outlet is FROM or TO
+        # ✅ Manager visibility - see packs where outlet is FROM or TO
         if not admin:
             if user_loc:
                 qs = qs.filter(Q(from_location=user_loc) | Q(to_location=user_loc))
             else:
                 qs = qs.none()
 
+        # Admin filtering by from/to
         if admin and from_params:
             q = Q()
             for v in from_params:
@@ -141,7 +154,7 @@ class MasterPackView(APIView):
         out = []
         for idx, p in enumerate(qs, start=1):
             floc = p.from_location
-            tloc = p.to_location  # ✅ no fallback; show actual saved to_location
+            tloc = p.to_location
 
             out.append({
                 "sr": idx,
@@ -169,30 +182,28 @@ class MasterPackView(APIView):
 
         user = request.user
         admin = _is_admin(user)
+
         user_loc, _emp = _user_location(user)
         hq = _hq_location()
 
-        # -------- Determine destination correctly --------
-        rows = (request.data or {}).get("rows") or []
-        first_dest_code = ""
-        if isinstance(rows, list) and rows:
-            first_dest_code = str((rows[0] or {}).get("location_code") or "").strip()
+        # ✅ Destination comes from payload header selection (Admin selects outlet / WS)
+        dest_loc = _extract_dest_location_from_payload(request)
 
-        dest_loc = None
-        if first_dest_code:
-            dest_loc = Location.objects.filter(code__iexact=first_dest_code).first()
+        # Normalize "HQ" legacy: treat it as WS
+        if dest_loc and hq and (dest_loc.code or "").strip().upper() == "HQ":
+            dest_loc = hq
 
-        # ✅ RULES:
-        # Admin: From = WS, To = selected destination (UV etc.)
-        # Manager: From = manager outlet, To = WS (HQ)
-        if admin:
-            from_loc = hq
-            to_loc = dest_loc  # must come from UI selection
-        else:
+        # ✅ Correct direction:
+        # - If destination is WS (HQ): FROM = user outlet, TO = WS
+        # - Else (sending to outlet): FROM = WS, TO = destination
+        if hq and dest_loc and dest_loc.id == hq.id:
             from_loc = user_loc
             to_loc = hq
+        else:
+            from_loc = hq
+            to_loc = dest_loc or user_loc
 
-        # Save from/to locations (force set)
+        # Save from/to
         pack.from_location = from_loc
         pack.to_location = to_loc
 
@@ -200,33 +211,27 @@ class MasterPackView(APIView):
         if not getattr(pack, "created_by_id", None):
             pack.created_by = user
 
-        # -------- Fix pack number segment --------
-        # if one side is HQ/WS, generate number from the OTHER side (outlet).
-        outlet_code = ""
-        if pack.from_location_id and not _is_hq_code(getattr(pack.from_location, "code", "")):
-            outlet_code = getattr(pack.from_location, "code", "")
-        elif pack.to_location_id and not _is_hq_code(getattr(pack.to_location, "code", "")):
-            outlet_code = getattr(pack.to_location, "code", "")
+        # ✅ FIX: Regenerate number AFTER from/to are set, if segment is wrong
+        desired_segment = None
+        if hq and pack.to_location_id == hq.id:
+            desired_segment = "WS"
+        else:
+            from_code = getattr(pack.from_location, "code", "") if pack.from_location_id else ""
+            desired_segment = MasterPack._mp_segment_from_location_code(from_code)
 
-        segment = MasterPack._mp_segment_from_location_code(outlet_code)
-
-        # If it already got auto-numbered as WS (created before we set locations),
-        # regenerate to correct outlet segment.
-        if segment and segment != "WS":
-            if (pack.number or "").startswith("MP/WS/") or not pack.number:
-                pack.number = MasterPackSequence.next_no(segment)
+        if desired_segment:
+            prefix = f"MP/{desired_segment}/"
+            if not (pack.number or "").startswith(prefix):
+                pack.number = ""  # forces model to regenerate using correct segment
 
         pack.save()
 
-        # ✅ Destination inventory update:
-        # Always move products to pack.to_location (destination)
-        if pack.to_location_id:
+        # ✅ Stock move rule (keep your previous behavior):
+        # If WS -> outlet then products move to outlet
+        if hq and pack.from_location_id == hq.id and pack.to_location_id and pack.to_location_id != hq.id:
             barcodes = list(pack.lines.values_list("barcode", flat=True))
             if barcodes:
-                Product.objects.filter(barcode__in=barcodes).update(
-                    qty=1,
-                    location=pack.to_location
-                )
+                Product.objects.filter(barcode__in=barcodes).update(qty=1, location=pack.to_location)
 
         out = MasterPackOutSerializer(pack).data
         return Response({"status": "ok", "pack": out}, status=status.HTTP_201_CREATED)
