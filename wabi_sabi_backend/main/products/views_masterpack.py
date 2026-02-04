@@ -93,7 +93,7 @@ class MasterPackView(APIView):
 
         qs = (
             MasterPack.objects
-            .select_related("from_location", "to_location", "created_by")
+            .select_related("from_location", "to_location")
             .prefetch_related(
                 Prefetch("lines", queryset=MasterPackLine.objects.select_related("location"))
             )
@@ -104,8 +104,12 @@ class MasterPackView(APIView):
         # ✅ FIXED: Manager visibility - see packs where outlet is FROM or TO
         if not admin:
             if user_loc:
-                qs = qs.filter(Q(from_location=user_loc) | Q(to_location=user_loc))
+                # Show packs where this outlet is either sender OR receiver
+                qs = qs.filter(
+                    Q(from_location=user_loc) | Q(to_location=user_loc)
+                )
             else:
+                # No location = no packs (safety)
                 qs = qs.none()
 
         # Admin filtering by from/to
@@ -123,26 +127,22 @@ class MasterPackView(APIView):
 
         out = []
         for idx, p in enumerate(qs, start=1):
+            # Get from/to locations
             floc = p.from_location
             if not floc and p.lines.exists():
+                # Fallback: use first line's location as from
                 floc = p.lines.all()[0].location
 
             tloc = p.to_location
-
-            # ✅ NEW: Sender name
-            sender_name = ""
-            if getattr(p, "created_by", None):
-                emp = getattr(p.created_by, "employee", None)
-                sender_name = (
-                    (getattr(emp, "name", "") or getattr(emp, "full_name", "") or "").strip()
-                    or (getattr(p.created_by, "username", "") or "").strip()
-                )
 
             out.append({
                 "sr": idx,
                 "number": p.number,
                 "created_at": p.created_at,
-                "sender": sender_name,
+                "sender": (
+                    getattr(getattr(p, "created_by", None), "username", "") or
+                    getattr(getattr(p, "created_by", None), "get_username", lambda: "")()
+                ) if hasattr(p, "created_by") else "",
                 "from_location": {
                     "code": getattr(floc, "code", "") or "",
                     "name": getattr(floc, "name", "") or "",
@@ -156,42 +156,38 @@ class MasterPackView(APIView):
         return Response(out, status=status.HTTP_200_OK)
 
     def post(self, request):
-        # ✅ save created_by
         ser = MasterPackCreateSerializer(data=request.data)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        pack = ser.save(created_by=request.user)
+        pack = ser.save()
 
         user = request.user
-        admin = _is_admin(user)
+        _admin = _is_admin(user)
         user_loc, _emp = _user_location(user)
         hq = _hq_location()
 
-        # ✅ DIRECTION FIX
-        # Manager -> HQ
-        if not admin:
-            from_loc = user_loc
-            to_loc = hq
-        else:
-            # Admin -> Outlet (infer outlet from first row's location_code)
-            rows = request.data.get("rows") or []
-            row_loc_code = ""
-            if isinstance(rows, list) and rows:
-                row_loc_code = (rows[0].get("location_code") or "").strip()
+        # ✅ CORRECTED LOGIC:
+        # from_location = outlet where pack is created (user's location)
+        # to_location = WS headquarters
 
-            to_loc = Location.objects.filter(code__iexact=row_loc_code).first() if row_loc_code else None
-            from_loc = hq
+        # from_location = user's outlet location (where items are scanned)
+        from_loc = user_loc
 
+        # to_location = WS headquarters (where items are being sent)
+        to_loc = hq
+
+        # Save from/to locations
         if from_loc and not pack.from_location_id:
             pack.from_location = from_loc
         if to_loc and not pack.to_location_id:
             pack.to_location = to_loc
-
-        pack.save(update_fields=["from_location", "to_location", "created_by"])
+        pack.save(update_fields=["from_location", "to_location"])
 
         # ✅ SPECIAL CASE: outlet -> WS means activate barcodes at WS
+        # Condition: to_location == WS and from_location is an outlet
         if hq and pack.to_location_id == hq.id and pack.from_location_id and pack.from_location_id != hq.id:
+            # Set qty=1 and move to WS for all barcodes in this pack
             barcodes = list(pack.lines.values_list("barcode", flat=True))
             if barcodes:
                 Product.objects.filter(barcode__in=barcodes).update(qty=1, location=hq)
@@ -209,7 +205,7 @@ class MasterPackDetail(APIView):
     def get(self, request, number):
         pack = get_object_or_404(
             MasterPack.objects
-            .select_related("from_location", "to_location", "created_by")
+            .select_related("from_location", "to_location")
             .prefetch_related(
                 Prefetch("lines", queryset=MasterPackLine.objects.select_related("location"))
             ),
@@ -217,6 +213,7 @@ class MasterPackDetail(APIView):
         )
         data = MasterPackOutSerializer(pack).data
 
+        # Attach from/to for the invoice-like page
         data["from_location"] = {
             "code": getattr(getattr(pack, "from_location", None), "code", "") or "",
             "name": getattr(getattr(pack, "from_location", None), "name", "") or "",
@@ -226,16 +223,6 @@ class MasterPackDetail(APIView):
             "code": getattr(getattr(pack, "to_location", None), "code", "") or "",
             "name": getattr(getattr(pack, "to_location", None), "name", "") or "",
         } if pack.to_location_id else {"code": "", "name": ""}
-
-        # ✅ optional sender for detail page (doesn't break old UI)
-        sender_name = ""
-        if getattr(pack, "created_by", None):
-            emp = getattr(pack.created_by, "employee", None)
-            sender_name = (
-                (getattr(emp, "name", "") or getattr(emp, "full_name", "") or "").strip()
-                or (getattr(pack.created_by, "username", "") or "").strip()
-            )
-        data["sender"] = sender_name
 
         return Response(data, status=status.HTTP_200_OK)
 

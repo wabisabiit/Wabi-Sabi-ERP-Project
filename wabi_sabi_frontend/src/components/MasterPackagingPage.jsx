@@ -50,6 +50,7 @@ function normLoc(x) {
   return { code, name };
 }
 
+/* ✅ NEW: robust pickers (for MasterPack No & Sender) */
 function pickFirstNonEmpty(...vals) {
   for (const v of vals) {
     const s = String(v ?? "").trim();
@@ -57,9 +58,7 @@ function pickFirstNonEmpty(...vals) {
   }
   return "";
 }
-
 function getPackNumber(p) {
-  // ✅ robust: support old/new keys + nested serializer shapes
   return pickFirstNonEmpty(
     p?.number,
     p?.masterpack_no,
@@ -68,24 +67,20 @@ function getPackNumber(p) {
     p?.pack_no,
     p?.packNo,
     p?.mp_no,
-    p?.mpNo,
-    p?.invoice_no, // some older backends reused this naming
-    p?.invoiceNo
+    p?.mpNo
   );
 }
-
-function getPackSender(p) {
-  // ✅ robust: show superuser username (e.g. "harmeet") even when no Employee exists
+function getSenderName(p) {
   return pickFirstNonEmpty(
     p?.sender,
     p?.created_by_name,
     p?.createdByName,
     p?.created_by_username,
     p?.createdByUsername,
-    p?.created_by, // sometimes backend sends username here
+    p?.created_by,
     p?.createdBy,
-    p?.user,
-    p?.username
+    p?.username,
+    p?.user
   );
 }
 
@@ -329,6 +324,7 @@ export default function MasterPackagingPage() {
 
   /* ==============================
      Master Packs List + Filters
+     ✅ FIXED: No location swapping - backend returns correct data
      ============================== */
   const [packsLoading, setPacksLoading] = useState(false);
   const [packs, setPacks] = useState([]);
@@ -355,18 +351,17 @@ export default function MasterPackagingPage() {
       const res = await listMasterPacks(q);
       const arr = Array.isArray(res) ? res : [];
 
+      // ✅ FIXED: No swapping - backend already returns correct from/to
       const normalized = arr.map((p) => {
-        const number = getPackNumber(p); // ✅ FIX: MasterPack number always shows
+        const number = getPackNumber(p);
         const created_at = p.created_at || p.date || p.created || "";
+        const sender = getSenderName(p);
 
+        // Backend returns correct locations
         const from_location = normLoc(
           p.from_location || p.fromLocation || p.location_from
         );
-        const to_location = normLoc(
-          p.to_location || p.toLocation || p.location_to
-        );
-
-        const sender = getPackSender(p); // ✅ FIX: show "harmeet" for superuser
+        const to_location = normLoc(p.to_location || p.toLocation || p.location_to);
 
         return {
           ...p,
@@ -551,10 +546,7 @@ export default function MasterPackagingPage() {
               </div>
             </div>
             <div className="mp-actions">
-              <button
-                className="mp-btn mp-btn-ghost"
-                onClick={() => setRows([])}
-              >
+              <button className="mp-btn mp-btn-ghost" onClick={() => setRows([])}>
                 Clear
               </button>
               <button
@@ -702,101 +694,86 @@ export default function MasterPackagingPage() {
                 background: "#fff",
               }}
             >
-              <div style={{ overflowX: "auto" }}>
-                <div
-                  style={{
-                    maxHeight: packsTableMaxHeight,
-                    overflowY: "auto",
-                    minWidth: 820,
-                  }}
-                >
-                  <table className="mp-table" style={{ borderRadius: 0, width: "100%" }}>
-                    <thead>
+              <div style={{ maxHeight: packsTableMaxHeight, overflowY: "auto" }}>
+                <table className="mp-table" style={{ borderRadius: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 80 }}>S.No</th>
+                      <th style={{ width: 170 }}>MasterPack No.</th>
+                      <th>From Location</th>
+                      <th>To Location</th>
+                      <th style={{ width: 180 }}>Sender</th>
+                      <th style={{ width: 240 }}>Date</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {packsLoading ? (
                       <tr>
-                        <th style={{ width: 80 }}>S.No</th>
-                        <th style={{ width: 170 }}>MasterPack No.</th>
-                        <th style={{ minWidth: 220 }}>To Location</th>
-                        <th style={{ minWidth: 220 }}>From Location</th>
-                        <th style={{ minWidth: 180 }}>Sender</th>
-                        <th style={{ width: 240 }}>Date</th>
+                        <td colSpan={6} className="mp-empty">
+                          Loading…
+                        </td>
                       </tr>
-                    </thead>
+                    ) : packs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="mp-empty">
+                          No master packs found.
+                        </td>
+                      </tr>
+                    ) : (
+                      packs.map((p, idx) => {
+                        const fromCode = (p.from_location?.code || "").trim();
+                        const fromName = (p.from_location?.name || "").trim();
+                        const toCode = (p.to_location?.code || "").trim();
+                        const toName = (p.to_location?.name || "").trim();
 
-                    <tbody>
-                      {packsLoading ? (
-                        <tr>
-                          <td colSpan={6} className="mp-empty">
-                            Loading…
-                          </td>
-                        </tr>
-                      ) : packs.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="mp-empty">
-                            No master packs found.
-                          </td>
-                        </tr>
-                      ) : (
-                        packs.map((p, idx) => {
-                          const fromCode = (p.from_location?.code || "").trim();
-                          const fromName = (p.from_location?.name || "").trim();
-                          const toCode = (p.to_location?.code || "").trim();
-                          const toName = (p.to_location?.name || "").trim();
+                        const fromLabel =
+                          fromCode || fromName
+                            ? `${fromCode}${fromName ? " - " + fromName : ""}`
+                            : "-";
 
-                          const fromLabel =
-                            fromCode || fromName
-                              ? `${fromCode}${fromName ? " - " + fromName : ""}`
-                              : "-";
+                        const toLabel =
+                          toCode || toName
+                            ? `${toCode}${toName ? " - " + toName : ""}`
+                            : "-";
 
-                          const toLabel =
-                            toCode || toName
-                              ? `${toCode}${toName ? " - " + toName : ""}`
-                              : "-";
-
-                          const mpNo = String(p.number || "").trim();
-                          const senderName = String(p.sender || "").trim();
-
-                          return (
-                            <tr key={mpNo || idx}>
-                              <td>{idx + 1}</td>
-                              <td>
-                                {mpNo ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      navigate(
-                                        `/inventory/master-packaging/${encodeURIComponent(
-                                          mpNo
-                                        )}`
-                                      )
-                                    }
-                                    style={{
-                                      border: "none",
-                                      background: "transparent",
-                                      padding: 0,
-                                      color: "#1d4ed8",
-                                      fontWeight: 900,
-                                      cursor: "pointer",
-                                      textDecoration: "underline",
-                                    }}
-                                    title="Open Master Pack"
-                                  >
-                                    {mpNo}
-                                  </button>
-                                ) : (
-                                  <span style={{ color: "#6b7280", fontWeight: 800 }}>-</span>
-                                )}
-                              </td>
-                              <td>{toLabel}</td>
-                              <td>{fromLabel}</td>
-                              <td>{senderName || "-"}</td>
-                              <td>{fmtDateTime(p.created_at)}</td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        return (
+                          <tr key={p.number || idx}>
+                            <td>{idx + 1}</td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(
+                                    `/inventory/master-packaging/${encodeURIComponent(
+                                      p.number
+                                    )}`
+                                  )
+                                }
+                                style={{
+                                  border: "none",
+                                  background: "transparent",
+                                  padding: 0,
+                                  color: "#1d4ed8",
+                                  fontWeight: 900,
+                                  cursor: "pointer",
+                                  textDecoration: "underline",
+                                }}
+                                title="Open Master Pack"
+                              >
+                                {p.number}
+                              </button>
+                            </td>
+                            <td>{fromLabel}</td>
+                            <td>{toLabel}</td>
+                            <td>{p.sender || "-"}</td>
+                            <td>{fmtDateTime(p.created_at)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
