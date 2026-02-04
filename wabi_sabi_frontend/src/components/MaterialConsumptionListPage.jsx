@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/MaterialConsumption.css";
-import { mcList, listLocations } from "../api/client";
+import { mcList, listLocations, mcDelete } from "../api/client";
 
 /* Small helpers */
 const toDMY = (iso) => {
@@ -62,6 +62,20 @@ export default function MaterialConsumptionListPage() {
     })();
     return () => { alive = false; };
   }, []);
+
+  /* ✅ NEW: delete handler (backend + remove from table) */
+  const onDelete = async (no) => {
+    const ok = window.confirm(`Delete Material Consumption ${no}?`);
+    if (!ok) return;
+
+    try {
+      await mcDelete(no);
+      setRows(prev => prev.filter(r => r.no !== no));
+      alert("Deleted successfully.");
+    } catch (e) {
+      alert(`Delete failed: ${e?.message || e}`);
+    }
+  };
 
   /* Client-side filter & search exactly like your previous version */
   const filtered = useMemo(() => {
@@ -180,9 +194,23 @@ export default function MaterialConsumptionListPage() {
                 <td>{r.loc}</td>
                 <td className="num">{fmtInt(r.amount)}</td>
                 <td className="actions">
-                  <span className="mi">visibility</span>
-                  <span className="mi">edit</span>
-                  <span className="mi">delete</span>
+                  <span
+                    className="mi"
+                    title="View"
+                    onClick={() => navigate(`/inventory/material-consumption/${r.no}`)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    visibility
+                  </span>
+                  <span className="mi" title="Edit">edit</span>
+                  <span
+                    className="mi"
+                    title="Delete"
+                    onClick={() => onDelete(r.no)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    delete
+                  </span>
                 </td>
               </tr>
             ))}

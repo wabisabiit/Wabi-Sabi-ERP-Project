@@ -402,6 +402,10 @@ export async function mcGet(number) {
   return http(`/material-consumptions/${encodeURIComponent(number)}/`);
 }
 
+export async function mcDelete(number) {
+  return http(`/material-consumptions/${encodeURIComponent(number)}/`, { method: "DELETE" });
+}
+
 // Coupons
 export async function listCoupons() {
   const res = await http(`/coupons/`);
@@ -984,4 +988,6 @@ export default {
 
   getRegisterSessionToday,
   openRegisterSession,
+
+  mcDelete,
 };
