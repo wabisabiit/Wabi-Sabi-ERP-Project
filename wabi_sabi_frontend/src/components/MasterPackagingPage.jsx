@@ -182,10 +182,7 @@ export default function MasterPackagingPage() {
     if (!raw) return;
 
     const now = Date.now();
-    if (
-      lastScanRef.current.code === raw &&
-      now - lastScanRef.current.ts < 400
-    ) {
+    if (lastScanRef.current.code === raw && now - lastScanRef.current.ts < 400) {
       setScan("");
       ensureScanFocus();
       return;
@@ -230,12 +227,9 @@ export default function MasterPackagingPage() {
 
   const updateQty = (rowId, value) => {
     const v = Math.max(0, Number(value) || 0);
-    setRows((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, qty: v } : r))
-    );
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, qty: v } : r)));
   };
-  const removeRow = (rowId) =>
-    setRows((prev) => prev.filter((r) => r.id !== rowId));
+  const removeRow = (rowId) => setRows((prev) => prev.filter((r) => r.id !== rowId));
 
   /* ───── Save & Preview -> create master pack ───── */
   async function onSaveAndPreview() {
@@ -290,7 +284,6 @@ export default function MasterPackagingPage() {
 
   /* ==============================
      Master Packs List + Filters
-     ✅ FIXED: No location swapping - backend returns correct data
      ============================== */
   const [packsLoading, setPacksLoading] = useState(false);
   const [packs, setPacks] = useState([]);
@@ -317,18 +310,12 @@ export default function MasterPackagingPage() {
       const res = await listMasterPacks(q);
       const arr = Array.isArray(res) ? res : [];
 
-      // ✅ FIXED: No swapping - backend already returns correct from/to
       const normalized = arr.map((p) => {
         const number = p.number || p.masterpack_no || p.masterPackNo || "";
         const created_at = p.created_at || p.date || p.created || "";
 
-        // Backend returns correct locations
-        const from_location = normLoc(
-          p.from_location || p.fromLocation || p.location_from
-        );
-        const to_location = normLoc(
-          p.to_location || p.toLocation || p.location_to
-        );
+        const from_location = normLoc(p.from_location || p.fromLocation || p.location_from);
+        const to_location = normLoc(p.to_location || p.toLocation || p.location_to);
 
         return {
           ...p,
@@ -339,7 +326,6 @@ export default function MasterPackagingPage() {
         };
       });
 
-      // No client-side filtering needed - backend handles visibility
       setPacks(normalized);
     } catch (e) {
       setPacksErr(e?.message || String(e));
@@ -429,20 +415,14 @@ export default function MasterPackagingPage() {
                     <button
                       ref={headBtnRef}
                       type="button"
-                      className={`mp-loc-btn mp-loc-btn--th ${
-                        defaultLoc ? "set" : ""
-                      }`}
+                      className={`mp-loc-btn mp-loc-btn--th ${defaultLoc ? "set" : ""}`}
                       onClick={() =>
                         headLocOpen ? setHeadLocOpen(false) : openHeaderDropdown()
                       }
                       title="Default Location for new rows"
                     >
-                      {defaultLoc
-                        ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}`
-                        : "Location"}
-                      <span className="material-icons-outlined">
-                        arrow_drop_down
-                      </span>
+                      {defaultLoc ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}` : "Location"}
+                      <span className="material-icons-outlined">arrow_drop_down</span>
                     </button>
                   </th>
                   <th></th>
@@ -461,9 +441,7 @@ export default function MasterPackagingPage() {
                     <tr key={r.id}>
                       <td>{r.barcode}</td>
                       <td className="mp-ellipsis">{r.name}</td>
-                      <td className="mp-num">
-                        ₹{Number(r.sellingPrice || 0).toFixed(2)}
-                      </td>
+                      <td className="mp-num">₹{Number(r.sellingPrice || 0).toFixed(2)}</td>
                       <td className="mp-qty">
                         <input
                           type="number"
@@ -482,10 +460,7 @@ export default function MasterPackagingPage() {
                         </div>
                       </td>
                       <td>
-                        <button
-                          className="mp-icon-btn"
-                          onClick={() => removeRow(r.id)}
-                        >
+                        <button className="mp-icon-btn" onClick={() => removeRow(r.id)}>
                           <span className="material-icons-outlined">delete</span>
                         </button>
                       </td>
@@ -516,11 +491,7 @@ export default function MasterPackagingPage() {
               <button className="mp-btn mp-btn-ghost" onClick={() => setRows([])}>
                 Clear
               </button>
-              <button
-                className="mp-btn mp-btn-primary"
-                disabled={saving}
-                onClick={onSaveAndPreview}
-              >
+              <button className="mp-btn mp-btn-primary" disabled={saving} onClick={onSaveAndPreview}>
                 {saving ? "Saving..." : "Save & Preview"}
               </button>
             </div>
@@ -528,10 +499,7 @@ export default function MasterPackagingPage() {
 
           {/* ===================== Master Packs Table ===================== */}
           <div style={{ marginTop: 16 }}>
-            <div
-              className="mp-section-title"
-              style={{ fontSize: 22, marginBottom: 10 }}
-            >
+            <div className="mp-section-title" style={{ fontSize: 22, marginBottom: 10 }}>
               Master Packs
             </div>
 
@@ -547,22 +515,14 @@ export default function MasterPackagingPage() {
               <div className="mp-field">
                 <label>From Date</label>
                 <div className="mp-input">
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                  />
+                  <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
                 </div>
               </div>
 
               <div className="mp-field">
                 <label>To Date</label>
                 <div className="mp-input">
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                  />
+                  <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
                 </div>
               </div>
 
@@ -629,26 +589,11 @@ export default function MasterPackagingPage() {
               )}
             </div>
 
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-              }}
-            >
-              <button
-                className="mp-btn mp-btn-primary"
-                onClick={onApplyFilters}
-                disabled={packsLoading}
-              >
+            <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
+              <button className="mp-btn mp-btn-primary" onClick={onApplyFilters} disabled={packsLoading}>
                 {packsLoading ? "Loading..." : "Apply"}
               </button>
-              {packsErr ? (
-                <span style={{ color: "#991b1b", fontWeight: 800 }}>
-                  {packsErr}
-                </span>
-              ) : null}
+              {packsErr ? <span style={{ color: "#991b1b", fontWeight: 800 }}>{packsErr}</span> : null}
             </div>
 
             {/* List table */}
@@ -661,84 +606,85 @@ export default function MasterPackagingPage() {
                 background: "#fff",
               }}
             >
-              <div style={{ maxHeight: packsTableMaxHeight, overflowY: "auto" }}>
-                <table className="mp-table" style={{ borderRadius: 0 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: 80 }}>S.No</th>
-                      <th style={{ width: 170 }}>MasterPack No.</th>
-                      <th>To Location</th>
-                      <th>From Location</th>
-                      <th style={{ width: 240 }}>Date</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {packsLoading ? (
+              {/* ✅ Horizontal + Vertical scroll */}
+              <div style={{ overflowX: "auto" }}>
+                <div style={{ maxHeight: packsTableMaxHeight, overflowY: "auto", minWidth: 820 }}>
+                  <table className="mp-table" style={{ borderRadius: 0, width: "100%" }}>
+                    <thead>
                       <tr>
-                        <td colSpan={5} className="mp-empty">
-                          Loading…
-                        </td>
+                        <th style={{ width: 80 }}>S.No</th>
+                        <th style={{ width: 170 }}>MasterPack No.</th>
+                        <th style={{ minWidth: 220 }}>To Location</th>
+                        <th style={{ minWidth: 220 }}>From Location</th>
+                        <th style={{ minWidth: 180 }}>Sender</th>
+                        <th style={{ width: 240 }}>Date</th>
                       </tr>
-                    ) : packs.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="mp-empty">
-                          No master packs found.
-                        </td>
-                      </tr>
-                    ) : (
-                      packs.map((p, idx) => {
-                        const fromCode = (p.from_location?.code || "").trim();
-                        const fromName = (p.from_location?.name || "").trim();
-                        const toCode = (p.to_location?.code || "").trim();
-                        const toName = (p.to_location?.name || "").trim();
+                    </thead>
 
-                        const fromLabel =
-                          fromCode || fromName
-                            ? `${fromCode}${fromName ? " - " + fromName : ""}`
-                            : "-";
+                    <tbody>
+                      {packsLoading ? (
+                        <tr>
+                          <td colSpan={6} className="mp-empty">
+                            Loading…
+                          </td>
+                        </tr>
+                      ) : packs.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="mp-empty">
+                            No master packs found.
+                          </td>
+                        </tr>
+                      ) : (
+                        packs.map((p, idx) => {
+                          const fromCode = (p.from_location?.code || "").trim();
+                          const fromName = (p.from_location?.name || "").trim();
+                          const toCode = (p.to_location?.code || "").trim();
+                          const toName = (p.to_location?.name || "").trim();
 
-                        const toLabel =
-                          toCode || toName
-                            ? `${toCode}${toName ? " - " + toName : ""}`
-                            : "-";
+                          const fromLabel =
+                            fromCode || fromName
+                              ? `${fromCode}${fromName ? " - " + fromName : ""}`
+                              : "-";
 
-                        return (
-                          <tr key={p.number || idx}>
-                            <td>{idx + 1}</td>
-                            <td>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  navigate(
-                                    `/inventory/master-packaging/${encodeURIComponent(
-                                      p.number
-                                    )}`
-                                  )
-                                }
-                                style={{
-                                  border: "none",
-                                  background: "transparent",
-                                  padding: 0,
-                                  color: "#1d4ed8",
-                                  fontWeight: 900,
-                                  cursor: "pointer",
-                                  textDecoration: "underline",
-                                }}
-                                title="Open Master Pack"
-                              >
-                                {p.number}
-                              </button>
-                            </td>
-                            <td>{toLabel}</td>
-                            <td>{fromLabel}</td>
-                            <td>{fmtDateTime(p.created_at)}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                          const toLabel =
+                            toCode || toName ? `${toCode}${toName ? " - " + toName : ""}` : "-";
+
+                          return (
+                            <tr key={p.number || idx}>
+                              <td>{idx + 1}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    navigate(
+                                      `/inventory/master-packaging/${encodeURIComponent(p.number)}`
+                                    )
+                                  }
+                                  style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    padding: 0,
+                                    color: "#1d4ed8",
+                                    fontWeight: 900,
+                                    cursor: "pointer",
+                                    textDecoration: "underline",
+                                  }}
+                                  title="Open Master Pack"
+                                >
+                                  {p.number}
+                                </button>
+                              </td>
+                              <td>{toLabel}</td>
+                              <td>{fromLabel}</td>
+                              <td>{p.sender || "-"}</td>
+                              <td>{fmtDateTime(p.created_at)}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -773,9 +719,7 @@ export default function MasterPackagingPage() {
               </div>
               <div className="mp-preview-row">
                 <span>{packResult ? "Invoice No." : "Open"}</span>
-                <span>
-                  {packResult ? packResult.number : new Date().toLocaleString()}
-                </span>
+                <span>{packResult ? packResult.number : new Date().toLocaleString()}</span>
               </div>
             </div>
 
@@ -785,8 +729,7 @@ export default function MasterPackagingPage() {
                 <ul>
                   {packResult.lines.map((ln) => (
                     <li key={`${ln.barcode}-${ln.location?.code}`}>
-                      {ln.barcode} × {ln.qty} @ ₹{Number(ln.sp).toFixed(2)} —{" "}
-                      {ln.location?.code}
+                      {ln.barcode} × {ln.qty} @ ₹{Number(ln.sp).toFixed(2)} — {ln.location?.code}
                     </li>
                   ))}
                 </ul>
@@ -819,17 +762,11 @@ export default function MasterPackagingPage() {
             </div>
             <div className="mp-pop-list">
               {headerFiltered.map((loc) => (
-                <button
-                  key={loc.code}
-                  className="mp-pop-item"
-                  onClick={() => pickHeaderLocation(loc)}
-                >
+                <button key={loc.code} className="mp-pop-item" onClick={() => pickHeaderLocation(loc)}>
                   {loc.code} – {loc.name}
                 </button>
               ))}
-              {headerFiltered.length === 0 && (
-                <div className="mp-pop-empty">No matches</div>
-              )}
+              {headerFiltered.length === 0 && <div className="mp-pop-empty">No matches</div>}
             </div>
           </div>,
           document.body

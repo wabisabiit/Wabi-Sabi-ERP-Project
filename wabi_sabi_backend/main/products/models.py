@@ -413,11 +413,9 @@ class CreditNote(models.Model):
 
 class MasterPack(models.Model):
     """
-    Master packing header. Generates invoice numbers like INV1, INV2...
-    Tracks totals and created time.
+    Master packing header.
     """
 
-    # ✅ NEW: transfer direction
     from_location = models.ForeignKey(
         Location,
         on_delete=models.PROTECT,
@@ -433,8 +431,18 @@ class MasterPack(models.Model):
         blank=True,
     )
 
-    number = models.CharField(max_length=32, unique=True, db_index=True)  # e.g. INV1
+    # ✅ NEW: sender (admin / manager)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="master_packs_created",
+    )
+
+    number = models.CharField(max_length=32, unique=True, db_index=True)
     created_at = models.DateTimeField(default=timezone.now)
+
     items_total = models.PositiveIntegerField(default=0)
     qty_total = models.PositiveIntegerField(default=0)
     amount_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -444,13 +452,6 @@ class MasterPack(models.Model):
 
     def __str__(self):
         return self.number
-
-    def save(self, *args, **kwargs):
-        if not self.number:
-            from .models import InvoiceSequence
-            self.number = InvoiceSequence.next_invoice_no(prefix="INV")
-        super().save(*args, **kwargs)
-
 
 
 class MasterPackLine(models.Model):
