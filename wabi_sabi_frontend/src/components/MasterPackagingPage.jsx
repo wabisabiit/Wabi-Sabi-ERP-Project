@@ -308,8 +308,8 @@ export default function MasterPackagingPage() {
     setPacksErr("");
     try {
       const q = {
-        from_date: opts.from_date ?? fromDate,
-        to_date: opts.to_date ?? toDate,
+        date_from: opts.date_from ?? fromDate,
+        date_to: opts.date_to ?? toDate,
         from_location: opts.from_location ?? fromLocFilter,
         to_location: opts.to_location ?? toLocFilter,
       };
@@ -323,15 +323,19 @@ export default function MasterPackagingPage() {
         const created_at = p.created_at || p.date || p.created || "";
 
         // Backend returns correct locations
-        const from_location = normLoc(p.from_location || p.fromLocation || p.location_from);
-        const to_location = normLoc(p.to_location || p.toLocation || p.location_to);
+        const from_location = normLoc(
+          p.from_location || p.fromLocation || p.location_from
+        );
+        const to_location = normLoc(
+          p.to_location || p.toLocation || p.location_to
+        );
 
-        return { 
-          ...p, 
-          number, 
-          created_at, 
-          from_location, 
-          to_location 
+        return {
+          ...p,
+          number,
+          created_at,
+          from_location,
+          to_location,
         };
       });
 
@@ -352,8 +356,8 @@ export default function MasterPackagingPage() {
 
   const onApplyFilters = () => {
     loadPacks({
-      from_date: fromDate,
-      to_date: toDate,
+      date_from: fromDate,
+      date_to: toDate,
       from_location: fromLocFilter,
       to_location: toLocFilter,
     });
@@ -524,7 +528,10 @@ export default function MasterPackagingPage() {
 
           {/* ===================== Master Packs Table ===================== */}
           <div style={{ marginTop: 16 }}>
-            <div className="mp-section-title" style={{ fontSize: 22, marginBottom: 10 }}>
+            <div
+              className="mp-section-title"
+              style={{ fontSize: 22, marginBottom: 10 }}
+            >
               Master Packs
             </div>
 
@@ -622,7 +629,14 @@ export default function MasterPackagingPage() {
               )}
             </div>
 
-            <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+              }}
+            >
               <button
                 className="mp-btn mp-btn-primary"
                 onClick={onApplyFilters}
@@ -716,8 +730,8 @@ export default function MasterPackagingPage() {
                                 {p.number}
                               </button>
                             </td>
-                            <td>{fromLabel}</td>
                             <td>{toLabel}</td>
+                            <td>{fromLabel}</td>
                             <td>{fmtDateTime(p.created_at)}</td>
                           </tr>
                         );

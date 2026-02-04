@@ -15,11 +15,46 @@ from .serializers import MasterPackCreateSerializer, MasterPackOutSerializer
 
 
 def _user_location(user):
-    """Get user's location from employee -> outlet -> location chain"""
+    """
+    Get user's location robustly.
+
+    Tries:
+      1) employee.outlet.location
+      2) employee.location (direct FK)
+      3) employee.location_code / employee.loc_code / employee.location (string code)
+    """
     emp = getattr(user, "employee", None)
-    outlet = getattr(emp, "outlet", None) if emp else None
+    if not emp:
+        return None, None
+
+    # 1) employee -> outlet -> location
+    outlet = getattr(emp, "outlet", None)
     loc = getattr(outlet, "location", None) if outlet else None
-    return loc, emp
+    if loc:
+        return loc, emp
+
+    # 2) employee.location direct FK
+    direct_loc = getattr(emp, "location", None)
+    if direct_loc and hasattr(direct_loc, "code"):
+        return direct_loc, emp
+
+    # 3) employee has code fields
+    code = (
+        getattr(emp, "location_code", None)
+        or getattr(emp, "loc_code", None)
+        or (
+            getattr(emp, "location", None)
+            if isinstance(getattr(emp, "location", None), str)
+            else None
+        )
+    )
+    code = (code or "").strip()
+    if code:
+        loc = Location.objects.filter(code__iexact=code).first()
+        if loc:
+            return loc, emp
+
+    return None, emp
 
 
 def _is_admin(user):
@@ -38,7 +73,7 @@ def _hq_location():
     hq = Location.objects.filter(code__iexact="WS").first()
     if hq:
         return hq
-    
+
     # Fallback: search by name containing "WABI SABI" or "Head Office"
     hq = Location.objects.filter(
         Q(name__icontains="WABI SABI") | Q(name__icontains="Head Office")
@@ -88,14 +123,24 @@ class MasterPackView(APIView):
             start_dt = timezone.make_aware(datetime.combine(today, time.min), tz)
             end_dt = timezone.make_aware(datetime.combine(today, time.max), tz)
 
-        from_params = [str(x).strip() for x in request.query_params.getlist("from_location") if str(x).strip()]
-        to_params = [str(x).strip() for x in request.query_params.getlist("to_location") if str(x).strip()]
+        from_params = [
+            str(x).strip()
+            for x in request.query_params.getlist("from_location")
+            if str(x).strip()
+        ]
+        to_params = [
+            str(x).strip()
+            for x in request.query_params.getlist("to_location")
+            if str(x).strip()
+        ]
 
         qs = (
-            MasterPack.objects
-            .select_related("from_location", "to_location")
+            MasterPack.objects.select_related("from_location", "to_location")
             .prefetch_related(
-                Prefetch("lines", queryset=MasterPackLine.objects.select_related("location"))
+                Prefetch(
+                    "lines",
+                    queryset=MasterPackLine.objects.select_related("location"),
+                )
             )
             .filter(created_at__range=(start_dt, end_dt))
             .order_by("-created_at", "-id")
@@ -105,9 +150,7 @@ class MasterPackView(APIView):
         if not admin:
             if user_loc:
                 # Show packs where this outlet is either sender OR receiver
-                qs = qs.filter(
-                    Q(from_location=user_loc) | Q(to_location=user_loc)
-                )
+                qs = qs.filter(Q(from_location=user_loc) | Q(to_location=user_loc))
             else:
                 # No location = no packs (safety)
                 qs = qs.none()
@@ -116,7 +159,9 @@ class MasterPackView(APIView):
         if admin and from_params:
             q = Q()
             for v in from_params:
-                q |= Q(from_location__code__iexact=v) | Q(from_location__name__icontains=v)
+                q |= Q(from_location__code__iexact=v) | Q(
+                    from_location__name__icontains=v
+                )
             qs = qs.filter(q).distinct()
 
         if admin and to_params:
@@ -135,19 +180,25 @@ class MasterPackView(APIView):
 
             tloc = p.to_location
 
-            out.append({
-                "sr": idx,
-                "number": p.number,
-                "created_at": p.created_at,
-                "from_location": {
-                    "code": getattr(floc, "code", "") or "",
-                    "name": getattr(floc, "name", "") or "",
-                } if floc else {"code": "", "name": ""},
-                "to_location": {
-                    "code": getattr(tloc, "code", "") or "",
-                    "name": getattr(tloc, "name", "") or "",
-                } if tloc else {"code": "", "name": ""},
-            })
+            out.append(
+                {
+                    "sr": idx,
+                    "number": p.number,
+                    "created_at": p.created_at,
+                    "from_location": {
+                        "code": getattr(floc, "code", "") or "",
+                        "name": getattr(floc, "name", "") or "",
+                    }
+                    if floc
+                    else {"code": "", "name": ""},
+                    "to_location": {
+                        "code": getattr(tloc, "code", "") or "",
+                        "name": getattr(tloc, "name", "") or "",
+                    }
+                    if tloc
+                    else {"code": "", "name": ""},
+                }
+            )
 
         return Response(out, status=status.HTTP_200_OK)
 
@@ -166,10 +217,10 @@ class MasterPackView(APIView):
         # ✅ CORRECTED LOGIC:
         # from_location = outlet where pack is created (user's location)
         # to_location = WS headquarters
-        
+
         # from_location = user's outlet location (where items are scanned)
         from_loc = user_loc
-        
+
         # to_location = WS headquarters (where items are being sent)
         to_loc = hq
 
@@ -182,7 +233,12 @@ class MasterPackView(APIView):
 
         # ✅ SPECIAL CASE: outlet -> WS means activate barcodes at WS
         # Condition: to_location == WS and from_location is an outlet
-        if hq and pack.to_location_id == hq.id and pack.from_location_id and pack.from_location_id != hq.id:
+        if (
+            hq
+            and pack.to_location_id == hq.id
+            and pack.from_location_id
+            and pack.from_location_id != hq.id
+        ):
             # Set qty=1 and move to WS for all barcodes in this pack
             barcodes = list(pack.lines.values_list("barcode", flat=True))
             if barcodes:
@@ -200,25 +256,34 @@ class MasterPackDetail(APIView):
 
     def get(self, request, number):
         pack = get_object_or_404(
-            MasterPack.objects
-            .select_related("from_location", "to_location")
-            .prefetch_related(
-                Prefetch("lines", queryset=MasterPackLine.objects.select_related("location"))
+            MasterPack.objects.select_related("from_location", "to_location").prefetch_related(
+                Prefetch(
+                    "lines",
+                    queryset=MasterPackLine.objects.select_related("location"),
+                )
             ),
             number=number,
         )
         data = MasterPackOutSerializer(pack).data
 
         # Attach from/to for the invoice-like page
-        data["from_location"] = {
-            "code": getattr(getattr(pack, "from_location", None), "code", "") or "",
-            "name": getattr(getattr(pack, "from_location", None), "name", "") or "",
-        } if pack.from_location_id else {"code": "", "name": ""}
+        data["from_location"] = (
+            {
+                "code": getattr(getattr(pack, "from_location", None), "code", "") or "",
+                "name": getattr(getattr(pack, "from_location", None), "name", "") or "",
+            }
+            if pack.from_location_id
+            else {"code": "", "name": ""}
+        )
 
-        data["to_location"] = {
-            "code": getattr(getattr(pack, "to_location", None), "code", "") or "",
-            "name": getattr(getattr(pack, "to_location", None), "name", "") or "",
-        } if pack.to_location_id else {"code": "", "name": ""}
+        data["to_location"] = (
+            {
+                "code": getattr(getattr(pack, "to_location", None), "code", "") or "",
+                "name": getattr(getattr(pack, "to_location", None), "name", "") or "",
+            }
+            if pack.to_location_id
+            else {"code": "", "name": ""}
+        )
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -229,12 +294,20 @@ class MasterPackBulkDelete(APIView):
     def post(self, request):
         numbers = request.data.get("numbers", [])
         if not isinstance(numbers, list) or not numbers:
-            return Response({"status": "error", "detail": "numbers[] required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"status": "error", "detail": "numbers[] required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         qs = MasterPack.objects.filter(number__in=numbers)
         found = list(qs.values_list("number", flat=True))
         deleted_count, _ = qs.delete()
         return Response(
-            {"status": "ok", "requested": numbers, "deleted": found, "deleted_count": deleted_count},
-            status=status.HTTP_200_OK
+            {
+                "status": "ok",
+                "requested": numbers,
+                "deleted": found,
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
         )
