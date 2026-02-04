@@ -10,7 +10,7 @@ from django.utils.dateparse import parse_date
 from datetime import datetime, time
 
 from taskmaster.models import Location
-from .models import MasterPack, MasterPackLine, Product
+from .models import MasterPack, MasterPackLine, Product, MasterPackSequence  # ✅ add MasterPackSequence
 from .serializers import MasterPackCreateSerializer, MasterPackOutSerializer
 
 
@@ -34,12 +34,10 @@ def _hq_location():
     ✅ FIXED: Get WS headquarters location instead of searching for 'HQ'
     WS = WABI SABI SUSTAINABILITY LLP (code: WS)
     """
-    # First try exact code match for WS
     hq = Location.objects.filter(code__iexact="WS").first()
     if hq:
         return hq
 
-    # Fallback: search by name containing "WABI SABI" or "Head Office"
     hq = Location.objects.filter(
         Q(name__icontains="WABI SABI") | Q(name__icontains="Head Office")
     ).first()
@@ -78,6 +76,11 @@ def _display_name_for_user(u):
     return (getattr(u, "username", "") or "").strip()
 
 
+def _is_hq_code(code: str) -> bool:
+    c = (code or "").strip().upper()
+    return c in ("WS", "HQ")
+
+
 class MasterPackView(APIView):
     """
     POST /api/master-packs/  -> create
@@ -95,7 +98,6 @@ class MasterPackView(APIView):
         user_loc, _emp = _user_location(user)
 
         df, dt, start_dt, end_dt = _parse_range(request)
-        # allow empty date range => default to today
         if not (df and dt and start_dt and end_dt):
             tz = timezone.get_current_timezone()
             today = timezone.localdate()
@@ -117,18 +119,13 @@ class MasterPackView(APIView):
             .order_by("-created_at", "-id")
         )
 
-        # ✅ FIXED: Manager visibility - see packs where outlet is FROM or TO
+        # Manager visibility: see packs where outlet is FROM or TO
         if not admin:
             if user_loc:
-                # Show packs where this outlet is either sender OR receiver
-                qs = qs.filter(
-                    Q(from_location=user_loc) | Q(to_location=user_loc)
-                )
+                qs = qs.filter(Q(from_location=user_loc) | Q(to_location=user_loc))
             else:
-                # No location = no packs (safety)
                 qs = qs.none()
 
-        # Admin filtering by from/to
         if admin and from_params:
             q = Q()
             for v in from_params:
@@ -143,13 +140,8 @@ class MasterPackView(APIView):
 
         out = []
         for idx, p in enumerate(qs, start=1):
-            # Get from/to locations
             floc = p.from_location
-            if not floc and p.lines.exists():
-                # Fallback: use first line's location as from
-                floc = p.lines.all()[0].location
-
-            tloc = p.to_location
+            tloc = p.to_location  # ✅ no fallback; show actual saved to_location
 
             out.append({
                 "sr": idx,
@@ -176,38 +168,65 @@ class MasterPackView(APIView):
         pack = ser.save()
 
         user = request.user
+        admin = _is_admin(user)
         user_loc, _emp = _user_location(user)
         hq = _hq_location()
 
-        # ✅ CHANGED LOGIC (as per your requirement):
-        # from_location = WS headquarters (HQ)
-        # to_location   = outlet where pack is created (UV etc.)
-        from_loc = hq
-        to_loc = user_loc
+        # -------- Determine destination correctly --------
+        rows = (request.data or {}).get("rows") or []
+        first_dest_code = ""
+        if isinstance(rows, list) and rows:
+            first_dest_code = str((rows[0] or {}).get("location_code") or "").strip()
 
-        # Save from/to locations
-        if from_loc and not pack.from_location_id:
-            pack.from_location = from_loc
-        if to_loc and not pack.to_location_id:
-            pack.to_location = to_loc
+        dest_loc = None
+        if first_dest_code:
+            dest_loc = Location.objects.filter(code__iexact=first_dest_code).first()
 
-        # ✅ NEW: store creator (admin / manager)
+        # ✅ RULES:
+        # Admin: From = WS, To = selected destination (UV etc.)
+        # Manager: From = manager outlet, To = WS (HQ)
+        if admin:
+            from_loc = hq
+            to_loc = dest_loc  # must come from UI selection
+        else:
+            from_loc = user_loc
+            to_loc = hq
+
+        # Save from/to locations (force set)
+        pack.from_location = from_loc
+        pack.to_location = to_loc
+
+        # store creator
         if not getattr(pack, "created_by_id", None):
             pack.created_by = user
 
-        # ✅ IMPORTANT: ensure number is generated based on from_location mapping
-        # (number auto-generates in model save if missing)
-        if not pack.number:
-            pack.number = ""  # triggers model generation on save (safe)
+        # -------- Fix pack number segment --------
+        # if one side is HQ/WS, generate number from the OTHER side (outlet).
+        outlet_code = ""
+        if pack.from_location_id and not _is_hq_code(getattr(pack.from_location, "code", "")):
+            outlet_code = getattr(pack.from_location, "code", "")
+        elif pack.to_location_id and not _is_hq_code(getattr(pack.to_location, "code", "")):
+            outlet_code = getattr(pack.to_location, "code", "")
+
+        segment = MasterPack._mp_segment_from_location_code(outlet_code)
+
+        # If it already got auto-numbered as WS (created before we set locations),
+        # regenerate to correct outlet segment.
+        if segment and segment != "WS":
+            if (pack.number or "").startswith("MP/WS/") or not pack.number:
+                pack.number = MasterPackSequence.next_no(segment)
 
         pack.save()
 
-        # ✅ CHANGED SPECIAL CASE:
-        # HQ -> outlet means barcodes should be active at outlet (TO location)
-        if hq and pack.from_location_id == hq.id and pack.to_location_id and pack.to_location_id != hq.id:
+        # ✅ Destination inventory update:
+        # Always move products to pack.to_location (destination)
+        if pack.to_location_id:
             barcodes = list(pack.lines.values_list("barcode", flat=True))
             if barcodes:
-                Product.objects.filter(barcode__in=barcodes).update(qty=1, location=pack.to_location)
+                Product.objects.filter(barcode__in=barcodes).update(
+                    qty=1,
+                    location=pack.to_location
+                )
 
         out = MasterPackOutSerializer(pack).data
         return Response({"status": "ok", "pack": out}, status=status.HTTP_201_CREATED)
@@ -230,7 +249,6 @@ class MasterPackDetail(APIView):
         )
         data = MasterPackOutSerializer(pack).data
 
-        # Attach from/to for the invoice-like page
         data["from_location"] = {
             "code": getattr(getattr(pack, "from_location", None), "code", "") or "",
             "name": getattr(getattr(pack, "from_location", None), "name", "") or "",
@@ -241,7 +259,6 @@ class MasterPackDetail(APIView):
             "name": getattr(getattr(pack, "to_location", None), "name", "") or "",
         } if pack.to_location_id else {"code": "", "name": ""}
 
-        # ✅ NEW: ensure sender is visible on detail too (if your serializer doesn't include it)
         data["sender"] = _display_name_for_user(getattr(pack, "created_by", None))
 
         return Response(data, status=status.HTTP_200_OK)

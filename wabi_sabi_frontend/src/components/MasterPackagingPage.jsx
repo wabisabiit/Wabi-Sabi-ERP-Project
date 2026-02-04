@@ -159,20 +159,20 @@ export default function MasterPackagingPage() {
     width: 280,
   });
 
-  // ✅ NEW: for managers, lock header location to their outlet location
+  // ✅ UPDATED: Managers must pack TO HQ (WS), Admin can choose
   useEffect(() => {
-    if (!isAdmin && myLocCode) {
-      setDefaultLoc(myLocCode);
+    if (!isAdmin) {
+      setDefaultLoc("WS");
       setHeadLocOpen(false);
       setHeadLocQuery("");
       setRows((prev) =>
-        prev.map((r) =>
-          r.location_code ? r : { ...r, location_code: myLocCode }
-        )
+        prev.map((r) => (r.location_code ? r : { ...r, location_code: "WS" }))
       );
+      return;
     }
+    // Admin: no auto-default here (admin chooses)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, myLocCode]);
+  }, [isAdmin]);
 
   const headerFiltered = useMemo(() => {
     const q = headLocQuery.trim().toLowerCase();
@@ -284,7 +284,7 @@ export default function MasterPackagingPage() {
             qty: 1,
             brand: "B4L",
             color: "",
-            location_code: defaultLoc || myLocCode || "",
+            location_code: defaultLoc || "WS",
           },
         ];
       });
@@ -313,8 +313,8 @@ export default function MasterPackagingPage() {
       return;
     }
 
-    // ✅ Manager: defaultLoc is forced to myLocCode, Admin must pick
-    const effectiveLoc = (defaultLoc || myLocCode || "").trim();
+    // ✅ Manager: forced WS, Admin must pick
+    const effectiveLoc = (defaultLoc || (isAdmin ? "" : "WS") || "").trim();
     if (!effectiveLoc) {
       setToast({
         type: "err",
@@ -538,13 +538,11 @@ export default function MasterPackagingPage() {
                           display: "inline-block",
                           minWidth: 220,
                         }}
-                        title="Your outlet location"
+                        title="Packing destination (HQ)"
                       >
-                        {(defaultLoc || myLocCode)
-                          ? `${defaultLoc || myLocCode} – ${
-                              locMap.get(defaultLoc || myLocCode) || ""
-                            }`
-                          : "Location not set"}
+                        {defaultLoc
+                          ? `${defaultLoc} – ${locMap.get(defaultLoc) || ""}`
+                          : "WS – Head Office"}
                       </div>
                     )}
                   </th>
@@ -579,11 +577,11 @@ export default function MasterPackagingPage() {
                       <td></td>
                       <td className="mp-location-cell">
                         <div className="mp-loc-fixed">
-                          {(defaultLoc || myLocCode)
-                            ? `${defaultLoc || myLocCode} – ${
-                                locMap.get(defaultLoc || myLocCode) || ""
+                          {defaultLoc
+                            ? `${defaultLoc} – ${
+                                locMap.get(defaultLoc) || ""
                               }`
-                            : "Location not set"}
+                            : "WS – Head Office"}
                         </div>
                       </td>
                       <td>
