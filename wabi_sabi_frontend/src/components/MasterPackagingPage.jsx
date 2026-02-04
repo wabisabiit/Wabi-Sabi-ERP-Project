@@ -60,7 +60,7 @@ export default function MasterPackagingPage() {
   const [toast, setToast] = useState(null); // {type:'ok'|'err', msg:string}
   const [packResult, setPackResult] = useState(null); // server response { pack: {...} }
 
-  // ==== NEW: robust scanner focus & de-dupe ====
+  // ==== Robust scanner focus & de-dupe ====
   const scanRef = useRef(null);
   const lastScanRef = useRef({ code: "", ts: 0 });
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function MasterPackagingPage() {
   }, [locs]);
 
   // ---- Current user (role + outlet location) ----
-  const [me, setMe] = useState(null); // expects { role, location_code } (safe fallback)
+  const [me, setMe] = useState(null); // expects { role, location_code }
   useEffect(() => {
     apiMe?.()
       .then((r) => setMe(r || null))
@@ -290,9 +290,7 @@ export default function MasterPackagingPage() {
 
   /* ==============================
      Master Packs List + Filters
-     - Admin: From/To location + date range
-     - Manager: date range only
-     - Manager sees only packs where FROM or TO == their location
+     ✅ FIXED: No location swapping - backend returns correct data
      ============================== */
   const [packsLoading, setPacksLoading] = useState(false);
   const [packs, setPacks] = useState([]);
@@ -319,69 +317,26 @@ export default function MasterPackagingPage() {
       const res = await listMasterPacks(q);
       const arr = Array.isArray(res) ? res : [];
 
+      // ✅ FIXED: No swapping - backend already returns correct from/to
       const normalized = arr.map((p) => {
         const number = p.number || p.masterpack_no || p.masterPackNo || "";
         const created_at = p.created_at || p.date || p.created || "";
 
-        // Try to read from/to from API (if present)
-        const apiFrom = normLoc(p.from_location || p.fromLocation || p.location_from);
-        const apiTo = normLoc(p.to_location || p.toLocation || p.location_to);
+        // Backend returns correct locations
+        const from_location = normLoc(p.from_location || p.fromLocation || p.location_from);
+        const to_location = normLoc(p.to_location || p.toLocation || p.location_to);
 
-        // Fallback: some endpoints give only "location"
-        const onlyLoc = normLoc(p.location);
-
-        let from_location = apiFrom || onlyLoc || null;
-        let to_location = apiTo || null;
-
-        // ✅ AUTO-FIX swapped case (your screenshot issue)
-        // If API sends HQ in "from" and a branch in "to", we swap.
-        const fCode = (from_location?.code || "").toUpperCase();
-        const tCode = (to_location?.code || "").toUpperCase();
-
-        if (fCode === "HQ" && tCode && tCode !== "HQ") {
-          const tmp = from_location;
-          from_location = to_location;
-          to_location = tmp;
-        }
-
-        // If destination is missing but API marks HQ flag/name style, keep safe:
-        // (do NOT force HQ here; backend may be branch->branch)
-        return { ...p, number, created_at, from_location, to_location };
+        return { 
+          ...p, 
+          number, 
+          created_at, 
+          from_location, 
+          to_location 
+        };
       });
 
-      let filtered = normalized;
-
-      // Manager visibility rule
-      if (isManager && myLocCode) {
-        filtered = filtered.filter((p) => {
-          const f = (p.from_location?.code || "").trim();
-          const t = (p.to_location?.code || "").trim();
-          return f === myLocCode || t === myLocCode;
-        });
-      }
-
-      // Date filter fallback
-      const fD = (opts.from_date ?? fromDate) || "";
-      const tD = (opts.to_date ?? toDate) || "";
-      if (fD && tD) {
-        const start = new Date(`${fD}T00:00:00`);
-        const end = new Date(`${tD}T23:59:59`);
-        filtered = filtered.filter((p) => {
-          const d = new Date(p.created_at);
-          if (Number.isNaN(d.getTime())) return true;
-          return d >= start && d <= end;
-        });
-      }
-
-      // Admin loc filters fallback
-      if (isAdmin) {
-        const flc = (opts.from_location ?? fromLocFilter) || "";
-        const tlc = (opts.to_location ?? toLocFilter) || "";
-        if (flc) filtered = filtered.filter((p) => (p.from_location?.code || "") === flc);
-        if (tlc) filtered = filtered.filter((p) => (p.to_location?.code || "") === tlc);
-      }
-
-      setPacks(filtered);
+      // No client-side filtering needed - backend handles visibility
+      setPacks(normalized);
     } catch (e) {
       setPacksErr(e?.message || String(e));
       setPacks([]);
@@ -567,13 +522,13 @@ export default function MasterPackagingPage() {
             </div>
           </div>
 
-          {/* ===================== Master Packs Table (NEW) ===================== */}
+          {/* ===================== Master Packs Table ===================== */}
           <div style={{ marginTop: 16 }}>
             <div className="mp-section-title" style={{ fontSize: 22, marginBottom: 10 }}>
               Master Packs
             </div>
 
-            {/* Filters (clean UI) */}
+            {/* Filters */}
             <div
               style={{
                 display: "grid",
@@ -630,7 +585,7 @@ export default function MasterPackagingPage() {
                             {l.code} - {l.name}
                           </option>
                         ))}
-                        <option value="HQ">HQ</option>
+                        <option value="WS">WS - Head Office</option>
                       </select>
                     </div>
                   </div>
@@ -659,7 +614,7 @@ export default function MasterPackagingPage() {
                             {l.code} - {l.name}
                           </option>
                         ))}
-                        <option value="HQ">HQ</option>
+                        <option value="WS">WS - Head Office</option>
                       </select>
                     </div>
                   </div>

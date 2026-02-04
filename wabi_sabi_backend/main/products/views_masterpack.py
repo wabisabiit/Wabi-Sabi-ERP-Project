@@ -15,6 +15,7 @@ from .serializers import MasterPackCreateSerializer, MasterPackOutSerializer
 
 
 def _user_location(user):
+    """Get user's location from employee -> outlet -> location chain"""
     emp = getattr(user, "employee", None)
     outlet = getattr(emp, "outlet", None) if emp else None
     loc = getattr(outlet, "location", None) if outlet else None
@@ -22,24 +23,31 @@ def _user_location(user):
 
 
 def _is_admin(user):
+    """Check if user is admin (superuser or employee with ADMIN role)"""
     emp = getattr(user, "employee", None)
     role = getattr(emp, "role", "") if emp else ""
     return bool(getattr(user, "is_superuser", False) or role == "ADMIN")
 
 
 def _hq_location():
-    # best effort: prefer code=HQ, else name contains HQ/Head
-    hq = Location.objects.filter(code__iexact="HQ").first()
+    """
+    ✅ FIXED: Get WS headquarters location instead of searching for 'HQ'
+    WS = WABI SABI SUSTAINABILITY LLP (code: WS)
+    """
+    # First try exact code match for WS
+    hq = Location.objects.filter(code__iexact="WS").first()
     if hq:
         return hq
-    hq = Location.objects.filter(name__icontains="hq").first()
-    if hq:
-        return hq
-    hq = Location.objects.filter(name__icontains="head").first()
+    
+    # Fallback: search by name containing "WABI SABI" or "Head Office"
+    hq = Location.objects.filter(
+        Q(name__icontains="WABI SABI") | Q(name__icontains="Head Office")
+    ).first()
     return hq
 
 
 def _parse_range(request):
+    """Parse date range from query params"""
     df = parse_date((request.query_params.get("date_from") or "").strip())
     dt = parse_date((request.query_params.get("date_to") or "").strip())
     if not df or not dt:
@@ -71,7 +79,7 @@ class MasterPackView(APIView):
         user_loc, _emp = _user_location(user)
 
         df, dt, start_dt, end_dt = _parse_range(request)
-        # allow empty date range => default last 30 days (safe)
+        # allow empty date range => default to today
         if not (df and dt and start_dt and end_dt):
             tz = timezone.get_current_timezone()
             today = timezone.localdate()
@@ -93,13 +101,16 @@ class MasterPackView(APIView):
             .order_by("-created_at", "-id")
         )
 
-        # Manager: only date filter (and scoped to their location as destination)
+        # ✅ FIXED: Manager visibility - see packs where outlet is FROM or TO
         if not admin:
             if user_loc:
-                qs = qs.filter(to_location=user_loc)
+                # Show packs where this outlet is either sender OR receiver
+                qs = qs.filter(
+                    Q(from_location=user_loc) | Q(to_location=user_loc)
+                )
             else:
-                # HQ user without location
-                qs = qs.filter(to_location__isnull=True)
+                # No location = no packs (safety)
+                qs = qs.none()
 
         # Admin filtering by from/to
         if admin and from_params:
@@ -116,9 +127,10 @@ class MasterPackView(APIView):
 
         out = []
         for idx, p in enumerate(qs, start=1):
-            # fallback: if old rows exist without from_location saved, use first line
+            # Get from/to locations
             floc = p.from_location
             if not floc and p.lines.exists():
+                # Fallback: use first line's location as from
                 floc = p.lines.all()[0].location
 
             tloc = p.to_location
@@ -134,7 +146,7 @@ class MasterPackView(APIView):
                 "to_location": {
                     "code": getattr(tloc, "code", "") or "",
                     "name": getattr(tloc, "name", "") or "",
-                } if tloc else {"code": "", "name": "HQ"},
+                } if tloc else {"code": "", "name": ""},
             })
 
         return Response(out, status=status.HTTP_200_OK)
@@ -146,29 +158,32 @@ class MasterPackView(APIView):
 
         pack = ser.save()
 
-        # ✅ set from/to locations after creation (no serializer changes needed)
         user = request.user
         admin = _is_admin(user)
         user_loc, _emp = _user_location(user)
         hq = _hq_location()
 
-        # from_location = first line location
-        first_line = pack.lines.select_related("location").order_by("id").first()
-        from_loc = getattr(first_line, "location", None)
+        # ✅ CORRECTED LOGIC:
+        # from_location = outlet where pack is created (user's location)
+        # to_location = WS headquarters
+        
+        # from_location = user's outlet location (where items are scanned)
+        from_loc = user_loc
+        
+        # to_location = WS headquarters (where items are being sent)
+        to_loc = hq
 
-        # to_location = user location if manager else HQ
-        to_loc = user_loc if not admin else (hq or None)
-
+        # Save from/to locations
         if from_loc and not pack.from_location_id:
             pack.from_location = from_loc
-        if not pack.to_location_id:
+        if to_loc and not pack.to_location_id:
             pack.to_location = to_loc
         pack.save(update_fields=["from_location", "to_location"])
 
-        # ✅ SPECIAL CASE: outlet -> HQ means activate barcodes in HQ
-        # Condition: to_location == HQ and from_location != HQ
-        if hq and pack.to_location_id == hq.id and (not pack.from_location_id or pack.from_location_id != hq.id):
-            # set qty=1 and move to HQ for all barcodes in this pack
+        # ✅ SPECIAL CASE: outlet -> WS means activate barcodes at WS
+        # Condition: to_location == WS and from_location is an outlet
+        if hq and pack.to_location_id == hq.id and pack.from_location_id and pack.from_location_id != hq.id:
+            # Set qty=1 and move to WS for all barcodes in this pack
             barcodes = list(pack.lines.values_list("barcode", flat=True))
             if barcodes:
                 Product.objects.filter(barcode__in=barcodes).update(qty=1, location=hq)
@@ -194,7 +209,7 @@ class MasterPackDetail(APIView):
         )
         data = MasterPackOutSerializer(pack).data
 
-        # also attach from/to for the invoice-like page
+        # Attach from/to for the invoice-like page
         data["from_location"] = {
             "code": getattr(getattr(pack, "from_location", None), "code", "") or "",
             "name": getattr(getattr(pack, "from_location", None), "name", "") or "",
@@ -202,8 +217,8 @@ class MasterPackDetail(APIView):
 
         data["to_location"] = {
             "code": getattr(getattr(pack, "to_location", None), "code", "") or "",
-            "name": getattr(getattr(pack, "to_location", None), "name", "") or "HQ",
-        } if pack.to_location_id else {"code": "", "name": "HQ"}
+            "name": getattr(getattr(pack, "to_location", None), "name", "") or "",
+        } if pack.to_location_id else {"code": "", "name": ""}
 
         return Response(data, status=status.HTTP_200_OK)
 
