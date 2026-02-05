@@ -792,39 +792,6 @@ export async function deleteSale(invoiceNo) {
   return http(`/sales/${encodeURIComponent(safe)}/delete/`, { method: "DELETE" });
 }
 
-// ✅ Salesman Report
-export async function listSalesmanReport(params = {}) {
-  const sp = new URLSearchParams();
-
-  if (params.date_from) sp.append("date_from", params.date_from);
-  if (params.date_to) sp.append("date_to", params.date_to);
-
-  if (Array.isArray(params.location)) {
-    params.location.forEach((l) => {
-      const s = String(l || "").trim();
-      if (s) sp.append("location", s);
-    });
-  } else if (params.location) {
-    sp.append("location", String(params.location).trim());
-  }
-
-  if (params.salesman_id) sp.append("salesman_id", String(params.salesman_id).trim());
-  if (params.q) sp.append("q", String(params.q).trim());
-
-  if (params.page) sp.append("page", params.page);
-  if (params.page_size) sp.append("page_size", params.page_size);
-  if (params.all) sp.append("all", params.all);
-
-  const qs = sp.toString();
-  return http(`/reports/salesman-report/${qs ? `?${qs}` : ""}`);
-}
-
-export async function listSalesmenForReport() {
-  return http(`/reports/salesman-report/salesmen/`);
-}
-
-
-
 
 // ✅ NEW: fetch Sale receipt PDF (blob URL)
 export async function getSaleReceiptPdf(invoiceNo) {
@@ -1024,7 +991,4 @@ export default {
   openRegisterSession,
 
   mcDelete,
-
-   listSalesmanReport,
-  listSalesmenForReport,
 };
