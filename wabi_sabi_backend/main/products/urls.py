@@ -18,7 +18,7 @@ from .views_coupons import (
     CouponListCreate, CouponGenerate, GeneratedCouponList,
     CouponLookup, CouponRedeem
 )
-from .views_reports import  ProductWiseSalesReport, CategoryWiseSalesSummary
+from .views_reports import  ProductWiseSalesReport, CategoryWiseSalesSummary,SalesmanSalesReport, SalesmanListForReport
 from .views_discounts import DiscountListCreate, DiscountDetail
 from .views_reports_masterpacking import master_packing_item_wise
 from .views_holdbills import HoldBillView, HoldBillRestore
@@ -145,6 +145,9 @@ urlpatterns = [
     path("locations/", LocationListView.as_view(), name="locations"),
 
     path("reports/sales-register/", SalesRegisterReportView.as_view(), name="sales-register-report"),
+
+    path("reports/salesman-report/", SalesmanSalesReport.as_view()),
+    path("reports/salesman-report/salesmen/", SalesmanListForReport.as_view()),
 ]
 
 urlpatterns += router.urls

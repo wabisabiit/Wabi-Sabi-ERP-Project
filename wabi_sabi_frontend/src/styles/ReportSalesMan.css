@@ -138,3 +138,90 @@
   .sm-search{ width:100%; }
   .sm-filterpanel--raised{ grid-template-columns: 1fr; }
 }
+
+/* ✅ Remove the fake blue calendar blocks (now using react-datepicker) */
+.sm-calwrap, .sm-cal, .sm-cal-body, .sm-cal-body.filled::after { display:none !important; }
+
+.sm-datepickerbox{
+  border:1px solid #e6e9f0;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+/* react-datepicker look to match */
+.react-datepicker{
+  border:0 !important;
+  font-family:inherit !important;
+}
+.react-datepicker__header{
+  background:#fff !important;
+  border-bottom:1px solid #eef2f7 !important;
+}
+.react-datepicker__day--selected,
+.react-datepicker__day--in-selecting-range,
+.react-datepicker__day--in-range{
+  background:#0aa3da !important;
+  color:#fff !important;
+}
+.react-datepicker__day:hover{
+  background:#eaf4ff !important;
+}
+
+/* ✅ Salesman dropdown taller + scroll */
+.sm-pop-list--tall{
+  max-height:320px;
+  overflow:auto;
+}
+
+/* ✅ Small actions for location popup */
+.sm-pop-actions{
+  display:flex;
+  gap:10px;
+  padding:10px 8px 8px;
+  border-top:1px solid #eef2f7;
+}
+
+/* ✅ Spinners */
+.sm-spinner{
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  border:2px solid rgba(15,23,42,.15);
+  border-top-color: rgba(15,23,42,.65);
+  display:inline-block;
+  animation: smspin .8s linear infinite;
+}
+.sm-spinner--btn{
+  margin-right:8px;
+  vertical-align:-3px;
+}
+@keyframes smspin{ to { transform: rotate(360deg); } }
+
+.sm-minirow{
+  padding:10px 12px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  color:#64748b;
+}
+
+.sm-tableloading{
+  padding:10px 12px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  border-bottom:1px solid #eef2f7;
+  color:#64748b;
+  background:#f8fafc;
+}
+
+.sm-empty{
+  padding:14px 12px;
+  color:#64748b;
+  text-align:center;
+}
+
+/* ghost field for grid alignment */
+.sm-field--ghost{
+  visibility:hidden;
+}
