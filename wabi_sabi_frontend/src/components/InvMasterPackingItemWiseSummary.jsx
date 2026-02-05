@@ -65,7 +65,11 @@ function Select({ placeholder, options = [], value, onChange, width = 240 }) {
   );
   return (
     <div className="mpw-combo" style={{ width }} ref={ref}>
-      <button className={`mpw-combo-btn ${value ? "has" : ""}`} onClick={() => setOpen((v) => !v)} type="button">
+      <button
+        className={`mpw-combo-btn ${value ? "has" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        type="button"
+      >
         <span className="mpw-combo-val">{value || placeholder}</span>
         <span className="mpw-caret">
           <Ic.caret />
@@ -73,7 +77,12 @@ function Select({ placeholder, options = [], value, onChange, width = 240 }) {
       </button>
       {open && (
         <div className="mpw-pop">
-          <input className="mpw-pop-search" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input
+            className="mpw-pop-search"
+            placeholder="Search…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
           <div className="mpw-pop-list">
             {shown.map((o) => (
               <div
@@ -145,6 +154,7 @@ function ExportMenu({ rows, headers }) {
     a.click();
     a.remove();
   };
+
   const toPDF = () => {
     const w = window.open("", "_blank");
     const style = `
@@ -156,7 +166,10 @@ function ExportMenu({ rows, headers }) {
         h2{margin:0 0 12px;font-size:16px}
       </style>`;
     const body = rows
-      .map((r, i) => `<tr><td>${i + 1}</td>${headers.map((h) => `<td>${r[h] || ""}</td>`).join("")}</tr>`)
+      .map(
+        (r, i) =>
+          `<tr><td>${i + 1}</td>${headers.map((h) => `<td>${r[h] || ""}</td>`).join("")}</tr>`
+      )
       .join("");
     w.document.write(
       `<html><head>${style}</head><body><h2>Master Packing Wise Summary</h2><table><thead><tr><th>#</th>${headers
@@ -208,7 +221,6 @@ function toDMY(iso) {
 }
 
 function monthMatrix(year, month) {
-  // month: 0-11
   const first = new Date(year, month, 1);
   const start = new Date(first);
   const day = (first.getDay() + 6) % 7; // Monday=0
@@ -229,10 +241,9 @@ function DateRangePicker({ from, to, onChange }) {
   const anchorRef = useRef(null);
   useOnClickOutside(anchorRef, () => setOpen(false));
 
-  // month cursors based on from (or today)
   const base = from ? fromISODate(from) : new Date();
   const [y, setY] = useState(base.getFullYear());
-  const [m, setM] = useState(base.getMonth()); // left month
+  const [m, setM] = useState(base.getMonth());
 
   const left = monthMatrix(y, m);
   const rightMonth = (m + 1) % 12,
@@ -254,13 +265,11 @@ function DateRangePicker({ from, to, onChange }) {
 
   const pick = (dt) => {
     const iso = toISODate(dt);
-    // if no start or both set -> start new range
     if (!tmpFrom || (tmpFrom && tmpTo)) {
       setTmpFrom(iso);
       setTmpTo("");
       return;
     }
-    // if selecting end before start -> swap
     if (new Date(iso) < new Date(tmpFrom)) {
       setTmpTo(tmpFrom);
       setTmpFrom(iso);
@@ -278,7 +287,6 @@ function DateRangePicker({ from, to, onChange }) {
   };
   const isSel = (d) => (tmpFrom && toISODate(d) === tmpFrom) || (tmpTo && toISODate(d) === tmpTo);
 
-  // presets (ranges)
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
@@ -306,7 +314,11 @@ function DateRangePicker({ from, to, onChange }) {
   return (
     <div className="drp-field" ref={anchorRef}>
       <div className="drp-input with-icon" onClick={() => setOpen(true)}>
-        <input readOnly value={`${toDMY(from)} - ${to ? toDMY(to) : ""}`} placeholder="dd/mm/yyyy - dd/mm/yyyy" />
+        <input
+          readOnly
+          value={`${toDMY(from)} - ${to ? toDMY(to) : ""}`}
+          placeholder="dd/mm/yyyy - dd/mm/yyyy"
+        />
         <span className="drp-cal-ic" onClick={() => setOpen((v) => !v)} aria-hidden="true">
           <Ic.cal />
         </span>
@@ -315,58 +327,113 @@ function DateRangePicker({ from, to, onChange }) {
       {open && (
         <div className="drp-pop">
           <div className="drp-left">
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(today)); setTmpTo(toISODate(today)); }}>
+            <button
+              className="drp-pres"
+              onClick={() => {
+                setTmpFrom(toISODate(today));
+                setTmpTo(toISODate(today));
+              }}
+            >
               Today
             </button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(yesterday)); setTmpTo(toISODate(yesterday)); }}>
+            <button
+              className="drp-pres"
+              onClick={() => {
+                setTmpFrom(toISODate(yesterday));
+                setTmpTo(toISODate(yesterday));
+              }}
+            >
               Yesterday
             </button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(last7Start)); setTmpTo(toISODate(today)); }}>
+            <button
+              className="drp-pres"
+              onClick={() => {
+                setTmpFrom(toISODate(last7Start));
+                setTmpTo(toISODate(today));
+              }}
+            >
               Last 7 Days
             </button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(last30Start)); setTmpTo(toISODate(today)); }}>
+            <button
+              className="drp-pres"
+              onClick={() => {
+                setTmpFrom(toISODate(last30Start));
+                setTmpTo(toISODate(today));
+              }}
+            >
               Last 30 Days
             </button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(thisMonthStart)); setTmpTo(toISODate(thisMonthEnd)); }}>
+            <button
+              className="drp-pres"
+              onClick={() => {
+                setTmpFrom(toISODate(thisMonthStart));
+                setTmpTo(toISODate(thisMonthEnd));
+              }}
+            >
               This Month
             </button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(lastMonthStart)); setTmpTo(toISODate(lastMonthEnd)); }}>
+            <button
+              className="drp-pres"
+              onClick={() => {
+                setTmpFrom(toISODate(lastMonthStart));
+                setTmpTo(toISODate(lastMonthEnd));
+              }}
+            >
               Last Month
             </button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(qStart)); setTmpTo(toISODate(qEnd)); }}>
+            <button
+              className="drp-pres"
+              onClick={() => {
+                setTmpFrom(toISODate(qStart));
+                setTmpTo(toISODate(qEnd));
+              }}
+            >
               This Quarter
             </button>
 
             <div className="drp-actions">
-              <button className="btn-apply" onClick={apply}>Apply</button>
-              <button className="btn-cancel" onClick={cancel}>Cancel</button>
+              <button className="btn-apply" onClick={apply}>
+                Apply
+              </button>
+              <button className="btn-cancel" onClick={cancel}>
+                Cancel
+              </button>
             </div>
           </div>
 
           <div className="drp-right">
             <div className="drp-month-head">
-              <button className="drp-nav" onClick={prev}>‹</button>
+              <button className="drp-nav" onClick={prev}>
+                ‹
+              </button>
               <div className="drp-title">
                 {new Date(y, m, 1).toLocaleString(undefined, { month: "short" })} {y}
               </div>
               <div className="drp-spacer" />
               <div className="drp-title">
-                {new Date(rightYear, rightMonth, 1).toLocaleString(undefined, { month: "short" })} {rightYear}
+                {new Date(rightYear, rightMonth, 1).toLocaleString(undefined, { month: "short" })}{" "}
+                {rightYear}
               </div>
-              <button className="drp-nav" onClick={next}>›</button>
+              <button className="drp-nav" onClick={next}>
+                ›
+              </button>
             </div>
 
             <div className="drp-months">
               {[left, right].map((cells, idx) => (
                 <div className="drp-month" key={idx}>
                   <div className="drp-weekdays">
-                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((w) => <span key={w}>{w}</span>)}
+                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((w) => (
+                      <span key={w}>{w}</span>
+                    ))}
                   </div>
                   <div className="drp-grid">
                     {cells.map(({ dt, inMonth }, i) => (
                       <button
                         key={i}
-                        className={`drp-day ${inMonth ? "in" : "out"} ${isSel(dt) ? "sel" : ""} ${isBetween(dt) ? "inrange" : ""}`}
+                        className={`drp-day ${inMonth ? "in" : "out"} ${isSel(dt) ? "sel" : ""} ${
+                          isBetween(dt) ? "inrange" : ""
+                        }`}
                         onClick={() => pick(dt)}
                         type="button"
                       >
@@ -377,7 +444,6 @@ function DateRangePicker({ from, to, onChange }) {
                 </div>
               ))}
             </div>
-
           </div>
         </div>
       )}
@@ -385,63 +451,38 @@ function DateRangePicker({ from, to, onChange }) {
   );
 }
 
-/* ===================== MAIN: Master Packing Wise Summary ===================== */
+/* ===================== MAIN ===================== */
 export default function InvMasterPackingWiseSummary() {
-  /* filter hidden by default */
   const [showFilter, setShowFilter] = useState(false);
   const [perPage, setPerPage] = useState(10);
 
-  /* RANGE dates (calendar) */
-  const [fromDate, setFromDate] = useState("2025-04-01"); // 01/04/2025
-  const [toDate, setToDate] = useState("2026-03-31");     // 31/03/2026
+  const [fromDate, setFromDate] = useState("2025-04-01");
+  const [toDate, setToDate] = useState("2026-03-31");
 
-  /* dropdowns */
-  const [locs, setLocs] = useState(["All"]);
-  const [locNameToCode, setLocNameToCode] = useState({});
+  // ✅ Locations from backend
+  const [LOCS, setLOCS] = useState(["All"]);
   const [fromLoc, setFromLoc] = useState("All");
   const [toLoc, setToLoc] = useState("All");
 
-  // keep STATUS UI as-is, but we won't send it to backend (per requirement)
+  // ✅ Keep status UI but we will NOT send it to backend
   const STATUS = ["Select Status", "OPEN", "CLOSED"];
   const [status, setStatus] = useState("Select Status");
 
-  // ======== LIVE ROWS (replaces old dummy rows) ========
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // load locations (so filter matches backend codes correctly)
-  useEffect(() => {
-    listLocations()
-      .then((data) => {
-        const arr = Array.isArray(data) ? data : [];
-        const names = ["All", ...arr.map((x) => (x?.name || x?.code || "").trim()).filter(Boolean)];
-        const map = {};
-        arr.forEach((x) => {
-          const nm = (x?.name || x?.code || "").trim();
-          const cd = (x?.code || "").trim();
-          if (nm && cd) map[nm] = cd;
-        });
-        setLocs(names);
-        setLocNameToCode(map);
-      })
-      .catch(() => {
-        setLocs(["All"]);
-        setLocNameToCode({});
-      });
-  }, []);
-
-  // map API row -> UI object with the exact keys already used in the table
   const mapToUiRow = (r) => ({
     "From Location": r.from_location,
-    "Transfer Date": r.transfer_date,           // dd/mm/yyyy from API
+    "Transfer Date": r.transfer_date,
     "Document Number": r.document_number,
     "HSN CODE": r.hsn_code,
     "To Location": r.to_location,
-    "Branch status": r.branch_status,           // "ACTIVE"
-    "Transfer In Date": r.transfer_in_date,     // same as transfer date
+    "Branch status": r.branch_status,
+    "Transfer In Date": r.transfer_in_date,
     "Product Name": r.product_name,
     "Print Name": r.print_name,
     "Department Name": r.department_name,
-    "ItemCode": r.item_code,                    // barcode
+    "ItemCode": r.item_code,
     "Quantity": String(r.quantity ?? 1),
     "Value": r.value ?? "",
     "Unit Price": r.unit_price ?? "",
@@ -451,30 +492,60 @@ export default function InvMasterPackingWiseSummary() {
     "Sale Price": r.sale_price ?? "",
   });
 
+  // ✅ load locations once
   useEffect(() => {
-    const from_code = fromLoc === "All" ? "" : (locNameToCode[fromLoc] || fromLoc);
-    const to_code = toLoc === "All" ? "" : (locNameToCode[toLoc] || toLoc);
+    listLocations()
+      .then((arr) => {
+        const names = (Array.isArray(arr) ? arr : [])
+          .map((x) => (x?.name || "").trim())
+          .filter(Boolean);
+        const unique = Array.from(new Set(names));
+        setLOCS(["All", ...unique]);
+      })
+      .catch(() => {
+        setLOCS(["All"]);
+      });
+  }, []);
 
+  // ✅ fetch report (ONLY date + from/to location)
+  useEffect(() => {
     const params = {
       date_from: fromDate,
       date_to: toDate,
-      from_location: from_code,
-      to_location: to_code,
-      // ✅ per requirement: DO NOT send status (leave it)
+      from_location: fromLoc === "All" ? "" : fromLoc,
+      to_location: toLoc === "All" ? "" : toLoc,
+      // 🚫 status intentionally not sent
     };
 
+    setLoading(true);
     listMasterPackingItemWise(params)
       .then((data) => {
         const arr = Array.isArray(data?.items) ? data.items : [];
         setRows(arr.map(mapToUiRow));
       })
-      .catch(() => setRows([]));
-  }, [fromDate, toDate, fromLoc, toLoc, locNameToCode]);
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [fromDate, toDate, fromLoc, toLoc]);
 
   const HEADERS = [
-    "From Location", "Transfer Date", "Document Number", "HSN CODE", "To Location",
-    "Branch status", "Transfer In Date", "Product Name", "Print Name", "Department Name",
-    "ItemCode", "Quantity", "Value", "Unit Price", "Tax(%)", "Taxable value", "MRP", "Sale Price",
+    "From Location",
+    "Transfer Date",
+    "Document Number",
+    "HSN CODE",
+    "To Location",
+    "Branch status",
+    "Transfer In Date",
+    "Product Name",
+    "Print Name",
+    "Department Name",
+    "ItemCode",
+    "Quantity",
+    "Value",
+    "Unit Price",
+    "Tax(%)",
+    "Taxable value",
+    "MRP",
+    "Sale Price",
   ];
 
   const totals = useMemo(() => {
@@ -499,14 +570,14 @@ export default function InvMasterPackingWiseSummary() {
 
   return (
     <div className="mpw-wrap">
-      {/* Title row */}
       <div className="mpw-head">
         <h3 className="mpw-title">Master Packing Item Wise Summary</h3>
-        <span className="mpw-home"><Ic.home /></span>
+        <span className="mpw-home">
+          <Ic.home />
+        </span>
       </div>
 
       <div className="mpw-card">
-        {/* Top-right toolbar */}
         <div className="mpw-top">
           <div className="mpw-right">
             <ExportMenu rows={rows} headers={HEADERS} />
@@ -522,7 +593,6 @@ export default function InvMasterPackingWiseSummary() {
           </div>
         </div>
 
-        {/* Filters */}
         {showFilter && (
           <div className="mpw-filters">
             <div className="mpw-field">
@@ -530,17 +600,24 @@ export default function InvMasterPackingWiseSummary() {
               <DateRangePicker
                 from={fromDate}
                 to={toDate}
-                onChange={(f, t) => { setFromDate(f); setToDate(t); }}
+                onChange={(f, t) => {
+                  setFromDate(f);
+                  setToDate(t);
+                }}
               />
             </div>
+
             <div className="mpw-field">
               <label>From Location</label>
-              <Select placeholder="All" options={locs} value={fromLoc} onChange={setFromLoc} width={260} />
+              <Select placeholder="All" options={LOCS} value={fromLoc} onChange={setFromLoc} width={260} />
             </div>
+
             <div className="mpw-field">
               <label>To Location</label>
-              <Select placeholder="All" options={locs} value={toLoc} onChange={setToLoc} width={260} />
+              <Select placeholder="All" options={LOCS} value={toLoc} onChange={setToLoc} width={260} />
             </div>
+
+            {/* ✅ kept as-is (UI only), NOT used in API params */}
             <div className="mpw-field">
               <label>Status</label>
               <Select placeholder="Select Status" options={STATUS} value={status} onChange={setStatus} width={240} />
@@ -548,7 +625,6 @@ export default function InvMasterPackingWiseSummary() {
           </div>
         )}
 
-        {/* Table */}
         <div className="mpw-table-wrap">
           <div className="mpw-thead">
             <div className="c id">Sr No.</div>
@@ -572,60 +648,80 @@ export default function InvMasterPackingWiseSummary() {
             <div className="c num">Sale Price</div>
           </div>
 
-          {rows.map((r, i) => (
-            <div className="mpw-row" key={i}>
-              <div className="c id">{i + 1}</div>
-              <div className="c wrap">{r["From Location"]}</div>
-              <div className="c">{r["Transfer Date"]}</div>
-              <div className="c link"><a href="#">{r["Document Number"]}</a></div>
-              <div className="c">{r["HSN CODE"]}</div>
-              <div className="c wrap">{r["To Location"]}</div>
-              <div className="c"><span className="mpw-badge">{r["Branch status"]}</span></div>
-              <div className="c">{r["Transfer In Date"]}</div>
-              <div className="c wrap">{r["Product Name"]}</div>
-              <div className="c wrap">{r["Print Name"]}</div>
-              <div className="c">{r["Department Name"]}</div>
-              <div className="c">{r["ItemCode"]}</div>
-              <div className="c num">{r["Quantity"]}</div>
-              <div className="c num">{r["Value"]}</div>
-              <div className="c num">{r["Unit Price"]}</div>
-              <div className="c num">{r["Tax(%)"]}</div>
-              <div className="c num">{r["Taxable value"]}</div>
-              <div className="c num">{r["MRP"]}</div>
-              <div className="c num">{r["Sale Price"]}</div>
+          {loading && (
+            <div style={{ padding: 14, fontSize: 13, opacity: 0.75 }}>
+              Loading...
             </div>
-          ))}
+          )}
 
-          {/* Total row */}
+          {!loading &&
+            rows.map((r, i) => (
+              <div className="mpw-row" key={i}>
+                <div className="c id">{i + 1}</div>
+                <div className="c wrap">{r["From Location"]}</div>
+                <div className="c">{r["Transfer Date"]}</div>
+                <div className="c link">
+                  <a href="#">{r["Document Number"]}</a>
+                </div>
+                <div className="c">{r["HSN CODE"]}</div>
+                <div className="c wrap">{r["To Location"]}</div>
+
+                {/* ✅ light green bg + white text */}
+                <div className="c">
+                  <span
+                    className="mpw-badge"
+                    style={{
+                      background: "#7CCB7C",
+                      color: "#fff",
+                    }}
+                  >
+                    {r["Branch status"] || "Active"}
+                  </span>
+                </div>
+
+                <div className="c">{r["Transfer In Date"]}</div>
+                <div className="c wrap">{r["Product Name"]}</div>
+                <div className="c wrap">{r["Print Name"]}</div>
+                <div className="c">{r["Department Name"]}</div>
+                <div className="c">{r["ItemCode"]}</div>
+                <div className="c num">{r["Quantity"]}</div>
+                <div className="c num">{r["Value"]}</div>
+                <div className="c num">{r["Unit Price"]}</div>
+                <div className="c num">{r["Tax(%)"]}</div>
+                <div className="c num">{r["Taxable value"]}</div>
+                <div className="c num">{r["MRP"]}</div>
+                <div className="c num">{r["Sale Price"]}</div>
+              </div>
+            ))}
+
           <div className="mpw-total">
             <div className="c span">Total</div>
-            {/* Quantity */}
             <div className="c num">{totals.qty}</div>
-            {/* Value */}
             <div className="c num">{totals.value}</div>
-            {/* Unit Price (keep dash) */}
             <div className="c num">—</div>
-            {/* Tax(%) (keep dash) */}
             <div className="c num">—</div>
-            {/* Taxable value (keep dash) */}
             <div className="c num">—</div>
-            {/* MRP total */}
             <div className="c num">{totals.mrp}</div>
-            {/* Sale Price total */}
             <div className="c num">{totals.sale}</div>
           </div>
         </div>
 
-        {/* Footer / Pager */}
         <div className="mpw-foot">
-          <div className="mpw-showing">Showing 1 to {Math.min(perPage, rows.length)} of {rows.length} entries</div>
+          <div className="mpw-showing">
+            Showing 1 to {Math.min(perPage, rows.length)} of {rows.length} entries
+          </div>
           <div className="mpw-pager">
-            <button className="mpw-page-btn" disabled aria-label="Previous">‹</button>
+            <button className="mpw-page-btn" disabled aria-label="Previous">
+              ‹
+            </button>
             <span className="mpw-page-num active">1</span>
-            <button className="mpw-page-btn" disabled aria-label="Next">›</button>
+            <button className="mpw-page-btn" disabled aria-label="Next">
+              ›
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+

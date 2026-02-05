@@ -1,158 +1,184 @@
 # products/views_reports_masterpacking.py
-
+from datetime import datetime, time
 from decimal import Decimal, ROUND_HALF_UP
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from django.utils.dateparse import parse_date
 from django.db.models import Q
-from django.http import JsonResponse
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 
-from .models import MasterPackLine
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+
+from taskmaster.models import Location
+from .models import MasterPack, MasterPackLine
 
 
 TWOPLACES = Decimal("0.01")
 
 
-def _nm(v):
-    return (v or "").strip()
-
-
-def _norm_dash(s: str) -> str:
-    # normalize en-dash/em-dash/minus variants to plain hyphen for matching
-    return (s or "").replace("–", "-").replace("—", "-").replace("−", "-").strip()
-
-
-def _q2(x):
+def q2(x):
     try:
         return Decimal(x or 0).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
     except Exception:
         return Decimal("0.00")
 
 
-def _loc_filter_q(field_prefix: str, raw: str):
+def _parse_range(request):
     """
-    Build a tolerant Q() for matching Location by code or name.
-    raw may be code or the full name from dropdown (often contains en-dash).
+    date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
     """
-    v = _norm_dash(_nm(raw))
-    if not v or v.lower() == "all":
-        return Q()
-
-    # allow both exact and contains for name (dropdown may have slightly different punctuation)
-    return (
-        Q(**{f"{field_prefix}__code__iexact": v})
-        | Q(**{f"{field_prefix}__name__iexact": v})
-        | Q(**{f"{field_prefix}__name__icontains": v})
-        | Q(**{f"{field_prefix}__name__icontains": v.replace("-", " ")})
-    )
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def master_packing_item_wise(request):
-    """
-    GET /api/reports/master-packing-item-wise/
-      ?date_from=YYYY-MM-DD
-      &date_to=YYYY-MM-DD
-      &from_location=<Location.code or name>
-      &to_location=<Location.code or name>
-      &status=... (ignored)
-    Returns:
-      {"items": [ ... ]}
-    """
-
     df = parse_date((request.query_params.get("date_from") or "").strip())
     dt = parse_date((request.query_params.get("date_to") or "").strip())
-    from_q = (request.query_params.get("from_location") or "").strip()
-    to_q = (request.query_params.get("to_location") or "").strip()
+    if not df or not dt:
+        return None, None, None, None
 
-    qs = (
-        MasterPackLine.objects.select_related(
-            "pack",
-            "pack__from_location",
-            "pack__to_location",
-            "product",
-            "product__task_item",
-        )
-        .order_by("barcode", "id")
-    )
+    if dt < df:
+        df, dt = dt, df
 
-    # date filter on pack.created_at
-    if df:
-        qs = qs.filter(pack__created_at__date__gte=df)
-    if dt:
-        qs = qs.filter(pack__created_at__date__lte=dt)
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(df, time.min), tz)
+    end_dt = timezone.make_aware(datetime.combine(dt, time.max), tz)
+    return df, dt, start_dt, end_dt
 
-    # location filters (tolerant)
-    q_from = _loc_filter_q("pack__from_location", from_q)
-    q_to = _loc_filter_q("pack__to_location", to_q)
-    if q_from:
-        qs = qs.filter(q_from)
-    if q_to:
-        qs = qs.filter(q_to)
 
-    def dmy(d):
-        if not d:
+def _loc_filter_q(param_value: str, field_prefix: str):
+    """
+    Frontend sends Location NAME strings (e.g. "Brands 4 less – Rajouri Garden Inside"),
+    but we also support CODE.
+
+    Builds Q like:
+      field_prefix__code__iexact=value OR field_prefix__name__icontains=value
+    """
+    v = (param_value or "").strip()
+    if not v:
+        return Q()
+
+    return Q(**{f"{field_prefix}__code__iexact": v}) | Q(**{f"{field_prefix}__name__icontains": v})
+
+
+def _fmt_dmy(dt):
+    try:
+        if not dt:
             return ""
-        return d.strftime("%d/%m/%Y")
+        local_dt = timezone.localtime(dt)
+        return local_dt.strftime("%d/%m/%Y")
+    except Exception:
+        return ""
 
-    rows = []
-    for line in qs:
-        pack = line.pack
-        fl = getattr(pack, "from_location", None)
-        tl = getattr(pack, "to_location", None)
 
-        p = line.product
-        ti = getattr(p, "task_item", None)
+class MasterPackingItemWiseReport(APIView):
+    """
+    GET /api/reports/master-packing-item-wise/
 
-        # names from TaskMaster (as requested)
-        print_name = _nm(getattr(ti, "item_print_friendly_name", "")) if ti else ""
-        vasy_name = _nm(getattr(ti, "item_vasy_name", "")) if ti else ""
-        full_name = _nm(getattr(ti, "item_full_name", "")) if ti else ""
-        product_name = print_name or vasy_name or full_name
+    Filters (status ignored by requirement):
+      - date_from=YYYY-MM-DD
+      - date_to=YYYY-MM-DD
+      - from_location=<code or name>
+      - to_location=<code or name>
 
-        # selling price + mrp
-        sp = _q2(getattr(line, "sp", None) or getattr(p, "selling_price", None) or 0)
-        mrp = _q2(getattr(p, "mrp", None) or 0)
+    Response:
+      { items: [ ... ] }
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
-        # tax rule: <= 2500 => 5%, > 2500 => 18%
-        tax_percent = Decimal("5") if sp <= Decimal("2500") else Decimal("18")
-        taxable_value = _q2(sp - (sp * tax_percent / Decimal("100")))
+    def get(self, request):
+        df, dt, start_dt, end_dt = _parse_range(request)
 
-        created_at = getattr(pack, "created_at", None)
-        created_date = created_at.date() if created_at else None
+        # If no dates are provided, default to a wide range (so "initially it load all data")
+        if not (start_dt and end_dt):
+            tz = timezone.get_current_timezone()
+            # very wide default
+            start_dt = timezone.make_aware(datetime(2000, 1, 1, 0, 0, 0), tz)
+            end_dt = timezone.make_aware(datetime(2100, 1, 1, 23, 59, 59), tz)
 
-        rows.append(
-            {
-                "from_location": _nm(getattr(fl, "name", "") or getattr(fl, "code", "")),
-                "transfer_date": dmy(created_date),
-                # ✅ document number must be Master packing number like MP/WS/0001
-                "document_number": _nm(getattr(pack, "number", "")),
-                # ✅ leave blank for now
+        from_loc = (request.query_params.get("from_location") or "").strip()
+        to_loc = (request.query_params.get("to_location") or "").strip()
+
+        packs = (
+            MasterPack.objects
+            .select_related("from_location", "to_location")
+            .filter(created_at__range=(start_dt, end_dt))
+        )
+
+        if from_loc:
+            packs = packs.filter(_loc_filter_q(from_loc, "from_location")).distinct()
+
+        if to_loc:
+            packs = packs.filter(_loc_filter_q(to_loc, "to_location")).distinct()
+
+        # pull all lines for matched packs
+        lines = (
+            MasterPackLine.objects
+            .select_related("pack", "pack__from_location", "pack__to_location", "product", "product__task_item")
+            .filter(pack__in=packs)
+            .order_by("-pack__created_at", "-pack__id", "barcode")
+        )
+
+        items = []
+        for ln in lines:
+            pack = ln.pack
+            fl = pack.from_location
+            tl = pack.to_location
+
+            # selling price from backend (snapshot line.sp if present else product.selling_price)
+            sp = q2(ln.sp if ln.sp is not None else getattr(ln.product, "selling_price", 0))
+
+            tax_percent = Decimal("5") if sp <= Decimal("2500") else Decimal("18")
+            taxable_value = q2(sp - (sp * tax_percent / Decimal("100")))
+
+            # product name / print name
+            ti = getattr(getattr(ln.product, "task_item", None), None, None)
+            task_item = getattr(ln.product, "task_item", None)
+            print_name = ""
+            if task_item:
+                print_name = (
+                    getattr(task_item, "item_print_friendly_name", "") or
+                    getattr(task_item, "item_vasy_name", "") or
+                    getattr(task_item, "item_full_name", "") or
+                    ""
+                )
+
+            product_name = (ln.name or "").strip() or print_name
+
+            transfer_date = _fmt_dmy(getattr(pack, "created_at", None))
+
+            items.append({
+                "from_location": (getattr(fl, "name", "") or getattr(fl, "code", "") or "").strip(),
+                "transfer_date": transfer_date,
+                "document_number": (getattr(pack, "number", "") or "").strip(),   # MP/WS/0001 etc
                 "hsn_code": "",
-                "to_location": _nm(getattr(tl, "name", "") or getattr(tl, "code", "")),
-                # ✅ default ACTIVE (UI will style it light green + white text)
-                "branch_status": "ACTIVE",
-                # ✅ same as transfer date
-                "transfer_in_date": dmy(created_date),
+
+                "to_location": (getattr(tl, "name", "") or getattr(tl, "code", "") or "").strip(),
+
+                # ✅ as per requirement
+                "branch_status": "Active",
+                "transfer_in_date": transfer_date,
+
                 "product_name": product_name,
                 "print_name": print_name,
-                # ✅ leave blank for now
                 "department_name": "",
-                # ✅ barcode = ItemCode
-                "item_code": _nm(getattr(line, "barcode", "")),
-                # ✅ default 1
-                "quantity": 1,
-                # ✅ leave blank
-                "value": "",
-                # ✅ unit price = selling price
-                "unit_price": f"{sp:.2f}",
-                "tax_percent": str(tax_percent),
-                "taxable_value": f"{taxable_value:.2f}",
-                "mrp": f"{mrp:.2f}",
-                "sale_price": f"{sp:.2f}",
-            }
-        )
 
-    return JsonResponse({"items": rows})
+                "item_code": (ln.barcode or "").strip(),
+                "quantity": int(ln.qty or 1),
+
+                "value": "",
+
+                # unit price = selling price
+                "unit_price": str(q2(sp)),
+
+                "tax_percent": str(q2(tax_percent)),
+                "taxable_value": str(q2(taxable_value)),
+
+                # MRP from DB
+                "mrp": str(q2(getattr(ln.product, "mrp", 0))),
+
+                # selling price from backend
+                "sale_price": str(q2(sp)),
+            })
+
+        return Response({"items": items}, status=status.HTTP_200_OK)
+
+
+# ✅ keep old import name used in urls.py (if you already had it)
+master_packing_item_wise = MasterPackingItemWiseReport.as_view()
