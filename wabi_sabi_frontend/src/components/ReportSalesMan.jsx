@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../styles/ReportSalesMan.css";
-import { listLocations, listSalesmanReport, listSalesmenForReport } from "../api/client";
+import { listLocations, listSalesmanSalesReport, listSalesmenForReport } from "../api/client";
 import { useNavigate } from "react-router-dom";
 
 export default function ReportSalesMan() {
@@ -133,7 +133,7 @@ export default function ReportSalesMan() {
           ? selectedLocs.map((x) => x.code || x.name).filter(Boolean)
           : []; // ✅ empty means "all"
 
-      const res = await listSalesmanReport({
+      const res = await listSalesmanSalesReport({
         date_from: fmtYMD(dateRange[0]),
         date_to: fmtYMD(dateRange[1]),
         location: locParams,
