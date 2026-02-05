@@ -545,6 +545,17 @@ export async function getDaywiseSalesExcel(params = {}) {
 }
 
 
+// ✅ NEW: Salesman Report
+export async function listSalesmanReport(params = {}) {
+  // supports:
+  //  - date_from, date_to (YYYY-MM-DD preferred, but backend also accepts DD/MM/YYYY)
+  //  - location (array)
+  //  - salesman (id)
+  //  - q (invoice search)
+  return http(`/reports/salesman-report/${buildQuery(params)}`);
+}
+
+
 export async function listProductWiseSales(params = {}) {
   const sp = new URLSearchParams();
   if (Array.isArray(params.location) && params.location.length) {
@@ -991,4 +1002,5 @@ export default {
   openRegisterSession,
 
   mcDelete,
+  listSalesmanReport,
 };

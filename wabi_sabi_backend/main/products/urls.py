@@ -45,6 +45,8 @@ from .views_locations import LocationListView
 
 from .views_sales_register import SalesRegisterReportView
 
+# ✅ NEW: Salesman report API
+from .views_salesman_report import SalesmanReportView
 
 
 
@@ -102,6 +104,9 @@ urlpatterns = [
     path("reports/daywise-sales/", DaywiseSalesSummary.as_view(), name="daywise-sales-summary"),
     path("reports/product-wise-sales/", ProductWiseSalesReport.as_view(), name="report-product-wise-sales"),
     path("reports/category-wise-sales/", CategoryWiseSalesSummary.as_view(), name="report-category-wise-sales"),
+
+    # ✅ NEW: Salesman report
+    path("reports/salesman-report/", SalesmanReportView.as_view(), name="salesman-report"),
 
     # Discount
     path("discounts/", DiscountListCreate.as_view(), name="discount-list-create"),

@@ -72,12 +72,6 @@
 .sm-datein{ position:relative; }
 .sm-datein.with-icon span{ position:absolute; left:8px; top:50%; transform:translateY(-50%); font-size:18px; color:#6b7280; }
 .sm-datein input{ width:100%; height:36px; border:1px solid #cfe0f1; border-radius:8px; padding:0 10px 0 32px; }
-.sm-calwrap{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; padding:4px 6px; }
-.sm-cal{ border:1px solid #e6e9f0; border-radius:10px; overflow:hidden; }
-.sm-cal-head{ background:#fff; padding:8px 10px; font-weight:700; color:#334155; border-bottom:1px solid #eef2f7; }
-.sm-cal-body{ height:220px; background:#eaf4ff; position:relative; }
-.sm-cal-body.filled::after{ content:""; position:absolute; inset:12px; background:#059be5; border-radius:8px; } /* solid blue fill */
-.sm-cal-foot{ background:#fff; padding:6px 10px; border-top:1px solid #eef2f7; color:#64748b; }
 .sm-dateactions{ display:flex; gap:10px; justify-content:flex-start; padding:10px 6px 4px; }
 
 /* Apply/Search button row */
