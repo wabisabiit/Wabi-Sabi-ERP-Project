@@ -18,7 +18,12 @@ from .views_coupons import (
     CouponListCreate, CouponGenerate, GeneratedCouponList,
     CouponLookup, CouponRedeem
 )
-from .views_reports import  ProductWiseSalesReport, CategoryWiseSalesSummary
+from .views_reports import (
+    ProductWiseSalesReport,
+    CategoryWiseSalesSummary,
+    SalesmanSalesReport,          # ✅ NEW
+    SalesmanListForReport,        # ✅ NEW
+)
 from .views_discounts import DiscountListCreate, DiscountDetail
 from .views_reports_masterpacking import master_packing_item_wise
 from .views_holdbills import HoldBillView, HoldBillRestore
@@ -33,19 +38,16 @@ from .views_dashboard import DashboardSummaryView
 # ✅ CSV Import (NEW)
 from .views_csv_import import ProductCsvPreflight, ProductCsvApply
 
-from .views_receipt import SaleReceiptPdfView,DaywiseSalesSummary
+from .views_receipt import SaleReceiptPdfView, DaywiseSalesSummary
 from .views_creditreceipt import CreditNoteReceiptPdfView
 
 from .views_sales import SalesView, SaleLinesByInvoiceView, SaleDeleteView
-
 
 from .views_register_session import RegisterSessionTodayView, RegisterSessionOpenView
 
 from .views_locations import LocationListView
 
 from .views_sales_register import SalesRegisterReportView
-
-
 
 
 router = DefaultRouter()
@@ -73,7 +75,6 @@ urlpatterns = [
     path("credit-notes/<str:note_no>/delete/", CreditNoteDelete.as_view(), name="credit-note-delete"),
 
     # Sales Return
-    # ✅ FIXED: lines endpoint now returns sale-time prices (SaleLine.mrp/sp)
     path("sales/<str:invoice_no>/lines/", SaleLinesByInvoiceView.as_view(), name="sale-lines-by-invoice"),
     path("sales/<str:invoice_no>/return/", SalesReturn.as_view(), name="sales-return"),
 
@@ -83,7 +84,6 @@ urlpatterns = [
     # Master Pack
     path("master-packs/", MasterPackView.as_view(), name="master-pack-create"),
     path("master-packs/bulk-delete/", MasterPackBulkDelete.as_view(), name="master-pack-bulk-delete"),
-    # ✅ IMPORTANT: MasterPack number contains "/" like MP/HR-UV/0001
     path("master-packs/<path:number>/", MasterPackDetail.as_view(), name="master-pack-detail"),
 
     # Material Consumption
@@ -102,6 +102,10 @@ urlpatterns = [
     path("reports/daywise-sales/", DaywiseSalesSummary.as_view(), name="daywise-sales-summary"),
     path("reports/product-wise-sales/", ProductWiseSalesReport.as_view(), name="report-product-wise-sales"),
     path("reports/category-wise-sales/", CategoryWiseSalesSummary.as_view(), name="report-category-wise-sales"),
+
+    # ✅ Salesman Report (NEW)
+    path("reports/salesman-report/", SalesmanSalesReport.as_view(), name="salesman-sales-report"),
+    path("reports/salesman-report/salesmen/", SalesmanListForReport.as_view(), name="salesman-list-report"),
 
     # Discount
     path("discounts/", DiscountListCreate.as_view(), name="discount-list-create"),
@@ -133,10 +137,10 @@ urlpatterns = [
     path("register-sessions/today/", RegisterSessionTodayView.as_view(), name="register-session-today"),
     path("register-sessions/open/", RegisterSessionOpenView.as_view(), name="register-session-open"),
 
-
-    # ✅ NEW Dashboard KPI summary (date filter required)
+    # Dashboard
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
 
+    # Receipts
     path("sales/<str:invoice_no>/receipt/", SaleReceiptPdfView.as_view(), name="sale-receipt-pdf"),
     path("credit-notes/<str:note_no>/receipt/", CreditNoteReceiptPdfView.as_view(), name="creditnote-receipt-pdf"),
 
