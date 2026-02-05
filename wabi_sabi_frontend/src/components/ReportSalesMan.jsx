@@ -13,20 +13,10 @@ export default function ReportSalesMan() {
   const exportRef = useRef(null);
 
   // ───────── Filter data & state ─────────
-  const [LOCATIONS, setLOCATIONS] = useState([
-    "All",
-    "WABI SABI SUSTAINABILITY",
-    "Brands 4 less – Ansal Plaza",
-    "Brands 4 less – Rajouri Garden",
-    "Brand4Less – Tilak Nagar",
-    "Brands 4 less – M3M Urbana",
-    "Brands 4 less – IFFCO Chowk",
-    "Brands Loot – Udyog Vihar",
-    "Brands loot – Krishna Nagar",
-  ]);
+  const [LOCATIONS, setLOCATIONS] = useState(["All"]); // ✅ backend-driven
   const [locOpen, setLocOpen] = useState(false);
   const [locSearch, setLocSearch] = useState("");
-  const [selectedLocs, setSelectedLocs] = useState([]);
+  const [selectedLocs, setSelectedLocs] = useState([]); // ✅ default = ALL data (no filter)
 
   const [drOpen, setDrOpen] = useState(false);
   const [dateRange, setDateRange] = useState("01/04/2025 - 31/03/2026");
@@ -86,7 +76,9 @@ export default function ReportSalesMan() {
     { key: "dept", label: "Department Name", hiddenByDefault: true },
     { key: "subBrand", label: "Sub Brand Name", hiddenByDefault: true },
   ];
-  const defaultVisible = allColumns.filter((c) => !c.hiddenByDefault).map((c) => c.key);
+  const defaultVisible = allColumns
+    .filter((c) => !c.hiddenByDefault)
+    .map((c) => c.key);
   const [visibleCols, setVisibleCols] = useState(new Set(defaultVisible));
   const [colPopup, setColPopup] = useState(false);
   const colBtnRef = useRef(null);
@@ -111,7 +103,8 @@ export default function ReportSalesMan() {
       closeIfOutside(".sm-dateroot", setDrOpen);
       closeIfOutside(".sm-foroot", setFoOpen);
       closeIfOutside(".sm-smroot", setSmOpen);
-      if (exportRef.current && !exportRef.current.contains(e.target)) setExportOpen(false);
+      if (exportRef.current && !exportRef.current.contains(e.target))
+        setExportOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -145,19 +138,23 @@ export default function ReportSalesMan() {
 
   const toggleLoc = (l) => {
     if (l === "All") {
-      const allOnly = selectedLocs.length === (LOCATIONS.length - 1);
+      const allOnly = selectedLocs.length === LOCATIONS.length - 1;
       setSelectedLocs(allOnly ? [] : LOCATIONS.filter((x) => x !== "All"));
       return;
     }
-    setSelectedLocs((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
+    setSelectedLocs((prev) =>
+      prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]
+    );
   };
 
-  // ───────── Load locations from backend (keeps your list in sync) ─────────
+  // ───────── Load locations from backend (backend-driven list) ─────────
   useEffect(() => {
     (async () => {
       try {
         const locs = await listLocations();
-        const arr = Array.isArray(locs) ? locs : (locs?.results || locs?.data || []);
+        const arr = Array.isArray(locs)
+          ? locs
+          : locs?.results || locs?.data || [];
         const names = arr
           .map((x) => x?.name || x?.code || "")
           .map((s) => String(s).trim())
@@ -166,15 +163,12 @@ export default function ReportSalesMan() {
         if (names.length) {
           const merged = ["All", ...Array.from(new Set(names))];
           setLOCATIONS(merged);
-
-          // if current selectedLocs not present, keep as-is (don’t break)
-          // but if empty, default to first real location
-          if (!selectedLocs.length) {
-            setSelectedLocs([merged[1]]);
-          }
+          // ✅ IMPORTANT: do NOT auto-select any location (default shows ALL data)
+        } else {
+          setLOCATIONS(["All"]);
         }
       } catch {
-        // keep your static list if backend not available
+        // keep existing LOCATIONS if backend not available
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,22 +185,34 @@ export default function ReportSalesMan() {
       setSmErr("");
       try {
         const res = await listEmployees({ search: smQuery.trim() });
-        const arr = Array.isArray(res) ? res : (res?.results || res?.data || res?.items || []);
-        const mapped = arr.map((e) => {
-          const name =
-            e?.name ||
-            e?.full_name ||
-            e?.user?.username ||
-            e?.user?.first_name ||
-            "";
-          const phone = e?.phone || e?.mobile || e?.contact_no || "";
-          const label = `${String(name || "").trim()}${phone ? ` - ${phone}` : ""}`.trim();
-          return { id: e?.id, name: String(name || "").trim(), phone: String(phone || "").trim(), label };
-        }).filter((x) => x.id && x.label);
+        const arr = Array.isArray(res)
+          ? res
+          : res?.results || res?.data || res?.items || [];
+        const mapped = arr
+          .map((e) => {
+            const name =
+              e?.name ||
+              e?.full_name ||
+              e?.user?.username ||
+              e?.user?.first_name ||
+              "";
+            const phone = e?.phone || e?.mobile || e?.contact_no || "";
+            const label = `${String(name || "").trim()}${
+              phone ? ` - ${phone}` : ""
+            }`.trim();
+            return {
+              id: e?.id,
+              name: String(name || "").trim(),
+              phone: String(phone || "").trim(),
+              label,
+            };
+          })
+          .filter((x) => x.id && x.label);
 
         if (alive) setSALESMEN(mapped);
       } catch (e) {
-        if (alive) setSmErr(String(e?.message || "Failed to load employees."));
+        if (alive)
+          setSmErr(String(e?.message || "Failed to load employees."));
       } finally {
         if (alive) setSmLoading(false);
       }
@@ -274,6 +280,12 @@ export default function ReportSalesMan() {
     }
   };
 
+  // ✅ Default load: show ALL data on page open
+  useEffect(() => {
+    fetchReport({ keepPanelOpen: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // “Search” button inside filter panel (real apply)
   const applyFilters = () => {
     setLocOpen(false);
@@ -308,17 +320,23 @@ export default function ReportSalesMan() {
     return { qty, amt, tx };
   }, [filteredRows]);
 
-  const ColHead = ({ c }) => (visibleCols.has(c.key) ? <th key={c.key}>{c.label}</th> : null);
+  const ColHead = ({ c }) =>
+    visibleCols.has(c.key) ? <th key={c.key}>{c.label}</th> : null;
   const ColCell = ({ c, row }) => {
     if (!visibleCols.has(c.key)) return null;
     const val = row[c.key] ?? "";
     if (c.key === "inv")
       return (
         <td className="sm-link">
-          <button type="button" className="sm-a">{val}</button>
+          <button type="button" className="sm-a">
+            {val}
+          </button>
         </td>
       );
-    if (c.key === "amount" || c.key === "taxable") return <td className="sm-num">{Number(val || 0).toFixed(2)}</td>;
+    if (c.key === "amount" || c.key === "taxable")
+      return (
+        <td className="sm-num">{Number(val || 0).toFixed(2)}</td>
+      );
     if (c.key === "qty") return <td className="sm-num">{val}</td>;
     return <td className="sm-text">{String(val)}</td>;
   };
@@ -329,11 +347,14 @@ export default function ReportSalesMan() {
     let blob;
     if (fmt === "pdf") {
       filename += ".pdf";
-      const pdf = "%PDF-1.4\n1 0 obj<<>>endobj\n2 0 obj<<>>endobj\ntrailer<<>>\n%%EOF";
+      const pdf =
+        "%PDF-1.4\n1 0 obj<<>>endobj\n2 0 obj<<>>endobj\ntrailer<<>>\n%%EOF";
       blob = new Blob([pdf], { type: "application/pdf" });
     } else {
       filename += ".xlsx";
-      blob = new Blob([""], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      blob = new Blob([""], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -351,7 +372,12 @@ export default function ReportSalesMan() {
       <div className="sm-top">
         <div className="sm-headline">
           <span className="sm-title">Sales Man</span>
-          <span className="material-icons-outlined sm-home" aria-hidden="true">home</span>
+          <span
+            className="material-icons-outlined sm-home"
+            aria-hidden="true"
+          >
+            home
+          </span>
           <span className="sm-crumb">Reports</span>
         </div>
       </div>
@@ -361,28 +387,46 @@ export default function ReportSalesMan() {
         <div className="sm-toolbar">
           <div className="sm-left sm-colroot">
             <div className="sm-columns" ref={colBtnRef}>
-              <button className="sm-colbtn" onClick={() => setColPopup((s) => !s)} type="button">
-                Columns <span className="material-icons-outlined">arrow_drop_down</span>
+              <button
+                className="sm-colbtn"
+                onClick={() => setColPopup((s) => !s)}
+                type="button"
+              >
+                Columns{" "}
+                <span className="material-icons-outlined">
+                  arrow_drop_down
+                </span>
               </button>
               {colPopup && (
                 <div className="sm-colmenu">
                   <div className="sm-colgrid">
-                    <button className="sm-colchip ghost" onClick={restoreVisibility}>Select All</button>
-                    {allColumns.filter((c) => c.key !== "sr").map((c) => {
-                      const active = visibleCols.has(c.key);
-                      return (
-                        <button
-                          key={c.key}
-                          className={`sm-colchip ${active ? "active" : ""}`}
-                          onClick={() => toggleCol(c.key)}
-                          type="button"
-                        >
-                          {c.label}
-                        </button>
-                      );
-                    })}
+                    <button
+                      className="sm-colchip ghost"
+                      onClick={restoreVisibility}
+                    >
+                      Select All
+                    </button>
+                    {allColumns
+                      .filter((c) => c.key !== "sr")
+                      .map((c) => {
+                        const active = visibleCols.has(c.key);
+                        return (
+                          <button
+                            key={c.key}
+                            className={`sm-colchip ${
+                              active ? "active" : ""
+                            }`}
+                            onClick={() => toggleCol(c.key)}
+                            type="button"
+                          >
+                            {c.label}
+                          </button>
+                        );
+                      })}
                   </div>
-                  <button className="sm-restore" onClick={restoreVisibility}>Restore visibility</button>
+                  <button className="sm-restore" onClick={restoreVisibility}>
+                    Restore visibility
+                  </button>
                 </div>
               )}
             </div>
@@ -400,14 +444,29 @@ export default function ReportSalesMan() {
               </button>
               {exportOpen && (
                 <div className="sm-exportmenu">
-                  <button onClick={() => downloadEmpty("pdf")} type="button">PDF</button>
-                  <button onClick={() => downloadEmpty("excel")} type="button">Excel</button>
+                  <button onClick={() => downloadEmpty("pdf")} type="button">
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => downloadEmpty("excel")}
+                    type="button"
+                  >
+                    Excel
+                  </button>
                 </div>
               )}
             </div>
 
-            <select className="sm-pagesize" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-              {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            <select
+              className="sm-pagesize"
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+            >
+              {[10, 25, 50, 100].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
             </select>
             <button
               className={`sm-filterbtn ${filterOpen ? "active" : ""}`}
@@ -418,7 +477,11 @@ export default function ReportSalesMan() {
               <span>Filter</span>
             </button>
             <div className="sm-search">
-              <input placeholder="Search List..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              <input
+                placeholder="Search List..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
               <span className="material-icons-outlined">search</span>
             </div>
           </div>
@@ -431,15 +494,25 @@ export default function ReportSalesMan() {
               {/* Location */}
               <div className="sm-field sm-locroot">
                 <label>Location</label>
-                <button className="sm-locpill sm-input-outline" type="button" onClick={() => setLocOpen((s) => !s)}>
+                <button
+                  className="sm-locpill sm-input-outline"
+                  type="button"
+                  onClick={() => setLocOpen((s) => !s)}
+                >
                   <span className="sm-loctext">Select Location</span>
                   <span className="sm-count">{selectedLocs.length}</span>
-                  <span className="sm-x-outer"><span className="sm-x">×</span></span>
+                  <span className="sm-x-outer">
+                    <span className="sm-x">×</span>
+                  </span>
                 </button>
                 {locOpen && (
                   <div className="sm-pop sm-locpop">
                     <div className="sm-pop-search">
-                      <input placeholder="Search..." value={locSearch} onChange={(e) => setLocSearch(e.target.value)} />
+                      <input
+                        placeholder="Search..."
+                        value={locSearch}
+                        onChange={(e) => setLocSearch(e.target.value)}
+                      />
                     </div>
                     <div className="sm-pop-list">
                       {filteredLocs.map((l) => {
@@ -466,25 +539,51 @@ export default function ReportSalesMan() {
               {/* Date Range */}
               <div className="sm-field sm-dateroot">
                 <label>Date Range</label>
-                <button className="sm-input sm-input--flat sm-input-outline" type="button" onClick={() => setDrOpen((s) => !s)}>
+                <button
+                  className="sm-input sm-input--flat sm-input-outline"
+                  type="button"
+                  onClick={() => setDrOpen((s) => !s)}
+                >
                   {dateRange}
                 </button>
                 {drOpen && (
                   <div className="sm-pop sm-datepop">
                     <div className="sm-dateinputs">
                       <div className="sm-datein with-icon">
-                        <span className="material-icons-outlined">calendar_month</span>
-                        <input value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                        <span className="material-icons-outlined">
+                          calendar_month
+                        </span>
+                        <input
+                          value={fromDate}
+                          onChange={(e) => setFromDate(e.target.value)}
+                        />
                       </div>
                       <div className="sm-datein with-icon">
-                        <span className="material-icons-outlined">calendar_month</span>
-                        <input value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                        <span className="material-icons-outlined">
+                          calendar_month
+                        </span>
+                        <input
+                          value={toDate}
+                          onChange={(e) => setToDate(e.target.value)}
+                        />
                       </div>
                     </div>
 
                     <div className="sm-dateactions">
-                      <button className="btn-apply" type="button" onClick={applyDate}>Apply</button>
-                      <button className="btn-cancel" type="button" onClick={() => setDrOpen(false)}>Cancel</button>
+                      <button
+                        className="btn-apply"
+                        type="button"
+                        onClick={applyDate}
+                      >
+                        Apply
+                      </button>
+                      <button
+                        className="btn-cancel"
+                        type="button"
+                        onClick={() => setDrOpen(false)}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 )}
@@ -506,8 +605,13 @@ export default function ReportSalesMan() {
                     {FILTER_FIELDS.map((f) => (
                       <button
                         key={f}
-                        className={`sm-foitem ${filterOption === f ? "active" : ""}`}
-                        onClick={() => { setFilterOption(f); setFoOpen(false); }}
+                        className={`sm-foitem ${
+                          filterOption === f ? "active" : ""
+                        }`}
+                        onClick={() => {
+                          setFilterOption(f);
+                          setFoOpen(false);
+                        }}
                         type="button"
                       >
                         {f}
@@ -535,30 +639,49 @@ export default function ReportSalesMan() {
                       setSmOpen(true);
                     }}
                   />
-                  <span className="material-icons-outlined">keyboard_arrow_down</span>
+                  <span className="material-icons-outlined">
+                    keyboard_arrow_down
+                  </span>
                 </div>
 
                 {smOpen && (
                   <div className="sm-pop sm-smpop">
                     <div className="sm-smsearching">
-                      {smLoading ? "Searching..." : (smErr ? smErr : "Select Employee")}
+                      {smLoading
+                        ? "Searching..."
+                        : smErr
+                        ? smErr
+                        : "Select Employee"}
                     </div>
                     <div className="sm-pop-list sm-pop-list--tall">
                       {(SALESMEN || [])
-                        .filter((s) => s.label.toLowerCase().includes(smQuery.toLowerCase()))
+                        .filter((s) =>
+                          s.label
+                            .toLowerCase()
+                            .includes(smQuery.toLowerCase())
+                        )
                         .map((s) => (
                           <button
                             key={s.id}
-                            className={`sm-smitem ${salesman?.id === s.id ? "active" : ""}`}
-                            onClick={() => { setSalesman(s); setSmOpen(false); }}
+                            className={`sm-smitem ${
+                              salesman?.id === s.id ? "active" : ""
+                            }`}
+                            onClick={() => {
+                              setSalesman(s);
+                              setSmOpen(false);
+                            }}
                             type="button"
                           >
                             {s.label}
                           </button>
                         ))}
-                      {!smLoading && !smErr && (SALESMEN || []).length === 0 && (
-                        <div className="sm-minirow">No employees found.</div>
-                      )}
+                      {!smLoading &&
+                        !smErr &&
+                        (SALESMEN || []).length === 0 && (
+                          <div className="sm-minirow">
+                            No employees found.
+                          </div>
+                        )}
                     </div>
                   </div>
                 )}
@@ -567,7 +690,11 @@ export default function ReportSalesMan() {
 
             {/* Apply/Search button */}
             <div className="sm-applyrow">
-              <button className="btn-apply" type="button" onClick={applyFilters}>
+              <button
+                className="btn-apply"
+                type="button"
+                onClick={applyFilters}
+              >
                 {loading ? (
                   <>
                     <span className="sm-spinner sm-spinner--btn" /> Searching...
@@ -580,14 +707,54 @@ export default function ReportSalesMan() {
 
             {/* KPI row: now real backend totals */}
             <div className="sm-kpis sm-kpis--bar">
-              <div className="sm-kcell"><div className="sm-klabel">Target</div><div className="sm-kval neg">{Number(kpi.target || 0).toFixed(2)}</div></div>
-              <div className="sm-kcell"><div className="sm-klabel">Total Sales</div><div className="sm-kval pos">{Number(kpi.total_sales || 0).toFixed(2)}</div></div>
-              <div className="sm-kcell"><div className="sm-klabel">Difference</div><div className="sm-kval blue">{Number(kpi.difference || 0).toFixed(2)}</div></div>
-              <div className="sm-kcell"><div className="sm-klabel">Wages</div><div className="sm-kval neg">{Number(kpi.wages || 0).toFixed(2)}</div></div>
-              <div className="sm-kcell"><div className="sm-klabel">Commission</div><div className="sm-kval pos">{Number(kpi.commission || 0).toFixed(2)}</div></div>
-              <div className="sm-kcell"><div className="sm-klabel">Extra Wages</div><div className="sm-kval blue">{Number(kpi.extra_wages || 0).toFixed(2)}</div></div>
-              <div className="sm-kcell"><div className="sm-klabel">Total Salary</div><div className="sm-kval neg">{Number(kpi.total_salary || 0).toFixed(2)}</div></div>
-              <div className="sm-kcell"><div className="sm-klabel">% Of Sale</div><div className="sm-kval pos">{Number(kpi.percent_of_sale || 0).toFixed(2)}</div></div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">Target</div>
+                <div className="sm-kval neg">
+                  {Number(kpi.target || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">Total Sales</div>
+                <div className="sm-kval pos">
+                  {Number(kpi.total_sales || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">Difference</div>
+                <div className="sm-kval blue">
+                  {Number(kpi.difference || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">Wages</div>
+                <div className="sm-kval neg">
+                  {Number(kpi.wages || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">Commission</div>
+                <div className="sm-kval pos">
+                  {Number(kpi.commission || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">Extra Wages</div>
+                <div className="sm-kval blue">
+                  {Number(kpi.extra_wages || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">Total Salary</div>
+                <div className="sm-kval neg">
+                  {Number(kpi.total_salary || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="sm-kcell">
+                <div className="sm-klabel">% Of Sale</div>
+                <div className="sm-kval pos">
+                  {Number(kpi.percent_of_sale || 0).toFixed(2)}
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -600,32 +767,56 @@ export default function ReportSalesMan() {
             </div>
           )}
           {!loading && !!loadErr && <div className="sm-empty">{loadErr}</div>}
-          {!loading && !loadErr && filteredRows.length === 0 && <div className="sm-empty">No data.</div>}
+          {!loading && !loadErr && filteredRows.length === 0 && (
+            <div className="sm-empty">No data.</div>
+          )}
 
           <table className="sm-table">
             <thead>
-              <tr>{allColumns.map((c) => <ColHead key={c.key} c={c} />)}</tr>
+              <tr>
+                {allColumns.map((c) => (
+                  <ColHead key={c.key} c={c} />
+                ))}
+              </tr>
             </thead>
             <tbody>
               {filteredRows.slice(0, pageSize).map((r, idx) => (
                 <tr key={`${r.sr || idx}-${r.inv || ""}`}>
-                  {allColumns.map((c) => <ColCell key={c.key} c={c} row={r} />)}
+                  {allColumns.map((c) => (
+                    <ColCell key={c.key} c={c} row={r} />
+                  ))}
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 {(() => {
-                  const visible = allColumns.filter((c) => visibleCols.has(c.key)).map((c) => c.key);
+                  const visible = allColumns
+                    .filter((c) => visibleCols.has(c.key))
+                    .map((c) => c.key);
                   const qtyIndex = visible.indexOf("qty");
                   const span = Math.max(qtyIndex, 1);
                   return (
                     <>
-                      <td className="sm-total" colSpan={span}>Total</td>
-                      {visible.includes("qty") && <td className="sm-num">{totals.qty}</td>}
-                      {visible.includes("amount") && <td className="sm-num">{totals.amt.toFixed(0)}</td>}
-                      {visible.includes("taxable") && <td className="sm-num">{Number(totals.tx.toFixed(1))}</td>}
-                      {visible.slice(visible.indexOf("taxable") + 1).map((k, i) => <td key={k + i}></td>)}
+                      <td className="sm-total" colSpan={span}>
+                        Total
+                      </td>
+                      {visible.includes("qty") && (
+                        <td className="sm-num">{totals.qty}</td>
+                      )}
+                      {visible.includes("amount") && (
+                        <td className="sm-num">{totals.amt.toFixed(0)}</td>
+                      )}
+                      {visible.includes("taxable") && (
+                        <td className="sm-num">
+                          {Number(totals.tx.toFixed(1))}
+                        </td>
+                      )}
+                      {visible
+                        .slice(visible.indexOf("taxable") + 1)
+                        .map((k, i) => (
+                          <td key={k + i}></td>
+                        ))}
                     </>
                   );
                 })()}
@@ -637,12 +828,18 @@ export default function ReportSalesMan() {
         {/* Footer / pagination */}
         <div className="sm-footer">
           <div className="sm-showing">
-            Showing {filteredRows.length ? 1 : 0} to {Math.min(pageSize, filteredRows.length)} of {filteredRows.length} entries
+            Showing {filteredRows.length ? 1 : 0} to{" "}
+            {Math.min(pageSize, filteredRows.length)} of {filteredRows.length}{" "}
+            entries
           </div>
           <div className="sm-pager">
-            <button className="pg" disabled><span className="material-icons-outlined">chevron_left</span></button>
+            <button className="pg" disabled>
+              <span className="material-icons-outlined">chevron_left</span>
+            </button>
             <button className="pg active">1</button>
-            <button className="pg" disabled><span className="material-icons-outlined">chevron_right</span></button>
+            <button className="pg" disabled>
+              <span className="material-icons-outlined">chevron_right</span>
+            </button>
           </div>
         </div>
       </div>
