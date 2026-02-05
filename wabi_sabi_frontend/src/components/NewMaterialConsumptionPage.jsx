@@ -1,3 +1,4 @@
+// src/components/NewMaterialConsumption.jsx
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/MaterialConsumption.css";
@@ -44,10 +45,12 @@ function parseCSV(text) {
   };
 
   const headers = splitLine(lines[0]).map((h) => h.toLowerCase());
-  const idxBarcode =
-    headers.findIndex((h) => h === "barcode number" || h === "barcode" || h === "barcodenumber");
-  const idxLoc =
-    headers.findIndex((h) => h === "location" || h === "location code" || h === "location_code");
+  const idxBarcode = headers.findIndex(
+    (h) => h === "barcode number" || h === "barcode" || h === "barcodenumber"
+  );
+  const idxLoc = headers.findIndex(
+    (h) => h === "location" || h === "location code" || h === "location_code"
+  );
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
@@ -70,6 +73,17 @@ export default function NewMaterialConsumptionPage() {
   const [barcode, setBarcode] = useState("");
   const [rows, setRows] = useState([]); // {barcode, name, qty, price, total, location}
   const [me, setMe] = useState(null);
+
+  // ✅ NEW: UI feedback (spinner + toast)
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState({ open: false, type: "success", msg: "" });
+  const showToast = useCallback((type, msg) => {
+    setToast({ open: true, type: type || "success", msg: String(msg || "") });
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => {
+      setToast((p) => ({ ...p, open: false }));
+    }, 2200);
+  }, []);
 
   // ---- scanner helpers ----
   const inputRef = useRef(null);
@@ -123,7 +137,8 @@ export default function NewMaterialConsumptionPage() {
           name: incoming.name || "",
           qty: Math.max(1, Number(incoming.qty || 1)),
           price: Number(incoming.price || 0),
-          total: Math.max(1, Number(incoming.qty || 1)) * Number(incoming.price || 0),
+          total:
+            Math.max(1, Number(incoming.qty || 1)) * Number(incoming.price || 0),
           location: incoming.location || "",
         },
       ];
@@ -154,11 +169,11 @@ export default function NewMaterialConsumptionPage() {
       const price = Number(p.sellingPrice || 0);
       upsertRow({ barcode: p.barcode, name, price, qty: 1, location: loc || "" });
     } catch (e) {
-      alert(`Not found: ${b}`);
+      showToast("error", `Not found: ${b}`);
     } finally {
       ensureFocus();
     }
-  }, [barcode, ensureFocus, upsertRow, loc]);
+  }, [barcode, ensureFocus, upsertRow, loc, showToast]);
 
   // Treat Enter or Tab as "Add"
   const onScanKeyDown = (e) => {
@@ -194,14 +209,15 @@ export default function NewMaterialConsumptionPage() {
 
   const doSave = async (mode) => {
     if (!loc) {
-      alert("Please select user (location).");
+      showToast("error", "Please select user (location).");
       return;
     }
     if (rows.length === 0) {
-      alert("Please add at least one barcode.");
+      showToast("error", "Please add at least one barcode.");
       return;
     }
 
+    setBusy(true);
     try {
       const payload = {
         date,
@@ -215,7 +231,7 @@ export default function NewMaterialConsumptionPage() {
 
       const res = await mcCreate(payload);
 
-      alert(res?.message || "Saved successfully.");
+      showToast("success", res?.message || "Saved successfully.");
 
       if (mode === "next") {
         await resetForNew();
@@ -223,7 +239,9 @@ export default function NewMaterialConsumptionPage() {
       }
       navigate("/inventory/material-consumption");
     } catch (e) {
-      alert(`Save failed: ${e.message || e}`);
+      showToast("error", `Save failed: ${e?.message || e}`);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -234,14 +252,18 @@ export default function NewMaterialConsumptionPage() {
     e.target.value = ""; // allow re-upload same file
     if (!file) return;
 
+    setBusy(true);
     try {
       const text = await file.text();
       const csvRows = parseCSV(text);
 
       if (!csvRows.length) {
-        alert("CSV is empty or invalid. Required headers: Barcode Number, location");
+        showToast("error", "CSV is empty or invalid. Required headers: Barcode Number, location");
         return;
       }
+
+      let added = 0;
+      let skipped = 0;
 
       // fetch details from backend and fill table
       for (const r of csvRows) {
@@ -254,15 +276,19 @@ export default function NewMaterialConsumptionPage() {
             qty: 1,
             location: r.location || loc || "",
           });
+          added++;
         } catch {
+          skipped++;
           // skip invalid barcode but continue
         }
       }
 
-      alert("Upload successful.");
+      showToast("success", `Upload done. Added: ${added}, Skipped: ${skipped}`);
       ensureFocus();
     } catch (err) {
-      alert(`Upload failed: ${err?.message || err}`);
+      showToast("error", `Upload failed: ${err?.message || err}`);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -280,7 +306,12 @@ export default function NewMaterialConsumptionPage() {
               Consumption Date<span className="req">*</span>
             </label>
             <div className="mc-date">
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                disabled={busy}
+              />
             </div>
           </div>
 
@@ -298,7 +329,7 @@ export default function NewMaterialConsumptionPage() {
           {/* User -> Location dropdown */}
           <div className="mc-field">
             <label>Select User</label>
-            <select value={loc} onChange={(e) => setLoc(e.target.value)}>
+            <select value={loc} onChange={(e) => setLoc(e.target.value)} disabled={busy}>
               <option value="">Select location</option>
               {locations.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -315,10 +346,10 @@ export default function NewMaterialConsumptionPage() {
               {type && (
                 <span className="tag">
                   {type}
-                  <button onClick={() => setType("")}>×</button>
+                  <button onClick={() => setType("")} disabled={busy}>×</button>
                 </span>
               )}
-              <select value={type} onChange={(e) => setType(e.target.value)}>
+              <select value={type} onChange={(e) => setType(e.target.value)} disabled={busy}>
                 <option value="">Select</option>
                 <option>Production</option>
                 <option>Scrap/Wastage</option>
@@ -334,6 +365,7 @@ export default function NewMaterialConsumptionPage() {
             placeholder="Enter Remark"
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
+            disabled={busy}
           />
         </div>
       </div>
@@ -350,7 +382,7 @@ export default function NewMaterialConsumptionPage() {
             onChange={onFileChange}
           />
 
-          <button className="mc-upload" type="button" onClick={onUploadClick}>
+          <button className="mc-upload" type="button" onClick={onUploadClick} disabled={busy}>
             <span className="material-icons">file_upload</span> Upload Products
           </button>
         </div>
@@ -363,6 +395,7 @@ export default function NewMaterialConsumptionPage() {
             onChange={(e) => setBarcode(e.target.value)}
             onKeyDown={onScanKeyDown}
             onFocus={ensureFocus}
+            disabled={busy}
           />
         </div>
 
@@ -372,9 +405,13 @@ export default function NewMaterialConsumptionPage() {
               <tr>
                 <th className="w40">#</th>
                 <th>Itemcode</th>
-                <th>Product<span className="req">*</span></th>
+                <th>
+                  Product<span className="req">*</span>
+                </th>
                 <th>Location</th>
-                <th className="num">Qty<span className="req">*</span></th>
+                <th className="num">
+                  Qty<span className="req">*</span>
+                </th>
                 <th className="num">Price</th>
                 <th className="num">Total</th>
                 <th className="w60">Action</th>
@@ -383,7 +420,9 @@ export default function NewMaterialConsumptionPage() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="muted center">Total</td>
+                  <td colSpan={8} className="muted center">
+                    Total
+                  </td>
                 </tr>
               ) : (
                 rows.map((r, i) => (
@@ -399,12 +438,18 @@ export default function NewMaterialConsumptionPage() {
                         value={r.qty}
                         onChange={(e) => onQtyChange(i, e.target.value)}
                         style={{ width: 64, textAlign: "right" }}
+                        disabled={busy}
                       />
                     </td>
                     <td className="num">{Number(r.price || 0).toFixed(2)}</td>
                     <td className="num">{Number(r.total || 0).toFixed(2)}</td>
                     <td className="center">
-                      <button className="icon-btn" onClick={() => removeRow(i)} title="Delete">
+                      <button
+                        className="icon-btn"
+                        onClick={() => removeRow(i)}
+                        title="Delete"
+                        disabled={busy}
+                      >
                         <span className="material-icons">delete</span>
                       </button>
                     </td>
@@ -416,7 +461,9 @@ export default function NewMaterialConsumptionPage() {
             {rows.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={6} className="right strong">Total</td>
+                  <td colSpan={6} className="right strong">
+                    Total
+                  </td>
                   <td className="num strong">{total.toFixed(2)}</td>
                   <td />
                 </tr>
@@ -427,13 +474,30 @@ export default function NewMaterialConsumptionPage() {
       </div>
 
       <div className="mc-bottombar">
-        <button className="btn light" onClick={() => navigate(-1)}>Cancel</button>
+        <button className="btn light" onClick={() => navigate(-1)} disabled={busy}>
+          Cancel
+        </button>
         <div className="spacer" />
-        <button className="btn primary" onClick={() => doSave("save")}>Save</button>
-        <button className="btn primary ghost" onClick={() => doSave("next")}>
+        <button className="btn primary" onClick={() => doSave("save")} disabled={busy}>
+          Save
+        </button>
+        <button className="btn primary ghost" onClick={() => doSave("next")} disabled={busy}>
           Save &amp; Create New
         </button>
       </div>
+
+      {/* ✅ Busy overlay */}
+      {busy && (
+        <div className="mc-overlay">
+          <div className="mc-spinnerBox">
+            <div className="mc-spinner" />
+            <div className="mc-spinText">Please wait...</div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Toast popup */}
+      {toast.open && <div className={`mc-toast ${toast.type}`}>{toast.msg}</div>}
     </div>
   );
 }
