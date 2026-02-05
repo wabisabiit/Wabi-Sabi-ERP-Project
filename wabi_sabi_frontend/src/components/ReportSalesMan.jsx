@@ -26,7 +26,7 @@ export default function ReportSalesMan() {
   ]);
   const [locOpen, setLocOpen] = useState(false);
   const [locSearch, setLocSearch] = useState("");
-  const [selectedLocs, setSelectedLocs] = useState(["WABI SABI SUSTAINABILITY"]);
+  const [selectedLocs, setSelectedLocs] = useState([]);
 
   const [drOpen, setDrOpen] = useState(false);
   const [dateRange, setDateRange] = useState("01/04/2025 - 31/03/2026");
