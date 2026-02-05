@@ -544,108 +544,6 @@ export async function getDaywiseSalesExcel(params = {}) {
   return URL.createObjectURL(blob);
 }
 
-// ✅ NEW: Salesman list for report
-export async function listSalesmenForReport() {
-  return http(`/reports/salesman-report/salesmen/`);
-}
-
-// ✅ NEW: Salesman report data
-export async function listSalesmanSalesReport(params = {}) {
-  const sp = new URLSearchParams();
-
-  if (params.date_from) sp.append("date_from", params.date_from);
-  if (params.date_to) sp.append("date_to", params.date_to);
-
-  if (params.salesman) sp.append("salesman", String(params.salesman).trim());
-
-  if (Array.isArray(params.location)) {
-    params.location.forEach((l) => {
-      const s = String(l || "").trim();
-      if (s) sp.append("location", s);
-    });
-  } else if (params.location) {
-    sp.append("location", String(params.location).trim());
-  }
-
-  if (params.export) sp.append("export", params.export);
-
-  const qs = sp.toString();
-  return http(`/reports/salesman-report/${qs ? `?${qs}` : ""}`);
-}
-
-// ✅ NEW: Salesman PDF (blob url)
-export async function getSalesmanReportPdf(params = {}) {
-  const sp = new URLSearchParams();
-
-  if (params.date_from) sp.append("date_from", params.date_from);
-  if (params.date_to) sp.append("date_to", params.date_to);
-
-  if (params.salesman) sp.append("salesman", String(params.salesman).trim());
-
-  if (Array.isArray(params.location)) {
-    params.location.forEach((l) => {
-      const s = String(l || "").trim();
-      if (s) sp.append("location", s);
-    });
-  } else if (params.location) {
-    sp.append("location", String(params.location).trim());
-  }
-
-  sp.append("export", "pdf");
-
-  const url = joinUrl(API_BASE, `/reports/salesman-report/?${sp.toString()}`);
-
-  const res = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-    headers: { Accept: "*/*" },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`PDF export failed (${res.status}): ${text}`);
-  }
-
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
-}
-
-// ✅ NEW: Salesman Excel (blob url)
-export async function getSalesmanReportExcel(params = {}) {
-  const sp = new URLSearchParams();
-
-  if (params.date_from) sp.append("date_from", params.date_from);
-  if (params.date_to) sp.append("date_to", params.date_to);
-
-  if (params.salesman) sp.append("salesman", String(params.salesman).trim());
-
-  if (Array.isArray(params.location)) {
-    params.location.forEach((l) => {
-      const s = String(l || "").trim();
-      if (s) sp.append("location", s);
-    });
-  } else if (params.location) {
-    sp.append("location", String(params.location).trim());
-  }
-
-  sp.append("export", "excel");
-
-  const url = joinUrl(API_BASE, `/reports/salesman-report/?${sp.toString()}`);
-
-  const res = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-    headers: { Accept: "*/*" },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Excel export failed (${res.status}): ${text}`);
-  }
-
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
-}
 
 export async function listProductWiseSales(params = {}) {
   const sp = new URLSearchParams();
@@ -894,6 +792,7 @@ export async function deleteSale(invoiceNo) {
   return http(`/sales/${encodeURIComponent(safe)}/delete/`, { method: "DELETE" });
 }
 
+
 // ✅ NEW: fetch Sale receipt PDF (blob URL)
 export async function getSaleReceiptPdf(invoiceNo) {
   const safe = String(invoiceNo || "").trim();
@@ -1037,12 +936,6 @@ export default {
   listDaywiseSalesSummary,
   listProductWiseSales,
   listCategoryWiseSales,
-
-  // ✅ NEW
-  listSalesmenForReport,
-  listSalesmanSalesReport,
-  getSalesmanReportPdf,
-  getSalesmanReportExcel,
 
   listDiscounts,
   createDiscount,
