@@ -1,5 +1,5 @@
 # products/views_salesman_report.py
-from datetime import datetime, time
+from datetime import datetime, time, date
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db.models import Q, Sum

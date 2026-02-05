@@ -150,9 +150,6 @@ urlpatterns = [
     path("locations/", LocationListView.as_view(), name="locations"),
 
     path("reports/sales-register/", SalesRegisterReportView.as_view(), name="sales-register-report"),
-
-    path("reports/master-packing-item-wise/", master_packing_item_wise),
-
 ]
 
 urlpatterns += router.urls
