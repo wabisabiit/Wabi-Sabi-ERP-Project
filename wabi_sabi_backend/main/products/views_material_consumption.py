@@ -83,7 +83,7 @@ class MaterialConsumptionView(APIView):
                     barcodes.append(b)
 
             if barcodes:
-                Product.objects.filter(barcode__in=barcodes).delete()
+                Product.objects.filter(barcode__in=barcodes).update(qty=0)
 
         out = MaterialConsumptionOutSerializer(mc).data
         return Response(
