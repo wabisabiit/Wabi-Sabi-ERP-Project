@@ -113,7 +113,7 @@ urlpatterns = [
     path("discounts/<int:pk>/", DiscountDetail.as_view(), name="discount-detail"),
 
     # Master packing report
-    path("reports/master-packing-item-wise/", master_packing_item_wise, name="master-packing-item-wise"),
+    path("reports/master-packing-item-wise/", master_packing_item_wise.as_view(), name="master-packing-item-wise"),
 
     # Hold Bills
     path("hold-bills/", HoldBillView.as_view(), name="hold-bill-list-create"),

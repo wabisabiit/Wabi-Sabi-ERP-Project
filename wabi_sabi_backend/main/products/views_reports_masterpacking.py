@@ -1,20 +1,55 @@
 # products/views_reports_masterpacking.py
 
+from decimal import Decimal, ROUND_HALF_UP
+
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from django.utils.dateparse import parse_date
-from django.db.models import Prefetch, Q
+from django.db.models import Q
 from django.http import JsonResponse
 
-from .models import StockTransferLine
+from .models import MasterPackLine
 
 
-def _nm(v):  # safe str
+TWOPLACES = Decimal("0.01")
+
+
+def _nm(v):
     return (v or "").strip()
 
 
+def _norm_dash(s: str) -> str:
+    # normalize en-dash/em-dash/minus variants to plain hyphen for matching
+    return (s or "").replace("–", "-").replace("—", "-").replace("−", "-").strip()
+
+
+def _q2(x):
+    try:
+        return Decimal(x or 0).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    except Exception:
+        return Decimal("0.00")
+
+
+def _loc_filter_q(field_prefix: str, raw: str):
+    """
+    Build a tolerant Q() for matching Location by code or name.
+    raw may be code or the full name from dropdown (often contains en-dash).
+    """
+    v = _norm_dash(_nm(raw))
+    if not v or v.lower() == "all":
+        return Q()
+
+    # allow both exact and contains for name (dropdown may have slightly different punctuation)
+    return (
+        Q(**{f"{field_prefix}__code__iexact": v})
+        | Q(**{f"{field_prefix}__name__iexact": v})
+        | Q(**{f"{field_prefix}__name__icontains": v})
+        | Q(**{f"{field_prefix}__name__icontains": v.replace("-", " ")})
+    )
+
+
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def master_packing_item_wise(request):
     """
     GET /api/reports/master-packing-item-wise/
@@ -22,43 +57,40 @@ def master_packing_item_wise(request):
       &date_to=YYYY-MM-DD
       &from_location=<Location.code or name>
       &to_location=<Location.code or name>
-      &status=OPEN|CLOSED   (ignored for now; default OPEN in rows)
-
-    Returns a flat list of item rows for the UI table.
+      &status=... (ignored)
+    Returns:
+      {"items": [ ... ]}
     """
-    df = parse_date(request.query_params.get("date_from") or "")
-    dt = parse_date(request.query_params.get("date_to") or "")
+
+    df = parse_date((request.query_params.get("date_from") or "").strip())
+    dt = parse_date((request.query_params.get("date_to") or "").strip())
     from_q = (request.query_params.get("from_location") or "").strip()
     to_q = (request.query_params.get("to_location") or "").strip()
 
     qs = (
-        StockTransferLine.objects
-        .select_related(
-            "transfer",
+        MasterPackLine.objects.select_related(
+            "pack",
+            "pack__from_location",
+            "pack__to_location",
             "product",
             "product__task_item",
-            "transfer__from_location",
-            "transfer__to_location",
         )
-        .order_by("barcode")
+        .order_by("barcode", "id")
     )
 
+    # date filter on pack.created_at
     if df:
-        qs = qs.filter(transfer__created_at__date__gte=df)
+        qs = qs.filter(pack__created_at__date__gte=df)
     if dt:
-        qs = qs.filter(transfer__created_at__date__lte=dt)
+        qs = qs.filter(pack__created_at__date__lte=dt)
 
-    if from_q and from_q.lower() != "all":
-        qs = qs.filter(
-            Q(transfer__from_location__code__iexact=from_q)
-            | Q(transfer__from_location__name__iexact=from_q)
-        )
-
-    if to_q and to_q.lower() != "all":
-        qs = qs.filter(
-            Q(transfer__to_location__code__iexact=to_q)
-            | Q(transfer__to_location__name__iexact=to_q)
-        )
+    # location filters (tolerant)
+    q_from = _loc_filter_q("pack__from_location", from_q)
+    q_to = _loc_filter_q("pack__to_location", to_q)
+    if q_from:
+        qs = qs.filter(q_from)
+    if q_to:
+        qs = qs.filter(q_to)
 
     def dmy(d):
         if not d:
@@ -67,7 +99,10 @@ def master_packing_item_wise(request):
 
     rows = []
     for line in qs:
-        t = line.transfer
+        pack = line.pack
+        fl = getattr(pack, "from_location", None)
+        tl = getattr(pack, "to_location", None)
+
         p = line.product
         ti = getattr(p, "task_item", None)
 
@@ -77,38 +112,46 @@ def master_packing_item_wise(request):
         full_name = _nm(getattr(ti, "item_full_name", "")) if ti else ""
         product_name = print_name or vasy_name or full_name
 
-        # department from TaskMaster (fallback to category)
-        if ti and hasattr(ti, "department"):
-            department = _nm(getattr(ti, "department", ""))
-        else:
-            department = _nm(getattr(ti, "category", ""))
+        # selling price + mrp
+        sp = _q2(getattr(line, "sp", None) or getattr(p, "selling_price", None) or 0)
+        mrp = _q2(getattr(p, "mrp", None) or 0)
+
+        # tax rule: <= 2500 => 5%, > 2500 => 18%
+        tax_percent = Decimal("5") if sp <= Decimal("2500") else Decimal("18")
+        taxable_value = _q2(sp - (sp * tax_percent / Decimal("100")))
+
+        created_at = getattr(pack, "created_at", None)
+        created_date = created_at.date() if created_at else None
 
         rows.append(
             {
-                # keep keys simple; we'll map to UI labels in React
-                "from_location": _nm(
-                    getattr(t.from_location, "name", getattr(t.from_location, "code", ""))
-                ),
-                "transfer_date": dmy(getattr(t, "created_at", None).date()),
-                "document_number": t.number,
-                "hsn_code": _nm(getattr(ti, "hsn_code", "")) if ti else "",
-                "to_location": _nm(
-                    getattr(t.to_location, "name", getattr(t.to_location, "code", ""))
-                ),
-                "branch_status": "OPEN",  # default
-                "transfer_in_date": "-",  # default
+                "from_location": _nm(getattr(fl, "name", "") or getattr(fl, "code", "")),
+                "transfer_date": dmy(created_date),
+                # ✅ document number must be Master packing number like MP/WS/0001
+                "document_number": _nm(getattr(pack, "number", "")),
+                # ✅ leave blank for now
+                "hsn_code": "",
+                "to_location": _nm(getattr(tl, "name", "") or getattr(tl, "code", "")),
+                # ✅ default ACTIVE (UI will style it light green + white text)
+                "branch_status": "ACTIVE",
+                # ✅ same as transfer date
+                "transfer_in_date": dmy(created_date),
                 "product_name": product_name,
                 "print_name": print_name,
-                "department_name": department,
-                "item_code": line.barcode,  # barcode = ItemCode
-                "quantity": 1,  # default 1 (per spec)
-                # leave other financial fields empty except MRP/SP (come from backend)
-                "value": "",  # empty
-                "unit_price": "",  # empty
-                "tax_percent": "",  # empty
-                "taxable_value": "",  # empty
-                "mrp": str(line.mrp or p.mrp or 0),
-                "sale_price": str(line.sp or p.selling_price or 0),
+                # ✅ leave blank for now
+                "department_name": "",
+                # ✅ barcode = ItemCode
+                "item_code": _nm(getattr(line, "barcode", "")),
+                # ✅ default 1
+                "quantity": 1,
+                # ✅ leave blank
+                "value": "",
+                # ✅ unit price = selling price
+                "unit_price": f"{sp:.2f}",
+                "tax_percent": str(tax_percent),
+                "taxable_value": f"{taxable_value:.2f}",
+                "mrp": f"{mrp:.2f}",
+                "sale_price": f"{sp:.2f}",
             }
         )
 

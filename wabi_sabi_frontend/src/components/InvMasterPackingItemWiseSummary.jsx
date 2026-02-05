@@ -1,25 +1,56 @@
+// src/pages/MasterPackingItemwise.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import "../styles/MasterPackingItemWise.css";
-import { listMasterPackingItemWise } from "../api/client";
+import { listMasterPackingItemWise, listLocations } from "../api/client";
 
 /* ---------------- click-outside helper ---------------- */
 function useOnClickOutside(ref, handler) {
   useEffect(() => {
-    const l = (e) => { if (!ref.current || ref.current.contains(e.target)) return; handler(); };
+    const l = (e) => {
+      if (!ref.current || ref.current.contains(e.target)) return;
+      handler();
+    };
     document.addEventListener("mousedown", l);
     document.addEventListener("touchstart", l);
-    return () => { document.removeEventListener("mousedown", l); document.removeEventListener("touchstart", l); };
+    return () => {
+      document.removeEventListener("mousedown", l);
+      document.removeEventListener("touchstart", l);
+    };
   }, [ref, handler]);
 }
 
 /* ---------------- icons (svg so we can recolor) ---------------- */
 const Ic = {
-  home: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-5v-7H10v7H5a2 2 0 0 1-2-2v-9z" /></svg>),
-  export: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zM12 2l-5 5h3v6h4V7h3l-5-5z" /></svg>),
-  caret: () => (<svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.24 4.38a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" /></svg>),
-  filter: () => (<svg className="ic-filter" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18v2l-7 8v5l-4 1v-6L3 6V4z" /></svg>),
-  cal: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm14 8H3v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10z" /></svg>),
-  file: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6" /></svg>),
+  home: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-5v-7H10v7H5a2 2 0 0 1-2-2v-9z" />
+    </svg>
+  ),
+  export: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M5 20h14v-2H5v2zM12 2l-5 5h3v6h4V7h3l-5-5z" />
+    </svg>
+  ),
+  caret: () => (
+    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.24 4.38a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" />
+    </svg>
+  ),
+  filter: () => (
+    <svg className="ic-filter" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 4h18v2l-7 8v5l-4 1v-6L3 6V4z" />
+    </svg>
+  ),
+  cal: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm14 8H3v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10z" />
+    </svg>
+  ),
+  file: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6" />
+    </svg>
+  ),
 };
 
 /* ---------------- select (single, searchable) ---------------- */
@@ -29,21 +60,32 @@ function Select({ placeholder, options = [], value, onChange, width = 240 }) {
   const ref = useRef(null);
   useOnClickOutside(ref, () => setOpen(false));
   const shown = useMemo(
-    () => (q ? options.filter(o => o.toLowerCase().includes(q.toLowerCase())) : options),
+    () => (q ? options.filter((o) => o.toLowerCase().includes(q.toLowerCase())) : options),
     [q, options]
   );
   return (
     <div className="mpw-combo" style={{ width }} ref={ref}>
-      <button className={`mpw-combo-btn ${value ? "has" : ""}`} onClick={() => setOpen(v => !v)} type="button">
+      <button className={`mpw-combo-btn ${value ? "has" : ""}`} onClick={() => setOpen((v) => !v)} type="button">
         <span className="mpw-combo-val">{value || placeholder}</span>
-        <span className="mpw-caret"><Ic.caret /></span>
+        <span className="mpw-caret">
+          <Ic.caret />
+        </span>
       </button>
       {open && (
         <div className="mpw-pop">
           <input className="mpw-pop-search" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="mpw-pop-list">
-            {shown.map(o => (
-              <div key={o} className="mpw-pop-item" onClick={() => { onChange(o); setOpen(false); }}>{o}</div>
+            {shown.map((o) => (
+              <div
+                key={o}
+                className="mpw-pop-item"
+                onClick={() => {
+                  onChange(o);
+                  setOpen(false);
+                }}
+              >
+                {o}
+              </div>
             ))}
             {!shown.length && <div className="mpw-pop-empty">No options</div>}
           </div>
@@ -61,11 +103,22 @@ function PerPage({ value, onChange }) {
   const opts = [10, 50, 100, 500];
   return (
     <div className="mpw-pp" ref={ref}>
-      <button className="mpw-pp-btn" onClick={() => setOpen(v => !v)} type="button">{value} <Ic.caret /></button>
+      <button className="mpw-pp-btn" onClick={() => setOpen((v) => !v)} type="button">
+        {value} <Ic.caret />
+      </button>
       {open && (
         <div className="mpw-pp-menu">
-          {opts.map(n => (
-            <button key={n} className="mpw-pp-item" onClick={() => { onChange(n); setOpen(false); }}>{n}</button>
+          {opts.map((n) => (
+            <button
+              key={n}
+              className="mpw-pp-item"
+              onClick={() => {
+                onChange(n);
+                setOpen(false);
+              }}
+            >
+              {n}
+            </button>
           ))}
         </div>
       )}
@@ -81,12 +134,16 @@ function ExportMenu({ rows, headers }) {
 
   const toCSV = () => {
     const head = headers.join(",");
-    const body = rows.map(r => headers.map(h => `"${(r[h] ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
+    const body = rows
+      .map((r) => headers.map((h) => `"${(r[h] ?? "").toString().replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([head + "\n" + body], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "master-packing-wise.csv";
-    document.body.appendChild(a); a.click(); a.remove();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
   const toPDF = () => {
     const w = window.open("", "_blank");
@@ -98,23 +155,35 @@ function ExportMenu({ rows, headers }) {
         th{background:#f3f4f6}
         h2{margin:0 0 12px;font-size:16px}
       </style>`;
-    const body = rows.map((r, i) => (
-      `<tr><td>${i + 1}</td>${headers.map(h => `<td>${r[h] || ""}</td>`).join("")}</tr>`
-    )).join("");
-    w.document.write(`<html><head>${style}</head><body><h2>Master Packing Wise Summary</h2><table><thead><tr><th>#</th>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></body></html>`);
-    w.document.close(); w.focus(); w.print();
+    const body = rows
+      .map((r, i) => `<tr><td>${i + 1}</td>${headers.map((h) => `<td>${r[h] || ""}</td>`).join("")}</tr>`)
+      .join("");
+    w.document.write(
+      `<html><head>${style}</head><body><h2>Master Packing Wise Summary</h2><table><thead><tr><th>#</th>${headers
+        .map((h) => `<th>${h}</th>`)
+        .join("")}</tr></thead><tbody>${body}</tbody></table></body></html>`
+    );
+    w.document.close();
+    w.focus();
+    w.print();
   };
 
   return (
     <div className="mpw-export" ref={ref}>
-      <button className="mpw-export-btn" onClick={() => setOpen(v => !v)} type="button">
+      <button className="mpw-export-btn" onClick={() => setOpen((v) => !v)} type="button">
         <Ic.export />
-        <span className="mpw-drop-caret"><Ic.caret /></span>
+        <span className="mpw-drop-caret">
+          <Ic.caret />
+        </span>
       </button>
       {open && (
         <div className="mpw-export-menu">
-          <button className="mpw-export-item" onClick={toCSV}><Ic.file /> <span>Excel</span></button>
-          <button className="mpw-export-item" onClick={toPDF}><Ic.file /> <span>PDF</span></button>
+          <button className="mpw-export-item" onClick={toCSV}>
+            <Ic.file /> <span>Excel</span>
+          </button>
+          <button className="mpw-export-item" onClick={toPDF}>
+            <Ic.file /> <span>PDF</span>
+          </button>
         </div>
       )}
     </div>
@@ -122,19 +191,32 @@ function ExportMenu({ rows, headers }) {
 }
 
 /* ===================== DATE RANGE DROPDOWN CALENDAR ===================== */
-function pad2(n) { return String(n).padStart(2, "0"); }
-function toISODate(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
-function fromISODate(iso) { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); }
-function toDMY(iso) { if (!iso) return ""; const d = fromISODate(iso); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; }
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function toISODate(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function fromISODate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function toDMY(iso) {
+  if (!iso) return "";
+  const d = fromISODate(iso);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
-function monthMatrix(year, month) { // month: 0-11
+function monthMatrix(year, month) {
+  // month: 0-11
   const first = new Date(year, month, 1);
   const start = new Date(first);
   const day = (first.getDay() + 6) % 7; // Monday=0
   start.setDate(first.getDate() - day);
   const cells = [];
   for (let i = 0; i < 42; i++) {
-    const dt = new Date(start); dt.setDate(start.getDate() + i);
+    const dt = new Date(start);
+    dt.setDate(start.getDate() + i);
     cells.push({ dt, inMonth: dt.getMonth() === month });
   }
   return cells;
@@ -153,18 +235,37 @@ function DateRangePicker({ from, to, onChange }) {
   const [m, setM] = useState(base.getMonth()); // left month
 
   const left = monthMatrix(y, m);
-  const rightMonth = (m + 1) % 12, rightYear = m === 11 ? y + 1 : y;
+  const rightMonth = (m + 1) % 12,
+    rightYear = m === 11 ? y + 1 : y;
   const right = monthMatrix(rightYear, rightMonth);
 
-  const prev = () => { if (m === 0) { setM(11); setY(y - 1); } else setM(m - 1); };
-  const next = () => { if (m === 11) { setM(0); setY(y + 1); } else setM(m + 1); };
+  const prev = () => {
+    if (m === 0) {
+      setM(11);
+      setY(y - 1);
+    } else setM(m - 1);
+  };
+  const next = () => {
+    if (m === 11) {
+      setM(0);
+      setY(y + 1);
+    } else setM(m + 1);
+  };
 
   const pick = (dt) => {
     const iso = toISODate(dt);
     // if no start or both set -> start new range
-    if (!tmpFrom || (tmpFrom && tmpTo)) { setTmpFrom(iso); setTmpTo(""); return; }
+    if (!tmpFrom || (tmpFrom && tmpTo)) {
+      setTmpFrom(iso);
+      setTmpTo("");
+      return;
+    }
     // if selecting end before start -> swap
-    if (new Date(iso) < new Date(tmpFrom)) { setTmpTo(tmpFrom); setTmpFrom(iso); return; }
+    if (new Date(iso) < new Date(tmpFrom)) {
+      setTmpTo(tmpFrom);
+      setTmpFrom(iso);
+      return;
+    }
     setTmpTo(iso);
   };
 
@@ -179,9 +280,12 @@ function DateRangePicker({ from, to, onChange }) {
 
   // presets (ranges)
   const today = new Date();
-  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
-  const last7Start = new Date(); last7Start.setDate(today.getDate() - 6);
-  const last30Start = new Date(); last30Start.setDate(today.getDate() - 29);
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const last7Start = new Date();
+  last7Start.setDate(today.getDate() - 6);
+  const last30Start = new Date();
+  last30Start.setDate(today.getDate() - 29);
   const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -189,14 +293,21 @@ function DateRangePicker({ from, to, onChange }) {
   const qStart = new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1);
   const qEnd = new Date(qStart.getFullYear(), qStart.getMonth() + 3, 0);
 
-  const apply = () => { onChange(tmpFrom || "", tmpTo || ""); setOpen(false); };
-  const cancel = () => { setOpen(false); setTmpFrom(from); setTmpTo(to); };
+  const apply = () => {
+    onChange(tmpFrom || "", tmpTo || "");
+    setOpen(false);
+  };
+  const cancel = () => {
+    setOpen(false);
+    setTmpFrom(from);
+    setTmpTo(to);
+  };
 
   return (
     <div className="drp-field" ref={anchorRef}>
       <div className="drp-input with-icon" onClick={() => setOpen(true)}>
         <input readOnly value={`${toDMY(from)} - ${to ? toDMY(to) : ""}`} placeholder="dd/mm/yyyy - dd/mm/yyyy" />
-        <span className="drp-cal-ic" onClick={() => setOpen(v => !v)} aria-hidden="true">
+        <span className="drp-cal-ic" onClick={() => setOpen((v) => !v)} aria-hidden="true">
           <Ic.cal />
         </span>
       </div>
@@ -204,13 +315,27 @@ function DateRangePicker({ from, to, onChange }) {
       {open && (
         <div className="drp-pop">
           <div className="drp-left">
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(today)); setTmpTo(toISODate(today)); }}>Today</button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(yesterday)); setTmpTo(toISODate(yesterday)); }}>Yesterday</button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(last7Start)); setTmpTo(toISODate(today)); }}>Last 7 Days</button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(last30Start)); setTmpTo(toISODate(today)); }}>Last 30 Days</button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(thisMonthStart)); setTmpTo(toISODate(thisMonthEnd)); }}>This Month</button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(lastMonthStart)); setTmpTo(toISODate(lastMonthEnd)); }}>Last Month</button>
-            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(qStart)); setTmpTo(toISODate(qEnd)); }}>This Quarter</button>
+            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(today)); setTmpTo(toISODate(today)); }}>
+              Today
+            </button>
+            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(yesterday)); setTmpTo(toISODate(yesterday)); }}>
+              Yesterday
+            </button>
+            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(last7Start)); setTmpTo(toISODate(today)); }}>
+              Last 7 Days
+            </button>
+            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(last30Start)); setTmpTo(toISODate(today)); }}>
+              Last 30 Days
+            </button>
+            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(thisMonthStart)); setTmpTo(toISODate(thisMonthEnd)); }}>
+              This Month
+            </button>
+            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(lastMonthStart)); setTmpTo(toISODate(lastMonthEnd)); }}>
+              Last Month
+            </button>
+            <button className="drp-pres" onClick={() => { setTmpFrom(toISODate(qStart)); setTmpTo(toISODate(qEnd)); }}>
+              This Quarter
+            </button>
 
             <div className="drp-actions">
               <button className="btn-apply" onClick={apply}>Apply</button>
@@ -235,7 +360,7 @@ function DateRangePicker({ from, to, onChange }) {
               {[left, right].map((cells, idx) => (
                 <div className="drp-month" key={idx}>
                   <div className="drp-weekdays">
-                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(w => <span key={w}>{w}</span>)}
+                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((w) => <span key={w}>{w}</span>)}
                   </div>
                   <div className="drp-grid">
                     {cells.map(({ dt, inMonth }, i) => (
@@ -271,30 +396,48 @@ export default function InvMasterPackingWiseSummary() {
   const [toDate, setToDate] = useState("2026-03-31");     // 31/03/2026
 
   /* dropdowns */
-  const LOCS = [
-    "All",
-    "WABI SABI SUSTAINABILITY LLP",
-    "Brands 4 less – Rajouri Garden Inside",
-    "Brands 4 less – M3M Urbana",
-    "Brands 4 less – IFFCO Chowk",
-  ];
+  const [locs, setLocs] = useState(["All"]);
+  const [locNameToCode, setLocNameToCode] = useState({});
   const [fromLoc, setFromLoc] = useState("All");
   const [toLoc, setToLoc] = useState("All");
+
+  // keep STATUS UI as-is, but we won't send it to backend (per requirement)
   const STATUS = ["Select Status", "OPEN", "CLOSED"];
   const [status, setStatus] = useState("Select Status");
 
   // ======== LIVE ROWS (replaces old dummy rows) ========
   const [rows, setRows] = useState([]);
 
+  // load locations (so filter matches backend codes correctly)
+  useEffect(() => {
+    listLocations()
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : [];
+        const names = ["All", ...arr.map((x) => (x?.name || x?.code || "").trim()).filter(Boolean)];
+        const map = {};
+        arr.forEach((x) => {
+          const nm = (x?.name || x?.code || "").trim();
+          const cd = (x?.code || "").trim();
+          if (nm && cd) map[nm] = cd;
+        });
+        setLocs(names);
+        setLocNameToCode(map);
+      })
+      .catch(() => {
+        setLocs(["All"]);
+        setLocNameToCode({});
+      });
+  }, []);
+
   // map API row -> UI object with the exact keys already used in the table
   const mapToUiRow = (r) => ({
     "From Location": r.from_location,
-    "Transfer Date": r.transfer_date,           // already dd/mm/yyyy from API
+    "Transfer Date": r.transfer_date,           // dd/mm/yyyy from API
     "Document Number": r.document_number,
     "HSN CODE": r.hsn_code,
     "To Location": r.to_location,
-    "Branch status": r.branch_status,           // "OPEN"
-    "Transfer In Date": r.transfer_in_date,     // "-"
+    "Branch status": r.branch_status,           // "ACTIVE"
+    "Transfer In Date": r.transfer_in_date,     // same as transfer date
     "Product Name": r.product_name,
     "Print Name": r.print_name,
     "Department Name": r.department_name,
@@ -309,20 +452,24 @@ export default function InvMasterPackingWiseSummary() {
   });
 
   useEffect(() => {
+    const from_code = fromLoc === "All" ? "" : (locNameToCode[fromLoc] || fromLoc);
+    const to_code = toLoc === "All" ? "" : (locNameToCode[toLoc] || toLoc);
+
     const params = {
       date_from: fromDate,
       date_to: toDate,
-      from_location: fromLoc === "All" ? "" : fromLoc,
-      to_location: toLoc === "All" ? "" : toLoc,
-      status: status === "Select Status" ? "" : status,
+      from_location: from_code,
+      to_location: to_code,
+      // ✅ per requirement: DO NOT send status (leave it)
     };
+
     listMasterPackingItemWise(params)
       .then((data) => {
         const arr = Array.isArray(data?.items) ? data.items : [];
         setRows(arr.map(mapToUiRow));
       })
       .catch(() => setRows([]));
-  }, [fromDate, toDate, fromLoc, toLoc, status]);
+  }, [fromDate, toDate, fromLoc, toLoc, locNameToCode]);
 
   const HEADERS = [
     "From Location", "Transfer Date", "Document Number", "HSN CODE", "To Location",
@@ -350,7 +497,6 @@ export default function InvMasterPackingWiseSummary() {
     };
   }, [rows]);
 
-
   return (
     <div className="mpw-wrap">
       {/* Title row */}
@@ -367,7 +513,7 @@ export default function InvMasterPackingWiseSummary() {
             <PerPage value={perPage} onChange={setPerPage} />
             <button
               className={`mpw-filter ${showFilter ? "active" : ""}`}
-              onClick={() => setShowFilter(v => !v)}
+              onClick={() => setShowFilter((v) => !v)}
               type="button"
               title="Filter"
             >
@@ -389,11 +535,11 @@ export default function InvMasterPackingWiseSummary() {
             </div>
             <div className="mpw-field">
               <label>From Location</label>
-              <Select placeholder="All" options={LOCS} value={fromLoc} onChange={setFromLoc} width={260} />
+              <Select placeholder="All" options={locs} value={fromLoc} onChange={setFromLoc} width={260} />
             </div>
             <div className="mpw-field">
               <label>To Location</label>
-              <Select placeholder="All" options={LOCS} value={toLoc} onChange={setToLoc} width={260} />
+              <Select placeholder="All" options={locs} value={toLoc} onChange={setToLoc} width={260} />
             </div>
             <div className="mpw-field">
               <label>Status</label>
@@ -468,7 +614,6 @@ export default function InvMasterPackingWiseSummary() {
             {/* Sale Price total */}
             <div className="c num">{totals.sale}</div>
           </div>
-
         </div>
 
         {/* Footer / Pager */}
