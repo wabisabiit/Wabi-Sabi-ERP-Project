@@ -15,7 +15,9 @@ async function fetchJSON(url, opts = {}) {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText} – ${text || "request failed"}`);
+    throw new Error(
+      `${res.status} ${res.statusText} – ${text || "request failed"}`
+    );
   }
   if (res.status === 204) return null;
   return res.json();
@@ -30,6 +32,38 @@ async function printBarcodes(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+/* ✅ NEW: chunked bulk upsert to avoid nginx 504 */
+async function upsertProductsFromBarcodesChunked(payload, chunkSize = 500) {
+  const total = payload.length;
+  if (!total) return { created: 0, updated: 0, errors: [], results: [] };
+
+  let created = 0;
+  let updated = 0;
+  const errors = [];
+  const results = [];
+
+  for (let i = 0; i < total; i += chunkSize) {
+    const chunk = payload.slice(i, i + chunkSize);
+
+    // try once, retry once (helps with transient gateway hiccups)
+    let res;
+    try {
+      res = await upsertProductsFromBarcodes(chunk);
+    } catch (e1) {
+      console.warn("Chunk upsert failed once, retrying...", e1);
+      res = await upsertProductsFromBarcodes(chunk);
+    }
+
+    created += Number(res?.created || 0);
+    updated += Number(res?.updated || 0);
+
+    if (Array.isArray(res?.errors) && res.errors.length) errors.push(...res.errors);
+    if (Array.isArray(res?.results) && res.results.length) results.push(...res.results);
+  }
+
+  return { created, updated, errors, results };
 }
 
 /* Column order for paste/keyboard nav (S.No excluded) */
@@ -316,13 +350,16 @@ export default function BarcodePrintConfirmPage() {
         imageUrl: r.imageUrl || "",
         qty: 1, // one product per label
         discountPercent: r.discount,
+        location: (r.location || "").trim(), // ✅ IMPORTANT: so backend sets Product.location
       }));
 
     // 2) Upsert → server generates barcodes and returns them in results[]
     let minted = [];
     try {
       if (payload.length) {
-        const res = await upsertProductsFromBarcodes(payload); // POST /products/bulk-upsert/
+        // ✅ CHUNKED upload (500 per request) to avoid 504
+        const res = await upsertProductsFromBarcodesChunked(payload, 500);
+
         const created = res?.created ?? 0;
         const updated = res?.updated ?? 0;
         const errs = Array.isArray(res?.errors) ? res.errors : [];
@@ -330,10 +367,7 @@ export default function BarcodePrintConfirmPage() {
 
         if (errs.length) {
           console.warn("bulk-upsert errors:", errs);
-          showToast(
-            "error",
-            `Barcode save completed with ${errs.length} error(s).`
-          );
+          showToast("error", `Barcode save completed with ${errs.length} error(s).`);
         } else {
           // ✅ success popup (light green)
           showToast("success", "Barcode created successfully.");
@@ -387,10 +421,7 @@ export default function BarcodePrintConfirmPage() {
         showToast("success", "Stock transfer created successfully.");
         console.log("Stock Transfer numbers:", results);
       } else {
-        showToast(
-          "error",
-          "No stock transfer created (no location or barcodes)."
-        );
+        showToast("error", "No stock transfer created (no location or barcodes).");
       }
     } catch (e) {
       console.error("STF create failed:", e);
