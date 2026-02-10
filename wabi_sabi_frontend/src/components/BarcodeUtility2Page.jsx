@@ -3,10 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/BarcodeUtility2Page.css";
 
-// ❌ OLD (kept)
-// import { getItemByCode } from "../api/client";
-
-// ✅ NEW: use shared listLocations from client
+// ✅ use shared listLocations + getItemByCode from client
 import { getItemByCode, listLocations } from "../api/client";
 
 /* ---------------- Common size options (from Code2) ---------------- */
@@ -190,7 +187,7 @@ const INIT_ROWS = [
     mrp: 3500.0,
     sp: 1999.0,
     qty: 1,
-    discount: 0,
+    discount: 0, // ✅ percent
   },
   {
     id: 2,
@@ -302,6 +299,22 @@ async function lookupAndFill(rowId, code, rows, persist) {
     persist(next);
   }
 }
+
+/* ---------- discount helpers (PERCENT) ---------- */
+const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+const discountAmount = (sp, discPct) => {
+  const pct = clamp(toNum(discPct), 0, 100);
+  const price = toNum(sp);
+  const amt = price * (pct / 100);
+  return amt;
+};
+
+const netPrice = (sp, discPct) => {
+  const price = toNum(sp);
+  const amt = discountAmount(price, discPct);
+  return Math.max(0, price - amt);
+};
 
 export default function BarcodeUtility2Page({
   title = "Common Barcode Printing",
@@ -431,8 +444,9 @@ export default function BarcodeUtility2Page({
   const buildExcelSeed = (sourceRows) => {
     const normalized = sourceRows.map((r) => {
       const sp = toNum(r.sp);
-      const discount = toNum(r.discount); // ✅ discount is AMOUNT now
+      const discount = clamp(toNum(r.discount), 0, 100); // ✅ percent
       const qty = Math.trunc(toNum(r.qty));
+      const salesPrice = Math.round(netPrice(sp, discount)); // per unit net
       return {
         ...r,
         itemCode: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
@@ -442,8 +456,7 @@ export default function BarcodeUtility2Page({
         sp,
         discount,
         qty,
-        // ✅ discount as amount: SP - discount
-        salesPrice: Math.max(0, Math.round(sp - discount)),
+        salesPrice,
         barcodeName: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
       };
     });
@@ -456,9 +469,9 @@ export default function BarcodeUtility2Page({
       product: r.product,
       size: r.size,
       location: r.location,
-      discount: Number.isFinite(r.discount) ? r.discount : 0,
-      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0,
-      mrp: Number.isFinite(r.sp) ? r.sp : 0,
+      discount: Number.isFinite(r.discount) ? r.discount : 0, // ✅ percent
+      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0, // ✅ net per unit
+      mrp: Number.isFinite(r.sp) ? r.sp : 0, // (kept as before)
       qty: Number.isFinite(r.qty) ? r.qty : 0,
       barcodeNumber: "",
     }));
@@ -486,7 +499,7 @@ export default function BarcodeUtility2Page({
         product: ["product name", "product", "name"],
         size: ["size"],
         location: ["location", "loc"],
-        discount: ["discount %", "discount", "disc"], // (label kept)
+        discount: ["discount %", "discount", "disc"], // ✅ percent
         sp: ["price", "sp", "selling price", "selling_price"],
         qty: ["qty", "quantity"],
       };
@@ -545,7 +558,7 @@ export default function BarcodeUtility2Page({
           product: product || "",
           size: size || "",
           location: location || "",
-          discount: discount === "" ? 0 : Number(discount), // ✅ amount
+          discount: discount === "" ? 0 : Number(discount), // ✅ percent
           sp: sp === "" ? 0 : Number(sp),
           qty: qty === "" ? 1 : Number(qty),
         });
@@ -559,7 +572,6 @@ export default function BarcodeUtility2Page({
         id: i + 1,
         mrp: 0,
         ...r,
-        // if csv had product, keep it; otherwise will be filled from backend
         product: (r.product || "").trim(),
       }));
 
@@ -584,7 +596,6 @@ export default function BarcodeUtility2Page({
         .filter((x) => x.code && x.code !== "0");
 
       if (toLookup.length) {
-        // optional: show spinner on first row being processed
         setLoadingRowId(toLookup[0].id);
         try {
           const updated = await Promise.all(
@@ -592,7 +603,7 @@ export default function BarcodeUtility2Page({
               const code = sanitizeCodeStrict(r.itemCode);
               if (!code || code === "0") return r;
 
-              // if already present, don't overwrite (but you can change this if you want)
+              // if already present, don't overwrite
               if ((r.product || "").trim()) return { ...r, itemCode: code };
 
               try {
@@ -617,11 +628,11 @@ export default function BarcodeUtility2Page({
     }
   };
 
-  // submit (KEEP backend-compatible mapping & discount as AMOUNT)
+  // submit (KEEP backend-compatible mapping & discount as PERCENT)
   const handleSubmit = () => {
     const normalized = rows.map((r) => {
       const sp = toNum(r.sp);
-      const discount = toNum(r.discount); // ✅ amount
+      const discount = clamp(toNum(r.discount), 0, 100); // ✅ percent
       const qty = Math.trunc(toNum(r.qty));
       return {
         ...r,
@@ -632,8 +643,8 @@ export default function BarcodeUtility2Page({
         sp,
         discount,
         qty,
-        // ✅ discount as amount: SP - discount
-        salesPrice: Math.max(0, Math.round(sp - discount)),
+        // ✅ discount percent: SP - (SP * discount/100)
+        salesPrice: Math.round(netPrice(sp, discount)),
         barcodeName: r.itemCode ? sanitizeCodeStrict(r.itemCode) : "0",
       };
     });
@@ -648,6 +659,8 @@ export default function BarcodeUtility2Page({
       if (!r.location) problems.push(`Row ${rowNo}: Location required`);
       if (!(r.sp > 0)) problems.push(`Row ${rowNo}: Price must be > 0`);
       if (!(r.qty >= 1)) problems.push(`Row ${rowNo}: Qty must be at least 1`);
+      if (r.discount < 0 || r.discount > 100)
+        problems.push(`Row ${rowNo}: Discount % must be 0–100`);
     });
 
     if (problems.length) {
@@ -663,8 +676,8 @@ export default function BarcodeUtility2Page({
       product: r.product,
       size: r.size,
       location: r.location,
-      discount: Number.isFinite(r.discount) ? r.discount : 0,
-      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0,
+      discount: Number.isFinite(r.discount) ? r.discount : 0, // ✅ percent
+      salesPrice: Number.isFinite(r.salesPrice) ? r.salesPrice : 0, // ✅ net per unit
       mrp: Number.isFinite(r.sp) ? r.sp : 0,
       qty: Number.isFinite(r.qty) ? r.qty : 0,
       barcodeNumber: "",
@@ -692,9 +705,8 @@ export default function BarcodeUtility2Page({
 
   const totalAmt = (r) => {
     const sp = toNum(r.sp);
-    const discount = toNum(r.discount); // ✅ amount
-    // ✅ total = SP - discount
-    const amt = Math.max(0, sp - discount);
+    const discount = clamp(toNum(r.discount), 0, 100); // ✅ percent
+    const amt = netPrice(sp, discount); // per unit net
     return Math.round(amt);
   };
 
@@ -837,6 +849,7 @@ export default function BarcodeUtility2Page({
                           type="number"
                           inputMode="decimal"
                           min="0"
+                          max="100"
                           step="0.01"
                           value={r.discount}
                           onChange={(e) =>
