@@ -169,9 +169,58 @@ class SaleReceiptPdfView(View):
         total_disc = Decimal("0.00")
         total_net = Decimal("0.00")
 
-        
+        # ------------------ BILL DISCOUNT FALLBACK ------------------
+        # If UI saved discount at Sale header (sale.discount_total) but not per-line,
+        # distribute it across lines proportionally to line gross.
+        bill_disc = q2(getattr(sale, "discount_total", 0) or 0)
+
+        def _line_has_any_discount(ln: SaleLine) -> bool:
+            dp = q2(getattr(ln, "discount_percent", 0) or 0)
+            da = q2(getattr(ln, "discount_amount", 0) or 0)
+            return (dp > 0) or (da > 0)
+
+        allocate_bill_discount = (
+            bill_disc > 0
+            and lines
+            and (not any(_line_has_any_discount(ln) for ln in lines))
+        )
+
+        bill_disc_by_line_id = {}
+        if allocate_bill_discount:
+            gross_list = []
+            gross_total = Decimal("0.00")
+            for ln in lines:
+                qty = Decimal(int(getattr(ln, "qty", 0) or 0)) or Decimal("1")
+                sp = q2(getattr(ln, "sp", 0) or 0)
+                g = q2(sp * qty)
+                gross_list.append((ln.id, g, qty, sp))
+                gross_total = q2(gross_total + g)
+
+            if gross_total > 0:
+                running = Decimal("0.00")
+                # allocate with rounding, fix last line to match exact bill_disc
+                for i, (lid, g, qty, sp) in enumerate(gross_list):
+                    if i == len(gross_list) - 1:
+                        d = q2(bill_disc - running)
+                    else:
+                        d = (bill_disc * g / gross_total).quantize(
+                            TWOPLACES, rounding=ROUND_HALF_UP
+                        )
+                        running = q2(running + d)
+                    # safety clamp
+                    if d < 0:
+                        d = Decimal("0.00")
+                    if d > g:
+                        d = g
+                    bill_disc_by_line_id[lid] = q2(d)
+
         def per_unit_disc(ln: SaleLine) -> Decimal:
-    # ✅ Discount is calculated on SP
+            # ✅ If bill discount was allocated, use it.
+            if ln.id in bill_disc_by_line_id:
+                qty = Decimal(int(getattr(ln, "qty", 0) or 0)) or Decimal("1")
+                return q2(bill_disc_by_line_id[ln.id] / qty)
+
+            # ✅ Discount is calculated on SP
             sp = q2(getattr(ln, "sp", 0) or 0)
             dp = q2(getattr(ln, "discount_percent", 0) or 0)
             da = q2(getattr(ln, "discount_amount", 0) or 0)  # per-unit stored
@@ -316,6 +365,10 @@ class SaleReceiptPdfView(View):
 
             dpu = per_unit_disc(ln)
             disc_line = q2(dpu * qty)
+
+            # ✅ if bill-level discount is allocated, ensure disc_line matches allocation exactly
+            if ln.id in bill_disc_by_line_id:
+                disc_line = q2(bill_disc_by_line_id[ln.id])
 
             net_unit = q2(sp - dpu)
             net_line = q2(net_unit * qty)
