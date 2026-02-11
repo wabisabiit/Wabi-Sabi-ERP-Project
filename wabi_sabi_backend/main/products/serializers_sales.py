@@ -42,9 +42,9 @@ class SaleLineInSerializer(serializers.Serializer):
         max_digits=6, decimal_places=2, required=False, default=0
     )
 
-    # IMPORTANT:
-    # We will accept discount_amount as "TOTAL discount for the line"
-    # (because your frontend currently sends discPerUnit * qty).
+    # ✅ IMPORTANT (FIXED):
+    # Frontend sends discount_amount as "₹ DISCOUNT PER UNIT"
+    # So total line discount = discount_amount * qty
     discount_amount = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, default=0
     )
@@ -114,7 +114,12 @@ class SaleCreateSerializer(serializers.Serializer):
             subtotal += line_base
 
             dp = q2(ln.get("discount_percent", 0))
-            da_total = q2(ln.get("discount_amount", 0))  # TOTAL line discount (frontend)
+
+            # ✅ FIX: incoming discount_amount is PER-UNIT discount
+            da_per_unit = q2(ln.get("discount_amount", 0))
+            da_total = (da_per_unit * Decimal(qty)).quantize(
+                TWOPLACES, rounding=ROUND_HALF_UP
+            )
 
             if dp > 0:
                 disc = (line_base * dp / Decimal("100")).quantize(
@@ -236,16 +241,10 @@ class SaleCreateSerializer(serializers.Serializer):
 
                 dp = q2(ln.get("discount_percent", 0))
 
-                # incoming discount_amount is TOTAL line discount (current frontend)
-                da_total = q2(ln.get("discount_amount", 0))
+                # ✅ FIX: incoming discount_amount is PER-UNIT discount
+                da_per_unit = q2(ln.get("discount_amount", 0))
 
-                # ✅ STORE PER-UNIT discount in SaleLine.discount_amount
-                da_per_unit = Decimal("0.00")
-                if dp <= 0 and qty > 0:
-                    da_per_unit = (da_total / Decimal(qty)).quantize(
-                        TWOPLACES, rounding=ROUND_HALF_UP
-                    )
-
+                # store line
                 SaleLine.objects.create(
                     sale=sale,
                     product=p,
@@ -365,7 +364,7 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
     unit_cost_after_disc = serializers.SerializerMethodField()
 
     # ✅ NEW: frontend-friendly aliases for invoice restore
-    sellingPrice = serializers.SerializerMethodField()       # sale-time SP
+    sellingPrice = serializers.SerializerMethodField()       # ✅ net price after discount
     lineDiscountAmount = serializers.SerializerMethodField() # per-unit discount at sale-time
     unitCost = serializers.SerializerMethodField()           # after discount
     netAmount = serializers.SerializerMethodField()          # unitCost * qty
@@ -428,8 +427,10 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
 
     # ✅ NEW fields
     def get_sellingPrice(self, obj):
-        # sale-time SP
-        return str(q2(getattr(obj, "sp", 0) or 0))
+        # ✅ FIX: return SALE PRICE after discount (what you want in sales record)
+        sp = q2(getattr(obj, "sp", 0) or 0)
+        disc = self._per_unit_discount(obj)
+        return str((sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
 
     def get_lineDiscountAmount(self, obj):
         # per-unit discount
