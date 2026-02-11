@@ -377,48 +377,59 @@ export default function SearchBar({ onAddItem }) {
 
         INFLIGHT.add(bc);
 
-        // ✅ FIX: keep ORIGINAL sale-time SP and ORIGINAL per-unit discount
-        // So CartTable shows "actual price customer buys" correctly:
-        // netUnit = sellingPrice - lineDiscountAmount
         const qtyNum = Number(ln.qty || 1);
+        const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
 
-        const spAtSale = Number(
+        // ✅ FIX: load ORIGINAL sale-time SP + sale-time discount (₹ per unit)
+        // so CartTable shows:
+        //   Discount ₹  -> the actual discount
+        //   Unit Cost   -> SP - discount (actual paid)
+        const spRaw = Number(
           ln.sellingPrice ??
             ln.sp ??
-            ln.unitPrice ??
+            ln.selling_price ??
             ln.unit_price ??
+            ln.unitPrice ??
             ln.price ??
             0
         );
 
-        const discPerUnit = Number(
+        const discRaw = Number(
           ln.lineDiscountAmount ??
             ln.discount_amount ??
+            ln.discount ??
             ln.line_discount_amount ??
-            ln.lineDiscount ??
             0
         );
+
+        const baseSP = Number.isFinite(spRaw) ? spRaw : 0;
+        const discPerUnit = Math.max(
+          0,
+          Math.min(baseSP || 0, Number.isFinite(discRaw) ? discRaw : 0)
+        );
+
+        const paidUnit = Math.max(0, (baseSP || 0) - discPerUnit);
 
         onAddItem?.({
           id: ln.id ?? ln.barcode,
           barcode: ln.barcode,
-          qty: Number.isFinite(qtyNum) ? qtyNum : 1,
+          qty,
 
-          // CartTable expects these names:
           itemcode: ln.itemcode ?? ln.barcode,
           product: ln.product_name ?? ln.name ?? ln.barcode,
 
           mrp: Number(ln.mrp || 0),
 
-          // ✅ SP at sale time
-          sellingPrice: Number.isFinite(spAtSale) ? spAtSale : 0,
+          // ✅ base price at sale time
+          sellingPrice: baseSP,
 
-          // ✅ discount ₹ per unit (same as original sale)
-          lineDiscountAmount: Number.isFinite(discPerUnit) ? discPerUnit : 0,
+          // ✅ discount at sale time (₹ per unit)
+          lineDiscountAmount: discPerUnit,
 
-          // keep existing fallbacks used elsewhere (safe)
           vasyName: ln.product_name || ln.name || ln.barcode,
-          netAmount: Number(ln.netAmount ?? 0),
+
+          // optional; CartTable recalculates anyway
+          netAmount: +(paidUnit * qty).toFixed(2),
         });
 
         ADDED_BARCODES.add(bc);
@@ -435,7 +446,7 @@ export default function SearchBar({ onAddItem }) {
   const pickCustomer = (raw) => {
     const c = normalizeCustomer(raw);
     setCustomer(c);
-    setSelectedCustomer(c); // ✅ keep your existing customer-details logic
+    setSelectedCustomer(c);
     setQuery("");
     setOpenDrop(false);
     setPage(1);
@@ -447,7 +458,6 @@ export default function SearchBar({ onAddItem }) {
     setOpenDrop(false);
   };
 
-  // ✅ NEW: only allow "Add New Contact" when NO matches exist
   const hasMatches = matches.length > 0;
 
   return (
@@ -527,7 +537,6 @@ export default function SearchBar({ onAddItem }) {
                 </div>
               ) : (
                 <>
-                  {/* ✅ CHANGE: show "Add New Contact" ONLY if no matches */}
                   {!hasMatches && (
                     <div
                       className="add-contact"
@@ -579,7 +588,6 @@ export default function SearchBar({ onAddItem }) {
                             </span>
                           </div>
 
-                          {/* ✅ show Location + Created By */}
                           <div className="cust-sub" style={{ fontSize: "12px", color: "#888" }}>
                             <span>Location: {c.location_display || "-"}</span>
                             <span style={{ marginLeft: 10 }}>
@@ -605,7 +613,6 @@ export default function SearchBar({ onAddItem }) {
                     </div>
                   )}
 
-                  {/* ✅ Pagination controls (frontend only) */}
                   {matches.length > PAGE_SIZE && (
                     <div
                       style={{
