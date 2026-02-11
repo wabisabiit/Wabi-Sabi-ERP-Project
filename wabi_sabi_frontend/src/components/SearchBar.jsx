@@ -377,19 +377,27 @@ export default function SearchBar({ onAddItem }) {
 
         INFLIGHT.add(bc);
 
-        // ✅ CRITICAL FIX: use ACTUAL PAID PRICE (unitCost = SP - discount)
-        // Backend provides:
-        //  - sellingPrice: original SP at sale time (e.g. 700)
-        //  - lineDiscountAmount: discount ₹ per unit (e.g. 350)
-        //  - unitCost: ACTUAL price after discount (e.g. 350) ← USE THIS
-        //  - netAmount: unitCost * qty
+        // ✅ FIX: keep ORIGINAL sale-time SP and ORIGINAL per-unit discount
+        // So CartTable shows "actual price customer buys" correctly:
+        // netUnit = sellingPrice - lineDiscountAmount
         const qtyNum = Number(ln.qty || 1);
 
-        // ✅ USE unitCost (actual paid price) as sellingPrice
-        const actualPaidPrice = Number(ln.unitCost ?? 0);
+        const spAtSale = Number(
+          ln.sellingPrice ??
+            ln.sp ??
+            ln.unitPrice ??
+            ln.unit_price ??
+            ln.price ??
+            0
+        );
 
-        // ✅ NO discount when loading invoice (customer already paid discounted price)
-        const discPerUnit = 0;
+        const discPerUnit = Number(
+          ln.lineDiscountAmount ??
+            ln.discount_amount ??
+            ln.line_discount_amount ??
+            ln.lineDiscount ??
+            0
+        );
 
         onAddItem?.({
           id: ln.id ?? ln.barcode,
@@ -402,11 +410,11 @@ export default function SearchBar({ onAddItem }) {
 
           mrp: Number(ln.mrp || 0),
 
-          // ✅ CRITICAL: use unitCost (actual paid) as sellingPrice
-          sellingPrice: Number.isFinite(actualPaidPrice) ? actualPaidPrice : 0,
-          
-          // ✅ NO additional discount (already applied during original sale)
-          lineDiscountAmount: discPerUnit,
+          // ✅ SP at sale time
+          sellingPrice: Number.isFinite(spAtSale) ? spAtSale : 0,
+
+          // ✅ discount ₹ per unit (same as original sale)
+          lineDiscountAmount: Number.isFinite(discPerUnit) ? discPerUnit : 0,
 
           // keep existing fallbacks used elsewhere (safe)
           vasyName: ln.product_name || ln.name || ln.barcode,
