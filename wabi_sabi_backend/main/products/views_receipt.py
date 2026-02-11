@@ -169,20 +169,27 @@ class SaleReceiptPdfView(View):
         total_disc = Decimal("0.00")
         total_net = Decimal("0.00")
 
+        
         def per_unit_disc(ln: SaleLine) -> Decimal:
-            # ✅ Discount is calculated on SP (selling price) now
+    # ✅ Discount is calculated on SP
             sp = q2(getattr(ln, "sp", 0) or 0)
             dp = q2(getattr(ln, "discount_percent", 0) or 0)
             da = q2(getattr(ln, "discount_amount", 0) or 0)  # per-unit stored
-            if dp > 0:
+
+            # ✅ Fallback: if discount fields are empty but unit_cost is saved as net
+            unit_cost = q2(getattr(ln, "unit_cost", None) or 0)
+            if dp <= 0 and da <= 0 and unit_cost > 0 and unit_cost < sp:
+                d = q2(sp - unit_cost)
+            elif dp > 0:
                 d = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
             else:
                 d = da
+
             if d < 0:
                 d = Decimal("0.00")
             if d > sp:
                 d = sp
-            return d
+            return q2(d)
 
         # ---------------- THERMAL RECEIPT PAGE (prints like machine) ----------------
         # 80mm roll width -> ~226.77 points (72pt/in). Keep small margins.
@@ -485,15 +492,19 @@ def _is_admin(user) -> bool:
 
 def _per_unit_discount(ln: SaleLine) -> Decimal:
     """
-    Per-unit discount based on SP (same as receipt):
+    Per-unit discount based on SP:
     - if discount_percent > 0 => SP * % / 100
     - else use discount_amount (stored per unit)
+    - fallback: infer from unit_cost if discount fields are 0
     """
     sp = q2(getattr(ln, "sp", 0) or 0)
     dp = q2(getattr(ln, "discount_percent", 0) or 0)
     da = q2(getattr(ln, "discount_amount", 0) or 0)
+    unit_cost = q2(getattr(ln, "unit_cost", None) or 0)
 
-    if dp > 0:
+    if dp <= 0 and da <= 0 and unit_cost > 0 and unit_cost < sp:
+        d = q2(sp - unit_cost)
+    elif dp > 0:
         d = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
     else:
         d = da
