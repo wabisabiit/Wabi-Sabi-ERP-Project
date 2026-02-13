@@ -1,156 +1,191 @@
 // src/components/CartTable.jsx
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useCallback } from "react";
 import "../styles/CartTable.css";
 
-const money = (v) =>
-  typeof v === "number" && isFinite(v) ? `₹${v.toFixed(2)}` : "---";
+/**
+ * IMPORTANT:
+ * - Discount input must show sale-time discount when invoice is loaded.
+ * - We use `lineDiscountAmount` as ₹ discount PER UNIT (matches your PosPage logic).
+ * - Net Amount = (sellingPrice - lineDiscountAmount) * qty
+ */
+
+function n(v, fallback = 0) {
+  const x = Number(v);
+  return Number.isFinite(x) ? x : fallback;
+}
+
+function clamp(v, min, max) {
+  const x = n(v, 0);
+  return Math.max(min, Math.min(max, x));
+}
 
 export default function CartTable({ items = [], onRowsChange }) {
-  console.log("🔥 CART TABLE FILE LOADED FROM:", import.meta.url);
-  const [remarks, setRemarks] = useState("");
-  const [rows, setRows] = useState(items || []);
+  // Normalize rows so UI never breaks if older localStorage rows exist
+  const rows = useMemo(() => {
+    return (items || []).map((r) => {
+      const unit = n(
+        r.sellingPrice ??
+          r.unitPrice ??
+          r.unit_price ??
+          r.price ??
+          r.netAmount ??
+          0,
+        0
+      );
 
-  // parent se aane wale items ko sync me rakho
-  useEffect(() => {
-    setRows(items || []);
+      const disc = n(r.lineDiscountAmount ?? 0, 0);
+
+      return {
+        ...r,
+        qty: n(r.qty ?? 1, 1),
+        mrp: n(r.mrp ?? 0, 0),
+        sellingPrice: unit,
+        lineDiscountAmount: disc,
+      };
+    });
   }, [items]);
 
-  const updateRow = (idx, patch) => {
-    setRows((prev) => {
-      const next = prev.map((r, i) => (i === idx ? { ...r, ...patch } : r));
-      if (typeof onRowsChange === "function") onRowsChange(next);
-      return next;
-    });
-  };
+  const emit = useCallback(
+    (next) => {
+      onRowsChange?.(next);
+    },
+    [onRowsChange]
+  );
 
-  const handleDelete = (idx) => {
-    console.log("🗑️ CartTable: delete clicked", {
-      idx,
-      rowsBefore: rows.length,
-      itemsPropLength: items ? items.length : 0,
-    });
+  const updateRow = useCallback(
+    (id, patch) => {
+      const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+      emit(next);
+    },
+    [rows, emit]
+  );
 
-    setRows((prev) => {
-      const next = prev.filter((_, i) => i !== idx);
-      console.log("✅ CartTable: rows after local delete", next);
+  const removeRow = useCallback(
+    (id) => {
+      const next = rows.filter((r) => r.id !== id);
+      emit(next);
+    },
+    [rows, emit]
+  );
 
-      if (typeof onRowsChange === "function") {
-        try {
-          console.log("📤 CartTable: calling onRowsChange with", next);
-          onRowsChange(next);
-        } catch (e) {
-          console.error("❌ CartTable: error while calling onRowsChange", e);
-        }
-      } else {
-        console.warn(
-          "⚠️ CartTable: onRowsChange is missing or not a function. Got:",
-          onRowsChange
-        );
-      }
+  const onQtyChange = useCallback(
+    (id, v) => {
+      const qty = clamp(v, 0, 999999);
+      updateRow(id, { qty });
+    },
+    [updateRow]
+  );
 
-      return next;
-    });
-  };
+  const onDiscountChange = useCallback(
+    (id, v) => {
+      const row = rows.find((x) => x.id === id);
+      const unit = n(row?.sellingPrice ?? 0, 0);
+
+      // discount is ₹ PER UNIT, cannot exceed unit price
+      const disc = clamp(v, 0, unit);
+      updateRow(id, { lineDiscountAmount: disc });
+    },
+    [rows, updateRow]
+  );
+
+  const calcNet = useCallback((r) => {
+    const qty = n(r.qty ?? 0, 0);
+    const unit = n(r.sellingPrice ?? 0, 0);
+    const disc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
+    const netUnit = Math.max(0, unit - disc);
+    return netUnit * qty;
+  }, []);
 
   return (
-    <div className="cart-container">
-      <div className="cart-scroll">
-        <table className="cart-table">
-          <thead>
+    <div className="cart-table-wrap">
+      <table className="cart-table">
+        <thead>
+          <tr>
+            <th style={{ width: 50 }}>#</th>
+            <th style={{ width: 160 }}>Itemcode</th>
+            <th>Product</th>
+            <th style={{ width: 90 }}>Qty</th>
+            <th style={{ width: 120 }}>MRP</th>
+            <th style={{ width: 160 }}>Discount ₹</th>
+            <th style={{ width: 140 }}>Unit Cost</th>
+            <th style={{ width: 140 }}>Net Amount</th>
+            <th style={{ width: 60 }} />
+          </tr>
+        </thead>
+
+        <tbody>
+          {rows.length === 0 ? (
             <tr>
-              <th>#</th>
-              <th>Itemcode</th>
-              <th>Product</th>
-              <th className="num">Qty</th>
-              <th className="num">MRP</th>
-
-              {/* ✅ DISCOUNT IN ₹ */}
-              <th className="num">Discount ₹</th>
-
-              <th className="num">Unit Cost</th>
-              <th className="num">Net Amount</th>
-              <th className="num"></th>
+              <td colSpan={9} style={{ padding: 16, textAlign: "center" }}>
+                No items
+              </td>
             </tr>
-          </thead>
+          ) : (
+            rows.map((r, idx) => {
+              const unit = n(r.sellingPrice ?? 0, 0);
+              const disc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
+              const net = calcNet(r);
 
-          <tbody>
-            {rows.length > 0 ? (
-              rows.map((row, idx) => {
-                const qty = Number.isFinite(Number(row.qty))
-                  ? Number(row.qty)
-                  : 1;
+              return (
+                <tr key={r.id || idx}>
+                  <td>{idx + 1}</td>
 
-                // base unit price (prefer sellingPrice if present)
-                const unit = Number(
-                  row.sellingPrice ??
-                    row.unitPrice ??
-                    row.unit_price ??
-                    row.price ??
-                    row.netAmount ??
-                    0
-                );
+                  <td>{r.itemcode || r.barcode || ""}</td>
 
-                // ✅ discount ₹ per unit (cannot be > unit)
-                const rawDisc = Number(row.lineDiscountAmount ?? 0) || 0;
-                const discRs = Math.max(0, Math.min(unit || 0, rawDisc));
+                  <td>{r.product || ""}</td>
 
-                const netUnit = Math.max(0, (unit || 0) - discRs);
-                const lineAmount = netUnit * qty;
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={n(r.qty ?? 0, 0)}
+                      onChange={(e) => onQtyChange(r.id, e.target.value)}
+                      style={{ width: "70px" }}
+                    />
+                  </td>
 
-                return (
-                  <tr key={row.id || idx}>
-                    <td>{idx + 1}</td>
-                    <td>{row.itemcode}</td>
-                    <td className="prod">{row.product}</td>
-                    <td className="num">{qty}</td>
-                    <td className="num">{money(Number(row.mrp) || 0)}</td>
+                  <td>₹{n(r.mrp ?? 0, 0).toFixed(2)}</td>
 
-                    <td className="num">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={row.lineDiscountAmount ?? ""}
-                        onChange={(e) => {
-                          // allow typing freely, cap in calc
-                          updateRow(idx, { lineDiscountAmount: e.target.value });
-                        }}
-                      />
-                    </td>
+                  {/* ✅ THIS IS THE FIX:
+                      show invoice discount here using lineDiscountAmount */}
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={disc.toFixed(2)}
+                      onChange={(e) => onDiscountChange(r.id, e.target.value)}
+                      style={{ width: "130px" }}
+                    />
+                  </td>
 
-                    <td className="num">{money(netUnit)}</td>
-                    <td className="num">{money(lineAmount)}</td>
+                  <td>₹{unit.toFixed(2)}</td>
 
-                    <td className="num">
-                      <button
-                        type="button"
-                        className="cart-delete-btn"
-                        onClick={() => handleDelete(idx)}
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr className="empty-spacer">
-                <td colSpan={9} />
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                  <td>₹{net.toFixed(2)}</td>
 
-      <div className="remarks-wrap">
-        <textarea
-          className="remarks-input"
-          placeholder="Remarks"
-          value={remarks}
-          onChange={(e) => setRemarks(e.target.value)}
-        />
-      </div>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(r.id)}
+                      title="Remove"
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: 18,
+                        lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
