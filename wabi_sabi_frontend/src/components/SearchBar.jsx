@@ -369,7 +369,7 @@ export default function SearchBar({ onAddItem }) {
       }
 
       window.__RETURN_MODE__ = true;
-      window.__RETURN_INVOICE__ = res.invoice_no;
+      window.__RETURN_INVOICE__ = res.invoice_no || trimmed;
 
       lines.forEach((ln) => {
         const bc = String(ln.barcode || "").trim();
@@ -380,10 +380,7 @@ export default function SearchBar({ onAddItem }) {
         const qtyNum = Number(ln.qty || 1);
         const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
 
-        // ✅ FIX: load ORIGINAL sale-time SP + sale-time discount (₹ per unit)
-        // so CartTable shows:
-        //   Discount ₹  -> the actual discount
-        //   Unit Cost   -> SP - discount (actual paid)
+        // ✅ base SP at sale time (must come from invoice lines API)
         const spRaw = Number(
           ln.sellingPrice ??
             ln.sp ??
@@ -393,22 +390,42 @@ export default function SearchBar({ onAddItem }) {
             ln.price ??
             0
         );
+        const baseSP = Number.isFinite(spRaw) ? spRaw : 0;
 
-        const discRaw = Number(
+        // ✅ discount amount (₹ per unit)
+        const discAmtRaw = Number(
           ln.lineDiscountAmount ??
             ln.discount_amount ??
+            ln.discountAmount ??
             ln.discount ??
             ln.line_discount_amount ??
             0
         );
 
-        const baseSP = Number.isFinite(spRaw) ? spRaw : 0;
-        const discPerUnit = Math.max(
-          0,
-          Math.min(baseSP || 0, Number.isFinite(discRaw) ? discRaw : 0)
+        // ✅ discount percent (%)
+        const discPctRaw = Number(
+          ln.discount_percent ??
+            ln.discountPercent ??
+            ln.discount_percentage ??
+            0
         );
 
-        const paidUnit = Math.max(0, (baseSP || 0) - discPerUnit);
+        // ✅ unit cost (net per unit), if your backend returns it
+        const unitCostRaw = Number(ln.unit_cost ?? ln.unitCost ?? 0);
+        const unitCost = Number.isFinite(unitCostRaw) ? unitCostRaw : 0;
+
+        // ✅ compute actual discount ₹ per unit
+        let discPerUnit = 0;
+
+        if (Number.isFinite(discAmtRaw) && discAmtRaw > 0) {
+          discPerUnit = discAmtRaw;
+        } else if (Number.isFinite(discPctRaw) && discPctRaw > 0) {
+          discPerUnit = (baseSP * discPctRaw) / 100;
+        } else if (unitCost > 0 && unitCost < baseSP) {
+          discPerUnit = baseSP - unitCost;
+        }
+
+        discPerUnit = Math.max(0, Math.min(baseSP, discPerUnit));
 
         onAddItem?.({
           id: ln.id ?? ln.barcode,
@@ -420,16 +437,11 @@ export default function SearchBar({ onAddItem }) {
 
           mrp: Number(ln.mrp || 0),
 
-          // ✅ base price at sale time
+          // ✅ show original price and correct discount
           sellingPrice: baseSP,
-
-          // ✅ discount at sale time (₹ per unit)
-          lineDiscountAmount: discPerUnit,
+          lineDiscountAmount: +discPerUnit.toFixed(2),
 
           vasyName: ln.product_name || ln.name || ln.barcode,
-
-          // optional; CartTable recalculates anyway
-          netAmount: +(paidUnit * qty).toFixed(2),
         });
 
         ADDED_BARCODES.add(bc);

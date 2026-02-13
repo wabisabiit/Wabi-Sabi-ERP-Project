@@ -216,8 +216,92 @@ export async function listCreditNotes(params = {}) {
 
 export async function getSaleLinesByInvoice(invoiceNo) {
   const safe = String(invoiceNo || "").trim();
-  return http(`/sales/${encodeURIComponent(safe)}/lines/`);
+  if (!safe) throw new Error("Missing invoice number.");
+
+  const res = await http(`/sales/${encodeURIComponent(safe)}/lines/`);
+
+  // backend could return:
+  //  - { invoice_no, lines: [...] }
+  //  - { results: [...] }
+  //  - just [...]
+  const rawLines = Array.isArray(res)
+    ? res
+    : Array.isArray(res?.lines)
+      ? res.lines
+      : Array.isArray(res?.results)
+        ? res.results
+        : [];
+
+  const lines = rawLines.map((ln) => {
+    const barcode = String(ln?.barcode ?? ln?.product_barcode ?? ln?.code ?? "").trim();
+    const qty = Number(ln?.qty ?? ln?.quantity ?? 1) || 1;
+
+    // Selling price at sale time (must be used for return)
+    const sp = Number(
+      ln?.sellingPrice ??
+      ln?.selling_price ??
+      ln?.sp ??
+      ln?.unit_price ??
+      ln?.unitPrice ??
+      ln?.price ??
+      0
+    ) || 0;
+
+    const mrp = Number(ln?.mrp ?? 0) || 0;
+
+    // Discount (either amount or percent)
+    const discount_amount = Number(
+      ln?.lineDiscountAmount ??
+      ln?.discount_amount ??
+      ln?.discountAmount ??
+      ln?.discount ??
+      ln?.line_discount_amount ??
+      0
+    ) || 0;
+
+    const discount_percent = Number(
+      ln?.discount_percent ??
+      ln?.discountPercent ??
+      ln?.discount_percentage ??
+      0
+    ) || 0;
+
+    // Optional net/unit_cost
+    const unit_cost = Number(ln?.unit_cost ?? ln?.unitCost ?? 0) || 0;
+
+    const product_name =
+      ln?.product_name ??
+      ln?.name ??
+      ln?.title ??
+      ln?.task_item_name ??
+      ln?.vasyName ??
+      barcode;
+
+    return {
+      id: ln?.id ?? barcode,
+      barcode,
+      qty,
+      mrp,
+
+      // ✅ normalized keys your SearchBar can read
+      sp,
+      selling_price: sp,
+      sellingPrice: sp,
+
+      discount_amount,
+      discount_percent,
+      unit_cost,
+
+      product_name,
+    };
+  });
+
+  return {
+    invoice_no: res?.invoice_no ?? res?.invoiceNo ?? safe,
+    lines,
+  };
 }
+
 
 /**
  * ✅ NEW: Sale header by invoice (best-effort)
