@@ -1,5 +1,5 @@
 # products/views_salesman_report.py
-from datetime import datetime, time, date
+from datetime import datetime, time
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db.models import Q, Sum
@@ -74,7 +74,7 @@ class SalesmanReportView(APIView):
     Output rows:
       - sr, salesman, customer, inv, date, product, qty, amount, taxable, createdBy, location
     Totals:
-      - total_sales = sum(amount)
+      - total_sales = sum(invoice paid amount) ONCE PER INVOICE
       - other KPI fields set to 0 for now (frontend requirement)
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -103,21 +103,20 @@ class SalesmanReportView(APIView):
         if start_dt and end_dt:
             qs = qs.filter(sale__transaction_date__range=(start_dt, end_dt))
 
-        # invoice search only (as you asked)
+        # invoice search only
         q = (request.query_params.get("q") or request.GET.get("q") or "").strip()
         if q:
             qs = qs.filter(sale__invoice_no__icontains=q)
 
-        # salesman filter (employee id)
+        # salesman filter
         salesman_id = (request.query_params.get("salesman") or request.GET.get("salesman") or "").strip()
         if salesman_id:
             try:
                 qs = qs.filter(sale__salesman_id=int(salesman_id))
             except Exception:
-                # bad id -> return empty, but no crash
                 qs = qs.none()
 
-        # location filter (name/code)
+        # location filter
         locs = _get_locations(request)
         if locs:
             loc_q = Q()
@@ -126,7 +125,7 @@ class SalesmanReportView(APIView):
                 loc_q |= Q(sale__salesman__outlet__location__code__icontains=label)
             qs = qs.filter(loc_q)
 
-        # Build a payment map (amount paid per sale) to avoid N+1 queries
+        # Build payment map (paid per sale)
         sale_ids = list(qs.values_list("sale_id", flat=True).distinct()[:50000])
         pay_map = {}
         if sale_ids:
@@ -140,7 +139,6 @@ class SalesmanReportView(APIView):
 
         def safe_outlet_name(emp):
             outlet = getattr(emp, "outlet", None) if emp else None
-            # prefer outlet.name if exists, fallback to location.name/code
             name = getattr(outlet, "name", None)
             if name:
                 return str(name).strip()
@@ -154,6 +152,9 @@ class SalesmanReportView(APIView):
 
         rows = []
         total_sales = Decimal("0.00")
+
+        # ✅ FIX: add paid only ONCE per invoice (sale_id)
+        seen_sales = set()
 
         for idx, ln in enumerate(qs, start=1):
             sale = getattr(ln, "sale", None)
@@ -169,18 +170,22 @@ class SalesmanReportView(APIView):
             )
 
             sp = _q2(getattr(ln, "sp", 0))
-            # taxable formula you gave (per unit SP)
             if sp > Decimal("2500"):
                 taxable = sp - (sp * Decimal("18") / Decimal("100"))
             else:
                 taxable = sp - (sp * Decimal("5") / Decimal("100"))
             taxable = _q2(taxable)
 
-            paid = pay_map.get(getattr(sale, "id", None), None)
+            sale_id = getattr(sale, "id", None)
+
+            paid = pay_map.get(sale_id, None)
             if paid is None:
                 paid = _q2(getattr(sale, "grand_total", 0))
 
-            total_sales += paid
+            # ✅ FIX: count total_sales only once per sale
+            if sale_id and sale_id not in seen_sales:
+                seen_sales.add(sale_id)
+                total_sales += paid
 
             dt = getattr(sale, "transaction_date", None)
             dt_str = ""
@@ -190,10 +195,7 @@ class SalesmanReportView(APIView):
                 except Exception:
                     dt_str = str(dt)
 
-            # Customer Name = outlet name (as requested)
             customer_name = safe_outlet_name(emp) or (getattr(cust, "name", "") or "")
-
-            # Created By = outlet name (salesman belongs to)
             created_by = safe_outlet_name(emp)
 
             rows.append({
