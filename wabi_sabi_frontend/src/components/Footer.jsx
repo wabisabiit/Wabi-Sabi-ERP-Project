@@ -266,11 +266,47 @@ export default function Footer({
     return Math.max(0, +(payableAmount - credit).toFixed(2));
   }, [payableAmount, creditUse]);
 
+  // ✅ NEW: totals for discount display
+  const lineDiscountTotal = useMemo(() => {
+    return (items || []).reduce((sum, r) => {
+      const qty = Number(r.qty ?? r.quantity ?? 1);
+      const q = Number.isFinite(qty) && qty > 0 ? qty : 1;
+
+      const unit = Number(
+        r.sellingPrice ??
+          r.unitPrice ??
+          r.unit_price ??
+          r.price ??
+          r.sp ??
+          r.netAmount ??
+          0
+      );
+      const baseUnit = Number.isFinite(unit) ? unit : 0;
+
+      const discRaw = Number(r.lineDiscountAmount ?? 0) || 0;
+      const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
+
+      return sum + discPerUnit * q;
+    }, 0);
+  }, [items]);
+
+  const billDiscountTotal = useMemo(() => {
+    const base = Number(cartAmount || 0);
+    const after = Number(baseAfterFlat || 0);
+    return Math.max(0, +(base - after).toFixed(2));
+  }, [cartAmount, baseAfterFlat]);
+
+  const displayDiscount = useMemo(() => {
+    const coupon = Number(couponUse?.amount || 0);
+    return Math.max(0, +(lineDiscountTotal + billDiscountTotal + coupon).toFixed(2));
+  }, [lineDiscountTotal, billDiscountTotal, couponUse]);
+
   // Cart lines builder
   const buildLines = useCallback(() => {
     return (items || [])
       .map((r) => {
-        const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+        const code =
+          r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
         const qtyNum = Number(
           r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1
         );
@@ -349,15 +385,12 @@ export default function Footer({
       };
 
       // ✅ attach per-line ₹ discounts (per unit * qty sent as discount_amount)
-      // inside Footer.jsx -> linesWithDiscount mapping
       const linesWithDiscount = lines.map((ln) => {
         const row = (items || []).find((r) => {
           const code =
             r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
           return String(code) === String(ln.barcode);
         });
-
-        const qty = Number(ln.qty || 1) || 1;
 
         const unit = Number(
           row?.sellingPrice ??
@@ -370,14 +403,14 @@ export default function Footer({
         );
         const baseUnit = Number.isFinite(unit) ? unit : 0;
 
-        // ₹ discount per unit (this is what your CartTable uses)
+        // ₹ discount per unit
         const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
         const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
 
         return {
           ...ln,
           discount_percent: 0,
-          discount_amount: +discPerUnit.toFixed(2), // ✅ SEND PER UNIT (NOT total)
+          discount_amount: +discPerUnit.toFixed(2),
         };
       });
 
@@ -452,7 +485,9 @@ export default function Footer({
         }
 
         const customerPayload = {
-          name: (effectiveCustomer && effectiveCustomer.name) || "Walk In Customer",
+          name:
+            (effectiveCustomer && effectiveCustomer.name) ||
+            "Walk In Customer",
           phone: (effectiveCustomer && effectiveCustomer.phone) || "",
           email: (effectiveCustomer && effectiveCustomer.email) || "",
         };
@@ -529,7 +564,7 @@ export default function Footer({
       }
 
       if (label === "Sales Return") {
-        if (salesReturnBusy) return; // ✅ prevent double taps
+        if (salesReturnBusy) return;
 
         const inv = window.__RETURN_INVOICE__;
         if (!inv) {
@@ -537,10 +572,10 @@ export default function Footer({
           return;
         }
 
-        // ✅ FIX: send ONLY currently selected cart items (after user deletes unwanted lines)
         const selected = (items || [])
           .map((r) => {
-            const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+            const code =
+              r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
             const qtyNum = Number(r.qty ?? r.quantity ?? 1);
             const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
             return code ? { barcode: String(code), qty } : null;
@@ -552,12 +587,12 @@ export default function Footer({
           return;
         }
 
-        setSalesReturnBusy(true); // ✅ start spinner/lock
+        setSalesReturnBusy(true);
 
         (async () => {
           let shouldReload = false;
           try {
-            const res = await createSalesReturn(inv, { items: selected }); // ✅ ONLY CHANGE
+            const res = await createSalesReturn(inv, { items: selected });
             const ok = !!res?.ok;
             const msg =
               res?.msg ||
@@ -574,7 +609,6 @@ export default function Footer({
             console.error(e);
             addToast("Error: credit note not created.");
           } finally {
-            // ✅ keep locked if we are about to reload
             if (!shouldReload) setSalesReturnBusy(false);
           }
         })();
@@ -629,7 +663,6 @@ export default function Footer({
             Number(r.netAmount ?? r.amount ?? 0) / qty ||
             0;
 
-          // ✅ NEW: compute discounted amounts for multipay screen + backend
           const baseUnit = Number.isFinite(unit) ? unit : 0;
           const discRaw = Number(r.lineDiscountAmount ?? 0) || 0;
           const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
@@ -652,12 +685,9 @@ export default function Footer({
               "Item",
             qty,
             price: +baseUnit.toFixed(2),
-
-            // ✅ NEW: pass discounted values
             priceAfterDiscount: +netUnit.toFixed(2),
             netAmount: lineNet,
             discount_amount: totalDisc,
-
             tax: Number(r.tax ?? r.taxAmount ?? 0),
             barcode: r.barcode ?? r.itemCode ?? r.itemcode ?? r.code ?? "",
           };
@@ -754,7 +784,8 @@ export default function Footer({
           </div>
 
           <div className="metric has-badge">
-            <div className="value">0.00</div>
+            {/* ✅ ONLY CHANGE: show computed discount instead of hardcoded 0.00 */}
+            <div className="value">{Number(displayDiscount || 0).toFixed(2)}</div>
             <button type="button" className="badge">
               Add.Charges+
             </button>
