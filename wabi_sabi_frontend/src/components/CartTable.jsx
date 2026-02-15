@@ -1,14 +1,17 @@
 // src/components/CartTable.jsx
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect, useState } from "react";
 import "../styles/CartTable.css";
 
 /**
  * IMPORTANT:
- * - Discount input must show sale-time discount when invoice is loaded.
- * - We use `lineDiscountAmount` as ₹ discount PER UNIT (matches your PosPage logic).
- * - NEW: footer flat discount (%) should reflect in each row Discount ₹ and Net Amount.
- * - Net Amount = (sellingPrice - (lineDiscountAmount + billDiscPerUnit)) * qty
- * - We DO NOT overwrite lineDiscountAmount with bill discount; we only display it.
+ * - lineDiscountAmount = ₹ discount PER UNIT (manual/line discount)
+ * - Footer flat discount (%) should ALSO reflect in each row Discount ₹ and Net Amount
+ * - We DO NOT overwrite lineDiscountAmount with bill discount; we only add it for display/net
+ * - Discount input shows: (lineDiscountAmount + billDiscPerUnit)
+ * - When user edits Discount input, we store ONLY the extra part back into lineDiscountAmount
+ *
+ * ✅ NEW: CartTable listens to "pos:bill-discount" and reads window.__BILL_DISCOUNT__
+ * so rows update even if PosPage doesn't pass props.
  */
 
 function n(v, fallback = 0) {
@@ -24,9 +27,37 @@ function clamp(v, min, max) {
 export default function CartTable({
   items = [],
   onRowsChange,
-  billDiscountValue = "0.00",
-  billDiscountIsPercent = true,
+
+  // optional props (if PosPage passes them)
+  billDiscountValue,
+  billDiscountIsPercent,
 }) {
+  // ✅ internal bill discount state (auto from footer)
+  const [billDiscValueState, setBillDiscValueState] = useState("0.00");
+  const [billDiscIsPercentState, setBillDiscIsPercentState] = useState(true);
+
+  // if props are provided, they win; otherwise use internal state
+  const effBillValue =
+    billDiscountValue !== undefined ? String(billDiscountValue) : billDiscValueState;
+  const effBillIsPercent =
+    billDiscountIsPercent !== undefined ? !!billDiscountIsPercent : billDiscIsPercentState;
+
+  // ✅ Listen to footer broadcast
+  useEffect(() => {
+    const apply = (d) => {
+      if (!d) return;
+      setBillDiscValueState(String(d.value ?? "0"));
+      setBillDiscIsPercentState(!!d.isPercent);
+    };
+
+    // pick up current value (if already set)
+    apply(window.__BILL_DISCOUNT__);
+
+    const handler = (e) => apply(e?.detail);
+    window.addEventListener("pos:bill-discount", handler);
+    return () => window.removeEventListener("pos:bill-discount", handler);
+  }, []);
+
   // Normalize rows so UI never breaks if older localStorage rows exist
   const rows = useMemo(() => {
     return (items || []).map((r) => {
@@ -103,9 +134,9 @@ export default function CartTable({
       const baseUnit = Math.max(0, unit - lineDisc);
       const baseLine = baseUnit * qty;
 
-      const raw = Math.max(0, Number(billDiscountValue) || 0);
+      const raw = Math.max(0, Number(effBillValue) || 0);
 
-      if (billDiscountIsPercent) {
+      if (effBillIsPercent) {
         return (baseUnit * raw) / 100;
       }
 
@@ -117,7 +148,7 @@ export default function CartTable({
       }
       return 0;
     },
-    [billDiscountValue, billDiscountIsPercent, baseTotalAfterLine]
+    [effBillValue, effBillIsPercent, baseTotalAfterLine]
   );
 
   const onDiscountChange = useCallback(
@@ -201,7 +232,7 @@ export default function CartTable({
 
                   <td>₹{n(r.mrp ?? 0, 0).toFixed(2)}</td>
 
-                  {/* ✅ NOW: shows discount ₹ including footer flat discount */}
+                  {/* ✅ shows discount ₹ including footer flat discount */}
                   <td>
                     <input
                       type="number"
