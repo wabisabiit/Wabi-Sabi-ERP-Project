@@ -267,6 +267,7 @@ export default function PosPage() {
         amount={totals.amount} // ✅ now respects discount
         onReset={handleReset}
         customer={someCustomer}
+        onItemsChange={handleRowsChange}  // ✅ ONLY ADD
       />
 
       {/* ✅ OPEN REGISTER POPUP */}
