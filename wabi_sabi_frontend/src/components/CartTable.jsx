@@ -147,14 +147,13 @@ export default function CartTable({ items = [], onRowsChange }) {
 
                   <td>₹{n(r.mrp ?? 0, 0).toFixed(2)}</td>
 
-                  {/* ✅ THIS IS THE FIX:
-                      show invoice discount here using lineDiscountAmount */}
+                  {/* ✅ FIX: don't force toFixed() into input value (it breaks typing) */}
                   <td>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={disc.toFixed(2)}
+                      value={String(disc)}
                       onChange={(e) => onDiscountChange(r.id, e.target.value)}
                       style={{ width: "130px" }}
                     />
