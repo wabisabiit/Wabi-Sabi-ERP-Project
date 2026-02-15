@@ -31,6 +31,25 @@ export default function PosPage() {
   const [openRegisterModal, setOpenRegisterModal] = useState(false);
   const [closeRegisterModal, setCloseRegisterModal] = useState(false);
 
+  // ✅ NEW: bill discount values coming from Footer (flat % / rupees)
+  const [billDiscValue, setBillDiscValue] = useState("0.00");
+  const [billDiscIsPercent, setBillDiscIsPercent] = useState(true);
+
+  useEffect(() => {
+    const handler = (e) => {
+      const d = e?.detail || window.__BILL_DISCOUNT__ || null;
+      if (!d) return;
+      setBillDiscValue(String(d.value ?? "0"));
+      setBillDiscIsPercent(!!d.isPercent);
+    };
+    window.addEventListener("pos:bill-discount", handler);
+
+    // pick up already-set value (if footer mounted earlier)
+    handler({ detail: window.__BILL_DISCOUNT__ });
+
+    return () => window.removeEventListener("pos:bill-discount", handler);
+  }, []);
+
   // keep localStorage in sync whenever items change
   useEffect(() => {
     try {
@@ -126,13 +145,13 @@ export default function PosPage() {
     setItems(nextRows); // ← parent state update
   };
 
-  // ✅ totals always derived from current items (respects lineDiscountAmount)
+  // ✅ totals = FINAL SUM OF NET AMOUNTS (includes footer flat discount)
   const totals = useMemo(() => {
     const totalQty = items.reduce((s, r) => s + (Number(r.qty) || 0), 0);
 
-    const amount = items.reduce((s, r) => {
+    // base for bill discount allocation is after line discounts
+    const bases = items.map((r) => {
       const qty = Number(r.qty) || 0;
-
       const unit = Number(
         r.sellingPrice ??
           r.unitPrice ??
@@ -141,16 +160,46 @@ export default function PosPage() {
           r.netAmount ??
           0
       );
+      const lineDisc = Number(r.lineDiscountAmount ?? 0) || 0;
+      const baseUnit = Math.max(0, (Number.isFinite(unit) ? unit : 0) - Math.max(0, Math.min(unit || 0, lineDisc)));
+      return {
+        qty,
+        unit: Number.isFinite(unit) ? unit : 0,
+        lineDisc: Math.max(0, Math.min(unit || 0, lineDisc)),
+        baseUnit,
+        baseLine: baseUnit * qty,
+      };
+    });
 
-      const disc = Number(r.lineDiscountAmount ?? 0) || 0;
-      const discRs = Math.max(0, Math.min(unit || 0, disc));
-      const netUnit = Math.max(0, (unit || 0) - discRs);
+    const baseTotal = bases.reduce((s, b) => s + (b.baseLine || 0), 0);
+
+    const discRaw = Math.max(0, Number(billDiscValue) || 0);
+    const isPct = !!billDiscIsPercent;
+
+    const amount = bases.reduce((s, b) => {
+      const qty = Number(b.qty) || 0;
+      const unit = Number(b.unit) || 0;
+      const lineDisc = Number(b.lineDisc) || 0;
+
+      let billDiscPerUnit = 0;
+      if (isPct) {
+        billDiscPerUnit = (b.baseUnit * discRaw) / 100;
+      } else {
+        if (baseTotal > 0 && qty > 0) {
+          const share = b.baseLine / baseTotal;
+          const allocLine = discRaw * share;
+          billDiscPerUnit = allocLine / qty;
+        }
+      }
+
+      const totalDiscPerUnit = Math.max(0, Math.min(unit, lineDisc + billDiscPerUnit));
+      const netUnit = Math.max(0, unit - totalDiscPerUnit);
 
       return s + netUnit * qty;
     }, 0);
 
     return { totalQty, amount, discount: 0 };
-  }, [items]);
+  }, [items, billDiscValue, billDiscIsPercent]);
 
   const handleReset = (res) => {
     try {
@@ -184,7 +233,6 @@ export default function PosPage() {
         setSessionOpen(is_open);
         setOpeningCash(opening);
 
-        // nice label in header of close modal
         const label =
           data?.range_label ||
           data?.business_date_label ||
@@ -192,7 +240,6 @@ export default function PosPage() {
           new Date().toISOString().slice(0, 10);
         setRangeLabel(label);
 
-        // If not open => show opening popup
         if (!is_open) {
           setOpenRegisterModal(true);
         } else {
@@ -200,7 +247,6 @@ export default function PosPage() {
         }
       } catch (e) {
         console.error("Failed to load register session:", e);
-        // safest behavior: require opening cash input (so user can't sell without open)
         setOpenRegisterModal(true);
       }
     })();
@@ -218,19 +264,16 @@ export default function PosPage() {
       new Date().toISOString().slice(0, 10);
     setRangeLabel(label);
 
-    // ✅ ensure popup closes after opening
     setOpenRegisterModal(false);
   };
 
   const onAfterCloseSaved = async () => {
-    // After closing, next visit should show open modal again
     setSessionOpen(false);
     setOpenRegisterModal(true);
   };
 
   return (
     <div className="pos-page" style={{ position: "relative" }}>
-      {/* ✅ Top action (simple, no CSS dependency) */}
       <div
         style={{
           display: "flex",
@@ -258,29 +301,30 @@ export default function PosPage() {
 
       <SearchBar onAddItem={handleAddItem} />
 
-      {/* CartTable can delete, and parent updates items */}
-      <CartTable items={items} onRowsChange={handleRowsChange} />
+      {/* ✅ pass footer bill discount so row shows ₹ discount */}
+      <CartTable
+        items={items}
+        onRowsChange={handleRowsChange}
+        billDiscountValue={billDiscValue}
+        billDiscountIsPercent={billDiscIsPercent}
+      />
 
       <Footer
         items={items}
         totalQty={totals.totalQty}
-        amount={totals.amount} // ✅ now respects discount
+        amount={totals.amount} // ✅ final sum of row nets
         onReset={handleReset}
         customer={someCustomer}
-        onItemsChange={handleRowsChange}  // ✅ ONLY ADD
       />
 
-      {/* ✅ OPEN REGISTER POPUP */}
       <RegisterOpenModal
         open={openRegisterModal}
         onClose={() => {
-          // ✅ keep popup mandatory until register is opened
           if (sessionOpen) setOpenRegisterModal(false);
         }}
         onOpened={onOpened}
       />
 
-      {/* ✅ CLOSE REGISTER MODAL (YOUR EXISTING) */}
       <RegisterCloseModal
         open={closeRegisterModal}
         onClose={() => setCloseRegisterModal(false)}

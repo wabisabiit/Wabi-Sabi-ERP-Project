@@ -6,7 +6,9 @@ import "../styles/CartTable.css";
  * IMPORTANT:
  * - Discount input must show sale-time discount when invoice is loaded.
  * - We use `lineDiscountAmount` as ₹ discount PER UNIT (matches your PosPage logic).
- * - Net Amount = (sellingPrice - lineDiscountAmount) * qty
+ * - NEW: footer flat discount (%) should reflect in each row Discount ₹ and Net Amount.
+ * - Net Amount = (sellingPrice - (lineDiscountAmount + billDiscPerUnit)) * qty
+ * - We DO NOT overwrite lineDiscountAmount with bill discount; we only display it.
  */
 
 function n(v, fallback = 0) {
@@ -19,7 +21,12 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, x));
 }
 
-export default function CartTable({ items = [], onRowsChange }) {
+export default function CartTable({
+  items = [],
+  onRowsChange,
+  billDiscountValue = "0.00",
+  billDiscountIsPercent = true,
+}) {
   // Normalize rows so UI never breaks if older localStorage rows exist
   const rows = useMemo(() => {
     return (items || []).map((r) => {
@@ -44,6 +51,17 @@ export default function CartTable({ items = [], onRowsChange }) {
       };
     });
   }, [items]);
+
+  // ✅ compute allocation base: after line discounts
+  const baseTotalAfterLine = useMemo(() => {
+    return rows.reduce((sum, r) => {
+      const qty = n(r.qty ?? 0, 0);
+      const unit = n(r.sellingPrice ?? 0, 0);
+      const lineDisc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
+      const baseUnit = Math.max(0, unit - lineDisc);
+      return sum + baseUnit * qty;
+    }, 0);
+  }, [rows]);
 
   const emit = useCallback(
     (next) => {
@@ -76,25 +94,59 @@ export default function CartTable({ items = [], onRowsChange }) {
     [updateRow]
   );
 
+  // ✅ bill discount per unit for a row (after line discount)
+  const billDiscPerUnitFor = useCallback(
+    (r) => {
+      const qty = n(r.qty ?? 0, 0);
+      const unit = n(r.sellingPrice ?? 0, 0);
+      const lineDisc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
+      const baseUnit = Math.max(0, unit - lineDisc);
+      const baseLine = baseUnit * qty;
+
+      const raw = Math.max(0, Number(billDiscountValue) || 0);
+
+      if (billDiscountIsPercent) {
+        return (baseUnit * raw) / 100;
+      }
+
+      // rupee mode: allocate proportionally across rows by baseLine
+      if (baseTotalAfterLine > 0 && qty > 0) {
+        const share = baseLine / baseTotalAfterLine;
+        const allocLine = raw * share;
+        return allocLine / qty;
+      }
+      return 0;
+    },
+    [billDiscountValue, billDiscountIsPercent, baseTotalAfterLine]
+  );
+
   const onDiscountChange = useCallback(
     (id, v) => {
       const row = rows.find((x) => x.id === id);
       const unit = n(row?.sellingPrice ?? 0, 0);
 
-      // discount is ₹ PER UNIT, cannot exceed unit price
-      const disc = clamp(v, 0, unit);
-      updateRow(id, { lineDiscountAmount: disc });
+      const billPerUnit = billDiscPerUnitFor(row || {});
+      const combinedWanted = clamp(v, 0, unit);
+
+      // store ONLY the extra (manual/line) part, keep bill discount separate
+      const newLineDisc = clamp(combinedWanted - billPerUnit, 0, unit);
+      updateRow(id, { lineDiscountAmount: newLineDisc });
     },
-    [rows, updateRow]
+    [rows, updateRow, billDiscPerUnitFor]
   );
 
-  const calcNet = useCallback((r) => {
-    const qty = n(r.qty ?? 0, 0);
-    const unit = n(r.sellingPrice ?? 0, 0);
-    const disc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
-    const netUnit = Math.max(0, unit - disc);
-    return netUnit * qty;
-  }, []);
+  const calcNet = useCallback(
+    (r) => {
+      const qty = n(r.qty ?? 0, 0);
+      const unit = n(r.sellingPrice ?? 0, 0);
+      const lineDisc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
+      const billDisc = Math.max(0, billDiscPerUnitFor(r));
+      const totalDisc = Math.max(0, Math.min(unit, lineDisc + billDisc));
+      const netUnit = Math.max(0, unit - totalDisc);
+      return netUnit * qty;
+    },
+    [billDiscPerUnitFor]
+  );
 
   return (
     <div className="cart-table-wrap">
@@ -123,7 +175,9 @@ export default function CartTable({ items = [], onRowsChange }) {
           ) : (
             rows.map((r, idx) => {
               const unit = n(r.sellingPrice ?? 0, 0);
-              const disc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
+              const lineDisc = clamp(r.lineDiscountAmount ?? 0, 0, unit);
+              const billDisc = Math.max(0, billDiscPerUnitFor(r));
+              const combinedDisc = Math.max(0, Math.min(unit, lineDisc + billDisc));
               const net = calcNet(r);
 
               return (
@@ -147,13 +201,13 @@ export default function CartTable({ items = [], onRowsChange }) {
 
                   <td>₹{n(r.mrp ?? 0, 0).toFixed(2)}</td>
 
-                  {/* ✅ FIX: don't force toFixed() into input value (it breaks typing) */}
+                  {/* ✅ NOW: shows discount ₹ including footer flat discount */}
                   <td>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={String(disc)}
+                      value={String(combinedDisc)}
                       onChange={(e) => onDiscountChange(r.id, e.target.value)}
                       style={{ width: "130px" }}
                     />

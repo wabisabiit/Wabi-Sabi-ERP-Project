@@ -153,6 +153,16 @@ export default function Footer({
   const [flatDisc, setFlatDisc] = useState("0.00");
   const [isPercent, setIsPercent] = useState(true);
 
+  // ✅ NEW: broadcast bill discount to POS/CartTable so row discount shows ₹
+  useEffect(() => {
+    const detail = {
+      value: String(flatDisc ?? "0"),
+      isPercent: !!isPercent,
+    };
+    window.__BILL_DISCOUNT__ = detail;
+    window.dispatchEvent(new CustomEvent("pos:bill-discount", { detail }));
+  }, [flatDisc, isPercent]);
+
   // Coupon usage
   const [couponUse, setCouponUse] = useState(null);
 
@@ -266,47 +276,11 @@ export default function Footer({
     return Math.max(0, +(payableAmount - credit).toFixed(2));
   }, [payableAmount, creditUse]);
 
-  // ✅ NEW: totals for discount display
-  const lineDiscountTotal = useMemo(() => {
-    return (items || []).reduce((sum, r) => {
-      const qty = Number(r.qty ?? r.quantity ?? 1);
-      const q = Number.isFinite(qty) && qty > 0 ? qty : 1;
-
-      const unit = Number(
-        r.sellingPrice ??
-          r.unitPrice ??
-          r.unit_price ??
-          r.price ??
-          r.sp ??
-          r.netAmount ??
-          0
-      );
-      const baseUnit = Number.isFinite(unit) ? unit : 0;
-
-      const discRaw = Number(r.lineDiscountAmount ?? 0) || 0;
-      const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
-
-      return sum + discPerUnit * q;
-    }, 0);
-  }, [items]);
-
-  const billDiscountTotal = useMemo(() => {
-    const base = Number(cartAmount || 0);
-    const after = Number(baseAfterFlat || 0);
-    return Math.max(0, +(base - after).toFixed(2));
-  }, [cartAmount, baseAfterFlat]);
-
-  const displayDiscount = useMemo(() => {
-    const coupon = Number(couponUse?.amount || 0);
-    return Math.max(0, +(lineDiscountTotal + billDiscountTotal + coupon).toFixed(2));
-  }, [lineDiscountTotal, billDiscountTotal, couponUse]);
-
   // Cart lines builder
   const buildLines = useCallback(() => {
     return (items || [])
       .map((r) => {
-        const code =
-          r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+        const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
         const qtyNum = Number(
           r.qty ?? r.quantity ?? r.qtyOrdered ?? r.qty_ordered ?? 1
         );
@@ -403,14 +377,14 @@ export default function Footer({
         );
         const baseUnit = Number.isFinite(unit) ? unit : 0;
 
-        // ₹ discount per unit
+        // ₹ discount per unit (this is what your CartTable uses)
         const discRaw = Number(row?.lineDiscountAmount ?? 0) || 0;
         const discPerUnit = Math.max(0, Math.min(baseUnit, discRaw));
 
         return {
           ...ln,
           discount_percent: 0,
-          discount_amount: +discPerUnit.toFixed(2),
+          discount_amount: +discPerUnit.toFixed(2), // ✅ SEND PER UNIT (NOT total)
         };
       });
 
@@ -485,9 +459,7 @@ export default function Footer({
         }
 
         const customerPayload = {
-          name:
-            (effectiveCustomer && effectiveCustomer.name) ||
-            "Walk In Customer",
+          name: (effectiveCustomer && effectiveCustomer.name) || "Walk In Customer",
           phone: (effectiveCustomer && effectiveCustomer.phone) || "",
           email: (effectiveCustomer && effectiveCustomer.email) || "",
         };
@@ -564,7 +536,7 @@ export default function Footer({
       }
 
       if (label === "Sales Return") {
-        if (salesReturnBusy) return;
+        if (salesReturnBusy) return; // ✅ prevent double taps
 
         const inv = window.__RETURN_INVOICE__;
         if (!inv) {
@@ -572,10 +544,10 @@ export default function Footer({
           return;
         }
 
+        // ✅ FIX: send ONLY currently selected cart items (after user deletes unwanted lines)
         const selected = (items || [])
           .map((r) => {
-            const code =
-              r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
+            const code = r.itemcode ?? r.itemCode ?? r.barcode ?? r.code ?? r.id ?? "";
             const qtyNum = Number(r.qty ?? r.quantity ?? 1);
             const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
             return code ? { barcode: String(code), qty } : null;
@@ -587,12 +559,12 @@ export default function Footer({
           return;
         }
 
-        setSalesReturnBusy(true);
+        setSalesReturnBusy(true); // ✅ start spinner/lock
 
         (async () => {
           let shouldReload = false;
           try {
-            const res = await createSalesReturn(inv, { items: selected });
+            const res = await createSalesReturn(inv, { items: selected }); // ✅ ONLY CHANGE
             const ok = !!res?.ok;
             const msg =
               res?.msg ||
@@ -784,8 +756,7 @@ export default function Footer({
           </div>
 
           <div className="metric has-badge">
-            {/* ✅ ONLY CHANGE: show computed discount instead of hardcoded 0.00 */}
-            <div className="value">{Number(displayDiscount || 0).toFixed(2)}</div>
+            <div className="value">0.00</div>
             <button type="button" className="badge">
               Add.Charges+
             </button>
