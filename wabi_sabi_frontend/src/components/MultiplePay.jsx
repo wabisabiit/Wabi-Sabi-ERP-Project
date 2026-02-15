@@ -2,11 +2,17 @@
 import React, { useMemo, useState } from "react";
 import "../styles/MultiplePay.css";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  createSale,
-  getSelectedCustomer,
-  clearSelectedCustomer,
-} from "../api/client";
+import { createSale, getSelectedCustomer, clearSelectedCustomer } from "../api/client";
+
+function n(v, fb = 0) {
+  const x = Number(v);
+  return Number.isFinite(x) ? x : fb;
+}
+
+function clamp(v, min, max) {
+  const x = n(v, 0);
+  return Math.max(min, Math.min(max, x));
+}
 
 export default function MultiplePay({
   cart: cartProp = {
@@ -23,8 +29,9 @@ export default function MultiplePay({
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // Prefer POS session first (has id), then state, then fallback
+  // Prefer router state first, then prop
   const cart = state?.cart || cartProp;
+
   const customer =
     getSelectedCustomer() ||
     state?.customer || {
@@ -36,48 +43,50 @@ export default function MultiplePay({
   const banks = ["AXIS BANK UDYOG VIHAR", "SBI", "HDFC", "Punjab National Bank"];
   const upiApps = ["Google Pay", "Paytm", "PhonePe", "Amazon Pay"];
 
-  // ===== Totals aligned with POS (use discounted payable, NOT MRP sum) =====
+  // ✅ Totals aligned with POS (sellingPrice - lineDiscountAmount) * qty
   const totals = useMemo(() => {
     const items = cart.items || [];
 
-    // 1) Prefer POS-passed payable (includes discounts/coupon/credit effects already applied)
-    const passedPayable = Number(cart.amount);
-    const hasPassedPayable = Number.isFinite(passedPayable) && passedPayable > 0;
+    const total = items.reduce((acc, it) => {
+      const qty = n(it.qty ?? 1, 1) || 1;
 
-    // 2) Fallback: sum discounted line totals (netAmount / priceAfterDiscount), NEVER MRP
-    const itemsSum = items.reduce((acc, it) => {
-      const qty = Number(it.qty ?? 1) || 1;
-
-      // strongest: explicit line net (already discounted)
-      const lineNet = Number(it.netAmount ?? it.amount ?? NaN);
-      if (Number.isFinite(lineNet) && lineNet >= 0) return acc + lineNet;
-
-      // next: discounted unit
-      const unitNet = Number(
-        it.priceAfterDiscount ??
-          it.discountedPrice ??
-          it.unitCost ??
-          it.unit_cost ??
-          it.sellingPrice ??
+      // unit base selling price
+      const unit = n(
+        it.sellingPrice ??
           it.sp ??
           it.selling_price ??
+          it.unitCost ??
+          it.unit_cost ??
           it.unitPrice ??
           it.unit_price ??
           it.price ??
-          0
+          it.netAmount ??
+          0,
+        0
       );
 
-      const safeUnit = Number.isFinite(unitNet) ? unitNet : 0;
-      return acc + qty * safeUnit;
+      // discount ₹ PER UNIT (this is what POS uses)
+      const discPerUnit = n(
+        it.lineDiscountAmount ??
+          it.line_discount_amount ??
+          it.discountPerUnit ??
+          it.discount_per_unit ??
+          0,
+        0
+      );
+
+      const disc = clamp(discPerUnit, 0, unit);
+      const netUnit = Math.max(0, unit - disc);
+      return acc + netUnit * qty;
     }, 0);
 
-    const total = +(hasPassedPayable ? passedPayable : itemsSum).toFixed(2);
+    const fixed = +total.toFixed(2);
 
     return {
       taxAmount: 0,
-      total,
+      total: fixed,
       roundoff: 0,
-      payableAmount: total,
+      payableAmount: fixed,
     };
   }, [cart]);
 
@@ -103,10 +112,7 @@ export default function MultiplePay({
     },
   ]);
 
-  const totalReceived = payments.reduce(
-    (s, p) => s + (parseFloat(p.amount) || 0),
-    0
-  );
+  const totalReceived = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
   const remaining = +(totals.payableAmount - totalReceived).toFixed(2);
   const overpay = Math.max(0, -remaining);
 
@@ -130,54 +136,73 @@ export default function MultiplePay({
     setPayments((p) => (p.length > 1 ? p.filter((x) => x.id !== id) : p));
 
   const update = (id, patch) =>
-    setPayments((p) =>
-      p.map((row) => (row.id === id ? { ...row, ...patch } : row))
-    );
+    setPayments((p) => p.map((row) => (row.id === id ? { ...row, ...patch } : row)));
 
   // ===== UX state =====
   const [banner, setBanner] = useState(null); // {type:'success'|'error', text}
   const [busy, setBusy] = useState(false);
 
-  const showBanner = (type, text) => {
-    setBanner({ type, text });
-  };
+  const showBanner = (type, text) => setBanner({ type, text });
 
-  // ===== Proceed -> save =====
   const handleProceed = async () => {
     if (busy) return;
 
-    // ✅ Accept either id OR (name/phone)
     const hasCustomer = !!(customer?.id || customer?.phone || customer?.name);
     if (!hasCustomer) {
       showBanner("error", "Please select the customer first.");
       return;
     }
 
-    // Must equal backend total
-    if (
-      Math.round(totalReceived * 100) !== Math.round(totals.payableAmount * 100)
-    ) {
+    // Must equal backend payable
+    if (Math.round(totalReceived * 100) !== Math.round(totals.payableAmount * 100)) {
       showBanner("error", "Payments total must equal payable amount.");
       return;
     }
 
-    // Build lines by barcode for server lookup
-    // ✅ Keep discounts if they were passed in cart items (discount_amount = total for line)
+    // ✅ Build lines with correct TOTAL discount_amount per line
     const lines = (cart.items || [])
       .map((it) => {
         const code =
-          it.barcode ?? it.itemCode ?? it.itemcode ?? it.code ?? it.id ?? "";
-        const qty = Number(it.qty ?? 1) || 1;
+          it.barcode ??
+          it.itemCode ??
+          it.itemcode ??
+          it.item_code ??
+          it.code ??
+          it.id ??
+          "";
 
+        const qty = n(it.qty ?? 1, 1) || 1;
         if (!code) return null;
 
-        const discAmt = Number(it.discount_amount ?? 0) || 0;
+        // per-unit discount from POS
+        const discPerUnit = n(
+          it.lineDiscountAmount ??
+            it.line_discount_amount ??
+            it.discountPerUnit ??
+            it.discount_per_unit ??
+            0,
+          0
+        );
+
+        // sometimes other pages store total discount already
+        const discTotalMaybe = n(
+          it.discount_amount ??
+            it.discountAmount ??
+            it.line_discount_total ??
+            NaN,
+          NaN
+        );
+
+        // ✅ send TOTAL discount for the line
+        const discount_amount = Number.isFinite(discTotalMaybe)
+          ? +discTotalMaybe.toFixed(2)
+          : +(Math.max(0, discPerUnit) * qty).toFixed(2);
 
         return {
           barcode: String(code),
           qty,
           discount_percent: 0,
-          discount_amount: Number.isFinite(discAmt) ? +discAmt.toFixed(2) : 0,
+          discount_amount,
         };
       })
       .filter(Boolean);
@@ -187,9 +212,8 @@ export default function MultiplePay({
       return;
     }
 
-    // Map UI payments -> API
     const pays = payments.map((p) => ({
-      method: (p.method || "Cash").toUpperCase(), // CASH | CARD | UPI (server will set MULTIPAY if >1)
+      method: (p.method || "Cash").toUpperCase(),
       amount: +(parseFloat(p.amount) || 0).toFixed(2),
       reference: p.cardTxnNo || "",
       card_holder: p.cardHolder || "",
@@ -210,7 +234,7 @@ export default function MultiplePay({
       note: "",
     };
 
-    // Allow external handler (optional)
+    // external hook
     try {
       const handled =
         typeof onProceed === "function" &&
@@ -234,7 +258,6 @@ export default function MultiplePay({
       console.warn("onProceed threw, continuing with local submit:", e);
     }
 
-    // Local submit to API
     try {
       setBusy(true);
       setBanner(null);
@@ -253,17 +276,21 @@ export default function MultiplePay({
       showBanner("success", msg);
       clearSelectedCustomer();
 
+      // ✅ FIX redirect glitch:
+      // if redirectPath is the default "/new", go back to POS instead of triggering session-check/home redirect
+      const target = redirectPath === "/new" ? -1 : redirectPath;
+
       setTimeout(() => {
-        navigate(redirectPath, {
-          replace: true,
-          state: { flash: { type: "success", text: msg } },
-        });
+        if (target === -1) {
+          navigate(-1, { replace: true, state: { flash: { type: "success", text: msg } } });
+        } else {
+          navigate(target, { replace: true, state: { flash: { type: "success", text: msg } } });
+        }
       }, successDelayMs);
     } catch (e) {
       console.error(e);
 
-      let msg =
-        "Payment failed: could not update the database. Please try again.";
+      let msg = "Payment failed: could not update the database. Please try again.";
       if (typeof e?.message === "string" && e.message) {
         const parts = e.message.split("–");
         if (parts[1]) {
@@ -303,10 +330,7 @@ export default function MultiplePay({
         <aside className="mp-left">
           <div className="mp-section-title">Sale Summary</div>
           <div className="mp-subtitle">
-            Customer:{" "}
-            <span className="mp-link">
-              {cart.customerType || "Walk In Customer"}
-            </span>
+            Customer: <span className="mp-link">{cart.customerType || "Walk In Customer"}</span>
           </div>
 
           <div className="mp-table">
@@ -317,7 +341,7 @@ export default function MultiplePay({
             </div>
             <div className="mp-tbody">
               {listItems.map((it, idx) => {
-                const qty = Number(it.qty ?? 1) || 1;
+                const qty = n(it.qty ?? 1, 1) || 1;
                 const name =
                   it.name ||
                   it.product ||
@@ -364,21 +388,16 @@ export default function MultiplePay({
             <div className="mp-title">Pay</div>
             <div className="mp-total-input">
               <span className="rupee">₹</span>
-              <input
-                value={totals.payableAmount.toFixed(2)}
-                readOnly
-                className="readonly"
-                aria-label="Total amount to pay"
-              />
+              <input value={totals.payableAmount.toFixed(2)} readOnly className="readonly" />
             </div>
           </div>
 
-          {/* Rows */}
           <div className="mp-payrows">
             {payments.map((row) => {
               const isCash = row.method === "Cash";
               const isCard = row.method === "Card";
               const isUpi = row.method === "UPI";
+
               return (
                 <div key={row.id} className="mp-rowcard">
                   <div className="mp-rowgrid">
@@ -388,9 +407,7 @@ export default function MultiplePay({
                         inputMode="decimal"
                         placeholder="0.00"
                         value={row.amount}
-                        onChange={(e) =>
-                          update(row.id, { amount: e.target.value })
-                        }
+                        onChange={(e) => update(row.id, { amount: e.target.value })}
                         disabled={busy}
                       />
                     </div>
@@ -404,12 +421,7 @@ export default function MultiplePay({
                           update(row.id, {
                             method: m,
                             channel: m === "Cash" ? "Cash" : m,
-                            account:
-                              m === "Card"
-                                ? banks[0]
-                                : m === "UPI"
-                                ? upiApps[0]
-                                : "",
+                            account: m === "Card" ? banks[0] : m === "UPI" ? upiApps[0] : "",
                           });
                         }}
                         disabled={busy}
@@ -425,9 +437,7 @@ export default function MultiplePay({
                         <label>{isCard ? "Payment Account:" : "UPI App:"}</label>
                         <select
                           value={row.account}
-                          onChange={(e) =>
-                            update(row.id, { account: e.target.value })
-                          }
+                          onChange={(e) => update(row.id, { account: e.target.value })}
                           disabled={busy}
                         >
                           {(isCard ? banks : upiApps).map((opt) => (
@@ -446,9 +456,7 @@ export default function MultiplePay({
                           <input
                             placeholder="Card holder name"
                             value={row.cardHolder}
-                            onChange={(e) =>
-                              update(row.id, { cardHolder: e.target.value })
-                            }
+                            onChange={(e) => update(row.id, { cardHolder: e.target.value })}
                             disabled={busy}
                           />
                         </div>
@@ -458,9 +466,7 @@ export default function MultiplePay({
                           <input
                             placeholder="Card Transaction No."
                             value={row.cardTxnNo}
-                            onChange={(e) =>
-                              update(row.id, { cardTxnNo: e.target.value })
-                            }
+                            onChange={(e) => update(row.id, { cardTxnNo: e.target.value })}
                             disabled={busy}
                           />
                         </div>
@@ -486,8 +492,7 @@ export default function MultiplePay({
           </button>
 
           <div className="mp-note">
-            Note : If you don't pay in full, the remaining amount will be
-            considered as <b>Pay Later</b>.
+            Note : If you don't pay in full, the remaining amount will be considered as <b>Pay Later</b>.
           </div>
 
           <div className="mp-summary-strip">
@@ -515,16 +520,8 @@ export default function MultiplePay({
           </button>
 
           {banner && (
-            <div
-              className={`mp-banner ${
-                banner.type === "success" ? "ok" : "err"
-              }`}
-              role="status"
-              aria-live="polite"
-            >
-              <div className="mp-banner-icon">
-                {banner.type === "success" ? "✅" : "⚠️"}
-              </div>
+            <div className={`mp-banner ${banner.type === "success" ? "ok" : "err"}`} role="status">
+              <div className="mp-banner-icon">{banner.type === "success" ? "✅" : "⚠️"}</div>
               <div className="mp-banner-text">{banner.text}</div>
             </div>
           )}
