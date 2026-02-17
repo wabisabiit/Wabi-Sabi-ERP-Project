@@ -380,31 +380,62 @@ export default function SearchBar({ onAddItem }) {
         const qtyNum = Number(ln.qty || 1);
         const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
 
+        // 🔍 DEBUG: Log what backend returns
+        console.log("📦 Invoice line data:", {
+          barcode: bc,
+          qty: ln.qty,
+          sp: ln.sp,
+          sellingPrice: ln.sellingPrice,
+          discount_amount: ln.discount_amount,
+          discount_percent: ln.discount_percent,
+          unit_cost_after_disc: ln.unit_cost_after_disc,
+          unitCost: ln.unitCost,
+          netAmount: ln.netAmount,
+          lineDiscountAmount: ln.lineDiscountAmount,
+        });
+
         // ✅ ACTUAL PAID PRICE (after ALL discounts including bill discount)
-        // Priority: unitCost (net) > calculated from netAmount > fallback to sellingPrice
-        const unitCostRaw = Number(ln.unitCost ?? ln.unit_cost_after_disc ?? ln.unit_cost ?? 0);
+        // Try multiple field names in priority order
+        const unitCostRaw = Number(
+          ln.unitCost ?? 
+          ln.unit_cost_after_disc ?? 
+          ln.unit_cost ?? 
+          ln.sellingPrice ?? 
+          ln.sp ?? 
+          0
+        );
         const netAmountRaw = Number(ln.netAmount ?? 0);
         
         let actualPaidPerUnit = 0;
         
-        if (Number.isFinite(unitCostRaw) && unitCostRaw > 0) {
-          // Backend returns net unit cost (after all discounts)
-          actualPaidPerUnit = unitCostRaw;
-        } else if (Number.isFinite(netAmountRaw) && netAmountRaw > 0 && qtyNum > 0) {
-          // Calculate from total net amount
+        // Priority 1: Try netAmount / qty (most accurate)
+        if (Number.isFinite(netAmountRaw) && netAmountRaw > 0 && qtyNum > 0) {
           actualPaidPerUnit = netAmountRaw / qtyNum;
-        } else {
-          // Fallback to original selling price (shouldn't happen)
-          const spRaw = Number(
-            ln.sellingPrice ??
-              ln.sp ??
-              ln.selling_price ??
-              ln.unit_price ??
-              ln.unitPrice ??
-              ln.price ??
-              0
-          );
-          actualPaidPerUnit = Number.isFinite(spRaw) ? spRaw : 0;
+          console.log("✅ Using netAmount / qty:", netAmountRaw, "/", qtyNum, "=", actualPaidPerUnit);
+        }
+        // Priority 2: Use unitCost field
+        else if (Number.isFinite(unitCostRaw) && unitCostRaw > 0) {
+          actualPaidPerUnit = unitCostRaw;
+          console.log("✅ Using unitCost:", actualPaidPerUnit);
+        }
+        // Priority 3: Calculate from base price - discounts
+        else {
+          const spRaw = Number(ln.sp ?? ln.selling_price ?? ln.sellingPrice ?? 0);
+          const baseSP = Number.isFinite(spRaw) ? spRaw : 0;
+          
+          // Get discount amount per unit
+          const discAmtRaw = Number(ln.discount_amount ?? ln.lineDiscountAmount ?? 0);
+          const discPctRaw = Number(ln.discount_percent ?? 0);
+          
+          let discPerUnitCalc = 0;
+          if (Number.isFinite(discAmtRaw) && discAmtRaw > 0) {
+            discPerUnitCalc = discAmtRaw;
+          } else if (Number.isFinite(discPctRaw) && discPctRaw > 0) {
+            discPerUnitCalc = (baseSP * discPctRaw) / 100;
+          }
+          
+          actualPaidPerUnit = Math.max(0, baseSP - discPerUnitCalc);
+          console.log("✅ Calculated from base - discount:", baseSP, "-", discPerUnitCalc, "=", actualPaidPerUnit);
         }
 
         // ✅ For credit note: sellingPrice = what customer ACTUALLY PAID
@@ -412,6 +443,8 @@ export default function SearchBar({ onAddItem }) {
 
         // ✅ NO discount to show (already included in actualPaidPerUnit)
         const discPerUnit = 0;
+
+        console.log("🎯 Final values for cart:", { baseSP, discPerUnit });
 
         onAddItem?.({
           id: ln.id ?? ln.barcode,
