@@ -27,6 +27,85 @@ def _sale_has_created_by():
         return False
 
 
+# ✅ ADDON: Compute "actual paid" price per sale line including BILL discount allocation
+def compute_net_paid_map(sale: Sale, lines):
+    """
+    Returns:
+      net_unit_by_id: { line.id: Decimal(net_unit_paid) }
+      net_line_by_id: { line.id: Decimal(net_line_total) }
+
+    Steps:
+      1) base_unit = sp - per_line_discount
+      2) base_line_total = base_unit * qty
+      3) base_total = sum(base_line_total)
+      4) bill_discount_total = base_total - sale.grand_total  (>=0)
+      5) allocate bill_discount proportionally across lines by base_line_total share
+      6) net_line_total = base_line_total - allocated_bill_discount
+      7) net_unit_paid = net_line_total / qty
+    """
+    # build base totals after per-line discount (but before bill discount)
+    base_total = Decimal("0.00")
+    base_by_id = {}  # id -> (qty, base_unit, base_line_total)
+
+    for ln in lines:
+        sp = q2(getattr(ln, "sp", 0) or 0)
+        qty = int(getattr(ln, "qty", 1) or 1)
+        if qty < 1:
+            qty = 1
+
+        dp = q2(getattr(ln, "discount_percent", 0) or 0)
+        da = q2(getattr(ln, "discount_amount", 0) or 0)  # per-unit in DB
+
+        if dp > 0:
+            per_unit_disc = (sp * dp / Decimal("100")).quantize(
+                TWOPLACES, rounding=ROUND_HALF_UP
+            )
+        else:
+            per_unit_disc = da
+
+        per_unit_disc = min(sp, max(Decimal("0.00"), per_unit_disc))
+        base_unit = (sp - per_unit_disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        if base_unit < 0:
+            base_unit = Decimal("0.00")
+
+        base_line = (base_unit * Decimal(qty)).quantize(
+            TWOPLACES, rounding=ROUND_HALF_UP
+        )
+
+        base_total += base_line
+        base_by_id[ln.id] = (qty, base_unit, base_line)
+
+    paid_total = q2(getattr(sale, "grand_total", 0) or 0)
+
+    bill_disc_total = (base_total - paid_total).quantize(
+        TWOPLACES, rounding=ROUND_HALF_UP
+    )
+    if bill_disc_total < 0:
+        bill_disc_total = Decimal("0.00")
+
+    net_unit_by_id = {}
+    net_line_by_id = {}
+
+    for lid, (qty, base_unit, base_line) in base_by_id.items():
+        if base_total > 0:
+            share = (base_line / base_total)
+        else:
+            share = Decimal("0.00")
+
+        alloc = (bill_disc_total * share).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+        net_line = (base_line - alloc).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        if net_line < 0:
+            net_line = Decimal("0.00")
+
+        net_unit = (net_line / Decimal(qty)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+        net_unit_by_id[lid] = net_unit
+        net_line_by_id[lid] = net_line
+
+    return net_unit_by_id, net_line_by_id
+
+
 class CustomerInSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
     phone = serializers.CharField(max_length=20, allow_blank=True, required=False)
@@ -364,10 +443,10 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
     unit_cost_after_disc = serializers.SerializerMethodField()
 
     # ✅ NEW: frontend-friendly aliases for invoice restore
-    sellingPrice = serializers.SerializerMethodField()       # ✅ net price after discount
-    lineDiscountAmount = serializers.SerializerMethodField() # per-unit discount at sale-time
-    unitCost = serializers.SerializerMethodField()           # after discount
-    netAmount = serializers.SerializerMethodField()          # unitCost * qty
+    sellingPrice = serializers.SerializerMethodField()       # ✅ net price after discount (includes bill discount)
+    lineDiscountAmount = serializers.SerializerMethodField() # per-unit discount including bill share
+    unitCost = serializers.SerializerMethodField()           # after discount (includes bill discount)
+    netAmount = serializers.SerializerMethodField()          # unitCost * qty (includes bill discount)
 
     class Meta:
         model = SaleLine
@@ -420,31 +499,45 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
         disc = min(sp, max(Decimal("0.00"), disc))
         return disc
 
+    def _net_unit_paid(self, obj) -> Decimal:
+        """
+        ✅ ACTUAL paid per unit including bill discount allocation.
+        Set by view in serializer context: net_unit_by_id
+        """
+        m = (self.context or {}).get("net_unit_by_id") or {}
+        v = m.get(getattr(obj, "id", None))
+        if v is not None:
+            return q2(v)
+
+        # fallback old behavior
+        sp = q2(getattr(obj, "sp", 0) or 0)
+        disc = self._per_unit_discount(obj)
+        return (sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
     def get_unit_cost_after_disc(self, obj):
-        sp = q2(getattr(obj, "sp", 0) or 0)
-        disc = self._per_unit_discount(obj)
-        return str((sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
+        return str(self._net_unit_paid(obj))
 
-    # ✅ NEW fields
     def get_sellingPrice(self, obj):
-        # ✅ FIX: return SALE PRICE after discount (what you want in sales record)
-        sp = q2(getattr(obj, "sp", 0) or 0)
-        disc = self._per_unit_discount(obj)
-        return str((sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
-
-    def get_lineDiscountAmount(self, obj):
-        # per-unit discount
-        return str(self._per_unit_discount(obj))
+        return str(self._net_unit_paid(obj))
 
     def get_unitCost(self, obj):
-        # after discount
-        sp = q2(getattr(obj, "sp", 0) or 0)
-        disc = self._per_unit_discount(obj)
-        return str((sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
+        return str(self._net_unit_paid(obj))
 
     def get_netAmount(self, obj):
         qty = int(getattr(obj, "qty", 0) or 0)
-        sp = q2(getattr(obj, "sp", 0) or 0)
-        disc = self._per_unit_discount(obj)
-        net_unit = (sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        if qty < 1:
+            qty = 1
+        net_unit = self._net_unit_paid(obj)
         return str((net_unit * Decimal(qty)).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
+
+    def get_lineDiscountAmount(self, obj):
+        """
+        per-unit discount including bill share:
+          sp - net_unit_paid
+        """
+        sp = q2(getattr(obj, "sp", 0) or 0)
+        net_unit = self._net_unit_paid(obj)
+        disc = (sp - net_unit).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        if disc < 0:
+            disc = Decimal("0.00")
+        return str(disc)

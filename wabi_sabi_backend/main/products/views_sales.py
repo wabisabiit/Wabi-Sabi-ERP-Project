@@ -13,7 +13,12 @@ from rest_framework.pagination import PageNumberPagination
 
 from outlets.models import Employee
 from .models import Sale, SaleLine, CreditNote
-from .serializers_sales import SaleCreateSerializer, SaleListSerializer, SaleLineOutSerializer
+from .serializers_sales import (
+    SaleCreateSerializer,
+    SaleListSerializer,
+    SaleLineOutSerializer,
+    compute_net_paid_map,  # ✅ ADDON import
+)
 
 
 def _get_employee(user):
@@ -258,7 +263,18 @@ class SaleLinesByInvoiceView(APIView):
             .filter(sale=sale)
             .order_by("id")
         )
-        ser = SaleLineOutSerializer(lines, many=True)
+
+        # ✅ ADDON: compute actual paid per line (includes bill/footer discount)
+        net_unit_by_id, net_line_by_id = compute_net_paid_map(sale, lines)
+
+        ser = SaleLineOutSerializer(
+            lines,
+            many=True,
+            context={
+                "net_unit_by_id": net_unit_by_id,
+                "net_line_by_id": net_line_by_id,
+            },
+        )
         return Response({"invoice_no": sale.invoice_no, "lines": ser.data}, status=status.HTTP_200_OK)
 
 
