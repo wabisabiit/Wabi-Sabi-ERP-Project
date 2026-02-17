@@ -380,52 +380,38 @@ export default function SearchBar({ onAddItem }) {
         const qtyNum = Number(ln.qty || 1);
         const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
 
-        // ✅ base SP at sale time (must come from invoice lines API)
-        const spRaw = Number(
-          ln.sellingPrice ??
-            ln.sp ??
-            ln.selling_price ??
-            ln.unit_price ??
-            ln.unitPrice ??
-            ln.price ??
-            0
-        );
-        const baseSP = Number.isFinite(spRaw) ? spRaw : 0;
-
-        // ✅ discount amount (₹ per unit)
-        const discAmtRaw = Number(
-          ln.lineDiscountAmount ??
-            ln.discount_amount ??
-            ln.discountAmount ??
-            ln.discount ??
-            ln.line_discount_amount ??
-            0
-        );
-
-        // ✅ discount percent (%)
-        const discPctRaw = Number(
-          ln.discount_percent ??
-            ln.discountPercent ??
-            ln.discount_percentage ??
-            0
-        );
-
-        // ✅ unit cost (net per unit), if your backend returns it
-        const unitCostRaw = Number(ln.unit_cost ?? ln.unitCost ?? 0);
-        const unitCost = Number.isFinite(unitCostRaw) ? unitCostRaw : 0;
-
-        // ✅ compute actual discount ₹ per unit
-        let discPerUnit = 0;
-
-        if (Number.isFinite(discAmtRaw) && discAmtRaw > 0) {
-          discPerUnit = discAmtRaw;
-        } else if (Number.isFinite(discPctRaw) && discPctRaw > 0) {
-          discPerUnit = (baseSP * discPctRaw) / 100;
-        } else if (unitCost > 0 && unitCost < baseSP) {
-          discPerUnit = baseSP - unitCost;
+        // ✅ ACTUAL PAID PRICE (after ALL discounts including bill discount)
+        // Priority: unitCost (net) > calculated from netAmount > fallback to sellingPrice
+        const unitCostRaw = Number(ln.unitCost ?? ln.unit_cost_after_disc ?? ln.unit_cost ?? 0);
+        const netAmountRaw = Number(ln.netAmount ?? 0);
+        
+        let actualPaidPerUnit = 0;
+        
+        if (Number.isFinite(unitCostRaw) && unitCostRaw > 0) {
+          // Backend returns net unit cost (after all discounts)
+          actualPaidPerUnit = unitCostRaw;
+        } else if (Number.isFinite(netAmountRaw) && netAmountRaw > 0 && qtyNum > 0) {
+          // Calculate from total net amount
+          actualPaidPerUnit = netAmountRaw / qtyNum;
+        } else {
+          // Fallback to original selling price (shouldn't happen)
+          const spRaw = Number(
+            ln.sellingPrice ??
+              ln.sp ??
+              ln.selling_price ??
+              ln.unit_price ??
+              ln.unitPrice ??
+              ln.price ??
+              0
+          );
+          actualPaidPerUnit = Number.isFinite(spRaw) ? spRaw : 0;
         }
 
-        discPerUnit = Math.max(0, Math.min(baseSP, discPerUnit));
+        // ✅ For credit note: sellingPrice = what customer ACTUALLY PAID
+        const baseSP = Math.max(0, actualPaidPerUnit);
+
+        // ✅ NO discount to show (already included in actualPaidPerUnit)
+        const discPerUnit = 0;
 
         onAddItem?.({
           id: ln.id ?? ln.barcode,
@@ -437,7 +423,7 @@ export default function SearchBar({ onAddItem }) {
 
           mrp: Number(ln.mrp || 0),
 
-          // ✅ show original price and correct discount
+          // ✅ show actual paid price with NO discount
           sellingPrice: baseSP,
           lineDiscountAmount: +discPerUnit.toFixed(2),
 
