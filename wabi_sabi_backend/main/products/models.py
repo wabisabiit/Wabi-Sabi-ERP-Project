@@ -1,4 +1,6 @@
-# Create your models here. 
+# products/models.py
+
+# Create your models here.
 from django.db import models, transaction
 from taskmaster.models import TaskItem, Location   # <-- your TaskItem
 from django.utils import timezone
@@ -387,27 +389,92 @@ class CreditNote(models.Model):
         if not self.created_by_id and self.sale_id and getattr(self.sale, "created_by_id", None):
             self.created_by_id = self.sale.created_by_id
 
-        # ✅ FIX: credit note amount must match customer's net paid price (after discount)
-        # amount = (SaleLine.sp - SaleLine.discount_amount) * qty
+        # ✅ FIX: credit note amount must match customer's ACTUAL paid price
+        # Includes:
+        #  - per-row discount (SaleLine.discount_amount)
+        #  - bill/footer discount (distributed proportionally across lines)
         if self.sale_id and self.barcode:
-            ln = (
-                SaleLine.objects
-                .filter(sale_id=self.sale_id, barcode=self.barcode)
-                .order_by("id")
-                .first()
+            from decimal import Decimal, ROUND_HALF_UP
+            from django.db.models import Sum
+
+            TWOPLACES = Decimal("0.01")
+
+            sale = getattr(self, "sale", None)
+
+            # all lines of that invoice
+            all_lines = list(
+                SaleLine.objects.filter(sale_id=self.sale_id).values(
+                    "barcode", "qty", "sp", "discount_amount"
+                )
             )
-            if ln:
-                from decimal import Decimal, ROUND_HALF_UP
-                TWOPLACES = Decimal("0.01")
 
-                net_unit = (ln.sp or 0) - (ln.discount_amount or 0)
-                if net_unit < 0:
-                    net_unit = 0
+            def d(x):
+                try:
+                    return Decimal(str(x or 0))
+                except Exception:
+                    return Decimal("0")
 
-                q = Decimal(int(self.qty or 1))
-                self.amount = (Decimal(net_unit) * q).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+            # base total after per-line discounts (but BEFORE bill discount)
+            base_total = Decimal("0")
+            line_totals = []
+            for r in all_lines:
+                qty_sold = max(1, int(r.get("qty") or 1))
+                sp = d(r.get("sp"))
+                row_disc = d(r.get("discount_amount"))
+                base_unit = sp - row_disc
+                if base_unit < 0:
+                    base_unit = Decimal("0")
+                base_line = base_unit * Decimal(qty_sold)
+                base_total += base_line
+                line_totals.append((r.get("barcode") or "", qty_sold, base_unit, base_line))
+
+            # what customer actually paid for the whole invoice
+            paid_total = d(getattr(sale, "grand_total", 0)) if sale else Decimal("0")
+
+            # fallback: sum payments if grand_total is empty
+            if paid_total <= 0 and sale is not None:
+                paid_total = d(sale.payments.aggregate(s=Sum("amount")).get("s") or 0)
+
+            # bill discount total to distribute across lines
+            bill_disc_total = base_total - paid_total
+            if bill_disc_total < 0:
+                bill_disc_total = Decimal("0")
+
+            # find the sold-line for this barcode
+            target = None
+            for (bc, qty_sold, base_unit, base_line) in line_totals:
+                if str(bc) == str(self.barcode):
+                    target = (bc, qty_sold, base_unit, base_line)
+                    break
+
+            if target:
+                bc, qty_sold, base_unit, base_line = target
+
+                # allocate bill discount proportionally
+                if base_total > 0:
+                    share = (base_line / base_total)
+                else:
+                    share = Decimal("0")
+
+                alloc_bill_disc_line = (bill_disc_total * share)
+
+                net_line_total = base_line - alloc_bill_disc_line
+                if net_line_total < 0:
+                    net_line_total = Decimal("0")
+
+                # net unit paid (after both row + bill discount)
+                if qty_sold > 0:
+                    net_unit_paid = net_line_total / Decimal(qty_sold)
+                else:
+                    net_unit_paid = Decimal("0")
+
+                return_qty = Decimal(int(self.qty or 1))
+                self.amount = (net_unit_paid * return_qty).quantize(
+                    TWOPLACES, rounding=ROUND_HALF_UP
+                )
 
         super().save(*args, **kwargs)
+
 
 
 
