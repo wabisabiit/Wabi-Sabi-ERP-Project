@@ -192,10 +192,11 @@ class SaleCreateSerializer(serializers.Serializer):
             line_base = unit * qty
             subtotal += line_base
 
-            dp = q2(ln.get("discount_percent", 0))
+            # ✅ FIX: accept both snake_case and camelCase
+            dp = q2(ln.get("discount_percent", ln.get("discountPercent", 0)) or 0)
 
-            # ✅ FIX: incoming discount_amount is PER-UNIT discount
-            da_per_unit = q2(ln.get("discount_amount", 0))
+            # ✅ FIX: incoming discount_amount is PER-UNIT discount (accept both keys)
+            da_per_unit = q2(ln.get("discount_amount", ln.get("discountAmount", 0)) or 0)
             da_total = (da_per_unit * Decimal(qty)).quantize(
                 TWOPLACES, rounding=ROUND_HALF_UP
             )
@@ -318,10 +319,11 @@ class SaleCreateSerializer(serializers.Serializer):
                 p = Product.objects.get(barcode=ln["barcode"])
                 qty = int(ln["qty"])
 
-                dp = q2(ln.get("discount_percent", 0))
+                # ✅ FIX: accept both snake_case and camelCase
+                dp = q2(ln.get("discount_percent", ln.get("discountPercent", 0)) or 0)
 
-                # ✅ FIX: incoming discount_amount is PER-UNIT discount
-                da_per_unit = q2(ln.get("discount_amount", 0))
+                # ✅ FIX: incoming discount_amount is PER-UNIT discount (accept both keys)
+                da_per_unit = q2(ln.get("discount_amount", ln.get("discountAmount", 0)) or 0)
 
                 # store line
                 SaleLine.objects.create(
