@@ -197,12 +197,31 @@ export async function getProductByBarcode(barcode) {
 }
 
 // Create sale
+// Create sale
 export async function createSale(payload) {
+  const p = { ...(payload || {}) };
+
+  // ✅ AUTO-attach footer bill discount for flows like MultiplePay
+  // (MultiplePay usually doesn't send bill_discount_* so backend payable becomes bigger)
+  const bd = (typeof window !== "undefined" && window.__BILL_DISCOUNT__) ? window.__BILL_DISCOUNT__ : null;
+
+  const hasBillDisc =
+    p.bill_discount_value !== undefined &&
+    p.bill_discount_value !== null &&
+    p.bill_discount_is_percent !== undefined &&
+    p.bill_discount_is_percent !== null;
+
+  if (!hasBillDisc && bd) {
+    p.bill_discount_value = Number(bd.value || 0) || 0;
+    p.bill_discount_is_percent = !!bd.isPercent;
+  }
+
   return http(`/sales/`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(p),
   });
 }
+
 
 // ✅ FIXED: listSales query builder (works for outlet too)
 export async function listSales(params = {}) {
