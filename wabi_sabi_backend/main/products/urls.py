@@ -18,7 +18,7 @@ from .views_coupons import (
     CouponListCreate, CouponGenerate, GeneratedCouponList,
     CouponLookup, CouponRedeem
 )
-from .views_reports import  ProductWiseSalesReport, CategoryWiseSalesSummary
+from .views_reports import ProductWiseSalesReport, CategoryWiseSalesSummary
 from .views_discounts import DiscountListCreate, DiscountDetail
 from .views_reports_masterpacking import master_packing_item_wise
 from .views_holdbills import HoldBillView, HoldBillRestore
@@ -33,11 +33,10 @@ from .views_dashboard import DashboardSummaryView
 # ✅ CSV Import (NEW)
 from .views_csv_import import ProductCsvPreflight, ProductCsvApply
 
-from .views_receipt import SaleReceiptPdfView,DaywiseSalesSummary
+from .views_receipt import SaleReceiptPdfView, DaywiseSalesSummary
 from .views_creditreceipt import CreditNoteReceiptPdfView
 
 from .views_sales import SalesView, SaleLinesByInvoiceView, SaleDeleteView
-
 
 from .views_register_session import RegisterSessionTodayView, RegisterSessionOpenView
 
@@ -48,7 +47,8 @@ from .views_sales_register import SalesRegisterReportView
 # ✅ NEW: Salesman report API
 from .views_salesman_report import SalesmanReportView
 
-
+# ✅ NEW: TaskItem filter dropdown endpoints (Department/Category)
+from .views_taskitem_filters import DepartmentListView, CategoryListView
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
@@ -65,6 +65,10 @@ urlpatterns = [
     path("products/import-csv/preflight/", ProductCsvPreflight.as_view(), name="products-import-csv-preflight"),
     path("products/import-csv/apply/", ProductCsvApply.as_view(), name="products-import-csv-apply"),
 
+    # ✅ NEW: taskitems dropdown master lists (used in Product Wise Sales Summary)
+    path("taskitems/departments/", DepartmentListView.as_view(), name="taskitem-departments"),
+    path("taskitems/categories/", CategoryListView.as_view(), name="taskitem-categories"),
+
     # Sales
     path("sales/", SalesView.as_view(), name="sales"),
 
@@ -75,7 +79,6 @@ urlpatterns = [
     path("credit-notes/<str:note_no>/delete/", CreditNoteDelete.as_view(), name="credit-note-delete"),
 
     # Sales Return
-    # ✅ FIXED: lines endpoint now returns sale-time prices (SaleLine.mrp/sp)
     path("sales/<str:invoice_no>/lines/", SaleLinesByInvoiceView.as_view(), name="sale-lines-by-invoice"),
     path("sales/<str:invoice_no>/return/", SalesReturn.as_view(), name="sales-return"),
 
@@ -85,7 +88,6 @@ urlpatterns = [
     # Master Pack
     path("master-packs/", MasterPackView.as_view(), name="master-pack-create"),
     path("master-packs/bulk-delete/", MasterPackBulkDelete.as_view(), name="master-pack-bulk-delete"),
-    # ✅ IMPORTANT: MasterPack number contains "/" like MP/HR-UV/0001
     path("master-packs/<path:number>/", MasterPackDetail.as_view(), name="master-pack-detail"),
 
     # Material Consumption
@@ -138,8 +140,7 @@ urlpatterns = [
     path("register-sessions/today/", RegisterSessionTodayView.as_view(), name="register-session-today"),
     path("register-sessions/open/", RegisterSessionOpenView.as_view(), name="register-session-open"),
 
-
-    # ✅ NEW Dashboard KPI summary (date filter required)
+    # Dashboard KPI summary
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
 
     path("sales/<str:invoice_no>/receipt/", SaleReceiptPdfView.as_view(), name="sale-receipt-pdf"),

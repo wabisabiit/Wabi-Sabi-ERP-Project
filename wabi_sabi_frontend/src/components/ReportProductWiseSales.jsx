@@ -34,7 +34,6 @@ const COLUMNS = [
 
 /* ---------- UI primitives ---------- */
 
-/** Searchable single-select (Dept/Category/Brand/SubBrand/SalesType) */
 function SearchSelect({
   label,
   placeholder,
@@ -55,10 +54,10 @@ function SearchSelect({
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const filtered = useMemo(
-    () => (options || []).filter((o) => String(o).toLowerCase().includes(q.trim().toLowerCase())),
-    [options, q]
-  );
+  const filtered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    return (options || []).filter((o) => String(o).toLowerCase().includes(qq));
+  }, [options, q]);
 
   return (
     <div className="pwss-field" style={{ width }} ref={ref}>
@@ -79,7 +78,9 @@ function SearchSelect({
           onChange={(e) => setQ(e.target.value)}
           placeholder={searchPlaceholder}
         />
-        <div className="ss-list">
+
+        {/* ✅ Show only 5 items then scroll */}
+        <div className="ss-list" style={{ maxHeight: 5 * 36, overflowY: "auto" }}>
           {filtered.length === 0 ? (
             <div className="ss-empty">{emptyText}</div>
           ) : (
@@ -103,10 +104,7 @@ function SearchSelect({
   );
 }
 
-/** Multi-select for Location (checkbox list + badge + close button)
- * options: [{value:"All",label:"All"}, {value:"WS",label:"Wabi Sabi..."}, ...]
- * value: ["WS","UV"] etc
- */
+/** Multi-select for Location */
 function MultiSelectLocation({ label, options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -142,25 +140,17 @@ function MultiSelectLocation({ label, options, value, onChange }) {
     <div className="pwss-field" ref={ref}>
       <label>{label}</label>
 
-      <button
-        type="button"
-        className={`ms-head ${open ? "open" : ""}`}
-        onClick={() => setOpen((v) => !v)}
-      >
+      <button type="button" className={`ms-head ${open ? "open" : ""}`} onClick={() => setOpen((v) => !v)}>
         <span className={`ms-text ${badge ? "" : "dim"}`}>Select Location</span>
         {badge ? <span className="ms-badge">{badge}</span> : null}
-        <span
-          className="ms-close"
-          onClick={(e) => {
-            e.stopPropagation();
-            onChange([]);
-          }}
-        />
+        <span className="ms-close" onClick={(e) => { e.stopPropagation(); onChange([]); }} />
       </button>
 
       <div className={`ms-pop ${open ? "show" : ""}`}>
         <input className="ss-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="" />
-        <div className="ms-list">
+
+        {/* ✅ Show only 5 rows then scroll */}
+        <div className="ms-list" style={{ maxHeight: 5 * 36, overflowY: "auto" }}>
           {filtered.map((opt) => {
             const checked = value.includes(opt.value) || (opt.value === "All" && value.includes("All"));
             return (
@@ -195,12 +185,7 @@ function ProductSearchBox({ value, onChange }) {
       </button>
 
       <div className={`ss-pop ${open ? "show" : ""}`}>
-        <input
-          className="ss-search"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder=""
-        />
+        <input className="ss-search" value={value} onChange={(e) => onChange(e.target.value)} placeholder="" />
         {!value || value.length < 3 ? (
           <div className="ss-empty">Please enter 3 or more characters</div>
         ) : (
@@ -215,7 +200,7 @@ export default function ReportProductWiseSales() {
   const navigate = useNavigate();
 
   /* Toolbar state */
-  const [locations, setLocations] = useState([]); // multi-select values are location codes or "All"
+  const [locations, setLocations] = useState([]); // multi-select codes
   const [department, setDepartment] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
@@ -252,8 +237,8 @@ export default function ReportProductWiseSales() {
         const locs = await listLocations(); // [{id, code, name}]
         const opts = [{ value: "All", label: "All" }].concat(
           (locs || []).map((x) => ({
-            value: String(x?.code || "").trim(), // send CODE in query
-            label: String(x?.name || x?.code || "").trim(), // show NAME
+            value: String(x?.code || "").trim(),           // ✅ send code
+            label: String(x?.name || x?.code || "").trim() // ✅ show name
           }))
         );
         setLocationOptions(opts);
@@ -268,7 +253,7 @@ export default function ReportProductWiseSales() {
   useEffect(() => {
     const load = async () => {
       try {
-        const depts = await listDepartments(); // ["Clothes", ...]
+        const depts = await listDepartments();
         setDepartmentOptions(depts || []);
       } catch {
         setDepartmentOptions([]);
@@ -277,7 +262,7 @@ export default function ReportProductWiseSales() {
     load();
   }, []);
 
-  /* ✅ Load real categories (filtered by department if selected) */
+  /* ✅ Load real categories (filtered by department) */
   useEffect(() => {
     const load = async () => {
       try {
@@ -290,7 +275,7 @@ export default function ReportProductWiseSales() {
     load();
   }, [department]);
 
-  /* Fetch server data whenever filters change */
+  /* Fetch report data whenever filters change */
   useEffect(() => {
     const run = async () => {
       setLoading(true);
@@ -341,7 +326,7 @@ export default function ReportProductWiseSales() {
   }, []);
   const scrollByX = (dx) => scrollerRef.current?.scrollBy({ left: dx, behavior: "smooth" });
 
-  /* Downloads — empty placeholders */
+  /* Downloads — placeholders */
   const downloadEmpty = (filename, type) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([], { type }));
@@ -351,17 +336,9 @@ export default function ReportProductWiseSales() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 300);
   };
-  const onExcel = () =>
-    downloadEmpty(
-      "product-wise-sales-summary.xlsx",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+  const onExcel = () => downloadEmpty("product-wise-sales-summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   const onPDF = () => downloadEmpty("product-wise-sales-summary.pdf", "application/pdf");
-  const onAllDataExcel = () =>
-    downloadEmpty(
-      "product-wise-sales-summary-all-data.xlsx",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+  const onAllDataExcel = () => downloadEmpty("product-wise-sales-summary-all-data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
   const showing = Math.min(rows.length, pageSize);
 
@@ -370,13 +347,7 @@ export default function ReportProductWiseSales() {
       <div className="pwss-top">
         <div className="pwss-title">Product Wise Sales Summary</div>
         <div className="pwss-crumb" aria-label="breadcrumb">
-          <span
-            className="material-icons-outlined pwss-crumb-link"
-            role="link"
-            tabIndex={0}
-            onClick={() => navigate("/")}
-            title="Home"
-          >
+          <span className="material-icons-outlined pwss-crumb-link" role="link" tabIndex={0} onClick={() => navigate("/")} title="Home">
             home
           </span>
           <span className="pwss-crumb-sep">|</span>
@@ -386,25 +357,15 @@ export default function ReportProductWiseSales() {
 
       <div className="pwss-card">
         <div className="pwss-toolbar">
-          {/* Row 1 */}
           <div className="pwss-row">
-            <MultiSelectLocation
-              label="Select Location"
-              options={locationOptions}
-              value={locations}
-              onChange={setLocations}
-            />
+            <MultiSelectLocation label="Select Location" options={locationOptions} value={locations} onChange={setLocations} />
 
             <SearchSelect
               label="Select Department"
               placeholder="Select Department"
               options={departmentOptions}
               value={department}
-              onChange={(v) => {
-                setDepartment(v);
-                // reset category when department changes (prevents invalid selection)
-                setCategory("");
-              }}
+              onChange={(v) => { setDepartment(v); setCategory(""); }}
             />
 
             <SearchSelect
@@ -424,12 +385,11 @@ export default function ReportProductWiseSales() {
             />
           </div>
 
-          {/* Row 2 */}
           <div className="pwss-row">
             <SearchSelect
               label="Select Brand"
               placeholder="Select Brand"
-              options={[]} // unchanged behavior: your backend can add brand list later
+              options={[]}   // unchanged
               value={brand}
               onChange={setBrand}
             />
@@ -453,7 +413,6 @@ export default function ReportProductWiseSales() {
             </div>
           </div>
 
-          {/* Row 3 */}
           <div className="pwss-row">
             <div className="pwss-field">
               <label>To Date</label>
@@ -466,12 +425,7 @@ export default function ReportProductWiseSales() {
             <div className="pwss-spacer" />
 
             <div className="pwss-actions" ref={menuRef}>
-              <button
-                type="button"
-                className="dl-btn"
-                title="Download"
-                onClick={() => setMenuOpen((v) => !v)}
-              >
+              <button type="button" className="dl-btn" title="Download" onClick={() => setMenuOpen((v) => !v)}>
                 <span className="material-icons-outlined">download</span>
               </button>
               <div className={`menu ${menuOpen ? "show" : ""}`}>
@@ -488,11 +442,7 @@ export default function ReportProductWiseSales() {
 
               <div className="psize">
                 <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-                  {PAGE_SIZES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
+                  {PAGE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <span className="material-icons-outlined">expand_more</span>
               </div>
@@ -500,11 +450,9 @@ export default function ReportProductWiseSales() {
           </div>
         </div>
 
-        {/* ===== Status ===== */}
         {loading && <div className="pwss-status">Loading…</div>}
         {error && <div className="pwss-error">{error}</div>}
 
-        {/* ===== Table ===== */}
         <div className="pwss-table-outer">
           <button className={`hbtn left ${canLeft ? "" : "dim"}`} onClick={() => scrollByX(-320)}>
             <span className="material-icons-outlined">chevron_left</span>
@@ -526,9 +474,7 @@ export default function ReportProductWiseSales() {
                 ))}
                 {!loading && rows.length === 0 && (
                   <tr>
-                    <td colSpan={COLUMNS.length} style={{ textAlign: "center" }}>
-                      No data
-                    </td>
+                    <td colSpan={COLUMNS.length} style={{ textAlign: "center" }}>No data</td>
                   </tr>
                 )}
               </tbody>
