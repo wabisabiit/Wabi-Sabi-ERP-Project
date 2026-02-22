@@ -965,6 +965,15 @@ export async function getRegisterClosingSummary() {
   return http(`/register-closes/today-summary/`);
 }
 
+// TaskItem filters (Departments / Categories)
+export async function listDepartments() {
+  return http(`/taskitems/departments/`);
+}
+
+export async function listCategories(params = {}) {
+  return http(`/taskitems/categories/${buildQuery(params)}`);
+}
+
 // ✅ NEW: Dashboard Summary endpoint
 export async function dashboardSummary(params = {}) {
   // normalize Date objects to YYYY-MM-DD (so backend can filter correctly)
@@ -1106,4 +1115,7 @@ export default {
 
   mcDelete,
   listSalesmanReport,
+
+  listDepartments,
+  listCategories,
 };

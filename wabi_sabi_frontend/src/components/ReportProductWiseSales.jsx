@@ -2,31 +2,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ReportProductWiseSales.css";
-import { listProductWiseSales } from "../api/client";
+import {
+  listProductWiseSales,
+  listLocations,
+  listDepartments,
+  listCategories,
+} from "../api/client";
 
-/* ===== Masters (match screenshots) ===== */
-const LOCATION_OPTIONS = [
-  "All",
-  "WABI SABI SUSTAINABILITY LLP",
-  "Brands 4 less – Ansal Plaza",
-  "Brands 4 less – Rajouri Garden",
-  "Brand4Less–Tilak Nagar",
-  "Brands 4 less– M3M Urbana",
-  "Brands 4 less – IFFCO Chowk",
-  "Brands Loot – Udyog Vihar",
-  "Brands loot – Krishna Nagar",
-];
-
-const DEPARTMENT_OPTIONS = ["Other", "Test", "S", "clothes", "Miscellaneous"];
-const CATEGORY_OPTIONS = [
-  "Accessories",
-  "Boys & Girls - Blouse",
-  "Boys & Girls - Dress",
-  "Boys & Girls - Pant",
-  "Boys & Girls - Shirt",
-  "Boys & Girls - Shoes",
-];
-const BRAND_OPTIONS = ["B4L", "ddd", "ff", "ffff", "g", "ggg"];
+/* ===== Masters ===== */
 const SUBCATEGORY_OPTIONS = []; // none
 const SUBBRAND_OPTIONS = []; // none
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -73,14 +56,18 @@ function SearchSelect({
   }, []);
 
   const filtered = useMemo(
-    () => options.filter((o) => o.toLowerCase().includes(q.trim().toLowerCase())),
+    () => (options || []).filter((o) => String(o).toLowerCase().includes(q.trim().toLowerCase())),
     [options, q]
   );
 
   return (
     <div className="pwss-field" style={{ width }} ref={ref}>
       <label>{label}</label>
-      <button type="button" className={`ss-head ${open ? "open" : ""}`} onClick={() => setOpen((v) => !v)}>
+      <button
+        type="button"
+        className={`ss-head ${open ? "open" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+      >
         <span className={`ss-head-text ${value ? "" : "dim"}`}>{value || placeholder}</span>
         <span className="material-icons-outlined">expand_more</span>
       </button>
@@ -116,7 +103,10 @@ function SearchSelect({
   );
 }
 
-/** Multi-select for Location (checkbox list + badge + close button) */
+/** Multi-select for Location (checkbox list + badge + close button)
+ * options: [{value:"All",label:"All"}, {value:"WS",label:"Wabi Sabi..."}, ...]
+ * value: ["WS","UV"] etc
+ */
 function MultiSelectLocation({ label, options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -128,18 +118,20 @@ function MultiSelectLocation({ label, options, value, onChange }) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const filtered = useMemo(
-    () => options.filter((o) => o.toLowerCase().includes(q.trim().toLowerCase())),
-    [options, q]
-  );
+  const filtered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    return (options || []).filter((o) => String(o?.label || "").toLowerCase().includes(qq));
+  }, [options, q]);
 
   const toggle = (opt) => {
-    if (opt === "All") {
+    const val = opt?.value;
+
+    if (val === "All") {
       onChange(["All"]);
       return;
     }
     const next = new Set(value);
-    next.has(opt) ? next.delete(opt) : next.add(opt);
+    next.has(val) ? next.delete(val) : next.add(val);
     next.delete("All");
     onChange([...next]);
   };
@@ -150,30 +142,31 @@ function MultiSelectLocation({ label, options, value, onChange }) {
     <div className="pwss-field" ref={ref}>
       <label>{label}</label>
 
-      <button type="button" className={`ms-head ${open ? "open" : ""}`} onClick={() => setOpen((v) => !v)}>
+      <button
+        type="button"
+        className={`ms-head ${open ? "open" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+      >
         <span className={`ms-text ${badge ? "" : "dim"}`}>Select Location</span>
         {badge ? <span className="ms-badge">{badge}</span> : null}
-        <span className="ms-close" onClick={(e) => { e.stopPropagation(); onChange([]); }} />
+        <span
+          className="ms-close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange([]);
+          }}
+        />
       </button>
 
       <div className={`ms-pop ${open ? "show" : ""}`}>
-        <input
-          className="ss-search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder=""
-        />
+        <input className="ss-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="" />
         <div className="ms-list">
           {filtered.map((opt) => {
-            const checked = value.includes(opt) || (opt === "All" && value.includes("All"));
+            const checked = value.includes(opt.value) || (opt.value === "All" && value.includes("All"));
             return (
-              <label key={opt} className="ms-row">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggle(opt)}
-                />
-                <span>{opt}</span>
+              <label key={opt.value} className="ms-row">
+                <input type="checkbox" checked={checked} onChange={() => toggle(opt)} />
+                <span>{opt.label}</span>
               </label>
             );
           })}
@@ -222,7 +215,7 @@ export default function ReportProductWiseSales() {
   const navigate = useNavigate();
 
   /* Toolbar state */
-  const [locations, setLocations] = useState([]); // multi-select
+  const [locations, setLocations] = useState([]); // multi-select values are location codes or "All"
   const [department, setDepartment] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
@@ -232,6 +225,11 @@ export default function ReportProductWiseSales() {
   const [fromDate, setFromDate] = useState("2025-04-01");
   const [toDate, setToDate] = useState("2026-03-31");
   const [pageSize, setPageSize] = useState(10);
+
+  /* ✅ Real dropdown options */
+  const [locationOptions, setLocationOptions] = useState([{ value: "All", label: "All" }]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
 
   /* Data */
   const [rows, setRows] = useState([]);
@@ -247,20 +245,66 @@ export default function ReportProductWiseSales() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  /* ✅ Load real locations */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const locs = await listLocations(); // [{id, code, name}]
+        const opts = [{ value: "All", label: "All" }].concat(
+          (locs || []).map((x) => ({
+            value: String(x?.code || "").trim(), // send CODE in query
+            label: String(x?.name || x?.code || "").trim(), // show NAME
+          }))
+        );
+        setLocationOptions(opts);
+      } catch {
+        setLocationOptions([{ value: "All", label: "All" }]);
+      }
+    };
+    load();
+  }, []);
+
+  /* ✅ Load real departments */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const depts = await listDepartments(); // ["Clothes", ...]
+        setDepartmentOptions(depts || []);
+      } catch {
+        setDepartmentOptions([]);
+      }
+    };
+    load();
+  }, []);
+
+  /* ✅ Load real categories (filtered by department if selected) */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const cats = await listCategories({ department });
+        setCategoryOptions(cats || []);
+      } catch {
+        setCategoryOptions([]);
+      }
+    };
+    load();
+  }, [department]);
+
   /* Fetch server data whenever filters change */
   useEffect(() => {
     const run = async () => {
-      setLoading(true); setError("");
+      setLoading(true);
+      setError("");
       try {
         const res = await listProductWiseSales({
           location: locations.includes("All") || locations.length === 0 ? null : locations,
           department,
-          category,                // accepted, maps to department on server
+          category,
           brand,
           product: productSearch,
           date_from: fromDate,
           date_to: toDate,
-          all: 1,                  // fetch all; client slices by page size
+          all: 1,
         });
         setRows(res?.results || []);
       } catch (e) {
@@ -307,9 +351,17 @@ export default function ReportProductWiseSales() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 300);
   };
-  const onExcel = () => downloadEmpty("product-wise-sales-summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  const onExcel = () =>
+    downloadEmpty(
+      "product-wise-sales-summary.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
   const onPDF = () => downloadEmpty("product-wise-sales-summary.pdf", "application/pdf");
-  const onAllDataExcel = () => downloadEmpty("product-wise-sales-summary-all-data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  const onAllDataExcel = () =>
+    downloadEmpty(
+      "product-wise-sales-summary-all-data.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
 
   const showing = Math.min(rows.length, pageSize);
 
@@ -338,7 +390,7 @@ export default function ReportProductWiseSales() {
           <div className="pwss-row">
             <MultiSelectLocation
               label="Select Location"
-              options={LOCATION_OPTIONS}
+              options={locationOptions}
               value={locations}
               onChange={setLocations}
             />
@@ -346,15 +398,19 @@ export default function ReportProductWiseSales() {
             <SearchSelect
               label="Select Department"
               placeholder="Select Department"
-              options={DEPARTMENT_OPTIONS}
+              options={departmentOptions}
               value={department}
-              onChange={setDepartment}
+              onChange={(v) => {
+                setDepartment(v);
+                // reset category when department changes (prevents invalid selection)
+                setCategory("");
+              }}
             />
 
             <SearchSelect
               label="Select Category"
               placeholder="Select Category"
-              options={CATEGORY_OPTIONS}
+              options={categoryOptions}
               value={category}
               onChange={setCategory}
             />
@@ -373,7 +429,7 @@ export default function ReportProductWiseSales() {
             <SearchSelect
               label="Select Brand"
               placeholder="Select Brand"
-              options={BRAND_OPTIONS}
+              options={[]} // unchanged behavior: your backend can add brand list later
               value={brand}
               onChange={setBrand}
             />
@@ -414,7 +470,7 @@ export default function ReportProductWiseSales() {
                 type="button"
                 className="dl-btn"
                 title="Download"
-                onClick={() => setMenuOpen(v => !v)}
+                onClick={() => setMenuOpen((v) => !v)}
               >
                 <span className="material-icons-outlined">download</span>
               </button>
@@ -432,7 +488,11 @@ export default function ReportProductWiseSales() {
 
               <div className="psize">
                 <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-                  {PAGE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {PAGE_SIZES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
                 <span className="material-icons-outlined">expand_more</span>
               </div>
@@ -464,9 +524,11 @@ export default function ReportProductWiseSales() {
                     {COLUMNS.map((c) => <td key={c.key}>{r[c.key]}</td>)}
                   </tr>
                 ))}
-                {(!loading && rows.length === 0) && (
+                {!loading && rows.length === 0 && (
                   <tr>
-                    <td colSpan={COLUMNS.length} style={{ textAlign: "center" }}>No data</td>
+                    <td colSpan={COLUMNS.length} style={{ textAlign: "center" }}>
+                      No data
+                    </td>
                   </tr>
                 )}
               </tbody>

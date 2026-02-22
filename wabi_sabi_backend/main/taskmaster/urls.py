@@ -2,6 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import TaskItemViewSet, locations_list  # keep existing views
+from .views_filters import DepartmentListView, CategoryListView
 
 router = DefaultRouter()
 router.register(r"taskitems", TaskItemViewSet, basename="taskitems")
@@ -9,4 +10,6 @@ router.register(r"taskitems", TaskItemViewSet, basename="taskitems")
 urlpatterns = [
     path("", include(router.urls)),                    # /api/taskitems/...
     path("locations/", locations_list, name="locations-list"),  # /api/locations/
+    path("taskitems/departments/", DepartmentListView.as_view(), name="taskitem-departments"),
+    path("taskitems/categories/", CategoryListView.as_view(), name="taskitem-categories"),
 ]
