@@ -10,8 +10,8 @@ import {
 } from "../api/client";
 
 /* ===== Masters ===== */
-const SUBCATEGORY_OPTIONS = []; // none
-const SUBBRAND_OPTIONS = []; // none
+const SUBCATEGORY_OPTIONS = [];
+const SUBBRAND_OPTIONS = [];
 const PAGE_SIZES = [10, 25, 50, 100];
 
 const COLUMNS = [
@@ -79,7 +79,7 @@ function SearchSelect({
           placeholder={searchPlaceholder}
         />
 
-        {/* ✅ Show only 5 items then scroll */}
+        {/* ✅ only 5 visible rows then scroll */}
         <div className="ss-list" style={{ maxHeight: 5 * 36, overflowY: "auto" }}>
           {filtered.length === 0 ? (
             <div className="ss-empty">{emptyText}</div>
@@ -104,7 +104,6 @@ function SearchSelect({
   );
 }
 
-/** Multi-select for Location */
 function MultiSelectLocation({ label, options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -123,7 +122,6 @@ function MultiSelectLocation({ label, options, value, onChange }) {
 
   const toggle = (opt) => {
     const val = opt?.value;
-
     if (val === "All") {
       onChange(["All"]);
       return;
@@ -149,7 +147,7 @@ function MultiSelectLocation({ label, options, value, onChange }) {
       <div className={`ms-pop ${open ? "show" : ""}`}>
         <input className="ss-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="" />
 
-        {/* ✅ Show only 5 rows then scroll */}
+        {/* ✅ only 5 visible rows then scroll */}
         <div className="ms-list" style={{ maxHeight: 5 * 36, overflowY: "auto" }}>
           {filtered.map((opt) => {
             const checked = value.includes(opt.value) || (opt.value === "All" && value.includes("All"));
@@ -166,7 +164,6 @@ function MultiSelectLocation({ label, options, value, onChange }) {
   );
 }
 
-/** Product box (typed search) */
 function ProductSearchBox({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -199,8 +196,7 @@ function ProductSearchBox({ value, onChange }) {
 export default function ReportProductWiseSales() {
   const navigate = useNavigate();
 
-  /* Toolbar state */
-  const [locations, setLocations] = useState([]); // multi-select codes
+  const [locations, setLocations] = useState([]);
   const [department, setDepartment] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
@@ -211,17 +207,14 @@ export default function ReportProductWiseSales() {
   const [toDate, setToDate] = useState("2026-03-31");
   const [pageSize, setPageSize] = useState(10);
 
-  /* ✅ Real dropdown options */
   const [locationOptions, setLocationOptions] = useState([{ value: "All", label: "All" }]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([]);
 
-  /* Data */
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /* Download split menu */
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   useEffect(() => {
@@ -230,52 +223,62 @@ export default function ReportProductWiseSales() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  /* ✅ Load real locations */
+  // ✅ Load Locations (with console logs)
   useEffect(() => {
     const load = async () => {
+      console.log("[PWSS] Loading locations from backend...");
       try {
-        const locs = await listLocations(); // [{id, code, name}]
+        const locs = await listLocations();
+        console.log("[PWSS] Locations loaded ✅", locs);
+
         const opts = [{ value: "All", label: "All" }].concat(
           (locs || []).map((x) => ({
-            value: String(x?.code || "").trim(),           // ✅ send code
-            label: String(x?.name || x?.code || "").trim() // ✅ show name
+            value: String(x?.code || "").trim(),
+            label: String(x?.name || x?.code || "").trim(),
           }))
         );
         setLocationOptions(opts);
-      } catch {
+      } catch (e) {
+        console.error("[PWSS] Locations load FAILED ❌", e);
         setLocationOptions([{ value: "All", label: "All" }]);
       }
     };
     load();
   }, []);
 
-  /* ✅ Load real departments */
+  // ✅ Load Departments (with console logs)
   useEffect(() => {
     const load = async () => {
+      console.log("[PWSS] Loading departments from backend...");
       try {
         const depts = await listDepartments();
+        console.log("[PWSS] Departments loaded ✅", depts);
         setDepartmentOptions(depts || []);
-      } catch {
+      } catch (e) {
+        console.error("[PWSS] Departments load FAILED ❌", e);
         setDepartmentOptions([]);
       }
     };
     load();
   }, []);
 
-  /* ✅ Load real categories (filtered by department) */
+  // ✅ Load Categories (with console logs)
   useEffect(() => {
     const load = async () => {
+      console.log("[PWSS] Loading categories from backend... dept =", department);
       try {
         const cats = await listCategories({ department });
+        console.log("[PWSS] Categories loaded ✅", cats);
         setCategoryOptions(cats || []);
-      } catch {
+      } catch (e) {
+        console.error("[PWSS] Categories load FAILED ❌", e);
         setCategoryOptions([]);
       }
     };
     load();
   }, [department]);
 
-  /* Fetch report data whenever filters change */
+  // ✅ Fetch report
   useEffect(() => {
     const run = async () => {
       setLoading(true);
@@ -302,7 +305,7 @@ export default function ReportProductWiseSales() {
     run();
   }, [locations, department, category, brand, productSearch, fromDate, toDate]);
 
-  /* Horizontal scroll buttons */
+  // scroll buttons
   const scrollerRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
@@ -325,20 +328,6 @@ export default function ReportProductWiseSales() {
     };
   }, []);
   const scrollByX = (dx) => scrollerRef.current?.scrollBy({ left: dx, behavior: "smooth" });
-
-  /* Downloads — placeholders */
-  const downloadEmpty = (filename, type) => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([], { type }));
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 300);
-  };
-  const onExcel = () => downloadEmpty("product-wise-sales-summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  const onPDF = () => downloadEmpty("product-wise-sales-summary.pdf", "application/pdf");
-  const onAllDataExcel = () => downloadEmpty("product-wise-sales-summary-all-data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
   const showing = Math.min(rows.length, pageSize);
 
@@ -389,7 +378,7 @@ export default function ReportProductWiseSales() {
             <SearchSelect
               label="Select Brand"
               placeholder="Select Brand"
-              options={[]}   // unchanged
+              options={[]}
               value={brand}
               onChange={setBrand}
             />
@@ -428,17 +417,6 @@ export default function ReportProductWiseSales() {
               <button type="button" className="dl-btn" title="Download" onClick={() => setMenuOpen((v) => !v)}>
                 <span className="material-icons-outlined">download</span>
               </button>
-              <div className={`menu ${menuOpen ? "show" : ""}`}>
-                <button type="button" onClick={onExcel}>
-                  <span className="material-icons-outlined">article</span> Excel
-                </button>
-                <button type="button" onClick={onPDF}>
-                  <span className="material-icons-outlined">picture_as_pdf</span> PDF
-                </button>
-                <button type="button" onClick={onAllDataExcel}>
-                  <span className="material-icons-outlined">library_add</span> All Excel
-                </button>
-              </div>
 
               <div className="psize">
                 <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>

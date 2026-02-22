@@ -18,7 +18,6 @@ def _parse_date(s: str):
     if not s:
         return None
     try:
-        # accepts YYYY-MM-DD or full ISO
         if "T" in s:
             return datetime.fromisoformat(s).date()
         return date.fromisoformat(s)
@@ -37,18 +36,6 @@ def _get_user_location_code(request):
 
 
 class DaywiseSalesSummary(APIView):
-    """
-    GET /api/reports/daywise-sales/?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&location=<text>
-    - Groups by calendar day
-    - cash = sum(SaleLine.sp * qty) for that day (any payment method)
-    - credit_notes = count of CreditNote created that day
-    - total = cash + credit_notes (per your spec)
-    - location filters by Sale.store/CreditNote.sale.store (icontains)
-
-    For MANAGER users, location is automatically forced to their outlet
-    (using location code in sale.store).
-    """
-
     def get(self, request):
         df = _parse_date(request.GET.get("date_from", ""))
         dt = _parse_date(request.GET.get("date_to", ""))
@@ -58,13 +45,10 @@ class DaywiseSalesSummary(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # UI may send multiple ?location= values (multi-select)
         locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
 
-        # Manager → force to their own outlet’s location code
         loc_code = _get_user_location_code(request)
 
-        # For response metadata only (string to avoid breaking existing UI)
         if loc_code:
             loc_filter_label = loc_code
         elif locs:
@@ -72,7 +56,6 @@ class DaywiseSalesSummary(APIView):
         else:
             loc_filter_label = ""
 
-        # ---- CASH (sum of line amounts per day) ----
         sl_qs = (
             SaleLine.objects
             .select_related("sale")
@@ -83,10 +66,8 @@ class DaywiseSalesSummary(APIView):
         )
 
         if loc_code:
-            # 🔒 MANAGER: only their location
             sl_qs = sl_qs.filter(sale__store__icontains=loc_code)
         elif locs and "All" not in locs:
-            # ADMIN: allow one or many locations
             loc_q = Q()
             for label in locs:
                 loc_q |= Q(sale__store__icontains=label)
@@ -104,7 +85,6 @@ class DaywiseSalesSummary(APIView):
         )
         cash_by_day = {r["sday"]: (r["cash"] or Decimal("0.00")) for r in cash_rows}
 
-        # ---- CREDIT NOTE count per day (using note_date) ----
         cn_qs = CreditNote.objects.select_related("sale").filter(
             note_date__date__gte=df,
             note_date__date__lte=dt,
@@ -125,7 +105,6 @@ class DaywiseSalesSummary(APIView):
         )
         cn_by_day = {r["sday"]: int(r["cnt"] or 0) for r in cn_rows}
 
-        # ---- Build continuous day rows ----
         rows = []
         sr = 1
         cur = df
@@ -163,12 +142,7 @@ class DaywiseSalesSummary(APIView):
         }, status=status.HTTP_200_OK)
 
 
-# ========= Product Wise Sales =========
 class ProductWiseSalesReport(APIView):
-    """
-    (unchanged from your version, but location is forced for MANAGER)
-    """
-
     def _format_ddmmyyyy(self, d):
         try:
             return d.strftime("%d/%m/%Y")
@@ -193,23 +167,26 @@ class ProductWiseSalesReport(APIView):
 
         # --- Locations (multi or single) ---
         locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
-
         loc_code = _get_user_location_code(request)
         if loc_code:
             locs = [loc_code]
 
+        # ✅ FIX: always use icontains OR-Q (multi-select must not use __in)
         if locs and "All" not in locs:
-            if len(locs) == 1:
-                qs = qs.filter(sale__store__icontains=locs[0])
-            else:
-                qs = qs.filter(sale__store__in=locs)
+            loc_q = Q()
+            for label in locs:
+                loc_q |= Q(sale__store__icontains=label)
+            qs = qs.filter(loc_q)
 
-        # --- Department/Category (both map to TaskItem.department) ---
+        # ✅ FIX: Department maps to TaskItem.department
         dept = (request.GET.get("department") or "").strip()
-        cat  = (request.GET.get("category") or "").strip()
-        dep_val = dept or cat
-        if dep_val:
-            qs = qs.filter(product__task_item__department=dep_val)
+        if dept:
+            qs = qs.filter(product__task_item__department__iexact=dept)
+
+        # ✅ FIX: Category maps to TaskItem.category
+        cat = (request.GET.get("category") or "").strip()
+        if cat:
+            qs = qs.filter(product__task_item__category__iexact=cat)
 
         # --- Brand (only B4L supported) ---
         brand = (request.GET.get("brand") or "").strip()
@@ -239,7 +216,6 @@ class ProductWiseSalesReport(APIView):
                 Q(sale__store__icontains=q)
             )
 
-        # --- All vs pagination ---
         want_all = (request.GET.get("all") or "").lower() in ("1", "true", "yes", "on") \
                    or (request.GET.get("page_size") or "").lower() == "all"
 
@@ -262,7 +238,6 @@ class ProductWiseSalesReport(APIView):
             end = start + page_size
             items = qs[start:end]
 
-        # --- Build rows (keys match your React columns) ---
         rows = []
         sr_start = 1 if want_all else ((page - 1) * page_size + 1)
         for i, ln in enumerate(items, start=sr_start):
@@ -282,7 +257,7 @@ class ProductWiseSalesReport(APIView):
             rows.append({
                 "sr": i,
                 "department": (getattr(ti, "department", "") or ""),
-                "category":   (getattr(ti, "department", "") or ""),  # same as department
+                "category":   (getattr(ti, "category", "") or ""),  # ✅ FIX: real category
                 "subCategory": "",
                 "brand": "B4L",
                 "subBrand": "",
@@ -292,7 +267,7 @@ class ProductWiseSalesReport(APIView):
                 "lastPurchaseQty": 0,
                 "lastSalesDate": sdate_str,
                 "location": (getattr(sale, "store", "") or ""),
-                "qtySold": 1,
+                "qtySold": int(getattr(ln, "qty", 1) or 1),
                 "customerName": (getattr(cust, "name", "") or ""),
                 "mobile": (getattr(cust, "phone", "") or ""),
             })
@@ -303,21 +278,8 @@ class ProductWiseSalesReport(APIView):
         )
 
 
-# ========= Category Wise Sales (REAL DATA) =========
 class CategoryWiseSalesSummary(APIView):
-    """
-    GET /api/reports/category-wise-sales/
-    Query params (all optional unless noted):
-      - date_from (YYYY-MM-DD)  REQUIRED
-      - date_to   (YYYY-MM-DD)  REQUIRED
-      - location  (multi allowed; ?location=A&location=B) — icontains if single
-      - category  (exact match to TaskItem.category; optional)
-
-    For MANAGER users, location is forced to their outlet.
-    """
-
     def get(self, request):
-        # --- validate dates ---
         df = _parse_date(request.GET.get("date_from", ""))
         dt = _parse_date(request.GET.get("date_to", ""))
         if not df or not dt or df > dt:
@@ -326,7 +288,6 @@ class CategoryWiseSalesSummary(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # base queryset
         qs = (
             SaleLine.objects
             .select_related("sale", "product", "product__task_item")
@@ -336,27 +297,21 @@ class CategoryWiseSalesSummary(APIView):
             )
         )
 
-        # optional: category filter (exact)
         cat = (request.GET.get("category") or "").strip()
         if cat:
             qs = qs.filter(product__task_item__category=cat)
 
-        # locations
         locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
-
         loc_code = _get_user_location_code(request)
         if loc_code:
             locs = [loc_code]
 
         if locs and "All" not in locs:
-            if len(locs) == 1:
-                # fuzzy match for a single location (the UI passes names with symbols like en-dash)
-                qs = qs.filter(sale__store__icontains=locs[0])
-            else:
-                # exact match when multiple provided
-                qs = qs.filter(sale__store__in=locs)
+            loc_q = Q()
+            for label in locs:
+                loc_q |= Q(sale__store__icontains=label)
+            qs = qs.filter(loc_q)
 
-        # ⚠️ FIX: Annotate each line with its amount first, then aggregate
         qs = qs.annotate(
             line_amount=ExpressionWrapper(
                 F("sp") * F("qty"),
@@ -364,20 +319,18 @@ class CategoryWiseSalesSummary(APIView):
             )
         )
 
-        # Now aggregate by category + store
         agg = (
             qs.values("product__task_item__category", "sale__store")
               .annotate(
                   qty=Coalesce(Sum("qty"), Value(0, output_field=IntegerField())),
                   total=Coalesce(
-                      Sum("line_amount"),  # ✅ Now we sum the already-computed field
+                      Sum("line_amount"),
                       Value(0, output_field=DecimalField(max_digits=16, decimal_places=2)),
                   ),
               )
               .order_by("product__task_item__category", "sale__store")
         )
 
-        # build rows
         rows = []
         sr = 1
         total_qty = 0
@@ -394,10 +347,9 @@ class CategoryWiseSalesSummary(APIView):
                 "category": category,
                 "location": location,
                 "qty": qty,
-                # keep these blank in UI
-                "taxable": "",   # per requirement
-                "tax": "",       # per requirement
-                "total": float(total),  # numeric for easy formatting on UI
+                "taxable": "",
+                "tax": "",
+                "total": float(total),
             })
             sr += 1
             total_qty += qty

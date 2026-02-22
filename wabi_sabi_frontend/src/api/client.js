@@ -971,6 +971,7 @@ export async function listDepartments() {
 }
 
 export async function listCategories(params = {}) {
+  // supports: ?department=...
   return http(`/taskitems/categories/${buildQuery(params)}`);
 }
 
