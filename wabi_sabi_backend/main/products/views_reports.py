@@ -152,7 +152,13 @@ class ProductWiseSalesReport(APIView):
     def get(self, request):
         qs = (
             SaleLine.objects
-            .select_related("sale", "sale__customer", "product", "product__task_item")
+            .select_related(
+                "sale",
+                "sale__customer",
+                "product",
+                "product__task_item",
+                "product__location",   # ✅ added: barcode -> product -> location
+            )
             .order_by("-sale__transaction_date", "-sale_id", "barcode")
         )
 
@@ -166,24 +172,28 @@ class ProductWiseSalesReport(APIView):
             )
 
         # --- Locations (multi or single) ---
+        # ✅ now location filter works on Product.location (barcode -> product -> location)
         locs = [s.strip() for s in request.GET.getlist("location") if s.strip()]
         loc_code = _get_user_location_code(request)
         if loc_code:
             locs = [loc_code]
 
-        # ✅ FIX: always use icontains OR-Q (multi-select must not use __in)
         if locs and "All" not in locs:
             loc_q = Q()
             for label in locs:
-                loc_q |= Q(sale__store__icontains=label)
+                s = (label or "").strip()
+                if not s:
+                    continue
+                # supports either location code (UV/WS/etc) OR location name
+                loc_q |= Q(product__location__code__iexact=s) | Q(product__location__name__icontains=s)
             qs = qs.filter(loc_q)
 
-        # ✅ FIX: Department maps to TaskItem.department
+        # ✅ Department maps to TaskItem.department
         dept = (request.GET.get("department") or "").strip()
         if dept:
             qs = qs.filter(product__task_item__department__iexact=dept)
 
-        # ✅ FIX: Category maps to TaskItem.category
+        # ✅ Category maps to TaskItem.category
         cat = (request.GET.get("category") or "").strip()
         if cat:
             qs = qs.filter(product__task_item__category__iexact=cat)
@@ -254,10 +264,16 @@ class ProductWiseSalesReport(APIView):
             sdate = getattr(sale, "transaction_date", None)
             sdate_str = self._format_ddmmyyyy(sdate) if sdate else ""
 
+            # ✅ Location shown from barcode -> product -> location
+            ploc = getattr(getattr(ln, "product", None), "location", None)
+            ploc_code = (getattr(ploc, "code", "") or "").strip()
+            ploc_name = (getattr(ploc, "name", "") or "").strip()
+            loc_label = f"{ploc_code} - {ploc_name}".strip(" -") if (ploc_code or ploc_name) else ""
+
             rows.append({
                 "sr": i,
                 "department": (getattr(ti, "department", "") or ""),
-                "category":   (getattr(ti, "category", "") or ""),  # ✅ FIX: real category
+                "category":   (getattr(ti, "category", "") or ""),
                 "subCategory": "",
                 "brand": "B4L",
                 "subBrand": "",
@@ -266,7 +282,7 @@ class ProductWiseSalesReport(APIView):
                 "lastPurchaseDate": sdate_str,
                 "lastPurchaseQty": 0,
                 "lastSalesDate": sdate_str,
-                "location": (getattr(sale, "store", "") or ""),
+                "location": loc_label,  # ✅ changed
                 "qtySold": int(getattr(ln, "qty", 1) or 1),
                 "customerName": (getattr(cust, "name", "") or ""),
                 "mobile": (getattr(cust, "phone", "") or ""),
