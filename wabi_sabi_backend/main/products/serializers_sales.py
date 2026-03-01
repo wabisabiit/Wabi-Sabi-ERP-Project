@@ -2,7 +2,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Sum
 from django.utils import timezone
 from rest_framework import serializers
 from django.core.exceptions import FieldDoesNotExist
@@ -38,12 +38,11 @@ def compute_net_paid_map(sale: Sale, lines):
       1) base_unit = sp - per_line_discount
       2) base_line_total = base_unit * qty
       3) base_total = sum(base_line_total)
-      4) bill_discount_total = base_total - sale.grand_total  (>=0)
+      4) bill_discount_total = base_total - paid_total  (>=0)
       5) allocate bill_discount proportionally across lines by base_line_total share
       6) net_line_total = base_line_total - allocated_bill_discount
       7) net_unit_paid = net_line_total / qty
     """
-    # build base totals after per-line discount (but before bill discount)
     base_total = Decimal("0.00")
     base_by_id = {}  # id -> (qty, base_unit, base_line_total)
 
@@ -75,7 +74,10 @@ def compute_net_paid_map(sale: Sale, lines):
         base_total += base_line
         base_by_id[ln.id] = (qty, base_unit, base_line)
 
-    paid_total = q2(getattr(sale, "grand_total", 0) or 0)
+    # ✅ IMPORTANT FIX:
+    # Sale.grand_total can now be NET payable after applying credit/coupon
+    # so "paid_total" for bill-discount allocation must always come from sum(payments)
+    paid_total = q2((sale.payments.aggregate(s=Sum("amount")).get("s") or 0))
 
     bill_disc_total = (base_total - paid_total).quantize(
         TWOPLACES, rounding=ROUND_HALF_UP
@@ -116,14 +118,11 @@ class SaleLineInSerializer(serializers.Serializer):
     barcode = serializers.CharField(max_length=64)
     qty = serializers.IntegerField(min_value=1)
 
-    # percent discount (optional)
     discount_percent = serializers.DecimalField(
         max_digits=6, decimal_places=2, required=False, default=0
     )
 
-    # ✅ IMPORTANT (FIXED):
     # Frontend sends discount_amount as "₹ DISCOUNT PER UNIT"
-    # So total line discount = discount_amount * qty
     discount_amount = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, default=0
     )
@@ -192,10 +191,8 @@ class SaleCreateSerializer(serializers.Serializer):
             line_base = unit * qty
             subtotal += line_base
 
-            # ✅ FIX: accept both snake_case and camelCase
             dp = q2(ln.get("discount_percent", ln.get("discountPercent", 0)) or 0)
 
-            # ✅ FIX: incoming discount_amount is PER-UNIT discount (accept both keys)
             da_per_unit = q2(ln.get("discount_amount", ln.get("discountAmount", 0)) or 0)
             da_total = (da_per_unit * Decimal(qty)).quantize(
                 TWOPLACES, rounding=ROUND_HALF_UP
@@ -225,21 +222,42 @@ class SaleCreateSerializer(serializers.Serializer):
 
         bill_disc = min(base_after_item, max(Decimal("0.00"), bill_disc))
 
-        grand_total = (base_after_item - bill_disc).quantize(
+        # ✅ GROSS total BEFORE credit/coupon
+        grand_total_gross = (base_after_item - bill_disc).quantize(
             TWOPLACES, rounding=ROUND_HALF_UP
         )
 
-        pay_total = sum([q2(p["amount"]) for p in data["payments"]]).quantize(TWOPLACES)
+        # ✅ NEW: CREDIT + COUPON reduce payable
+        credit_coupon_total = Decimal("0.00")
+        other_pay_total = Decimal("0.00")
 
-        if pay_total != grand_total:
+        for p in data["payments"]:
+            m = str(p.get("method") or "").upper()
+            amt = q2(p.get("amount"))
+            if m in (Sale.PAYMENT_CREDIT, Sale.PAYMENT_COUPON):
+                credit_coupon_total += amt
+            else:
+                other_pay_total += amt
+
+        credit_coupon_total = min(grand_total_gross, max(Decimal("0.00"), credit_coupon_total))
+
+        # ✅ NET payable (this is what bill should show)
+        grand_total = (grand_total_gross - credit_coupon_total).quantize(
+            TWOPLACES, rounding=ROUND_HALF_UP
+        )
+
+        # ✅ only non-credit/coupon payments must equal net payable
+        if other_pay_total != grand_total:
             raise serializers.ValidationError(
-                f"Payments total ({pay_total}) must equal payable amount ({grand_total})."
+                f"Payments total ({other_pay_total}) must equal payable amount ({grand_total})."
             )
 
         data["_computed"] = {
             "subtotal": subtotal,
             "item_discount_total": item_discount_total,
             "bill_discount": bill_disc,
+            "grand_total_gross": grand_total_gross,
+            "credit_coupon_total": credit_coupon_total,
             "grand_total": grand_total,
         }
         return data
@@ -319,13 +337,9 @@ class SaleCreateSerializer(serializers.Serializer):
                 p = Product.objects.get(barcode=ln["barcode"])
                 qty = int(ln["qty"])
 
-                # ✅ FIX: accept both snake_case and camelCase
                 dp = q2(ln.get("discount_percent", ln.get("discountPercent", 0)) or 0)
-
-                # ✅ FIX: incoming discount_amount is PER-UNIT discount (accept both keys)
                 da_per_unit = q2(ln.get("discount_amount", ln.get("discountAmount", 0)) or 0)
 
-                # store line
                 SaleLine.objects.create(
                     sale=sale,
                     product=p,
@@ -334,15 +348,21 @@ class SaleCreateSerializer(serializers.Serializer):
                     mrp=p.mrp or 0,
                     sp=p.selling_price or 0,
                     discount_percent=dp,
-                    discount_amount=da_per_unit,  # ✅ per unit in DB
+                    discount_amount=da_per_unit,
                 )
 
                 subtotal += q2(p.selling_price) * qty
 
             sale.subtotal = q2(comp.get("subtotal", subtotal))
+
+            # (Optional) include credit/coupon inside discount_total if you want
             sale.discount_total = q2(
-                q2(comp.get("item_discount_total", 0)) + q2(comp.get("bill_discount", 0))
+                q2(comp.get("item_discount_total", 0)) +
+                q2(comp.get("bill_discount", 0)) +
+                q2(comp.get("credit_coupon_total", 0))
             )
+
+            # ✅ IMPORTANT: grand_total is NET payable after credit/coupon
             sale.grand_total = q2(comp.get("grand_total", sale.subtotal))
             sale.save(update_fields=["subtotal", "discount_total", "grand_total"])
 
@@ -394,7 +414,6 @@ class SaleListSerializer(serializers.ModelSerializer):
     order_type = serializers.SerializerMethodField()
     feedback = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
-
     created_by = serializers.SerializerMethodField()
 
     class Meta:
@@ -439,16 +458,14 @@ class SaleListSerializer(serializers.ModelSerializer):
 
 
 class SaleLineOutSerializer(serializers.ModelSerializer):
-    # existing
     product_name = serializers.SerializerMethodField()
     itemcode = serializers.SerializerMethodField()
     unit_cost_after_disc = serializers.SerializerMethodField()
 
-    # ✅ NEW: frontend-friendly aliases for invoice restore
-    sellingPrice = serializers.SerializerMethodField()       # ✅ net price after discount (includes bill discount)
-    lineDiscountAmount = serializers.SerializerMethodField() # per-unit discount including bill share
-    unitCost = serializers.SerializerMethodField()           # after discount (includes bill discount)
-    netAmount = serializers.SerializerMethodField()          # unitCost * qty (includes bill discount)
+    sellingPrice = serializers.SerializerMethodField()
+    lineDiscountAmount = serializers.SerializerMethodField()
+    unitCost = serializers.SerializerMethodField()
+    netAmount = serializers.SerializerMethodField()
 
     class Meta:
         model = SaleLine
@@ -459,12 +476,10 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
             "mrp",
             "sp",
             "discount_percent",
-            "discount_amount",          # per-unit in DB
-            "unit_cost_after_disc",     # existing
+            "discount_amount",
+            "unit_cost_after_disc",
             "product_name",
             "itemcode",
-
-            # ✅ NEW
             "sellingPrice",
             "lineDiscountAmount",
             "unitCost",
@@ -491,7 +506,7 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
     def _per_unit_discount(self, obj) -> Decimal:
         sp = q2(getattr(obj, "sp", 0) or 0)
         dp = q2(getattr(obj, "discount_percent", 0) or 0)
-        da = q2(getattr(obj, "discount_amount", 0) or 0)  # per unit stored
+        da = q2(getattr(obj, "discount_amount", 0) or 0)
 
         if dp > 0:
             disc = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
@@ -502,16 +517,11 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
         return disc
 
     def _net_unit_paid(self, obj) -> Decimal:
-        """
-        ✅ ACTUAL paid per unit including bill discount allocation.
-        Set by view in serializer context: net_unit_by_id
-        """
         m = (self.context or {}).get("net_unit_by_id") or {}
         v = m.get(getattr(obj, "id", None))
         if v is not None:
             return q2(v)
 
-        # fallback old behavior
         sp = q2(getattr(obj, "sp", 0) or 0)
         disc = self._per_unit_discount(obj)
         return (sp - disc).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
@@ -533,10 +543,6 @@ class SaleLineOutSerializer(serializers.ModelSerializer):
         return str((net_unit * Decimal(qty)).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
 
     def get_lineDiscountAmount(self, obj):
-        """
-        per-unit discount including bill share:
-          sp - net_unit_paid
-        """
         sp = q2(getattr(obj, "sp", 0) or 0)
         net_unit = self._net_unit_paid(obj)
         disc = (sp - net_unit).quantize(TWOPLACES, rounding=ROUND_HALF_UP)

@@ -325,7 +325,6 @@ class CreditNote(models.Model):
     sale = models.ForeignKey("Sale", on_delete=models.PROTECT, related_name="credit_notes")
     customer = models.ForeignKey("Customer", on_delete=models.PROTECT, related_name="credit_notes")
 
-    # location scoping
     location = models.ForeignKey(
         Location,
         on_delete=models.PROTECT,
@@ -340,19 +339,16 @@ class CreditNote(models.Model):
     barcode = models.CharField(max_length=64, db_index=True)
     qty = models.PositiveIntegerField(default=1)
 
-    # total credit value
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     note_date = models.DateTimeField()
 
-    # redemption tracking (supports partial usage)
     is_redeemed = models.BooleanField(default=False)
     redeemed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     redeemed_at = models.DateTimeField(null=True, blank=True)
     redeemed_invoice = models.CharField(max_length=32, blank=True, default="")
 
-    # ✅ created by (same as Sale.created_by)
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -385,11 +381,11 @@ class CreditNote(models.Model):
         if self.product_id and not self.barcode:
             self.barcode = self.product.barcode
 
-        # ✅ auto fill created_by from sale if missing
+        # auto fill created_by from sale if missing
         if not self.created_by_id and self.sale_id and getattr(self.sale, "created_by_id", None):
             self.created_by_id = self.sale.created_by_id
 
-        # ✅ FIX: credit note amount must match customer's ACTUAL paid price
+        # FIX: credit note amount must match customer's ACTUAL paid price
         # Includes:
         #  - per-row discount (SaleLine.discount_amount)
         #  - bill/footer discount (distributed proportionally across lines)
@@ -398,10 +394,8 @@ class CreditNote(models.Model):
             from django.db.models import Sum
 
             TWOPLACES = Decimal("0.01")
-
             sale = getattr(self, "sale", None)
 
-            # all lines of that invoice
             all_lines = list(
                 SaleLine.objects.filter(sale_id=self.sale_id).values(
                     "barcode", "qty", "sp", "discount_amount"
@@ -414,7 +408,6 @@ class CreditNote(models.Model):
                 except Exception:
                     return Decimal("0")
 
-            # base total after per-line discounts (but BEFORE bill discount)
             base_total = Decimal("0")
             line_totals = []
             for r in all_lines:
@@ -428,19 +421,17 @@ class CreditNote(models.Model):
                 base_total += base_line
                 line_totals.append((r.get("barcode") or "", qty_sold, base_unit, base_line))
 
-            # what customer actually paid for the whole invoice
-            paid_total = d(getattr(sale, "grand_total", 0)) if sale else Decimal("0")
-
-            # fallback: sum payments if grand_total is empty
-            if paid_total <= 0 and sale is not None:
+            # ✅ IMPORTANT FIX:
+            # always treat "paid_total" as sum(payments)
+            # because Sale.grand_total may now be NET payable (after credit/coupon)
+            paid_total = Decimal("0")
+            if sale is not None:
                 paid_total = d(sale.payments.aggregate(s=Sum("amount")).get("s") or 0)
 
-            # bill discount total to distribute across lines
             bill_disc_total = base_total - paid_total
             if bill_disc_total < 0:
                 bill_disc_total = Decimal("0")
 
-            # find the sold-line for this barcode
             target = None
             for (bc, qty_sold, base_unit, base_line) in line_totals:
                 if str(bc) == str(self.barcode):
@@ -450,23 +441,14 @@ class CreditNote(models.Model):
             if target:
                 bc, qty_sold, base_unit, base_line = target
 
-                # allocate bill discount proportionally
-                if base_total > 0:
-                    share = (base_line / base_total)
-                else:
-                    share = Decimal("0")
-
+                share = (base_line / base_total) if base_total > 0 else Decimal("0")
                 alloc_bill_disc_line = (bill_disc_total * share)
 
                 net_line_total = base_line - alloc_bill_disc_line
                 if net_line_total < 0:
                     net_line_total = Decimal("0")
 
-                # net unit paid (after both row + bill discount)
-                if qty_sold > 0:
-                    net_unit_paid = net_line_total / Decimal(qty_sold)
-                else:
-                    net_unit_paid = Decimal("0")
+                net_unit_paid = (net_line_total / Decimal(qty_sold)) if qty_sold > 0 else Decimal("0")
 
                 return_qty = Decimal(int(self.qty or 1))
                 self.amount = (net_unit_paid * return_qty).quantize(
@@ -474,9 +456,6 @@ class CreditNote(models.Model):
                 )
 
         super().save(*args, **kwargs)
-
-
-
 
 
 # ===========================
