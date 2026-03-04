@@ -239,42 +239,31 @@ class SalesView(APIView):
 class SaleLinesByInvoiceView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, invoice_no):
-        sale = get_object_or_404(Sale, invoice_no=invoice_no)
+    def get(self, request, invoice_no: str):
+        safe = (invoice_no or "").strip()
+        if not safe:
+            return Response({"detail": "Missing invoice number."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # same outlet scoping rule as sales list
-        user = getattr(request, "user", None)
-        if user and user.is_authenticated and not user.is_superuser:
-            emp = _get_employee(user)
-            if not emp or not emp.outlet_id:
-                return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-
-            allowed = Sale.objects.filter(pk=sale.pk)
-            outlet_q = Q(salesman__outlet_id=emp.outlet_id)
-            if _has_created_by_field():
-                outlet_q = outlet_q | Q(created_by__employee__outlet_id=emp.outlet_id)
-            allowed = allowed.filter(outlet_q)
-
-            if not allowed.exists():
-                return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            sale = Sale.objects.get(invoice_no=safe)
+        except Sale.DoesNotExist:
+            return Response({"detail": "Invoice not found."}, status=status.HTTP_404_NOT_FOUND)
 
         lines = (
-            SaleLine.objects.select_related("product", "product__task_item")
+            SaleLine.objects
             .filter(sale=sale)
+            .select_related("product", "product__task_item")
             .order_by("id")
         )
 
-        # ✅ ADDON: compute actual paid per line (includes bill/footer discount)
-        net_unit_by_id, net_line_by_id = compute_net_paid_map(sale, lines)
+        net_unit_by_id, _ = compute_net_paid_map(sale, lines)
 
         ser = SaleLineOutSerializer(
             lines,
             many=True,
-            context={
-                "net_unit_by_id": net_unit_by_id,
-                "net_line_by_id": net_line_by_id,
-            },
+            context={"net_unit_by_id": net_unit_by_id},
         )
+
         return Response({"invoice_no": sale.invoice_no, "lines": ser.data}, status=status.HTTP_200_OK)
 
 
