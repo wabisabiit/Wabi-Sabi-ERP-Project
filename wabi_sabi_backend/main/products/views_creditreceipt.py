@@ -77,6 +77,133 @@ def _resolve_item_name_from_barcode(barcode: str) -> str:
     return (name or safe).strip()
 
 
+def _parse_multi_barcode_string(raw: str):
+    """
+    Supports:
+      - "A,B,C"
+      - "A,A,B" (duplicates = qty)
+      - "A*2,B*1"
+      - "A:2,B:1"
+      - "A x2, B x1"
+    Returns dict { barcode: qty(int) }
+    """
+    s = (raw or "").strip()
+    if not s:
+        return {}
+
+    out = {}
+    parts = [p.strip() for p in s.split(",") if p.strip()]
+    for p in parts:
+        bc = p
+        qty = 1
+
+        # normalize separators
+        p_norm = p.replace("×", "x").replace("X", "x")
+
+        # patterns like "ABC*2" / "ABC:2" / "ABC x2"
+        for sep in ("*", ":", " x", "x"):
+            if sep in p_norm:
+                left, right = p_norm.split(sep, 1)
+                left = (left or "").strip()
+                right = (right or "").strip()
+                if left and right:
+                    bc = left
+                    try:
+                        qty = int(str(right).strip())
+                    except Exception:
+                        qty = 1
+                break
+
+        bc = (bc or "").strip()
+        if not bc:
+            continue
+
+        if qty <= 0:
+            qty = 1
+
+        out[bc] = out.get(bc, 0) + qty
+
+    return out
+
+
+def _net_unit_paid_map_from_sale(sale):
+    """
+    Best-effort: compute net paid per unit per barcode using the SAME logic you used in CreditNote.save:
+      - base_unit = sp - discount_amount
+      - base_total = sum(base_line)
+      - paid_total = sum(payments.amount)
+      - bill_disc_total = base_total - paid_total (>=0)
+      - allocate bill_disc_total proportionally by base_line share
+      - net_unit_paid = (base_line - alloc) / qty_sold
+    Returns dict: { barcode: Decimal(net_unit_paid) }
+    """
+    if not sale:
+        return {}
+
+    try:
+        from django.db.models import Sum
+    except Exception:
+        Sum = None
+
+    def d(x):
+        try:
+            return Decimal(str(x or 0))
+        except Exception:
+            return Decimal("0")
+
+    # sale lines
+    try:
+        lines = list(
+            sale.lines.all().values("barcode", "qty", "sp", "discount_amount")
+        )
+    except Exception:
+        return {}
+
+    if not lines:
+        return {}
+
+    base_total = Decimal("0")
+    rows = []
+    for r in lines:
+        bc = str(r.get("barcode") or "").strip()
+        qty_sold = max(1, int(r.get("qty") or 1))
+        sp = d(r.get("sp"))
+        row_disc = d(r.get("discount_amount"))
+        base_unit = sp - row_disc
+        if base_unit < 0:
+            base_unit = Decimal("0")
+        base_line = base_unit * Decimal(qty_sold)
+        base_total += base_line
+        rows.append((bc, qty_sold, base_unit, base_line))
+
+    paid_total = Decimal("0")
+    try:
+        if Sum is not None:
+            paid_total = d(sale.payments.aggregate(s=Sum("amount")).get("s") or 0)
+        else:
+            paid_total = d(sum([getattr(p, "amount", 0) or 0 for p in sale.payments.all()]))
+    except Exception:
+        paid_total = Decimal("0")
+
+    bill_disc_total = base_total - paid_total
+    if bill_disc_total < 0:
+        bill_disc_total = Decimal("0")
+
+    out = {}
+    for (bc, qty_sold, base_unit, base_line) in rows:
+        share = (base_line / base_total) if base_total > 0 else Decimal("0")
+        alloc_bill_disc_line = (bill_disc_total * share)
+
+        net_line_total = base_line - alloc_bill_disc_line
+        if net_line_total < 0:
+            net_line_total = Decimal("0")
+
+        net_unit_paid = (net_line_total / Decimal(qty_sold)) if qty_sold > 0 else Decimal("0")
+        out[bc] = q2(net_unit_paid)
+
+    return out
+
+
 def _get_creditnote_items(note):
     # 1) try relations (future proof)
     for attr in ("lines", "credit_note_lines", "items", "credit_lines"):
@@ -113,17 +240,17 @@ def _get_creditnote_items(note):
         except Exception:
             pass
 
-    # 2) fallback: YOUR CURRENT MODEL (barcode+qty on CreditNote)
+    # 2) fallback: YOUR CURRENT MODEL (barcode+qty+amount on CreditNote)
     barcode = (getattr(note, "barcode", None) or "").strip()
     qty_raw = getattr(note, "qty", None)
 
     try:
-        qty = Decimal(str(qty_raw if qty_raw is not None else 1))
+        qty_total = Decimal(str(qty_raw if qty_raw is not None else 1))
     except Exception:
-        qty = Decimal("1")
+        qty_total = Decimal("1")
 
-    if qty <= 0:
-        qty = Decimal("1")
+    if qty_total <= 0:
+        qty_total = Decimal("1")
 
     total_amt = getattr(note, "amount", None) or getattr(note, "total_amount", None) or getattr(note, "total", None) or 0
     try:
@@ -134,18 +261,79 @@ def _get_creditnote_items(note):
     if not barcode:
         return []
 
-    barcodes = [b.strip() for b in barcode.split(",") if b.strip()]
-    if len(barcodes) <= 1:
-        name = _resolve_item_name_from_barcode(barcode)
-        rate = (total_amt / qty) if qty else Decimal("0.00")
-        return [{"name": name, "qty": qty, "rate": rate, "amount": total_amt}]
+    # Parse barcode string into per-barcode quantities
+    bc_qty = _parse_multi_barcode_string(barcode)
 
-    per_amt = (total_amt / Decimal(str(len(barcodes)))) if barcodes else Decimal("0.00")
-    out = []
-    for b in barcodes:
-        name = _resolve_item_name_from_barcode(b)
-        out.append({"name": name, "qty": Decimal("1"), "rate": per_amt, "amount": per_amt})
-    return out
+    # Single barcode behavior (old)
+    if len(bc_qty) <= 1:
+        only_bc = barcode if len(bc_qty) == 0 else list(bc_qty.keys())[0]
+        name = _resolve_item_name_from_barcode(only_bc)
+        rate = (total_amt / qty_total) if qty_total else Decimal("0.00")
+        return [{"name": name, "qty": qty_total, "rate": rate, "amount": total_amt}]
+
+    # Multi-barcode: compute correct per-item amount using sale net-paid map (best-effort)
+    sale = getattr(note, "sale", None)
+    net_map = _net_unit_paid_map_from_sale(sale) if sale else {}
+
+    # build items with computed totals
+    items = []
+    running = Decimal("0.00")
+
+    # stable order based on barcode string order (keeps receipt predictable)
+    ordered_barcodes = []
+    for part in [p.strip() for p in barcode.split(",") if p.strip()]:
+        # keep the "base" barcode part (strip qty markers)
+        base = part.strip()
+        base_norm = base.replace("×", "x").replace("X", "x")
+        # split patterns
+        for sep in ("*", ":", " x", "x"):
+            if sep in base_norm:
+                base_norm = (base_norm.split(sep, 1)[0] or "").strip()
+                break
+        if base_norm and base_norm not in ordered_barcodes:
+            ordered_barcodes.append(base_norm)
+
+    # add any missing keys (just in case)
+    for k in bc_qty.keys():
+        if k not in ordered_barcodes:
+            ordered_barcodes.append(k)
+
+    # compute per-barcode lines
+    for i, bc in enumerate(ordered_barcodes):
+        q = int(bc_qty.get(bc, 0) or 0)
+        if q <= 0:
+            continue
+
+        qty_d = Decimal(str(q))
+        name = _resolve_item_name_from_barcode(bc)
+
+        # best-effort net unit from sale; fallback to equal split if missing
+        net_unit = net_map.get(bc, None)
+
+        if net_unit is None:
+            # fallback equal split across distinct barcodes (keeps layout readable)
+            # distribute total_amt proportionally by qty counts if possible
+            total_units = sum(int(v or 0) for v in bc_qty.values()) or len(bc_qty)
+            per_unit = (total_amt / Decimal(str(total_units))) if total_units else Decimal("0.00")
+            amt = q2(per_unit * qty_d)
+            rate = q2(per_unit)
+        else:
+            rate = q2(net_unit)
+            amt = q2(rate * qty_d)
+
+        items.append({"name": name, "qty": qty_d, "rate": rate, "amount": amt})
+        running = q2(running + amt)
+
+    # rounding fix: adjust last item so totals match stored note.amount
+    if items:
+        diff = q2(total_amt - running)
+        if diff != Decimal("0.00"):
+            items[-1]["amount"] = q2(Decimal(str(items[-1]["amount"])) + diff)
+            q = Decimal(str(items[-1]["qty"] or 1))
+            if q > 0:
+                items[-1]["rate"] = q2(Decimal(str(items[-1]["amount"])) / q)
+
+    return items
 
 
 @method_decorator(login_required, name="dispatch")
