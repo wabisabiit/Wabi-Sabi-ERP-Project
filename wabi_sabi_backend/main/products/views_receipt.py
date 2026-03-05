@@ -173,22 +173,76 @@ class SaleReceiptPdfView(View):
         # If UI saved discount at Sale header (sale.discount_total) but not per-line,
         # distribute it across lines proportionally to line gross.
 
-        bill_disc = q2(getattr(sale, "discount_total", 0) or 0)
+        # ✅ NEW (ROBUST):
+        # Treat COUPON + CREDIT NOTE as "bill discount" for receipt,
+        # and also fallback to Sale.grand_total when available.
 
-        # ✅ NEW: if coupon discount exists as a payment (method=COUPON) and bill_disc is 0,
-        # treat coupon amount as bill-level discount so receipt prints correct Net.
-        coupon_disc = Decimal("0.00")
+        pays = []
         try:
             pays = list(SalePayment.objects.filter(sale=sale).only("method", "amount"))
-            for p in pays:
-                m = (getattr(p, "method", "") or "").strip().upper()
-                if m == "COUPON":
-                    coupon_disc = q2(coupon_disc + q2(getattr(p, "amount", 0) or 0))
         except Exception:
-            coupon_disc = Decimal("0.00")
+            pays = []
 
-        if bill_disc <= 0 and coupon_disc > 0:
-            bill_disc = q2(coupon_disc)
+        coupon_disc = Decimal("0.00")
+        credit_disc = Decimal("0.00")
+        paid_non_discount = Decimal("0.00")
+
+        for p in pays:
+            m = (getattr(p, "method", "") or "").strip().upper()
+            amt = q2(getattr(p, "amount", 0) or 0)
+
+            # discount-like buckets
+            if "COUPON" in m:
+                coupon_disc = q2(coupon_disc + amt)
+                continue
+            if m in ("CREDIT", "CREDIT NOTE"):
+                credit_disc = q2(credit_disc + amt)
+                continue
+
+            # actual money paid buckets
+            paid_non_discount = q2(paid_non_discount + amt)
+
+        # current bill discount from header (if any)
+        bill_disc = q2(getattr(sale, "discount_total", 0) or 0)
+
+        # 1) If header discount is 0, use coupon+credit as bill discount
+        if bill_disc <= 0 and (coupon_disc + credit_disc) > 0:
+            bill_disc = q2(coupon_disc + credit_disc)
+
+        # 2) If still 0 and grand_total exists, infer discount = line_total - grand_total
+        #    (This makes receipt match what customer actually pays)
+        desired_total = q2(getattr(sale, "grand_total", 0) or 0)
+        if desired_total <= 0 and paid_non_discount > 0:
+            desired_total = q2(paid_non_discount)
+
+        if bill_disc <= 0 and desired_total > 0 and lines:
+            est_lines_total = Decimal("0.00")
+            for ln in lines:
+                qty = Decimal(int(getattr(ln, "qty", 0) or 0))
+                sp = q2(getattr(ln, "sp", 0) or 0)
+
+                # use EXISTING line discount fields (no bill allocation here)
+                dp = q2(getattr(ln, "discount_percent", 0) or 0)
+                da = q2(getattr(ln, "discount_amount", 0) or 0)
+                unit_cost = q2(getattr(ln, "unit_cost", None) or 0)
+
+                if dp <= 0 and da <= 0 and unit_cost > 0 and unit_cost < sp:
+                    dpu = q2(sp - unit_cost)
+                elif dp > 0:
+                    dpu = (sp * dp / Decimal("100")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+                else:
+                    dpu = da
+
+                if dpu < 0:
+                    dpu = Decimal("0.00")
+                if dpu > sp:
+                    dpu = sp
+
+                est_lines_total = q2(est_lines_total + q2((sp - dpu) * qty))
+
+            inferred = q2(est_lines_total - desired_total)
+            if inferred > 0:
+                bill_disc = inferred
 
         def _line_has_any_discount(ln: SaleLine) -> bool:
             dp = q2(getattr(ln, "discount_percent", 0) or 0)
