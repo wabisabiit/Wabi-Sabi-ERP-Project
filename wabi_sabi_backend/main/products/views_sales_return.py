@@ -1,25 +1,22 @@
 # products/views_sales_return.py
+from decimal import Decimal, ROUND_HALF_UP
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.db.models import Sum
 
 from taskmaster.models import Location
-from django.db.models import Sum
-from decimal import Decimal, ROUND_HALF_UP
-
-from .models import Sale, CreditNote, SaleLine, SalePayment
+from .models import Sale, CreditNote
 
 
 TWOPLACES = Decimal("0.01")
 
 
 def q2(x):
-    try:
-        return Decimal(str(x or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
-    except Exception:
-        return Decimal("0.00")
+    return (Decimal(x or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
 
 def _sale_to_cart_lines(sale: Sale):
@@ -46,56 +43,58 @@ def _sale_to_cart_lines(sale: Sale):
     return rows
 
 
-def _calc_net_unit_paid_map(sale: Sale):
+def _net_unit_paid_map_from_sale(sale: Sale):
     """
-    Returns: dict { barcode: Decimal(net_unit_paid) }
-    Uses same logic as CreditNote.save:
-      - base_line = (sp - discount_amount) * qty
-      - paid_total = sum(payments.amount)
-      - bill_disc_total = base_total - paid_total (clamped >= 0)
-      - allocate bill_disc proportionally to base_line
+    Returns dict: { barcode: Decimal(net_unit_paid) } based on:
+      - per-line discount (SaleLine.discount_amount)
+      - bill-level discount (derived from payments sum vs base_total)
+      - coupon discount (if recorded as payment method=COUPON) is naturally included because payments sum reflects NET payable
     """
     lines = list(
-        SaleLine.objects.filter(sale=sale).values("barcode", "qty", "sp", "discount_amount")
+        sale.lines.all().values("barcode", "qty", "sp", "discount_amount")
     )
 
-    base_total = Decimal("0.00")
+    def d(x):
+        try:
+            return Decimal(str(x or 0))
+        except Exception:
+            return Decimal("0")
+
+    base_total = Decimal("0")
     line_rows = []
     for r in lines:
         bc = str(r.get("barcode") or "").strip()
         qty_sold = max(1, int(r.get("qty") or 1))
-        sp = q2(r.get("sp"))
-        row_disc = q2(r.get("discount_amount"))
-        base_unit = q2(sp - row_disc)
+        sp = d(r.get("sp"))
+        row_disc = d(r.get("discount_amount"))
+        base_unit = sp - row_disc
         if base_unit < 0:
-            base_unit = Decimal("0.00")
-        base_line = q2(base_unit * Decimal(qty_sold))
-        base_total = q2(base_total + base_line)
+            base_unit = Decimal("0")
+        base_line = base_unit * Decimal(qty_sold)
+        base_total += base_line
         line_rows.append((bc, qty_sold, base_unit, base_line))
 
-    paid_total = Decimal("0.00")
+    # total actually paid (NET payable) = sum(payments)
+    paid_total = Decimal("0")
     try:
-        paid_total = q2(
-            SalePayment.objects.filter(sale=sale).aggregate(s=Sum("amount")).get("s") or 0
-        )
+        paid_total = d(sale.payments.aggregate(s=Sum("amount")).get("s") or 0)
     except Exception:
-        paid_total = Decimal("0.00")
+        paid_total = Decimal("0")
 
-    bill_disc_total = q2(base_total - paid_total)
+    bill_disc_total = base_total - paid_total
     if bill_disc_total < 0:
-        bill_disc_total = Decimal("0.00")
+        bill_disc_total = Decimal("0")
 
     out = {}
     for (bc, qty_sold, base_unit, base_line) in line_rows:
-        share = (base_line / base_total) if base_total > 0 else Decimal("0.00")
-        alloc_bill_disc_line = q2(bill_disc_total * share)
-
-        net_line_total = q2(base_line - alloc_bill_disc_line)
+        share = (base_line / base_total) if base_total > 0 else Decimal("0")
+        alloc_bill_disc_line = bill_disc_total * share
+        net_line_total = base_line - alloc_bill_disc_line
         if net_line_total < 0:
-            net_line_total = Decimal("0.00")
+            net_line_total = Decimal("0")
 
-        net_unit_paid = q2(net_line_total / Decimal(qty_sold)) if qty_sold > 0 else Decimal("0.00")
-        out[bc] = net_unit_paid
+        net_unit_paid = (net_line_total / Decimal(qty_sold)) if qty_sold > 0 else Decimal("0")
+        out[bc] = q2(net_unit_paid)
 
     return out
 
@@ -189,26 +188,15 @@ class SalesReturn(APIView):
         created_nos = []
 
         with transaction.atomic():
+            # compute NET paid per unit map (handles coupon + bill discount)
+            net_unit_paid_map = _net_unit_paid_map_from_sale(sale)
+
             # If selected is empty -> old behavior (all lines)
             lines_qs = sale.lines.select_related("product").all()
             if selected:
                 lines_qs = lines_qs.filter(barcode__in=list(selected.keys()))
 
-            lines = list(lines_qs)
-
-            if not lines:
-                return Response(
-                    {"ok": False, "created": False, "notes": [], "msg": "No items selected for return."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            net_unit_paid_map = _calc_net_unit_paid_map(sale)
-
-            selected_barcodes = []
-            total_qty = 0
-            total_amount = Decimal("0.00")
-
-            for ln in lines:
+            for ln in lines_qs:
                 # Determine qty to return
                 if selected:
                     qty_to_return = int(selected.get(ln.barcode, 0) or 0)
@@ -220,36 +208,38 @@ class SalesReturn(APIView):
                 if qty_to_return <= 0:
                     continue
 
-                bc = str(ln.barcode or "").strip()
-                net_unit_paid = q2(net_unit_paid_map.get(bc, q2(ln.sp or 0)))
-                amt = q2(net_unit_paid * Decimal(qty_to_return))
+                # ✅ FIX: credit note amount must match customer's ACTUAL paid price (net),
+                # including coupon + bill discount allocation.
+                net_unit = net_unit_paid_map.get(str(ln.barcode or "").strip())
+                if net_unit is None:
+                    # fallback: at least apply line discount if present
+                    sp = q2(getattr(ln, "sp", 0) or 0)
+                    da = q2(getattr(ln, "discount_amount", 0) or 0)
+                    net_unit = q2(sp - da)
+                    if net_unit < 0:
+                        net_unit = Decimal("0.00")
 
-                selected_barcodes.append(bc)
-                total_qty += qty_to_return
-                total_amount = q2(total_amount + amt)
+                amount = q2(net_unit * Decimal(qty_to_return))
 
-            if total_qty <= 0 or total_amount <= 0:
-                return Response(
-                    {"ok": False, "created": False, "notes": [], "msg": "No items selected for return."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                # ✅ Your current CreditNote model stores qty and amount
+                cn = CreditNote.objects.create(
+                    sale=sale,
+                    customer=sale.customer,
+                    location=loc,  # ✅ important
+                    date=sale.transaction_date,
+                    note_date=sale.transaction_date,
+                    product=ln.product,
+                    barcode=ln.barcode,
+                    qty=qty_to_return,
+                    amount=amount,
                 )
+                created_nos.append(cn.note_no)
 
-            # ✅ ONE credit note for all selected products
-            barcode_joined = ",".join(selected_barcodes)
-            first_ln = lines[0]
-
-            cn = CreditNote.objects.create(
-                sale=sale,
-                customer=sale.customer,
-                location=loc,  # ✅ important
-                date=sale.transaction_date,
-                note_date=sale.transaction_date,
-                product=first_ln.product,
-                barcode=barcode_joined,
-                qty=total_qty,
-                amount=total_amount,
+        if not created_nos:
+            return Response(
+                {"ok": False, "created": False, "notes": [], "msg": "No items selected for return."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            created_nos.append(cn.note_no)
 
         return Response(
             {"ok": True, "created": True, "notes": created_nos, "msg": "Credit note created."},
