@@ -6,7 +6,20 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from taskmaster.models import Location
-from .models import Sale, CreditNote
+from django.db.models import Sum
+from decimal import Decimal, ROUND_HALF_UP
+
+from .models import Sale, CreditNote, SaleLine, SalePayment
+
+
+TWOPLACES = Decimal("0.01")
+
+
+def q2(x):
+    try:
+        return Decimal(str(x or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    except Exception:
+        return Decimal("0.00")
 
 
 def _sale_to_cart_lines(sale: Sale):
@@ -31,6 +44,60 @@ def _sale_to_cart_lines(sale: Sale):
             }
         )
     return rows
+
+
+def _calc_net_unit_paid_map(sale: Sale):
+    """
+    Returns: dict { barcode: Decimal(net_unit_paid) }
+    Uses same logic as CreditNote.save:
+      - base_line = (sp - discount_amount) * qty
+      - paid_total = sum(payments.amount)
+      - bill_disc_total = base_total - paid_total (clamped >= 0)
+      - allocate bill_disc proportionally to base_line
+    """
+    lines = list(
+        SaleLine.objects.filter(sale=sale).values("barcode", "qty", "sp", "discount_amount")
+    )
+
+    base_total = Decimal("0.00")
+    line_rows = []
+    for r in lines:
+        bc = str(r.get("barcode") or "").strip()
+        qty_sold = max(1, int(r.get("qty") or 1))
+        sp = q2(r.get("sp"))
+        row_disc = q2(r.get("discount_amount"))
+        base_unit = q2(sp - row_disc)
+        if base_unit < 0:
+            base_unit = Decimal("0.00")
+        base_line = q2(base_unit * Decimal(qty_sold))
+        base_total = q2(base_total + base_line)
+        line_rows.append((bc, qty_sold, base_unit, base_line))
+
+    paid_total = Decimal("0.00")
+    try:
+        paid_total = q2(
+            SalePayment.objects.filter(sale=sale).aggregate(s=Sum("amount")).get("s") or 0
+        )
+    except Exception:
+        paid_total = Decimal("0.00")
+
+    bill_disc_total = q2(base_total - paid_total)
+    if bill_disc_total < 0:
+        bill_disc_total = Decimal("0.00")
+
+    out = {}
+    for (bc, qty_sold, base_unit, base_line) in line_rows:
+        share = (base_line / base_total) if base_total > 0 else Decimal("0.00")
+        alloc_bill_disc_line = q2(bill_disc_total * share)
+
+        net_line_total = q2(base_line - alloc_bill_disc_line)
+        if net_line_total < 0:
+            net_line_total = Decimal("0.00")
+
+        net_unit_paid = q2(net_line_total / Decimal(qty_sold)) if qty_sold > 0 else Decimal("0.00")
+        out[bc] = net_unit_paid
+
+    return out
 
 
 class SaleLinesByInvoice(APIView):
@@ -127,7 +194,21 @@ class SalesReturn(APIView):
             if selected:
                 lines_qs = lines_qs.filter(barcode__in=list(selected.keys()))
 
-            for ln in lines_qs:
+            lines = list(lines_qs)
+
+            if not lines:
+                return Response(
+                    {"ok": False, "created": False, "notes": [], "msg": "No items selected for return."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            net_unit_paid_map = _calc_net_unit_paid_map(sale)
+
+            selected_barcodes = []
+            total_qty = 0
+            total_amount = Decimal("0.00")
+
+            for ln in lines:
                 # Determine qty to return
                 if selected:
                     qty_to_return = int(selected.get(ln.barcode, 0) or 0)
@@ -139,26 +220,36 @@ class SalesReturn(APIView):
                 if qty_to_return <= 0:
                     continue
 
-                # ✅ Your current CreditNote model stores qty and amount
-                # amount should be based on SaleLine.sp (billed price)
-                cn = CreditNote.objects.create(
-                    sale=sale,
-                    customer=sale.customer,
-                    location=loc,  # ✅ important
-                    date=sale.transaction_date,
-                    note_date=sale.transaction_date,
-                    product=ln.product,
-                    barcode=ln.barcode,
-                    qty=qty_to_return,
-                    amount=(ln.sp or 0) * qty_to_return,
-                )
-                created_nos.append(cn.note_no)
+                bc = str(ln.barcode or "").strip()
+                net_unit_paid = q2(net_unit_paid_map.get(bc, q2(ln.sp or 0)))
+                amt = q2(net_unit_paid * Decimal(qty_to_return))
 
-        if not created_nos:
-            return Response(
-                {"ok": False, "created": False, "notes": [], "msg": "No items selected for return."},
-                status=status.HTTP_400_BAD_REQUEST,
+                selected_barcodes.append(bc)
+                total_qty += qty_to_return
+                total_amount = q2(total_amount + amt)
+
+            if total_qty <= 0 or total_amount <= 0:
+                return Response(
+                    {"ok": False, "created": False, "notes": [], "msg": "No items selected for return."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # ✅ ONE credit note for all selected products
+            barcode_joined = ",".join(selected_barcodes)
+            first_ln = lines[0]
+
+            cn = CreditNote.objects.create(
+                sale=sale,
+                customer=sale.customer,
+                location=loc,  # ✅ important
+                date=sale.transaction_date,
+                note_date=sale.transaction_date,
+                product=first_ln.product,
+                barcode=barcode_joined,
+                qty=total_qty,
+                amount=total_amount,
             )
+            created_nos.append(cn.note_no)
 
         return Response(
             {"ok": True, "created": True, "notes": created_nos, "msg": "Credit note created."},
