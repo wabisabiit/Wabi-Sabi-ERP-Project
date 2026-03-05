@@ -172,7 +172,23 @@ class SaleReceiptPdfView(View):
         # ------------------ BILL DISCOUNT FALLBACK ------------------
         # If UI saved discount at Sale header (sale.discount_total) but not per-line,
         # distribute it across lines proportionally to line gross.
+
         bill_disc = q2(getattr(sale, "discount_total", 0) or 0)
+
+        # ✅ NEW: if coupon discount exists as a payment (method=COUPON) and bill_disc is 0,
+        # treat coupon amount as bill-level discount so receipt prints correct Net.
+        coupon_disc = Decimal("0.00")
+        try:
+            pays = list(SalePayment.objects.filter(sale=sale).only("method", "amount"))
+            for p in pays:
+                m = (getattr(p, "method", "") or "").strip().upper()
+                if m == "COUPON":
+                    coupon_disc = q2(coupon_disc + q2(getattr(p, "amount", 0) or 0))
+        except Exception:
+            coupon_disc = Decimal("0.00")
+
+        if bill_disc <= 0 and coupon_disc > 0:
+            bill_disc = q2(coupon_disc)
 
         def _line_has_any_discount(ln: SaleLine) -> bool:
             dp = q2(getattr(ln, "discount_percent", 0) or 0)
@@ -241,12 +257,8 @@ class SaleReceiptPdfView(View):
             return q2(d)
 
         # ---------------- THERMAL RECEIPT PAGE (prints like machine) ----------------
-        # 80mm roll width -> ~226.77 points (72pt/in). Keep small margins.
         PAGE_W = 226.8
         M = 8.0
-
-        # Dynamic height so printer doesn't scale to A4 (main reason your print was blank/huge).
-        # Height estimate in points; we add enough space for lines + footer.
         est_h = 520 + (len(lines) * 14)
         PAGE_H = max(600, est_h)
 
@@ -274,18 +286,9 @@ class SaleReceiptPdfView(View):
             c.restoreState()
 
         def _tax_rate_for_total(total: Decimal) -> Decimal:
-            # <= 2500 => 5%, else 18%
             return Decimal("0.05") if q2(total) <= Decimal("2500.00") else Decimal("0.18")
 
         def _calc_tax_summary(total: Decimal):
-            """
-            Rules (corrected):
-            - rate = 5% if total <= 2500 else 18%
-            - taxable_value = total - (total * rate)
-            - cgst = taxable_value * rate
-            - sgst = taxable_value * rate
-            - cess, igst = 0.00
-            """
             rate = _tax_rate_for_total(total)
             taxable_value = q2(total - (total * rate))
             cgst = q2(taxable_value * rate)
@@ -294,7 +297,6 @@ class SaleReceiptPdfView(View):
             igst = Decimal("0.00")
             return taxable_value, cgst, sgst, cess, igst
 
-        # Header (no "DUPLICATE")
         center(y, (loc_code or "OUTLET")[:12], 9, True)
         y -= 14
         center(y, "Receipt", 10, True)
@@ -310,7 +312,6 @@ class SaleReceiptPdfView(View):
             center(y, "GSTIN NO : ", 7, False)
         y -= 10
 
-        # Shop at (keep same placement style, just fit roll width)
         if shop_domain:
             center(y, f"{shop_at}", 7, True)
             y -= 10
@@ -319,13 +320,11 @@ class SaleReceiptPdfView(View):
             center(y, "A unit of Wabi-Sabi", 7, False)
             y -= 10
 
-        # Customer + meta
         txt(M, y, f"Name   : {cust_name}", 8, False)
         y -= 11
         txt(M, y, f"Mobile : {cust_phone}", 8, False)
         y -= 11
 
-        # Receipt No (not Credit Note)
         txt(M, y, f"Receipt No : {sale.invoice_no}", 8, False)
         y -= 11
 
@@ -339,9 +338,6 @@ class SaleReceiptPdfView(View):
         dashline(y)
         y -= 12
 
-        # Table header (reduced gap so right columns sit under the horizontal line)
-        # Columns tuned for 80mm:
-        # Item (left), Qty, SP, Disc, Net (right aligned)
         item_x = M
         qty_x = 118
         sp_x = 148
@@ -350,7 +346,7 @@ class SaleReceiptPdfView(View):
 
         txt(item_x, y, "Item", 8, True)
         rtxt(qty_x, y, "Qty", 8, True)
-        rtxt(sp_x, y, "SP", 8, True)      # MRP -> SP
+        rtxt(sp_x, y, "SP", 8, True)
         rtxt(disc_x, y, "Disc", 8, True)
         rtxt(net_x, y, "Net", 8, True)
         y -= 9
@@ -358,7 +354,6 @@ class SaleReceiptPdfView(View):
         dashline(y)
         y -= 12
 
-        # Lines
         for ln in lines:
             qty = Decimal(int(getattr(ln, "qty", 0) or 0))
             sp = q2(getattr(ln, "sp", 0) or 0)
@@ -366,7 +361,6 @@ class SaleReceiptPdfView(View):
             dpu = per_unit_disc(ln)
             disc_line = q2(dpu * qty)
 
-            # ✅ if bill-level discount is allocated, ensure disc_line matches allocation exactly
             if ln.id in bill_disc_by_line_id:
                 disc_line = q2(bill_disc_by_line_id[ln.id])
 
@@ -390,7 +384,6 @@ class SaleReceiptPdfView(View):
             if not pname:
                 pname = (getattr(ln, "barcode", "") or "")
 
-            # 2-line item name if long (thermal friendly)
             name = (pname or "").strip()
             if len(name) > 22:
                 txt(item_x, y, name[:22], 7, False)
@@ -406,7 +399,6 @@ class SaleReceiptPdfView(View):
 
             y -= 14
 
-            # If height ever goes too low, extend page (avoid cutting on roll)
             if y < 140:
                 c.showPage()
                 c.setPageSize((PAGE_W, PAGE_H))
@@ -440,13 +432,11 @@ class SaleReceiptPdfView(View):
         txt(M, y, place_supply, 6, False)
         y -= 14
 
-        # TAX SUMMARY (table like your image)
         center(y, "TAX SUMMARY", 8, True)
         y -= 10
 
         taxable_value, cgst, sgst, cess, igst = _calc_tax_summary(total_net)
 
-        # Table geometry (fit roll width)
         table_left = M
         table_right = PAGE_W - M
         table_w = table_right - table_left
@@ -457,18 +447,14 @@ class SaleReceiptPdfView(View):
         row_h1 = 18
         row_h2 = 16
 
-        # Draw outer box
         c.rect(table_left, table_top - (row_h1 + row_h2), table_w, (row_h1 + row_h2), stroke=1, fill=0)
 
-        # Vertical lines
         for i in range(1, cols):
             x = table_left + (col_w * i)
             c.line(x, table_top, x, table_top - (row_h1 + row_h2))
 
-        # Horizontal split between header and values
         c.line(table_left, table_top - row_h1, table_right, table_top - row_h1)
 
-        # Header labels
         headers = ["TAXABLE\nVALUE", "CGST", "SGST", "Cess", "IGST"]
         for i, htxt in enumerate(headers):
             cx = table_left + col_w * i + col_w / 2
@@ -480,7 +466,6 @@ class SaleReceiptPdfView(View):
             else:
                 c.drawCentredString(cx, table_top - 14, htxt)
 
-        # Values
         vals = [
             f"{taxable_value:.2f}",
             f"{cgst:.2f}",
@@ -503,10 +488,8 @@ class SaleReceiptPdfView(View):
         else:
             txt(M, y, "Address : ", 8, False)
 
-        # ✅ extra space between Gurugram and barcode
         y -= 40
 
-        # Barcode (centered on roll)
         bc_val = sale.invoice_no
         barcode_obj = code128.Code128(bc_val, barHeight=34, barWidth=0.8)
         bw = barcode_obj.width
@@ -544,12 +527,6 @@ def _is_admin(user) -> bool:
 
 
 def _per_unit_discount(ln: SaleLine) -> Decimal:
-    """
-    Per-unit discount based on SP:
-    - if discount_percent > 0 => SP * % / 100
-    - else use discount_amount (stored per unit)
-    - fallback: infer from unit_cost if discount fields are 0
-    """
     sp = q2(getattr(ln, "sp", 0) or 0)
     dp = q2(getattr(ln, "discount_percent", 0) or 0)
     da = q2(getattr(ln, "discount_amount", 0) or 0)
@@ -570,21 +547,10 @@ def _per_unit_discount(ln: SaleLine) -> Decimal:
 
 
 def _rate_for_unit_amount(unit_amount: Decimal) -> Decimal:
-    """
-    Tax rule:
-      - <= 2500 => 5%
-      - > 2500  => 18%
-    """
     return Decimal("0.05") if q2(unit_amount) <= Decimal("2500.00") else Decimal("0.18")
 
 
 def _split_inclusive_amount(inclusive_total: Decimal, rate: Decimal):
-    """
-    inclusive_total includes tax.
-    taxable = inclusive_total / (1 + rate)
-    tax     = inclusive_total - taxable
-    cgst/sgst = tax/2
-    """
     inclusive_total = q2(inclusive_total)
     if inclusive_total <= 0:
         z = Decimal("0.00")
@@ -594,7 +560,6 @@ def _split_inclusive_amount(inclusive_total: Decimal, rate: Decimal):
     taxable = (inclusive_total / denom).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
     tax = q2(inclusive_total - taxable)
     half = (tax / Decimal("2.00")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
-    # keep totals consistent (cgst+sgst == tax)
     cgst = half
     sgst = q2(tax - cgst)
     return taxable, tax, cgst, sgst
