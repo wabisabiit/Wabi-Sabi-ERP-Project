@@ -340,13 +340,25 @@ class SaleReceiptPdfView(View):
             c.restoreState()
 
         def _tax_rate_for_total(total: Decimal) -> Decimal:
+            # <= 2500  => total GST 5%  (CGST 2.5% + SGST 2.5%)
+            # >= 2501  => total GST 18% (CGST 9% + SGST 9%)
             return Decimal("0.05") if q2(total) <= Decimal("2500.00") else Decimal("0.18")
 
         def _calc_tax_summary(total: Decimal):
-            rate = _tax_rate_for_total(total)
-            taxable_value = q2(total - (total * rate))
-            cgst = q2(taxable_value * rate)
-            sgst = q2(taxable_value * rate)
+            total = q2(total)
+
+            if total <= Decimal("2500.00"):
+                total_gst_rate = Decimal("0.05")
+                half_rate = Decimal("0.025")   # CGST 2.5%, SGST 2.5%
+            else:
+                total_gst_rate = Decimal("0.18")
+                half_rate = Decimal("0.09")    # CGST 9%, SGST 9%
+
+            taxable_value = (total / (Decimal("1.00") + total_gst_rate)).quantize(
+                TWOPLACES, rounding=ROUND_HALF_UP
+            )
+            cgst = (taxable_value * half_rate).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+            sgst = (taxable_value * half_rate).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
             cess = Decimal("0.00")
             igst = Decimal("0.00")
             return taxable_value, cgst, sgst, cess, igst
@@ -601,6 +613,8 @@ def _per_unit_discount(ln: SaleLine) -> Decimal:
 
 
 def _rate_for_unit_amount(unit_amount: Decimal) -> Decimal:
+    # <= 2500  => total GST 5%
+    # >= 2501  => total GST 18%
     return Decimal("0.05") if q2(unit_amount) <= Decimal("2500.00") else Decimal("0.18")
 
 
@@ -610,12 +624,25 @@ def _split_inclusive_amount(inclusive_total: Decimal, rate: Decimal):
         z = Decimal("0.00")
         return z, z, z, z
 
-    denom = (Decimal("1.00") + q2(rate))
+    denom = Decimal("1.00") + q2(rate)
     taxable = (inclusive_total / denom).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
     tax = q2(inclusive_total - taxable)
-    half = (tax / Decimal("2.00")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
-    cgst = half
-    sgst = q2(tax - cgst)
+
+    if q2(rate) == Decimal("0.05"):
+        cgst_rate = Decimal("0.025")
+        sgst_rate = Decimal("0.025")
+    else:
+        cgst_rate = Decimal("0.09")
+        sgst_rate = Decimal("0.09")
+
+    cgst = (taxable * cgst_rate).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    sgst = (taxable * sgst_rate).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    # safety: total tax exactly match ho
+    diff = q2(tax - (cgst + sgst))
+    if diff != Decimal("0.00"):
+        sgst = q2(sgst + diff)
+
     return taxable, tax, cgst, sgst
 
 
