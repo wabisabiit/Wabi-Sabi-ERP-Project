@@ -387,6 +387,18 @@ export function DayWiseSalesSummaryPage() {
     return `${d}/${m}/${y}`;
   };
 
+  // ✅ NEW: helper so Gross Amount = Bank + Cash, and Total = Bank + Cash
+  const toNumber = (value) => {
+    const n = Number(value || 0);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const formatAmount = (value) => {
+    return toNumber(value).toFixed(2);
+  };
+
+  const bankCashSum = (obj) => toNumber(obj?.bank) + toNumber(obj?.cash);
+
   // --- SEARCH handler (calls backend) ---
   const onSearch = async () => {
     if (!fromDate || !toDate) {
@@ -664,10 +676,14 @@ export function DayWiseSalesSummaryPage() {
                   <th>Sr.No</th>
                   <th>Sales Date</th>
                   <th>
-                    Gross<br />Amount
+                    Gross
+                    <br />
+                    Amount
                   </th>
                   <th>
-                    Tax<br />Amount
+                    Tax
+                    <br />
+                    Amount
                   </th>
                   <th>CGST</th>
                   <th>SGST</th>
@@ -678,13 +694,19 @@ export function DayWiseSalesSummaryPage() {
                   <th>Bank</th>
                   <th>Cash</th>
                   <th>
-                    Credit<br />Note
+                    Credit
+                    <br />
+                    Note
                   </th>
                   <th>
-                    Coupon<br />Discount
+                    Coupon
+                    <br />
+                    Discount
                   </th>
                   <th>
-                    Additional<br />Charge
+                    Additional
+                    <br />
+                    Charge
                   </th>
                   <th>Total</th>
                 </tr>
@@ -697,7 +719,7 @@ export function DayWiseSalesSummaryPage() {
                       <tr key={`${r.sr_no}-${r.sales_date}`}>
                         <td>{r.sr_no}</td>
                         <td>{dmy(r.sales_date)}</td>
-                        <td>{r.gross_amount ?? ""}</td>
+                        <td>{formatAmount(bankCashSum(r))}</td>
                         <td>{r.tax_amount ?? ""}</td>
                         <td>{r.cgst ?? ""}</td>
                         <td>{r.sgst ?? ""}</td>
@@ -710,7 +732,7 @@ export function DayWiseSalesSummaryPage() {
                         <td>{r.credit_notes ?? ""}</td>
                         <td>{r.coupon_discount ?? ""}</td>
                         <td>{r.additional_charge ?? ""}</td>
-                        <td>{r.total ?? ""}</td>
+                        <td>{formatAmount(bankCashSum(r))}</td>
                       </tr>
                     ))}
 
@@ -718,7 +740,7 @@ export function DayWiseSalesSummaryPage() {
                       <td className="dss-strong" colSpan={2}>
                         TOTAL
                       </td>
-                      <td>{totals?.gross_amount ?? ""}</td>
+                      <td>{formatAmount(bankCashSum(totals))}</td>
                       <td>{totals?.tax_amount ?? ""}</td>
                       <td>{totals?.cgst ?? ""}</td>
                       <td>{totals?.sgst ?? ""}</td>
@@ -731,7 +753,7 @@ export function DayWiseSalesSummaryPage() {
                       <td>{totals?.credit_notes ?? ""}</td>
                       <td>{totals?.coupon_discount ?? ""}</td>
                       <td>{totals?.additional_charge ?? ""}</td>
-                      <td>{totals?.total ?? ""}</td>
+                      <td>{formatAmount(bankCashSum(totals))}</td>
                     </tr>
                   </>
                 ) : (
