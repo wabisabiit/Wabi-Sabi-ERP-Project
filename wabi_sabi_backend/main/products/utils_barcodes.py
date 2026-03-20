@@ -2,21 +2,19 @@ import re
 from typing import Optional
 from .models import Product
 
-_BAR_REGEX = re.compile(r"^([A-Z])-(\d{3})$")
+_BAR_REGEX = re.compile(r"^([A-Z])-(\d+)$")
 
 def _bump_letter_num(letter: str, num: int) -> tuple[str, int]:
-    """A-001..A-999, B-001..Z-999, then wrap to A-001."""
-    num += 1
-    if num <= 999:
-        return letter, num
-    # carry over to next letter
-    num = 1
-    idx = (ord(letter) - ord('A') + 1) % 26  # 0..25
-    letter = chr(ord('A') + idx)
+    """A-1, A-2, A-3 ... A-999, A-1000 (letter stays same)."""
+    letter = (letter or "A").upper()
+    if not ("A" <= letter <= "Z"):
+        letter = "A"
+
+    num = int(num or 0) + 1
     return letter, num
 
 def _format_code(letter: str, num: int) -> str:
-    return f"{letter}-{num:03d}"
+    return f"{letter}-{num}"
 
 def _parse_code(code: str) -> Optional[tuple[str, int]]:
     m = _BAR_REGEX.match(code or "")
@@ -26,20 +24,19 @@ def _parse_code(code: str) -> Optional[tuple[str, int]]:
 
 def _find_last_global_code() -> tuple[str, int]:
     """
-    Find the most recently created barcode that matches LETTER-NNN.
-    We use created order as the “last” (keeps this migration simple and avoids a new DB model).
-    Falls back to A-000 so next becomes A-001.
+    Find the most recently created barcode that matches LETTER-NUMBER.
+    Falls back to A-0 so next becomes A-1.
     """
     last = (
         Product.objects
-        .filter(barcode__regex=r'^[A-Z]-\d{3}$')
+        .filter(barcode__regex=r'^[A-Z]-\d+$')
         .order_by('-created_at', '-id')
         .values_list('barcode', flat=True)
         .first()
     )
     parsed = _parse_code(last) if last else None
     if not parsed:
-        return "A", 0   # will become A-001
+        return "A", 0
     return parsed
 
 def next_barcode_global() -> str:
