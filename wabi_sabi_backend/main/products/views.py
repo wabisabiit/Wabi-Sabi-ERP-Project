@@ -14,43 +14,36 @@ from .pagination import ProductPagination
 # ------------------ BARCODE GENERATOR HELPERS (local) ------------------
 import re
 
-_BAR_RE = re.compile(r"^[A-Z]-\d{3}$")  # e.g., A-001
+_BAR_RE = re.compile(r"^A-\d+$")  # e.g., A-1, A-999, A-1000
 
 
 def _fmt(letter: str, num: int) -> str:
-    return f"{letter}-{num:03d}"
+    return f"A-{num}"
 
 
 def _bump(letter: str, num: int):
-    """A-001..A-999, then B-001..Z-999, wrap to A-001."""
-    letter = (letter or "A").upper()
-    if not ("A" <= letter <= "Z"):
-        letter = "A"
+    """A-1, A-2, A-3 ... A-999, A-1000 (letter always stays A)."""
+    letter = "A"
     num = int(num or 0) + 1
-    if num <= 999:
-        return letter, num
-    # carry to next letter
-    num = 1
-    idx = (ord(letter) - ord("A") + 1) % 26
-    return chr(ord("A") + idx), num
+    return letter, num
 
 
 def _parse(code: str):
     if not code or not _BAR_RE.match(code):
         return None
     try:
-        return code[0], int(code[2:])
+        return "A", int(code[2:])
     except Exception:
         return None
 
 
 def _last_seen_letter_num():
     """
-    Get the last LETTER-NNN based on creation order.
-    If none found, return ('A', 0) so next is A-001.
+    Get the last A-NUMBER based on creation order.
+    If none found, return ('A', 0) so next is A-1.
     """
     last = (
-        Product.objects.filter(barcode__regex=r"^[A-Z]-\d{3}$")
+        Product.objects.filter(barcode__regex=r"^A-\d+$")
         .order_by("-created_at", "-id")
         .values_list("barcode", flat=True)
         .first()
@@ -64,12 +57,12 @@ def _next_available(letter: str, num: int):
     From the given (letter,num) cursor, find the next free code.
     Returns (new_letter, new_num, code).
     """
-    for _ in range(26 * 999 + 5):
+    for _ in range(100000):
         letter, num = _bump(letter, num)
         candidate = _fmt(letter, num)
         if not Product.objects.filter(barcode=candidate).exists():
             return letter, num, candidate
-    raise RuntimeError("Exhausted barcode space unexpectedly")
+    raise RuntimeError("Could not generate next barcode")
 
 
 # ---- helper: current user's outlet location (for MANAGER) --------
