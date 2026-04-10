@@ -2,6 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.utils import timezone
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
@@ -242,8 +243,8 @@ class SalesReturn(APIView):
                 sale=sale,
                 customer=sale.customer,
                 location=loc,  # ✅ important
-                date=sale.transaction_date,
-                note_date=sale.transaction_date,
+                date=timezone.localdate(),
+                note_date=timezone.localdate(),
                 product=first_ln.product,
                 barcode=barcode_joined,
                 qty=total_qty,
